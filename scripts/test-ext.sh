@@ -101,6 +101,15 @@ check env-assign "1" "$(run env MARKER=ja "$BIN" env | grep -c '^MARKER=ja$' | t
 check env-unset "0" "$(run env -u HOME "$BIN" env | grep -c '^HOME=' | tr -d '\r')"
 rm -f t.txt e.txt
 
+# ps, kill, killall
+check ps-fields "PID COMM" "$(run ps -eo pid,comm | head -1 | tr -s ' ' | tr -d '\r' | sed 's/^ //;s/ $//')"
+check ps-ef-ppid "PPID" "$(run ps -ef | head -1 | tr -d '\r' | grep -o PPID | head -1)"
+check ps-has-rows "ja" "$([ "$(run ps -eo pid | wc -l)" -gt 1 ] && echo ja)"
+check ps-unknown-field "2" "$(run ps -eo bogus >/dev/null 2>&1; echo $?)"
+checkcode kill-bad-signal 2 "$(run kill -NOSUCHSIGNAL 1 >/dev/null 2>&1; echo $?)"
+checkcode kill-bad-pid 2 "$(run kill keinpid >/dev/null 2>&1; echo $?)"
+checkcode killall-no-match 1 "$(run killall gibtsnicht 2>/dev/null; echo $?)"
+
 # system
 check uname-machine "x86_64" "$(run uname -m | tr -d '\r')"
 # The child command depends on the target: a Windows binary sees the Windows

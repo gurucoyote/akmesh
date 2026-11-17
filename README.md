@@ -24,10 +24,14 @@ in one place, and whose behaviour can be measured instead of guessed.
   strace on Linux, and our own tools where u-root has a gap or builds only for
   Linux.
 - Our own tools inside the binary: awk, cut, diff, patch, sed, sha1sum,
-  sha256sum, sha512sum, split, stat, tac, nl, env, file, iconv, plus hostname,
-  sync, timeout and uname, which u-root does not build for Windows and whose
-  timeout takes a different command line on Linux.
-- Missing on Windows: df, du, free, kill, ps - they do not build there. A native
+  sha256sum, sha512sum, split, stat, tac, nl, env, file, iconv, ps, kill,
+  killall, plus hostname, sync, timeout and uname, which u-root does not build
+  for Windows and whose timeout takes a different command line on Linux.
+- ps takes the calls agents type (-e, -f, -ef, aux, -eo FIELDS, -p PID) on both
+  platforms with the same columns. On Windows the command line column falls back
+  to the executable name: the real command line lives in the target process and
+  reading it would mean touching foreign memory.
+- Missing on Windows: df, du, free - they do not build there. A native
   replacement is the next piece of work.
 - Not yet in the binary: the policy layer (path rules in one wrapper for every
   command, then Landlock/Job Objects for the kernel side).

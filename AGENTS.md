@@ -34,6 +34,17 @@ are English; documents meant for Martin are German.
 - `makebb` takes GOOS/GOARCH from the environment, it has no `-goos` flag.
 - Build artifacts (`acmesh`, `acmesh.exe`, `.cache/`, `.gopath/`) stay untracked.
 
+## Guiding principle for commands
+
+Implement every command the way an agent will expect it, not the way we would
+like agents to behave. When a flag spelling or an output format is in doubt,
+follow the tool the agent already knows (procps, GNU, curl) instead of inventing
+a cleaner one. Educating the agent costs more than accepting a familiar shape.
+
+Concretely: `ps -ef` must work, `-s` in curl must not swallow the body, combined
+short flags like `-fsSL` must be understood, and a missing command makes agents
+reach for powershell or python, which is worse than a slightly larger binary.
+
 ## Testing
 
 - A build is not a proof. The binary is run on the target: on Linux directly,

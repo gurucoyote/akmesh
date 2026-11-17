@@ -35,3 +35,7 @@
 2026-11-17  Binary heisst acmesh. file, iconv und env gebaut (eigene Tabellen,
             keine Fremdbibliothek), 27 Pruefungen je Ziel gruen. acmesh.exe
             10,06 MiB, acmesh 10,15 MiB.
+2026-11-18  ps, kill, killall gebaut, eine Umsetzung fuer beide Ziele.
+            ps kennt -e, -f, -ef, aux, -eo FELDER, -p PID; kill und killall mit
+            Signalen, killall ohne .exe und ohne Gross-/Kleinschreibung.
+            34 Pruefungen je Ziel gruen, Go-Tests gruen.

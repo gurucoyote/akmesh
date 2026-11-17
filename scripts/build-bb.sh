@@ -30,7 +30,7 @@ linux)
 	# come from u-root, so our own versions of those four stay out.
 	# hostname, sync, timeout and uname come from our own tools: u-root's
 	# timeout takes a different command line, and its uname/sync add nothing.
-	UROOT_EXTRA="ssh strace df du free kill ps"
+	UROOT_EXTRA="ssh strace df du free"
 	;;
 *)
 	echo "usage: $0 [windows|linux]" >&2
@@ -78,7 +78,7 @@ export GOWORK="$WORKFILE"
 
 # Every name our own tools provide. Where u-root also builds the same name for
 # the target, u-root wins: it is already in the list and needs no extra bytes.
-OURS_ALL="awk basename cut diff dirname env file hostname iconv md5sum nl patch sed sha1sum sha256sum sha512sum split stat sync tac timeout truncate uname"
+OURS_ALL="awk basename cut diff dirname env file hostname iconv kill killall md5sum nl patch ps sed sha1sum sha256sum sha512sum split stat sync tac timeout truncate uname"
 
 NAMES=$(grep -v '^#' "$ROOT/scripts/cmds.txt" | sed '/^$/d')
 PKGS=""

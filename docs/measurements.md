@@ -136,3 +136,46 @@ gzip, Zip, SQLite, Text und Binaerdaten, env mit letzter Zuweisung gewinnt.
 
 Bewusste Grenze: kein Zeichensatz-Erkennung, kein //TRANSLIT, und file kennt
 eine kurze Signaturliste statt einer Magic-Datenbank.
+
+## ps, kill, killall (18.11.2026, gebaut und geprueft)
+
+    ./scripts/build-bb.sh linux   -> acmesh     10.616.956 Bytes (10,13 MiB)
+    ./scripts/build-bb.sh windows -> acmesh.exe 10.592.256 Bytes (10,10 MiB)
+
+Zuwachs gegenueber dem Stand ohne die drei: rund 55 beziehungsweise 46 KB.
+
+ps liest unter Linux /proc (stat, status, cmdline, /proc/stat fuer btime,
+/etc/passwd fuer Namen), unter Windows Toolhelp32 plus OpenProcess,
+GetProcessTimes und OpenProcessToken fuer CPU-Zeit und Benutzer.
+
+Geprueft am gebauten Binary:
+
+| Aufruf | Linux | Windows |
+|---|---|---|
+| ps | PID TTY TIME CMD | PID TTY TIME CMD |
+| ps -e | alle | alle |
+| ps -ef | USER PID PPID STAT ELAPSED TTY TIME CMD | dito |
+| ps aux | USER PID STAT TTY TIME CMD | dito |
+| ps -eo pid,ppid,cmd | freie Feldwahl | freie Feldwahl |
+| ps -p 1 | ein Prozess | ein Prozess |
+| kill PID | getestet an sleep 300 | getestet an PING.EXE |
+| killall NAME | sleep beendet, ohne Treffer Exit 1 | zwei PING.EXE beendet |
+| kill -NOSUCHSIGNAL | Exit 2 | Exit 2 |
+| kill an geschuetzten Prozess | EPERM | "Zugriff verweigert" |
+
+Unter Windows belegt: ps -eo pid,ppid,user,cmd zeigt "BUSYS\Spernau" als
+Benutzer, explorer.exe mit CPU-Zeit 16:57 und Laufzeit 7-14:12:38.
+
+Pruefungen: scripts/test-ext.sh 34 Faelle je Ziel, acmesh, acmesh.exe und ext
+alle 0 Fehler. Go-Tests: Aufrufe -e/-f/-ef/aux/-x/-p, Feldlisten, Ablehnung
+unbekannter Schalter, Spaltenkoepfe, Zeitformate, Namensvergleich fuer killall
+(Gross-/Kleinschreibung, .exe), Spaltenausrichtung.
+
+Bewusste Grenzen:
+- Unter Windows kein Kommandozeilen-Text in ps (PEB, siehe
+  docs/ps-kill-einschaetzung.md), nur der Programmname.
+- ps aux zeigt nicht %CPU, %MEM, VSZ, RSS, START. Statt Zahlen zu erfinden
+  fehlen die Spalten; das steht auch in der Hilfe.
+- Unter Windows gibt es nur KILL/TERM, alles andere ist ein Fehler mit Meldung.
+- SIGNAL an einen anderen Benutzer braucht Rechte; ohne Rechte Exit 1 mit
+  Meldung, kein Absturz.

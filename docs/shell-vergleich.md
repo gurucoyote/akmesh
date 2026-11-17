@@ -66,3 +66,23 @@ Beide halten dieselben fuenf Haken, an denen eine Dateiregel haengen kann:
 4. Wechselkosten: null. Modulpfad ist gleich, ein `replace` entscheidet.
    Vorschlag: mit upstream 3.14.1 anfangen und die Gabel erst dann einziehen,
    wenn Windows-Rechtebits oder bash-Treue gebraucht werden - dann eine Zeile.
+
+## Nachtrag: winmode im Lauf geprueft (17.11.2026)
+
+winmode ist qianglis Paket in der Gabel: es legt die POSIX-Rechtebits in die
+Windows-DACL, nach dem Cygwin-Schema (deny/allow in einer festen Reihenfolge,
+damit die erste passende Klasse gewinnt - sonst wuerde chmod 0607 den Eigentuemer
+aussperren). Verdrahtet ist es im Interpreter: chmod in interp/handler.go, das
+Lesen des Modus in interp/os_windows.go.
+
+Eigenes Testprogramm mit winmode.Set und winmode.Get, windows/amd64:
+
+- Auf NTFS (Windows-Temp): 755 -> gelesen 755, 600 -> 600, 444 -> 444. Stimmt.
+  os.Stat meldet dabei weiter 666, weil Gos stat die ACL nicht liest.
+- Auf unserem WSL-Pfad (\\wsl.localhost\...): "Unzulaessige Funktion" - der
+  9p-Share traegt keine Windows-ACLs.
+
+Folge fuer acmesh: Rechtebits und damit `[ -r ]`, `[ -w ]`, `[ -x ]` und chmod
+sind unter Windows nur auf echten Windows-Pfaden deutbar, nicht auf Dateien,
+die ueber den WSL-Share erreicht werden. Upstream mvdan/sh hat winmode nicht;
+wer diese Bits braucht, nimmt die Gabel per replace.

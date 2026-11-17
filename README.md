@@ -32,8 +32,10 @@ See `docs/design/acmesh.md` for the architecture and the measurements, and
 
 ## Build
 
-    ./scripts/build-bb.sh windows   # bb.exe for Windows
-    ./scripts/build-bb.sh linux     # bb for Linux
+    ./scripts/build-bb.sh  windows  # bb.exe: 48 u-root commands plus the shell
+    ./scripts/build-bb.sh  linux
+    ./scripts/build-ext.sh windows  # ext.exe: the gaps u-root cannot fill
+    ./scripts/build-ext.sh linux
 
 The script pins the u-root commit and the command list, so a build is
 reproducible. It needs Go 1.27 (`GOTOOLCHAIN=auto` handles that) and
@@ -46,6 +48,9 @@ Build artifacts (`bb.exe`, `bb`) are not committed.
     bb.exe ls C:/Windows
     bb.exe grep -c Microsoft C:/Windows/System32/drivers/etc/hosts
     bb.exe gosh -c 'for f in *.exe; do echo "$f"; done'
+    ext.exe awk '{s+=$2} END {print s}' data.txt
+    ext.exe diff a.txt b.txt > change.diff && ext.exe patch change.diff
+    ext.exe sed -i 's/alt/neu/' datei.txt
 
 Without arguments the binary lists the commands it carries. The symlink form
 (`ln -s bb ls`) also works on Linux; on Windows use the subcommand form.

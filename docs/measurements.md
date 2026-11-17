@@ -52,3 +52,29 @@ busybox ash; verglichen wurde stdout plus Exit-Code.
 
 - `find` kennt kein `-maxdepth` ("flag provided but not defined").
 - `head` kennt kein `-3`, nur `-n 3`.
+
+## acmesh-ext (18.11.2026, gebaut und geprueft)
+
+    ./scripts/build-ext.sh linux     -> ext      3.592.455 Bytes (3,43 MiB)
+    ./scripts/build-ext.sh windows   -> ext.exe  3.685.376 Bytes (3,51 MiB)
+
+Beides gestrippt mit -trimpath -ldflags "-s -w". Zusammen mit bb (8,9 MB) also
+12,3 bis 12,4 MB fuer den ganzen Werkzeugsatz.
+
+Enthalten: awk sed diff patch cut nl tac basename dirname stat split truncate
+sync timeout uname hostname md5sum sha1sum sha256sum sha512sum.
+
+Geprueft mit scripts/test-ext.sh, je Ziel 19 Pruefungen, beide 0 Fehler:
+- basename mit Suffix, dirname, cut -f und -c, tac, nl
+- sha256sum gegen das Systemprogramm, gleiche Summe
+- sed s///, sed -n, awk Summe, awk -F
+- diff erzeugt, patch wendet an, Ergebnis gleich der Zieldatei
+- truncate -s, split -l mit Anzahl und Zeilen je Teil
+- uname -m, timeout endet mit 124
+
+Go-Tests in cmd/ext: Eigenschaft diff->replay ergibt beide Seiten, Hunk-Kopf
+passt zur Zeilenzahl (go-gitdiff ist strikt), Hunk-Startzeilen, cut-Listen,
+Teilnamen, Groessenangaben. go test ./cmd/ext gruen.
+
+Fehlt noch aus Stufe 1: file, iconv, env. Dazu ps, kill, killall, free, df,
+du aus dem zweiten Plan.

@@ -4,3 +4,5 @@ bb.exe
 .gopath/
 .build/
 *.test
+ext
+ext.exe

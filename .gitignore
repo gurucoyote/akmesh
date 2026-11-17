@@ -1,7 +1,8 @@
+/acmesh
+/acmesh.exe
 /ext
 /ext.exe
-/bb
-/bb.exe
 /.build/
 /.cache/
 /.gopath/
+*.test

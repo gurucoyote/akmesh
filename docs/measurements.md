@@ -15,7 +15,7 @@ Querkompilieren jedes Kandidaten, einer nach dem anderen:
 
 ## Ein Binary (gobusybox)
 
-    GOTOOLCHAIN=auto GOOS=windows GOARCH=amd64 makebb -o bb.exe ./cmds/core/...
+    GOTOOLCHAIN=auto GOOS=windows GOARCH=amd64 makebb -o acmesh.exe ./cmds/core/...
 
 - Bauzeit 18 s, Groesse 8,9 MB (9.314.304 Bytes) fuer 48 Befehle plus gosh.
 - Vergleich: 16 Einzeldateien waren zusammen rund 45 MB.
@@ -23,11 +23,11 @@ Querkompilieren jedes Kandidaten, einer nach dem anderen:
 
 ## Laeuft unter Windows (A, ausgefuehrt aus WSL per Interop)
 
-- `bb.exe ls C:/Windows` -> Liste mit Windows-Pfaden (C:\Windows\AppReadiness ...).
-- `bb.exe grep -c Microsoft C:/Windows/System32/drivers/etc/hosts` -> 2.
-- `bb.exe gosh -c 'echo hallo; echo $((6*7))'` -> hallo, 42.
-- `bb.exe` ohne Argument -> Liste der enthaltenen Befehle.
-- `bb.exe tar` -> Optionshilfe mit -c und -create.
+- `acmesh.exe ls C:/Windows` -> Liste mit Windows-Pfaden (C:\Windows\AppReadiness ...).
+- `acmesh.exe grep -c Microsoft C:/Windows/System32/drivers/etc/hosts` -> 2.
+- `acmesh.exe gosh -c 'echo hallo; echo $((6*7))'` -> hallo, 42.
+- `acmesh.exe` ohne Argument -> Liste der enthaltenen Befehle.
+- `acmesh.exe tar` -> Optionshilfe mit -c und -create.
 
 ## Kompatibilitaet des Interpreters (mvdan/sh 3.11.0)
 
@@ -81,7 +81,7 @@ du aus dem zweiten Plan.
 
 ## Ein Binary statt zwei (17.11.2026, gebaut und geprueft)
 
-    ./scripts/build-bb.sh windows -> bb.exe 10.503.680 Bytes (10,0 MiB)
+    ./scripts/build-bb.sh windows -> acmesh.exe 10.503.680 Bytes (10,0 MiB)
     ./scripts/build-bb.sh linux   -> bb     10.596.476 Bytes (10,1 MiB)
 
 Enthalten: 48 u-root-Befehle, gosh, ssh auf beiden Zielen, strace und
@@ -96,10 +96,43 @@ beiden Modulen hebt die Grenze auf. Danach kollidierte md5sum mit u-root; der
 Build filtert jetzt automatisch: wo u-root den Namen fuer das Ziel baut, gilt
 u-root, sonst unser Paket.
 
-Pruefung: scripts/test-ext.sh gegen bb.exe und gegen bb, je 19 Faelle, beide
+Pruefung: scripts/test-ext.sh gegen acmesh.exe und gegen bb, je 19 Faelle, beide
 0 Fehler. ssh antwortet mit seiner Usage, strace mit der seinen, ps und free
 liefern Daten.
 
 Bekannt kaputt: u-root df unter WSL meldet
 "mountinfo()=_,no such device, want: _,nil". Ein eigenes df steht auf der Liste.
 Das go.work liegt in .build/ und wird vom Build erzeugt; es ist nicht im Repo.
+
+## Umbenannt (17.11.2026)
+
+Das Binary heisst jetzt acmesh beziehungsweise acmesh.exe, gebaut von
+scripts/build-bb.sh (Skriptname bleibt). Frueher hiess es bb; in den aelteren
+Abschnitten dieses Dokuments und in docs/groesse.md steht noch bb, weil das die
+Groessen von damals sind. Inhaltlich ist es dasselbe Binary.
+
+## file, iconv, env (17.11.2026, gebaut und geprueft)
+
+    ./scripts/build-bb.sh windows -> acmesh.exe 10.546.688 Bytes (10,06 MiB)
+    ./scripts/build-bb.sh linux   -> acmesh     10.641.532 Bytes (10,15 MiB)
+
+Die drei Befehle kosten zusammen rund 43 KB gegenueber dem Stand ohne sie
+(10.503.680 beziehungsweise 10.596.476 Bytes).
+
+Belegt am gebauten Binary:
+- acmesh.exe file acmesh.exe -> "PE32+ executable (console) x86-64, for MS Windows"
+- acmesh file acmesh -> "ELF 64-bit LSB executable, x86-64"
+- acmesh.exe iconv -f CP1252 -t UTF-8 auf "Gr\xfc\xdfe \x80" -> "Gruesse Euro"
+  mit richtigen Umlauten und Euro-Zeichen
+- acmesh.exe env A=1 acmesh.exe env zeigt A=1 im Kindprozess
+- iconv -l nennt acht Zeichensaetze: UTF-8, ASCII, ISO-8859-1, ISO-8859-15,
+  WINDOWS-1252, UTF-16LE, UTF-16BE, UTF-16
+
+Pruefungen: scripts/test-ext.sh jetzt 27 Faelle je Ziel, Windows und Linux
+beide 0 Fehler. Go-Tests: Rundlauf ueber alle 256 Byte je Einbyte-Satz,
+Latin-1- und CP1252-Sonderfaelle, UTF-16 in beiden Byte-Reihenfolgen mit und
+ohne BOM, nicht abbildbare Zeichen, Signaturen fuer ELF, PE, PDF, PNG, GIF,
+gzip, Zip, SQLite, Text und Binaerdaten, env mit letzter Zuweisung gewinnt.
+
+Bewusste Grenze: kein Zeichensatz-Erkennung, kein //TRANSLIT, und file kennt
+eine kurze Signaturliste statt einer Magic-Datenbank.

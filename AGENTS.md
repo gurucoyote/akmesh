@@ -13,7 +13,7 @@ are English; documents meant for Martin are German.
 - `internal/tools/`: our own commands in one package with one table. The table is
   what the multicall binary dispatches on and what the per-name entry points use.
 - `cmd/<name>/`: one tiny `main` per own command, so that the combined binary
-  reaches it under its plain name (`bb sed`). Adding a command means: implement
+  reaches it under its plain name (`acmesh sed`). Adding a command means: implement
   in `internal/tools`, register in the table, add `cmd/<name>`.
 - `cmd/ext/`: standalone multicall binary over the same table, for building and
   testing our tools without the u-root checkout.
@@ -32,12 +32,12 @@ are English; documents meant for Martin are German.
 - `GOCACHE=/root/acmesh/.cache` must be set: the default cache is read-only
   here and produces misleading toolchain errors. The script sets it.
 - `makebb` takes GOOS/GOARCH from the environment, it has no `-goos` flag.
-- Build artifacts (`bb`, `bb.exe`, `.cache/`, `.gopath/`) stay untracked.
+- Build artifacts (`acmesh`, `acmesh.exe`, `.cache/`, `.gopath/`) stay untracked.
 
 ## Testing
 
 - A build is not a proof. The binary is run on the target: on Linux directly,
-  on Windows from this WSL shell (`./bb.exe ls C:/Windows`), which needs no wine.
+  on Windows from this WSL shell (`./acmesh.exe ls C:/Windows`), which needs no wine.
 - Every behaviour claim in a report names the command that produced it.
 - A command that u-root ships with different flags is a finding, not a bug in
   acmesh: `find` has no `-maxdepth`, `head` has no `-3`. Record it in

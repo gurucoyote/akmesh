@@ -19,14 +19,14 @@ in one place, and whose behaviour can be measured instead of guessed.
 
 ## State
 
-- Working: one binary per platform, 10.0 MiB under Windows and 10.1 MiB under
-  Linux. It carries the 48 u-root commands, the shell (gosh), the ssh client,
+- Working: one binary per platform, 10.5 MiB under Windows and 10.6 MiB under
+  Linux, named acmesh. It carries the 48 u-root commands, the shell (gosh), the ssh client,
   strace on Linux, and our own tools where u-root has a gap or builds only for
   Linux.
 - Our own tools inside the binary: awk, cut, diff, patch, sed, sha1sum,
-  sha256sum, sha512sum, split, stat, tac, nl, plus hostname, sync, timeout and
-  uname, which u-root does not build for Windows and whose timeout takes a
-  different command line on Linux.
+  sha256sum, sha512sum, split, stat, tac, nl, env, file, iconv, plus hostname,
+  sync, timeout and uname, which u-root does not build for Windows and whose
+  timeout takes a different command line on Linux.
 - Missing on Windows: df, du, free, kill, ps - they do not build there. A native
   replacement is the next piece of work.
 - Not yet in the binary: the policy layer (path rules in one wrapper for every
@@ -37,35 +37,35 @@ See `docs/design/acmesh.md` for the architecture and the measurements, and
 
 ## Build
 
-    ./scripts/build-bb.sh  windows  # bb.exe: everything, one binary
-    ./scripts/build-bb.sh  linux    # bb
+    ./scripts/build-bb.sh  windows  # acmesh.exe: everything, one binary
+    ./scripts/build-bb.sh  linux    # acmesh
     ./scripts/build-ext.sh windows  # ext.exe: only our own tools, for testing
     ./scripts/build-ext.sh linux
 
 Checks run against either shape:
 
-    ./scripts/test-ext.sh ./bb.exe
-    ./scripts/test-ext.sh ./bb
+    ./scripts/test-ext.sh ./acmesh.exe
+    ./scripts/test-ext.sh ./acmesh
 
 The script pins the u-root commit and the command list, so a build is
 reproducible. It needs Go 1.27 (`GOTOOLCHAIN=auto` handles that) and
 `makebb` from github.com/u-root/gobusybox.
 
-Build artifacts (`bb.exe`, `bb`) are not committed.
+Build artifacts (`acmesh.exe`, `acmesh`) are not committed.
 
 ## Use
 
-    bb.exe ls C:/Windows
-    bb.exe grep -c Microsoft C:/Windows/System32/drivers/etc/hosts
-    bb.exe gosh -c 'for f in *.exe; do echo "$f"; done'
-    bb.exe awk '{s+=$2} END {print s}' data.txt
-    bb.exe diff a.txt b.txt > change.diff && bb.exe patch change.diff
-    bb.exe sed -i 's/alt/neu/' datei.txt
-    bb ssh -F config host command
-    bb strace -o trace.txt cat /etc/hostname      (Linux only)
+    acmesh.exe ls C:/Windows
+    acmesh.exe grep -c Microsoft C:/Windows/System32/drivers/etc/hosts
+    acmesh.exe gosh -c 'for f in *.exe; do echo "$f"; done'
+    acmesh.exe awk '{s+=$2} END {print s}' data.txt
+    acmesh.exe diff a.txt b.txt > change.diff && acmesh.exe patch change.diff
+    acmesh.exe sed -i 's/alt/neu/' datei.txt
+    acmesh ssh -F config host command
+    acmesh strace -o trace.txt cat /etc/hostname      (Linux only)
 
 Without arguments the binary lists the commands it carries. The symlink form
-(`ln -s bb ls`) also works on Linux; on Windows use the subcommand form.
+(`ln -s acmesh ls`) also works on Linux; on Windows use the subcommand form.
 
 ## Licence note
 

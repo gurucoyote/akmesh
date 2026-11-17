@@ -88,6 +88,19 @@ check split-count "3" "$(ls part* 2>/dev/null | wc -l | tr -d ' ')"
 check split-lines "2 2 1" "$(wc -l partaa partab partac 2>/dev/null | head -3 | awk '{printf "%s ", $1}' | sed 's/ $//')"
 rm -f big.txt part*
 
+# file, iconv, env
+printf 'hallo welt\n' > t.txt
+check file-text "ASCII text" "$(run file -b t.txt | tr -d '\r')"
+check file-dir "directory" "$(run file -b . | tr -d '\r')"
+: > e.txt
+check file-empty "empty" "$(run file -b e.txt | tr -d '\r')"
+check iconv-latin1 "Grüße" "$(printf 'Gr\374\337e\n' | run iconv -f ISO-8859-1 -t UTF-8 | tr -d '\r')"
+check iconv-cp1252 "€" "$(printf '\200' | run iconv -f CP1252 -t UTF-8 | tr -d '\r')"
+check iconv-to-latin1 "$(printf 'Gr\374\337e' | od -An -tx1 | tr -d ' \n')" "$(printf 'Grüße' | run iconv -f UTF-8 -t ISO-8859-1 | od -An -tx1 | tr -d ' \n')"
+check env-assign "1" "$(run env MARKER=ja "$BIN" env | grep -c '^MARKER=ja$' | tr -d '\r')"
+check env-unset "0" "$(run env -u HOME "$BIN" env | grep -c '^HOME=' | tr -d '\r')"
+rm -f t.txt e.txt
+
 # system
 check uname-machine "x86_64" "$(run uname -m | tr -d '\r')"
 # The child command depends on the target: a Windows binary sees the Windows

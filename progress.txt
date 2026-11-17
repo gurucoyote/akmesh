@@ -32,3 +32,6 @@
             bb.exe 10,0 MiB, bb 10,1 MiB, ssh auf beiden Zielen, strace und
             df/du/free/kill/ps unter Linux. 19 Pruefungen je Ziel gruen.
             Bekannt kaputt: u-root df unter WSL.
+2026-11-17  Binary heisst acmesh. file, iconv und env gebaut (eigene Tabellen,
+            keine Fremdbibliothek), 27 Pruefungen je Ziel gruen. acmesh.exe
+            10,06 MiB, acmesh 10,15 MiB.

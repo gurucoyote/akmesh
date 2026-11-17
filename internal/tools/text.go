@@ -84,8 +84,8 @@ func runDirname(args []string, stdin *os.File, stdout, stderr *os.File) int {
 
 // runNl implements nl [-b STYLE] [-n FORMAT] [-w WIDTH] [FILE]
 func runNl(args []string, stdin *os.File, stdout, stderr *os.File) int {
-	body := "t"      // t: number non-empty lines, a: number all
-	format := "rn"   // ln, rn, rz
+	body := "t"    // t: number non-empty lines, a: number all
+	format := "rn" // ln, rn, rz
 	width := 6
 	sep := "\t"
 	var files []string

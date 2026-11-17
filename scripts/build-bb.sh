@@ -18,14 +18,14 @@ PLATFORM=${1:-linux}
 case "$PLATFORM" in
 windows)
 	export GOOS=windows GOARCH=amd64
-	OUT=bb.exe
+	OUT=acmesh.exe
 	# ssh builds for Windows. The four names u-root only builds for Linux
 	# (hostname, sync, timeout, uname) come from our own tools there.
 	UROOT_EXTRA="ssh"
 	;;
 linux)
 	export GOOS=linux GOARCH=amd64
-	OUT=bb
+	OUT=acmesh
 	# ssh and strace are Linux-only here. sync, timeout, uname and hostname
 	# come from u-root, so our own versions of those four stay out.
 	# hostname, sync, timeout and uname come from our own tools: u-root's
@@ -78,7 +78,7 @@ export GOWORK="$WORKFILE"
 
 # Every name our own tools provide. Where u-root also builds the same name for
 # the target, u-root wins: it is already in the list and needs no extra bytes.
-OURS_ALL="awk basename cut diff dirname hostname md5sum nl patch sed sha1sum sha256sum sha512sum split stat sync tac timeout truncate uname"
+OURS_ALL="awk basename cut diff dirname env file hostname iconv md5sum nl patch sed sha1sum sha256sum sha512sum split stat sync tac timeout truncate uname"
 
 NAMES=$(grep -v '^#' "$ROOT/scripts/cmds.txt" | sed '/^$/d')
 PKGS=""

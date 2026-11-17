@@ -97,3 +97,32 @@ Kein reifer Vi in Go. Kandidaten:
 6. Die Frage, die jetzt ansteht: zwei Quellen (u-root plus bashy) oder eine.
    bashy ist groesser, dafuer vollstaendiger und an denselben Interpreter
    gedacht (mvdan/sh, ExecHandler) - genau die Naht, die acmesh braucht.
+
+## strace, im Lauf geprueft (17.11.2026)
+
+Fundort: u-root, cmds/core/strace mit pkg/strace. Build-Tag
+`(linux && arm64) || (linux && amd64) || (linux && riscv64)` - also nicht
+Windows, und das ist keine Nachlaessigkeit: ptrace gibt es dort nicht.
+
+    GOOS=linux GOARCH=amd64 go build ./cmds/core/strace
+    -> 3.674.648 Bytes, laeuft
+
+Ausgabe von `strace_u echo hallo`, gekuerzt:
+
+    [pid 1653184] E arch_prctl(0x1002, 0x7778f9ae9b28)
+    [pid 1653184] X arch_prctl(0x1002, 0x7778f9ae9b28) = 0x0 (103.5us)
+    [pid 1653184] E mmap(0x62b5ab4ab000, 0x1000, 0x0, 0x32, ...)
+
+Also Ein- und Austritt je Syscall mit Dauer, PID davor. Aber: Argumente
+bleiben Zahlen, keine Namen, keine Dateipfade, keine Deskriptoren - das ist
+kein strace-Format, sondern ein Rohdump. Optionen: nur `-o` (Ausgabedatei).
+
+Grenzen gegen echtes strace: kein `-e`-Filter, kein `-p` an einen laufenden
+Prozess, keine symbolische Ausgabe.
+
+Andere Go-Herkunft: gvisors pkg/sentry/strace (nur innerhalb einer gvisor-
+Sandbox), robertmin1/strace (Demo mit seccomp, ausdruecklich unfertig).
+
+Unter Windows gibt es kein Gegenstueck. Naechstes Konzept ist ETW
+(Event Tracing for Windows) oder Procmon, beides ein anderes Werkzeug mit
+anderem Aufbau, keine Portierung.

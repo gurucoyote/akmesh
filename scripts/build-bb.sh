@@ -78,7 +78,7 @@ export GOWORK="$WORKFILE"
 
 # Every name our own tools provide. Where u-root also builds the same name for
 # the target, u-root wins: it is already in the list and needs no extra bytes.
-OURS_ALL="awk basename cut df diff dirname du env file free hostname iconv kill killall md5sum nl patch ps sed sha1sum sha256sum sha512sum split stat sync tac timeout truncate uname"
+OURS_ALL="awk basename curl cut df diff dirname du env file free hostname iconv kill killall md5sum nl patch ps sed sha1sum sha256sum sha512sum split stat sync tac timeout truncate uname wget"
 
 NAMES=$(grep -v '^#' "$ROOT/scripts/cmds.txt" | sed '/^$/d')
 PKGS=""

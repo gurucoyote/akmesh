@@ -222,3 +222,41 @@ ext alle 0 Fehler. Go-Tests: Groessenformat, Einheitenschalter, du auf einem
 gebauten Baum (Summe, -a, -c, nicht kleiner als eine Datei), Ablehnung
 unbekannter Schalter, Kopfzeilen von free und df samt gleicher Feldzahl je
 Zeile.
+
+## curl und wget (18.11.2026, gebaut und geprueft)
+
+    ./scripts/build-bb.sh linux   -> acmesh     10.657.916 Bytes (10,16 MiB)
+    ./scripts/build-bb.sh windows -> acmesh.exe 10.669.568 Bytes (10,18 MiB)
+    ./scripts/build-ext.sh linux  -> ext         7.442.695 Bytes (7,10 MiB)
+
+Im acmesh kosten curl und wget rund 53 KB, weil net/http und TLS durch ssh
+schon drin waren. Das eigene ext-Binary waechst dagegen um 3,9 MB, weil es
+vorher kein net/http enthielt. Das ist der Beleg fuer die Regel aus
+docs/groesse.md: die Zutat zaehlt, nicht der Befehl.
+
+Belegt am gebauten Binary (Linux und Windows):
+- curl -s https://example.com gibt den Body aus. Genau das kann gocurl nicht.
+- curl -fsSL https://example.com folgt dem Redirect, zusammengefasste Schalter.
+- curl -sS -f auf eine 404-Seite: Meldung "HTTP error 404", Exit 22.
+- wget -q -O - https://example.com schreibt nach stdout.
+- wget -q -S -O /dev/null zeigt "< 200 OK" und die Kopfzeilen.
+- wget --spider meldet "Remote file exists."
+
+Go-Tests gegen einen httptest-Server, damit sie ohne Netz reproduzierbar sind:
+-s mit Body, -fsSL, ohne -L kein Folgen, -H wirkt, -d ergibt POST mit Formular,
+-u erzeugt den Basic-Auth-Kopf, -F mit Datei, Cookies ueber -b und -c samt
+geschriebener Jardatei, -f mit 404 Exit 22, --max-time 0.1 auf eine langsame
+Route ergibt Zeitueberschreitung, -o schreibt die Datei, -r 2-4 liefert "234",
+file:// wird mit Exit 3 abgelehnt, wget-Front mit -O -, --post-data und -S,
+unbekannte Schalter Exit 2, -r bei wget Exit 2.
+
+Exit-Codes wie curl: 6 Namensaufloesung, 7 Verbindung, 22 HTTP-Fehler mit -f,
+28 Zeit, 35 TLS, 47 zu viele Redirects. Nur http und https; file:// und ftp://
+sind ein Fehler, kein stiller Fallback.
+
+Pruefungen: scripts/test-ext.sh 50 Faelle je Ziel, acmesh, acmesh.exe und ext
+alle 0 Fehler.
+
+Grenzen: kein -w (Formatsprache), keine Fortschrittsanzeige, kein HTTP/2
+sondern das, was net/http aushandelt, Cookies im einfachen Netscape-Format,
+wget ohne rekursives Spiegeln und ohne -N.

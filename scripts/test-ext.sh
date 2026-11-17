@@ -101,6 +101,15 @@ check env-assign "1" "$(run env MARKER=ja "$BIN" env | grep -c '^MARKER=ja$' | t
 check env-unset "0" "$(run env -u HOME "$BIN" env | grep -c '^HOME=' | tr -d '\r')"
 rm -f t.txt e.txt
 
+# curl and wget: the checks that need no network. The transfer itself is covered
+# by the Go tests against a local server.
+check curl-help "1" "$(run curl -h | grep -c 'Only http and https' | tr -d '\r')"
+checkcode curl-unknown-flag 2 "$(run curl -Z http://example.com >/dev/null 2>&1; echo $?)"
+checkcode curl-file-scheme 3 "$(run curl -s file:///etc/passwd >/dev/null 2>&1; echo $?)"
+check wget-help "1" "$(run wget -h | grep -c 'Not supported' | tr -d '\r')"
+checkcode wget-recursive-refused 2 "$(run wget -r http://example.com >/dev/null 2>&1; echo $?)"
+checkcode wget-unknown-flag 2 "$(run wget -N http://example.com >/dev/null 2>&1; echo $?)"
+
 # free, df, du
 check free-mem-row "1" "$(run free | grep -c '^Mem:' | tr -d '\r')"
 check free-human "ja" "$(run free -h | grep -qE '[0-9.]+[KMGT]' && echo ja)"

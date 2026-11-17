@@ -44,3 +44,8 @@
             GlobalMemoryStatusEx und GetDiskFreeSpaceEx. Swap, shared und
             buff/cache bleiben unter Windows ein Strich statt einer falschen
             Zahl. 44 Pruefungen je Ziel gruen.
+2026-11-18  curl und wget auf einem gemeinsamen Motor (netengine.go). curl mit
+            29 Schaltern, zusammengefasste Kuerzel wie -fsSL, Exit-Codes wie
+            curl; wget als eigene Front auf denselben Motor, u-root wget ist
+            raus. +53 KB im acmesh, 50 Pruefungen je Ziel gruen, Go-Tests gegen
+            httptest.

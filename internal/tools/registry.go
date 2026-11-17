@@ -26,6 +26,7 @@ type Func func(args []string, stdin *os.File, stdout, stderr *os.File) int
 var Commands = map[string]Func{
 	"awk":       runAwk,
 	"basename":  runBasename,
+	"curl":      runCurl,
 	"cut":       runCut,
 	"diff":      runDiff,
 	"dirname":   runDirname,
@@ -53,6 +54,7 @@ var Commands = map[string]Func{
 	"timeout":   runTimeout,
 	"truncate":  runTruncate,
 	"uname":     runUname,
+	"wget":      runWget,
 }
 
 // Run executes the named command with the arguments the program was started

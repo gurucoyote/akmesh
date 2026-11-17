@@ -16,7 +16,7 @@ tar cpio gzip base64 md5sum shasum dd strings hexdump
 date time uptime sleep id printenv which man
 
 # network
-ping wget netcat
+ping netcat
 
 # helpers
 seq yes xargs

@@ -72,3 +72,49 @@ ohne Fremd-Shell-Gabel, und keine 40-MB-Lieferung.
 Die Alternative bleibt offen und ist eine Zeile Arbeit: die volle
 coreutils-Lieferung als ein 40,9-MB-Binary, dafuer mit bashy-Gabel und 153
 Befehlen.
+
+## Nachtrag: sed und awk konkret (gemessen)
+
+Beides muss nicht aus der grossen coreutils kommen, es sind zwei kleine
+Bibliotheken:
+
+- awk: github.com/benhoyt/goawk, MIT, POSIX-kompatibel. Als eigenes Programm
+  fuer Windows 4,4 MB; als Bibliothek in einem eigenen Binary eingebettet
+  deutlich weniger (siehe unten). `printf "%.2f"` funktioniert.
+- sed: github.com/rwtodd/Go.Sed, MIT. Eigenes CLI darauf gebaut, windows/amd64:
+  3,0 MB. Getestet: `s/a/b/`, `-n` mit `p`, `y/abc/xyz/`, Dateien und stdin.
+
+Ein Binary mit sed UND awk als Bibliotheken, eigener Verteiler, ohne
+Fremdgeruest:
+
+    mb.exe         4,1 MB
+    mb.exe -s -w   2,8 MB
+
+Beides unter Windows gelaufen: awk summiert, sed ersetzt, printf mit
+Praezision stimmt.
+
+Die eine Falle: Go.Sed nutzt Gos regexp. `s/a \(bc\)/\1!\1/` (GNU-Schreibweise
+mit Rueckverweis) trifft NICHT, `s/a (bc)/$1!$1/` (Go-Schreibweise) schon.
+Wer GNU-Skripte unveraendert laufen lassen will, braucht die
+Uebersetzungsschicht: qianglis cmds/sed/internal/gosed (MIT, 2589 Zeilen,
+haengt nur an deren pkg/bre) plus pkg/bre. Das ist uebertragbar, aber ein
+Port, kein Import.
+
+Nebenbefund: goawk schreibt unter Windows CRLF, weil es die
+Plattform-Zeilenenden nachbildet. Wer Byte-Gleichheit will, setzt den
+Newline-Modus.
+
+## Was bliebe der grossen coreutils vorbehalten
+
+150 Namen hat coreutils, 183 hat u-root. 88 davon gibt es nur in coreutils,
+darunter diese, die in Skripten wirklich vorkommen:
+
+    cut paste join nl od split stat diff patch csplit
+    file iconv sha1sum sha256sum sha512sum cksum
+    m4 make bc expr expand unexpand fmt fold numfmt pr shuf shred
+    stdbuf tput tabs truncate install chroot runcon
+
+Keiner davon ist technisch unerreichbar: die meisten sind klein und in einem
+Nachmittag geschrieben, existieren als Go-Bibliothek oder als einzelnes
+Fremdprojekt. Die grosse coreutils ist nicht noetig, weil ein Befehl fehlt,
+sondern wenn man viele davon GNU-genau und ohne Eigenpflege will.

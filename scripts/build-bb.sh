@@ -43,7 +43,13 @@ git -C "$UROOT_DIR" fetch -q origin
 git -C "$UROOT_DIR" checkout -q "$UROOT_COMMIT"
 
 if [ ! -x "$GOPATH/bin/makebb" ]; then
-	go install github.com/u-root/gobusybox/src/cmd/makebb@latest
+	# GOOS/GOARCH are set for the target above; the tool itself must be built
+	# for this host, otherwise it lands in bin/<goos>_<goarch>/.
+	env -u GOOS -u GOARCH GOBIN="$GOPATH/bin" go install github.com/u-root/gobusybox/src/cmd/makebb@latest
+fi
+MAKEBB="$GOPATH/bin/makebb"
+if [ ! -x "$MAKEBB" ]; then
+	MAKEBB="$GOPATH/bin/makebb.exe"
 fi
 
 NAMES=$(grep -v '^#' "$ROOT/scripts/cmds.txt" | sed '/^$/d')
@@ -58,5 +64,5 @@ for c in $NAMES; do
 done
 
 cd "$UROOT_DIR"
-"$GOPATH/bin/makebb" -o "$ROOT/$OUT" $PKGS
+"$MAKEBB" -o "$ROOT/$OUT" $PKGS
 ls -l "$ROOT/$OUT"

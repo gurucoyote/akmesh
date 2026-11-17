@@ -260,3 +260,33 @@ alle 0 Fehler.
 Grenzen: kein -w (Formatsprache), keine Fortschrittsanzeige, kein HTTP/2
 sondern das, was net/http aushandelt, Cookies im einfachen Netscape-Format,
 wget ohne rekursives Spiegeln und ohne -N.
+
+## jq im Binary (18.11.2026)
+
+    ./scripts/build-bb.sh linux   -> acmesh     11.481.212 Bytes (10,95 MiB)
+    ./scripts/build-bb.sh windows -> acmesh.exe 11.510.272 Bytes (10,98 MiB)
+    ./scripts/build-ext.sh linux  -> ext         9.097.479 Bytes (8,68 MiB)
+
+Zuwachs gegenueber dem Stand ohne jq: 823.296 Bytes (804 KB) Linux,
+840.704 Bytes (821 KB) Windows. Die Vorabmessung mit einer Probe im Binary
+hatte 802.816 / 817.152 Bytes ergeben; der kleine Unterschied ist die
+Schalterverarbeitung um die gojq-Aufrufe herum.
+
+Belegt am gebauten Binary:
+- jq -r '.items[] | "\(.n)=\(.v)"' auf einer Datei gibt "a=1" und "b=2".
+- ./acmesh curl -fsSL -A acmesh https://api.github.com/repos/golang/go | \
+  ./acmesh jq -r '"\(.full_name) stars=\(.stargazers_count)"' ->
+  "golang/go stars=140183".
+- Windows: dieselbe URL durch acmesh.exe jq -c '.license.key' -> "bsd-3-clause".
+- HTML statt JSON ergibt "jq: invalid JSON: invalid character '<' ..." und
+  Exit 2, also eine Meldung, mit der man etwas anfangen kann.
+
+Pruefungen: scripts/test-ext.sh 58 Faelle je Ziel, acmesh, acmesh.exe und ext
+alle 0 Fehler. Go-Tests: Felder, verschachtelte Pfade, .a[], -c, -r, -rc, -s,
+mehrere Dokumente im Strom, -n, select, map, length, --arg, --argjson,
+--slurpfile, -e mit 0/1/4, -R und -R -s, kaputter Filter (Exit 3), kaputtes
+JSON (Exit 2), unbekannter Schalter (Exit 2), Datei als Eingabe.
+
+Nebenbefund: gojq marshalisiert anders als encoding/json (NaN wird null,
+<>& werden nicht maskiert). Fuer die huebsche Ausgabe wird json.Indent auf die
+gojq-Ausgabe gelegt, damit die Maskierung von gojq erhalten bleibt.

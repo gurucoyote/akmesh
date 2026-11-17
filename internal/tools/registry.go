@@ -37,6 +37,7 @@ var Commands = map[string]Func{
 	"du":        runDu,
 	"free":      runFree,
 	"iconv":     runIconv,
+	"jq":        runJq,
 	"kill":      runKill,
 	"killall":   runKillall,
 	"md5sum":    runSum("md5"),

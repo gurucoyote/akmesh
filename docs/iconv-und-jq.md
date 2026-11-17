@@ -74,3 +74,7 @@ und '.a|add' -> 6 auf Linux.
 Folge fuer die Entscheidung: jq muss nicht als eigenes Binary danebenliegen.
 0,8 MB sind weniger als ein Siebtel des eigenstaendigen gojq, und dafuer ist der
 Befehl dann einfach da, wo alle anderen sind.
+
+Entschieden am 18.11.2026: jq kommt ins acmesh, nicht als eigenes Binary.
+Gebaut in internal/tools/jq.go, gemessen 804 KB Linux und 821 KB Windows
+(siehe docs/measurements.md).

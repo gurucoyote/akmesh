@@ -101,6 +101,16 @@ check env-assign "1" "$(run env MARKER=ja "$BIN" env | grep -c '^MARKER=ja$' | t
 check env-unset "0" "$(run env -u HOME "$BIN" env | grep -c '^HOME=' | tr -d '\r')"
 rm -f t.txt e.txt
 
+# jq
+check jq-field "1" "$(echo '{"a":1}' | run jq -r .a | tr -d '\r')"
+check jq-compact '{"x":1}' "$(echo '{"a":{"x":1}}' | run jq -c .a | tr -d '\r')"
+check jq-raw '"nein"' "$(echo '{"a":"nein"}' | run jq '.a' | tr -d '\r')"
+check jq-slurp "3" "$(echo '1 2 3' | run jq -s length | tr -d '\r')"
+check jq-arg "Hallo Martin" "$(echo '{"x":"Hallo "}' | run jq -r --arg n Martin '.x + $n' | tr -d '\r')"
+checkcode jq-bad-filter 3 "$(echo '{}' | run jq '.a |' >/dev/null 2>&1; echo $?)"
+checkcode jq-bad-json 2 "$(echo '{"a":}' | run jq .a >/dev/null 2>&1; echo $?)"
+checkcode jq-exit-false 1 "$(echo '{"a":false}' | run jq -e .a >/dev/null 2>&1; echo $?)"
+
 # curl and wget: the checks that need no network. The transfer itself is covered
 # by the Go tests against a local server.
 check curl-help "1" "$(run curl -h | grep -c 'Only http and https' | tr -d '\r')"

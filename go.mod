@@ -8,4 +8,8 @@ require (
 	github.com/rwtodd/Go.Sed v0.0.0-20250326002959-ba712dc84b62
 )
 
-require golang.org/x/sys v0.50.0 // indirect
+require (
+	github.com/itchyny/gojq v0.12.20 // indirect
+	github.com/itchyny/timefmt-go v0.1.9 // indirect
+	golang.org/x/sys v0.50.0 // indirect
+)

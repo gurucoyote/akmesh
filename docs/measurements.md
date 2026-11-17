@@ -179,3 +179,46 @@ Bewusste Grenzen:
 - Unter Windows gibt es nur KILL/TERM, alles andere ist ein Fehler mit Meldung.
 - SIGNAL an einen anderen Benutzer braucht Rechte; ohne Rechte Exit 1 mit
   Meldung, kein Absturz.
+
+## free, df, du (18.11.2026, gebaut und geprueft)
+
+    ./scripts/build-bb.sh linux   -> acmesh     10.604.668 Bytes (10,11 MiB)
+    ./scripts/build-bb.sh windows -> acmesh.exe 10.616.320 Bytes (10,12 MiB)
+
+Zuwachs gegenueber dem Stand ohne die drei: praktisch nichts, weil die
+Windows-Aufrufe in der Standardbibliothek liegen und x/sys schon drin war.
+
+-h ist von Anfang an dabei, mit 1024er Stufen und einer Nachkommastelle unter
+zehn: 512, 1.0K, 1.5K, 10K, 1.0M, 3.0G, 1.8T.
+
+Belegt am gebauten Binary:
+
+| Aufruf | Linux | Windows |
+|---|---|---|
+| free | Mem und Swap in KiB | Mem und Swap, Swap als - |
+| free -h | 31G total, 3.6G used, 1.4G free | 64G total, 34G used, 29G free |
+| df -h | /dev/sdd 1007G 519G 437G 51% / | C: 1.8T 1.1T 757G 59% |
+| df -h / | eine Zeile, / | - |
+| df -h /mnt/c | C: mit 1.8T, aus Sicht von Linux | - |
+| du -h -s docs | 72K | 51K |
+| du -c -h docs/design | 4.0K Pfad plus 4.0K total | dito |
+
+Der Unterschied bei du zwischen den Zielen ist gewollt: Linux zaehlt belegte
+Bloecke (st_blocks), Windows die Dateigroesse, weil dort die belegte Groesse
+einen Handle pro Datei braeuchte.
+
+Bewusste Grenzen:
+- free zeigt unter Windows shared und buff/cache als -, weil
+  GlobalMemoryStatusEx das nicht hergibt; Swap ebenso, weil TotalPageFile minus
+  TotalPhys etwas anderes ist als Swap-Nutzung. Lieber ein Strich als eine
+  falsche Zahl.
+- df listet Laufwerke, die nicht bereit sind, nicht auf, statt abzubrechen.
+- df mit einem Pfad, der zu keinem Einhängepunkt gehoert, gibt eine Meldung und
+  Exit 1, damit niemand eine leere Tabelle fuer eine leere Platte haelt.
+- du folgt symbolischen Verweisen nicht und zaehlt harte Verweise einmal.
+
+Pruefungen: scripts/test-ext.sh jetzt 44 Faelle je Ziel, acmesh, acmesh.exe und
+ext alle 0 Fehler. Go-Tests: Groessenformat, Einheitenschalter, du auf einem
+gebauten Baum (Summe, -a, -c, nicht kleiner als eine Datei), Ablehnung
+unbekannter Schalter, Kopfzeilen von free und df samt gleicher Feldzahl je
+Zeile.

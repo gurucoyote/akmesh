@@ -39,3 +39,8 @@
             ps kennt -e, -f, -ef, aux, -eo FELDER, -p PID; kill und killall mit
             Signalen, killall ohne .exe und ohne Gross-/Kleinschreibung.
             34 Pruefungen je Ziel gruen, Go-Tests gruen.
+2026-11-18  free, df und du gebaut, mit -h von Anfang an. Linux ueber
+            /proc/meminfo, mountinfo und statfs, Windows ueber
+            GlobalMemoryStatusEx und GetDiskFreeSpaceEx. Swap, shared und
+            buff/cache bleiben unter Windows ein Strich statt einer falschen
+            Zahl. 44 Pruefungen je Ziel gruen.

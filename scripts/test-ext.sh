@@ -101,6 +101,26 @@ check env-assign "1" "$(run env MARKER=ja "$BIN" env | grep -c '^MARKER=ja$' | t
 check env-unset "0" "$(run env -u HOME "$BIN" env | grep -c '^HOME=' | tr -d '\r')"
 rm -f t.txt e.txt
 
+# free, df, du
+check free-mem-row "1" "$(run free | grep -c '^Mem:' | tr -d '\r')"
+check free-human "ja" "$(run free -h | grep -qE '[0-9.]+[KMGT]' && echo ja)"
+checkcode free-unknown 2 "$(run free -Z >/dev/null 2>&1; echo $?)"
+check df-header "Mounted on" "$(run df -h | head -1 | tr -d '\r' | grep -o 'Mounted on')"
+check df-human "ja" "$(run df -h | tail -n +2 | head -1 | grep -qE '[0-9.]+[KMGT]' && echo ja)"
+# The path filter needs a real mount point: a Windows binary started from WSL
+# sees a UNC working directory, which belongs to no drive.
+case "$BIN" in
+*.exe) DFPATH="C:/" ;;
+*) DFPATH="." ;;
+esac
+check df-one-row "1" "$(run df -h "$DFPATH" | tail -n +2 | grep -c . | tr -d '\r')"
+mkdir -p du1 && printf 'xxxx' > du1/f.txt && head -c 2048 /dev/zero >> du1/f.txt
+check du-summary-lines "1" "$(run du -s du1 | wc -l | tr -d ' \r')"
+check du-human "ja" "$(run du -h -s du1 | cut -f1 | tr -d '\r' | grep -qE '^[0-9.]+K$' && echo ja)"
+check du-total "1" "$(run du -s -c du1 | grep -c total | tr -d '\r')"
+checkcode du-unknown 2 "$(run du -Z >/dev/null 2>&1; echo $?)"
+rm -rf du1
+
 # ps, kill, killall
 check ps-fields "PID COMM" "$(run ps -eo pid,comm | head -1 | tr -s ' ' | tr -d '\r' | sed 's/^ //;s/ $//')"
 check ps-ef-ppid "PPID" "$(run ps -ef | head -1 | tr -d '\r' | grep -o PPID | head -1)"

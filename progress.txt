@@ -6,3 +6,8 @@
             Ticketing mit bd, Praefix acmesh, sieben Tickets unter einem Epic.
             Offen: die neun Befehle, die fuer Windows nicht bauen; die
             Policy-Huelle; die Kernel-Durchsetzung.
+2026-11-17  Ecosystem geprueft (docs/ecosystem.md).
+            Fund: bashy/coreutils (MIT, 153 Applets, windows gebaut und
+            gelaufen: awk, sed, uname, du, hostname). ps geht dort unter
+            Windows auch nicht. u-root exp/ssh baut fuer Windows.
+            Fuenf neue Tickets, Entscheidung bashy gegen u-root offen.

@@ -1,0 +1,7 @@
+- makebb nimmt GOOS und GOARCH aus der Umgebung, es gibt kein -goos.
+- Ein Befehl, der fuer ein Ziel nicht baut, laesst den ganzen makebb-Lauf
+  scheitern; also vorher einzeln mit go build -o /dev/null pruefen.
+- gobusybox verteilt ueber os.Args[1]; ohne Argument listet es die Namen.
+- Die Symlink-Form ist unter Windows Rechteabhaengig, der Unterbefehl traegt.
+- bd 0.49.0 gibt beim Anlegen kein ID-Feld in der letzten Zeile aus; wer die
+  ID braucht, liest sie mit bd list nach.

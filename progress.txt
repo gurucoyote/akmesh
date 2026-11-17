@@ -1,0 +1,8 @@
+2026-11-17  Projekt angelegt.
+            Aus der Recherche in /root/docs/shell-fuer-harness.md ausgezogen:
+            ein Windows-Binary, 8,9 MB, 48 Befehle plus gosh (mvdan/sh),
+            gebaut mit gobusybox aus u-root 869f00f.
+            Unter Windows gelaufen: ls, grep, tar, gosh mit Schleife.
+            Ticketing mit bd, Praefix acmesh, sieben Tickets unter einem Epic.
+            Offen: die neun Befehle, die fuer Windows nicht bauen; die
+            Policy-Huelle; die Kernel-Durchsetzung.

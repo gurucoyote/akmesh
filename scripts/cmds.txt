@@ -1,0 +1,26 @@
+# Commands carried by the acmesh binary, one per line.
+# Used by scripts/build-bb.sh. A name must exist as ./cmds/core/<name> in the
+# pinned u-root checkout, and it must build for the target platform.
+
+# shell
+gosh
+
+# files and text
+ls cat more head tail grep find sort uniq tr tee wc cmp comm
+cp mv rm mkdir touch ln chmod mktemp readlink realpath
+
+# archives, hashes, encoding
+tar cpio gzip base64 md5sum shasum dd strings hexdump
+
+# system and time
+date time uptime sleep id printenv which man
+
+# network
+ping wget netcat
+
+# helpers
+seq yes xargs
+
+# Excluded on Windows (build constraints, see docs/measurements.md):
+#   df du free hostname kill ps sync timeout uname
+# They stay in the list for Linux builds via scripts/cmds-linux-only.txt.

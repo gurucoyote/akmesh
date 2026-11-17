@@ -1,0 +1,13 @@
+# Commands that do not build for Windows and are therefore only in the Linux
+# binary. Six of them are candidates for our own implementation later; see
+# docs/design/acmesh.md, section "Own commands".
+
+df
+du
+free
+hostname
+kill
+ps
+sync
+timeout
+uname

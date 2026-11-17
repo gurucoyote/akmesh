@@ -1,0 +1,6 @@
+bb
+bb.exe
+.cache/
+.gopath/
+.build/
+*.test

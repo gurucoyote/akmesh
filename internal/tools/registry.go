@@ -16,6 +16,9 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"sync"
+
+	"acmesh/internal/policy"
 )
 
 // Func is the signature every command implements. It receives the arguments
@@ -43,11 +46,13 @@ var Commands = map[string]Func{
 	"md5sum":    runSum("md5"),
 	"nl":        runNl,
 	"patch":     runPatch,
+	"policy":    runPolicy,
 	"ps":        runPS,
 	"sed":       runSed,
 	"sha1sum":   runSum("sha1"),
 	"sha256sum": runSum("sha256"),
 	"sha512sum": runSum("sha512"),
+	"sh":        runSh,
 	"split":     runSplit,
 	"stat":      runStat,
 	"sync":      runSync,
@@ -56,11 +61,27 @@ var Commands = map[string]Func{
 	"truncate":  runTruncate,
 	"uname":     runUname,
 	"wget":      runWget,
+	"gosh":      runSh,
+}
+
+// policyOnce makes sure the policy is applied exactly once per process, before
+// any command runs. A broken policy stops the process: running unconfined after a
+// typo would be the worst failure mode this binary could have.
+var policyOnce sync.Once
+
+func ensurePolicy() {
+	policyOnce.Do(func() {
+		if err := policy.InitFromEnv(); err != nil {
+			fmt.Fprintf(os.Stderr, "acmesh: %v\n", err)
+			os.Exit(1)
+		}
+	})
 }
 
 // Run executes the named command with the arguments the program was started
 // with, minus argv[0]. It is the entry point for the per-command main packages.
 func Run(name string) int {
+	ensurePolicy()
 	fn, ok := Commands[name]
 	if !ok {
 		fmt.Fprintf(os.Stderr, "ext: unknown command %q\n", name)
@@ -75,6 +96,7 @@ func Run(name string) int {
 
 // Main is the entry point of the multicall binary: ext <command> [args...].
 func Main(args []string) int {
+	ensurePolicy()
 	if len(args) == 0 {
 		usage()
 		return 2

@@ -290,3 +290,30 @@ JSON (Exit 2), unbekannter Schalter (Exit 2), Datei als Eingabe.
 Nebenbefund: gojq marshalisiert anders als encoding/json (NaN wird null,
 <>& werden nicht maskiert). Fuer die huebsche Ausgabe wird json.Indent auf die
 gojq-Ausgabe gelegt, damit die Maskierung von gojq erhalten bleibt.
+
+## Policy und eigene Shell (18.11.2026)
+
+    ./scripts/build-bb.sh linux   -> acmesh     11.370.620 Bytes (10,84 MiB)
+    ./scripts/build-bb.sh windows -> acmesh.exe 11.399.168 Bytes (10,87 MiB)
+    ./scripts/build-ext.sh linux  -> ext         9.810.183 Bytes (9,36 MiB)
+
+Die Policy-Schicht und die eigene Shell kosten zusammen nichts, sie sparen
+sogar: gegenueber dem Stand mit jq und mit u-root-gosh sind es 110.592 Bytes
+weniger (Linux) und 111.104 Bytes weniger (Windows). Der Grund ist der Tausch
+von u-root gosh gegen unsere duenne mvdan/sh-Front: die Zeilenbearbeitung und
+die Ergänzungen der u-root-Shell fallen weg, die Landlock-Aufrufe sind ein paar
+hundert Zeilen mit x/sys.
+
+Belegt (Linux, WSL-Kernel 6.18, Landlock ABI 7):
+- acmesh policy meldet Exit 0, die Policy-Datei und die Pfade.
+- Lesen in /work erlaubt, Lesen von /etc/hostname verweigert.
+- Schreiben ausserhalb verweigert, die Datei entsteht nicht; innen erlaubt.
+- curl mit leerer Netzliste: "policy ... does not allow network access to
+  example.com", Exit 1.
+- Kaputte Policy (version 9): Exit 1, kein ungeschuetzter Lauf.
+- Windows mit gesetzter Policy: Exit 1, "a filesystem policy cannot be enforced
+  on windows yet".
+
+Pruefungen: scripts/test-ext.sh Linux 74, Windows 62, alle 0 Fehler. Go-Tests
+neu: internal/policy (Parsing, Tippfehler, relative Pfade, Version, Hosts mit
+Port und Wildcard, fehlende Policy, kaputte Datei).

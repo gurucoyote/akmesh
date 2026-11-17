@@ -31,7 +31,11 @@ in one place, and whose behaviour can be measured instead of guessed.
   platforms with the same columns. On Windows the command line column falls back
   to the executable name: the real command line lives in the target process and
   reading it would mean touching foreign memory.
-- Remaining work: the policy layer.
+- Filesystem policy: set ACMESH_POLICY to a JSON file and the kernel (Landlock)
+  refuses every path outside it, for this process and every child. See
+  docs/policy.md. Without the variable the binary is an ordinary busybox.
+- The shell is our own `sh` (also as `gosh`), mvdan/sh as a library, so the shell
+  it ships is the shell the policy covers.
 - Not yet in the binary: the policy layer (path rules in one wrapper for every
   command, then Landlock/Job Objects for the kernel side).
 

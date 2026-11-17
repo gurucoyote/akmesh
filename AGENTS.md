@@ -34,6 +34,15 @@ are English; documents meant for Martin are German.
 - `makebb` takes GOOS/GOARCH from the environment, it has no `-goos` flag.
 - Build artifacts (`acmesh`, `acmesh.exe`, `.cache/`, `.gopath/`) stay untracked.
 
+## Policy first
+
+The binary exists so a harness does not hand the agent a real shell. When
+`ACMESH_POLICY` is set, the rule is applied to the process with Landlock before
+any command runs, and the kernel enforces it for every child. Do not add
+per-command path checks in Go: that would be the guessing this project exists to
+avoid. A broken policy must exit nonzero, never fall back to running unconfined.
+See docs/policy.md.
+
 ## Guiding principle for commands
 
 Implement every command the way an agent will expect it, not the way we would

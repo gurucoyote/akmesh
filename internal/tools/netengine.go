@@ -13,6 +13,8 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+
+	"acmesh/internal/policy"
 	"strconv"
 	"strings"
 	"time"
@@ -77,6 +79,13 @@ func runNet(opts netOptions, stdin *os.File, stdout, stderr *os.File) int {
 		// acmesh exists to enforce.
 		fmt.Fprintf(stderr, "unsupported URL scheme in %q (only http and https)\n", opts.URL)
 		return 3
+	}
+	// The policy decides which hosts may be reached, before a socket is opened.
+	if u, err := url.Parse(opts.URL); err == nil {
+		if err := policy.CheckHost(u.Host); err != nil {
+			fmt.Fprintf(stderr, "%v\n", err)
+			return 1
+		}
 	}
 	method := opts.Method
 	if method == "" {

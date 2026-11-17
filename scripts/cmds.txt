@@ -3,7 +3,6 @@
 # pinned u-root checkout, and it must build for the target platform.
 
 # shell
-gosh
 
 # files and text
 ls cat more head tail grep find sort uniq tr tee wc cmp comm

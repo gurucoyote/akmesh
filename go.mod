@@ -12,4 +12,6 @@ require (
 	github.com/itchyny/gojq v0.12.20 // indirect
 	github.com/itchyny/timefmt-go v0.1.9 // indirect
 	golang.org/x/sys v0.50.0 // indirect
+	golang.org/x/term v0.45.0 // indirect
+	mvdan.cc/sh/v3 v3.11.0 // indirect
 )

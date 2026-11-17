@@ -161,5 +161,46 @@ esac
 run timeout 1 $HANG >/dev/null 2>&1
 checkcode timeout-expires 124 "$?"
 
+# shell and policy
+check sh-echo "hallo" "$(run sh -c 'echo hallo' | tr -d '\r')"
+check sh-var "7" "$(run sh -c 'x=3; y=4; echo $((x+y))' | tr -d '\r')"
+check sh-status "3" "$(run sh -c 'exit 3'; echo $?)"
+# Pipes need Unix tools on PATH; a Windows binary would call the Windows ones.
+case "$BIN" in
+*.exe) ;;
+*) check sh-pipe "2" "$(printf 'a\nb\na\n' | run sh -c 'sort | uniq -c | wc -l' | tr -d ' \r')" ;;
+esac
+
+POL="$WORK/policy.json"
+mkdir -p "$WORK/work"
+printf 'drin' > "$WORK/work/in.txt"
+cat > "$POL" <<JSON
+{"version":1,"read":["$WORK/work"],"write":["$WORK/work"],"network":[]}
+JSON
+
+case "$BIN" in
+*.exe)
+	# A policy cannot be enforced on Windows, and the binary refuses instead of
+	# running unconfined.
+	checkcode policy-refused 1 "$(ACMESH_POLICY="$POL" "$BIN" policy >/dev/null 2>&1; echo $?)"
+	;;
+*)
+	check policy-active "0" "$(ACMESH_POLICY="$POL" "$BIN" policy >/dev/null 2>&1; echo $?)"
+	check policy-shows-source "ja" "$(ACMESH_POLICY="$POL" "$BIN" policy 2>/dev/null | grep -q "$POL" && echo ja)"
+	check policy-read-inside "drin" "$(ACMESH_POLICY="$POL" "$BIN" sh -c "cat $WORK/work/in.txt" 2>/dev/null | tr -d '\r')"
+	check policy-blocks-read "ja" "$(ACMESH_POLICY="$POL" "$BIN" sh -c 'cat /etc/hostname' >/dev/null 2>&1 || echo ja)"
+	check policy-blocks-write "ja" "$(ACMESH_POLICY="$POL" "$BIN" sh -c "echo x > $WORK/aussen.txt" >/dev/null 2>&1 || echo ja)"
+	check policy-no-outside-file "ja" "$([ ! -f "$WORK/aussen.txt" ] && echo ja)"
+	check policy-write-inside "ok" "$(ACMESH_POLICY="$POL" "$BIN" sh -c "echo ok > $WORK/work/neu.txt; cat $WORK/work/neu.txt" 2>/dev/null | tr -d '\r')"
+	check policy-check-allowed "0" "$(ACMESH_POLICY="$POL" "$BIN" policy --check "$WORK/work/in.txt" >/dev/null 2>&1; echo $?)"
+	check policy-check-denied "1" "$(ACMESH_POLICY="$POL" "$BIN" policy --check /etc/hostname >/dev/null 2>&1; echo $?)"
+	check policy-blocks-network "ja" "$(ACMESH_POLICY="$POL" "$BIN" curl -s https://example.com >/dev/null 2>&1 || echo ja)"
+	check policy-network-message "ja" "$(ACMESH_POLICY="$POL" "$BIN" curl -s https://example.com 2>&1 | grep -q 'does not allow network access' && echo ja)"
+	# A broken policy must stop the process instead of running unconfined.
+	printf '{"version":9}' > "$WORK/broken.json"
+	checkcode policy-broken-refused 1 "$(ACMESH_POLICY="$WORK/broken.json" "$BIN" echo x >/dev/null 2>&1; echo $?)"
+	;;
+esac
+
 printf '%d checks, %d failures\n' "$checks" "$fails"
 [ "$fails" -eq 0 ]

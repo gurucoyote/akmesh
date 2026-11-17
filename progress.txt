@@ -53,3 +53,8 @@
             Schalter: -r -c -j -e -n -s -R -f --arg --argjson --slurpfile,
             Kuerzel kombinierbar. Exit 3 bei kaputtem Filter, 2 bei kaputtem
             JSON, 5 bei Laufzeitfehler. 58 Pruefungen je Ziel gruen.
+2026-11-18  Policy-Schicht: ACMESH_POLICY mit JSON, Landlock ab ABI 1 (hier 7)
+            wendet die Regeln auf den Prozess an, Kinder erben sie. Eigene Shell
+            sh/gosh auf mvdan/sh ersetzt u-root gosh und ist dabei kleiner.
+            Netz auf Host-Ebene in curl/wget. Kaputte Policy beendet mit Exit 1,
+            Windows verweigert ehrlich. 74 Pruefungen Linux, 62 Windows.

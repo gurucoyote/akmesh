@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "read": ["/work/readonly", "/work/shared"],
+  "write": ["/work/out"],
+  "exec": ["/work/bin"],
+  "network": ["example.com", "*.testbild.tv:443"],
+  "system_access": true
+}

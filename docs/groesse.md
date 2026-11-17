@@ -53,3 +53,36 @@ fragment", weil der Hunk-Kopf eine Zeile zu viel ankuendigte. go-gitdiff ist
 strikt, ohne Kontext-Fuzz. Wer diff und patch als Paar ausliefert, muss die
 Hunk-Koepfe genau erzeugen - also beim diff-Teil nachbessern oder gits
 Diff-Format uebernehmen.
+
+## Nachtrag: warum zwei Binaries - und warum das nicht bleiben muss
+
+Der Grund war eine Werkzeuggrenze, kein Entwurf. makebb nimmt nur Pakete aus dem
+Hauptmodul:
+
+    makebb ... /tmp/acspike/cmd/whoami2
+    -> directory ... outside main module or its selected dependencies
+
+Mit einem go.work, das beide Module auffuehrt, faellt die Grenze:
+
+    go 1.27.0
+
+    use (
+        /root/acmesh/.build/uroot
+        /root/acmesh
+    )
+
+Damit gebaut, ein Binary mit allen 48 u-root-Befehlen plus cmd/ext:
+
+    9.961.472 Bytes = 9,5 MiB
+
+Gegen zwei Binaries: 8,9 MiB (bb) plus 3,5 MiB (ext) = 12,4 MiB. Das eine
+Binary spart also rund 3 MB, weil die Go-Laufzeit nur einmal drin ist.
+
+Geprueft am gebauten Binary: `bbb.exe ls C:/Windows`, `bbb.exe ext basename
+/a/b/c.txt`, `bbb.exe ext awk ...`, `bbb.exe ext sed ...` und
+`bbb.exe gosh -c 'echo shell-im-selben-binary'` laufen alle.
+
+Offen ist nur die Benennung: unsere Befehle haengen unter "ext", also
+`bbb.exe ext sed`. Damit sie als `bbb.exe sed` erscheinen, braucht jeder Befehl
+ein eigenes kleines main-Paket (18 Dateien), das die gemeinsame Umsetzung
+aufruft. Das ist der saubere Endzustand.

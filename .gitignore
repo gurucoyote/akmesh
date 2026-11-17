@@ -1,8 +1,7 @@
-bb
-bb.exe
-.cache/
-.gopath/
-.build/
-*.test
-ext
-ext.exe
+/ext
+/ext.exe
+/bb
+/bb.exe
+/.build/
+/.cache/
+/.gopath/

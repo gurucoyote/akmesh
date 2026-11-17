@@ -11,3 +11,7 @@
             gelaufen: awk, sed, uname, du, hostname). ps geht dort unter
             Windows auch nicht. u-root exp/ssh baut fuer Windows.
             Fuenf neue Tickets, Entscheidung bashy gegen u-root offen.
+2026-11-17  Shell-Vergleich gemessen (docs/shell-vergleich.md).
+            Upstream mvdan/sh 3.14.1: 30 von 34 wie bash, qiangli/sh: 31 von 34;
+            die drei gemeinsamen Abweichungen sind Meldungstexte, nicht Verhalten.
+            Policy-Haken in beiden identisch, winmode nur in der Gabel.

@@ -1,4 +1,4 @@
-package main
+package tools
 
 import (
 	"crypto/md5"
@@ -14,7 +14,7 @@ import (
 
 // runSum builds one checksum command. The output format is the usual
 // "<hex>  <name>", with "-" for standard input.
-func runSum(kind string) run {
+func runSum(kind string) Func {
 	return func(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		var files []string
 		check := false

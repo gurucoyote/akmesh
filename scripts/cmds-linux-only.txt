@@ -1,13 +1,4 @@
-# Commands that do not build for Windows and are therefore only in the Linux
-# binary. Six of them are candidates for our own implementation later; see
-# docs/design/acmesh.md, section "Own commands".
-
-df
-du
-free
-hostname
-kill
-ps
-sync
-timeout
-uname
+# Commands that only build for Linux in this setup.
+# ssh and strace are Linux-only here; df, du, free, kill and ps do not build
+# for Windows in u-root (a native Windows replacement is a ticket of its own).
+ssh strace df du free kill ps

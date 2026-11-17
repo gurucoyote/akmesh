@@ -78,3 +78,28 @@ Teilnamen, Groessenangaben. go test ./cmd/ext gruen.
 
 Fehlt noch aus Stufe 1: file, iconv, env. Dazu ps, kill, killall, free, df,
 du aus dem zweiten Plan.
+
+## Ein Binary statt zwei (17.11.2026, gebaut und geprueft)
+
+    ./scripts/build-bb.sh windows -> bb.exe 10.503.680 Bytes (10,0 MiB)
+    ./scripts/build-bb.sh linux   -> bb     10.596.476 Bytes (10,1 MiB)
+
+Enthalten: 48 u-root-Befehle, gosh, ssh auf beiden Zielen, strace und
+df/du/free/kill/ps unter Linux, dazu unsere eigenen Werkzeuge aus
+internal/tools als eigene Befehlsnamen.
+
+Zum Vergleich zwei Binaries: 8,9 MiB (bb) plus 3,5 MiB (ext) = 12,4 MiB. Die
+Ersparnis kommt daher, dass die Go-Laufzeit nur einmal drin ist.
+
+Der Weg dahin: makebb nimmt nur Pakete aus dem Hauptmodul. Ein go.work mit
+beiden Modulen hebt die Grenze auf. Danach kollidierte md5sum mit u-root; der
+Build filtert jetzt automatisch: wo u-root den Namen fuer das Ziel baut, gilt
+u-root, sonst unser Paket.
+
+Pruefung: scripts/test-ext.sh gegen bb.exe und gegen bb, je 19 Faelle, beide
+0 Fehler. ssh antwortet mit seiner Usage, strace mit der seinen, ps und free
+liefern Daten.
+
+Bekannt kaputt: u-root df unter WSL meldet
+"mountinfo()=_,no such device, want: _,nil". Ein eigenes df steht auf der Liste.
+Das go.work liegt in .build/ und wird vom Build erzeugt; es ist nicht im Repo.

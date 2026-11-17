@@ -5,3 +5,7 @@
 - Die Symlink-Form ist unter Windows Rechteabhaengig, der Unterbefehl traegt.
 - bd 0.49.0 gibt beim Anlegen kein ID-Feld in der letzten Zeile aus; wer die
   ID braucht, liest sie mit bd list nach.
+2026-11-17  makebb accepts packages from other modules once a go.work lists them;
+            without it the error is "outside main module or its selected
+            dependencies". Duplicate command names then become the next wall, so
+            the build script filters: u-root wins where it builds the name.

@@ -27,3 +27,8 @@
             windows 3,51 MiB, linux 3,43 MiB, gestrippt; 19 Pruefungen je Ziel
             gruen, dazu Go-Tests fuer den diff-Rundlauf.
             Offen: file, iconv, env, ps, kill, killall, free, df, du.
+2026-11-17  Ein Binary. makebb nimmt mit einem go.work auch unsere Pakete an.
+            Umsetzung nach internal/tools, je Befehl ein kleines cmd/<name>.
+            bb.exe 10,0 MiB, bb 10,1 MiB, ssh auf beiden Zielen, strace und
+            df/du/free/kill/ps unter Linux. 19 Pruefungen je Ziel gruen.
+            Bekannt kaputt: u-root df unter WSL.

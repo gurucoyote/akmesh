@@ -10,10 +10,15 @@ are English; documents meant for Martin are German.
   the command list, calls `makebb`.
 - `scripts/cmds.txt`: the command list per platform (one name per line,
   `#` comments allowed). Adding a command means adding it here.
-- `internal/`: our own commands (the ones u-root does not build for Windows) and
-  the policy wrapper. Empty until the first of them is built.
-- `cmd/`: our own entry point once the binary needs one. Until then the binary
-  comes from `makebb`.
+- `internal/tools/`: our own commands in one package with one table. The table is
+  what the multicall binary dispatches on and what the per-name entry points use.
+- `cmd/<name>/`: one tiny `main` per own command, so that the combined binary
+  reaches it under its plain name (`bb sed`). Adding a command means: implement
+  in `internal/tools`, register in the table, add `cmd/<name>`.
+- `cmd/ext/`: standalone multicall binary over the same table, for building and
+  testing our tools without the u-root checkout.
+- `scripts/build-bb.sh` writes `.build/go.work` (both modules) and passes the
+  u-root packages plus our `cmd/<name>` packages to `makebb`.
 - `docs/design/acmesh.md`: architecture, decisions, licence notes.
 - `docs/measurements.md`: every number with the command that produced it.
 - `progress.txt`, `learnings.txt`: short German notes per finished step.

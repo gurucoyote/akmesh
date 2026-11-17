@@ -58,3 +58,8 @@
             sh/gosh auf mvdan/sh ersetzt u-root gosh und ist dabei kleiner.
             Netz auf Host-Ebene in curl/wget. Kaputte Policy beendet mit Exit 1,
             Windows verweigert ehrlich. 74 Pruefungen Linux, 62 Windows.
+2026-11-18  ssh geprueft: funktioniert gegen einen echten sshd (Remote-Befehl,
+            mehrzeilige Ausgabe). Vier Eigenheiten: Port nur im Ziel, kein -p,
+            known_hosts Pflicht mit [host]:port, und der Exit-Status des
+            entfernten Befehls kommt nicht an. scp ist nicht enthalten, u-root
+            hat keins. In docs/ssh.md festgehalten.

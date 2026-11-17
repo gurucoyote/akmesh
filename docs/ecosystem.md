@@ -126,3 +126,40 @@ Sandbox), robertmin1/strace (Demo mit seccomp, ausdruecklich unfertig).
 Unter Windows gibt es kein Gegenstueck. Naechstes Konzept ist ETW
 (Event Tracing for Windows) oder Procmon, beides ein anderes Werkzeug mit
 anderem Aufbau, keine Portierung.
+
+## Taugt das fuer den Dateibedarf einer distroless-Images? (17.11.2026)
+
+Geprueft, ob man mit u-roots Tracer ermitteln kann, welche Dateien ein Programm
+braucht - der uebliche Weg fuer ein distroless-Abbild.
+
+Ergebnis: brauchbar, und zwar besser als ueber die Textausgabe. Drei Gruende:
+
+1. Pfade werden aufgeloest. Beispiel aus dem Lauf:
+
+       E open(0x7ffc1614fe18 /etc/hostname, O_RDONLY|0x8000, ----------)
+       X open(0x7ffc1614fe18 /etc/hostname, O_RDONLY|0x8000, ----------) = 0x3
+
+   Die Syscall-Tabelle in pkg/strace kennt den Argumenttyp Path und liest die
+   Zeichenkette aus dem Prozess (syscall_linux_amd64.go:284, openat mit Path).
+2. Kinder werden verfolgt (PTRACE_O_TRACEFORK, TRACECLONE, TRACEVFORK in
+   tracer.go:239). Ein Test mit einem Shell-Skript, das cat aufruft, zeigt zwei
+   PIDs.
+3. Die Bibliothek liefert Ereignisse als Struktur (EventCallback), nicht als
+   Text. Ein Sammler kann also direkt Pfade mitnehmen, statt Zeilen zu parsen.
+
+Messung am Beispiel /tmp/k.sh mit cat /etc/hostname: 141 Zeilen Spur, daraus
+per Regex 9 eindeutige Pfade - /bin/cat, /usr/bin/cat, /usr/sbin/cat,
+/usr/local/bin/cat, /sbin/cat, /tmp/k.sh, /etc/hostname, /tmp. Also genau das,
+was man kopieren muesste.
+
+Was ein solcher Sammler noch leisten muss:
+- relative Pfade gegen /proc/<pid>/cwd aufloesen, sie kommen so heraus, wie das
+  Programm sie schreibt;
+- den ersten execve mitnehmen, der fehlt (im Code als bewusste Luecke notiert);
+- Symlinks aufloesen und Ziele mitkopieren;
+- /proc, /dev und Sockets ausfiltern;
+- am Ende gegenpruefen: Abbild bauen und starten, nicht nur die Liste glauben.
+
+Offen und zu pruefen: ob der Tracer in einem Container laeuft. Docker und Podman
+blocken ptrace per seccomp standardmaessig; ob die eigene Kindprozess-Verfolgung
+davon betroffen ist, muss gemessen werden (Ticket).

@@ -15,3 +15,9 @@
             Upstream mvdan/sh 3.14.1: 30 von 34 wie bash, qiangli/sh: 31 von 34;
             die drei gemeinsamen Abweichungen sind Meldungstexte, nicht Verhalten.
             Policy-Haken in beiden identisch, winmode nur in der Gabel.
+2026-11-17  Selektive Uebernahme aus coreutils gemessen (docs/luecken.md).
+            Einzelne Applets gehen, aber das Geruest kostet 24 MB; acht Luecken
+            kosten 27,9 MB gegen 40,9 MB fuer alle 153. Wer ein Applet nimmt,
+            zieht die Shell-Gabel mit (replace im go.mod). makebb nimmt keine
+            Pakete ausserhalb des Hauptmoduls. Vorschlag: eigenes kleines
+            acmesh-ext.

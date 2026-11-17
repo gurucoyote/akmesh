@@ -18,8 +18,10 @@ unter Windows laufen lassen.
 4. Ein Fund am Rand: die erste Probe mit eigenen syscall-LazyDLL-Strukturen
    wurde von Windows beim Start abgelehnt ("Invalid argument", auch ueber
    cmd.exe: "Das angegebene Programm kann nicht ausgefuehrt werden"), die
-   x/sys-Variante lief sofort. Ursache unklar. Lehre: x/sys benutzen, nicht
-   eigene LazyDLL-Gebilde, und beim Ausliefern pruefen, ob Defender mitspielt.
+   x/sys-Variante lief sofort. Ursache unklar, Verdacht (Martin): ein
+   Virenscanner, der ein Prozess-Werkzeug beim Start blockt. Lehre: x/sys
+   benutzen, nicht eigene LazyDLL-Gebilde, und beim Ausliefern pruefen, ob der
+   Scanner mitspielt.
 
 ## Umfang der Arbeit
 
@@ -66,3 +68,38 @@ Zug von der Groesse, die file und iconv zusammen waren, mit etwas mehr Risiko
 wegen der Rechte und der zwei Plattformen.
 
 Die Kommandozeile in ps ist ein eigener Zug und der einzige wirklich teure Teil.
+
+## Nachtrag: was u-root unter Linux schon hat (geprueft 17.11.2026)
+
+u-root hat ps (cmds/core/ps/ps_linux.go, 532 Zeilen) und kill (897 Zeilen
+ueber mehrere Dateien). Beide sind im Linux-acmesh und laufen.
+
+Gemessen am gebauten Binary:
+
+| Aufruf | Ergebnis |
+|---|---|
+| ps | Spalten PID TTY TIME CMD, laeuft |
+| ps -e | alle Prozesse, laeuft |
+| ps aux | laeuft, zeigt PGRP, SID, STAT und COMMAND |
+| ps -x | laeuft, lange Kommandozeile (z.B. "plan9 --control-socket 6 ...") |
+| ps -ef | FEHLER: "flag provided but not defined: -f" |
+| ps -bsd | FEHLER: "flag provided but not defined: -b" |
+| kill -9 PID | laeuft (Signal vor der PID) |
+| killall | gibt es nicht |
+
+Damit ist der Linux-Teil halb fertig: ps und kill sind da, aber nicht in der
+Form, die Agenten tippen. "ps -ef" ist der haeufigste Aufruf ueberhaupt und
+scheitert; PPID und UID gibt es gar nicht, Feldauswahl wie "ps -eo pid,ppid,cmd"
+auch nicht. u-root ps kann dafuer die lange Kommandozeile unter Linux, die wir
+unter Windows bewusst weglassen.
+
+Entscheidung fuer die Umsetzung: eine ps-Umsetzung fuer beide Plattformen, mit
+einem kleinen Feldsatz (pid, ppid, user, stat, time, etime, cmd, comm) und einem
+Parser fuer die Aufrufe, die wirklich getippt werden: -e/-A, -f, -ef, aux, -eo
+FELDER, -p PID. Dann ist die Ausgabe auf Windows und Linux gleich, und der
+Unterschied zwischen den Plattformen beschraenkt sich auf das, was fehlt
+(Kommandozeile unter Windows).
+
+Mehrarbeit gegenueber dem reinen Windows-ps: rund 150 Zeilen fuer /proc und den
+Feldparser. Dafuer faellt die Falle weg, dass derselbe Befehl auf zwei Zielen
+verschieden aussieht.

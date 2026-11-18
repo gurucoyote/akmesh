@@ -1448,7 +1448,12 @@ nur das Abbild unter dem Pfad nicht. Auch rm und Neubau halfen nicht. Wer unter
 WSL von Hand prueft, kopiert die .exe vorher unter einen neuen Namen; die
 Batterie macht das von sich aus.
 
-## md2txt (19.11.2026, acmesh-66u)
+## md2txt-l (19.11.2026, acmesh-66u, umbenannt am selben Tag)
+
+Der Befehl heiszt seit dem 19.11.2026 md2txt-l: das l steht fuer light, er
+bleibt der eigene Parser ohne Abhaengigkeit, waehrend die neuen Schreibziele auf
+goldmark gehen (Entscheidung Martin, Ticket acmesh-54s.5). Das Paket heiszt
+weiter internal/md2txt, weil der Name innen niemanden stoert.
 
 Markdown nach reinem Text, mit pandoc 3.6.4 als Maszstab. Gemessen, nicht
 geraten (pandoc -f markdown-smart -t plain):
@@ -1488,8 +1493,43 @@ Gegenprobe, Byte fuer Byte gegen pandoc:
     zwei Tabellenproben (2 und 3 Spalten)                            identisch
 
 Batterie: Linux 194 Pruefungen 0 Fehler, Windows 172 0 Fehler, neue Faelle
-md2txt-heading, md2txt-inline, md2txt-table, md2txt-wrap.
+md2txt-l-heading, md2txt-l-inline, md2txt-l-table, md2txt-l-wrap.
 
-Groesze: probe (base64 md2txt) 2650236 gegen base64 2609276, also 40960 Bytes -
+Groesze: probe (base64 md2txt-l) 2650236 gegen base64 2609276, also 40960 Bytes -
 der kleinste der Dokumentbefehle, weil er nur Standardbibliothek und einen
 eigenen kleinen Parser braucht. acmesh 12591228, acmesh.exe 12624896.
+
+## Was goldmark kostet (19.11.2026, acmesh-54s.1)
+
+Gemessen, nicht geschaetzt: je ein Probe-Programm unter
+/root/.hermes/cache/scratch/goldprobe, CGO_ENABLED=0, linux/amd64, Go 1.25.7,
+goldmark v1.7.13 mit GFM-Erweiterung. Basis ist ein Programm, das nur base64
+und fmt benutzt, 2260820 Bytes.
+
+    Basis (base64)                                2.260.820
+    + goldmark, HTML-Renderer, Textspaziergang    3.824.582   also +1.563.762
+    + goldmark-pdf                               15.847.359   also +13.586.539
+    + go-epub                                     7.020.683   also +4.759.863
+    + eigener docx-Schreiber (zip + xml)          2.677.471   also +416.651
+    alles zusammen (html + pdf + epub)           16.279.762   also +14.018.942
+
+Einordnung:
+
+- goldmark selbst kostet rund 1,5 MB und bringt den HTML-Renderer mit; ein
+  Klartext-Ausgang ueber den AST ist ein Spaziergang von rund 60 Zeilen, kein
+  Paket. Damit waere auch md2html ohne Zusatz gedeckt.
+- goldmark-pdf ist der Brocken: 13,6 MB, mehr als das ganze acmesh heute
+  (12,6 MB). Ursache ist nicht der Code, sondern die mitgelieferten Schriften:
+  im Probe-Binary finden sich 1581 Font-/TTF-Muster und 242 Treffer auf
+  DejaVu/Liberation/Noto, go-text/typesetting und go-fpdf bringen sie mit.
+- go-epub kostet allein 4,8 MB, zusammen mit PDF aber nur 0,4 MB zusaetzlich,
+  weil sich golang.org/x/net und anderes die beiden teilen.
+- Der docx-Schreiber kostet gemessen 416 KB fuer zip und xml - im acmesh-Binary
+  sind beide schon drin (docx2md liest so), also real rund null.
+- Ein Binary mit allen vieren waere rund 26 MB gegen 12,6 MB heute und damit
+  ueber der harten Stopplinie von 16 MB in scripts/build-bb.sh. Entweder steigt
+  die Linie mit Begruendung, oder md2pdf wird ein eigenes Binary
+  (profile- oder build-tag-getrennt), oder es wird auf goldmark-pdf verzichtet.
+- Ohne PDF: goldmark + HTML + EPUB + eigener docx-Schreiber waere rund 12,6 + 1,5
+  + 4,8 (epub, dann ohne pdf) = rund 18,9 MB - auch schon ueber der Linie.
+  Nur goldmark und HTML: rund 14,2 MB, das geht noch.

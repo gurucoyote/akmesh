@@ -1,4 +1,4 @@
-// Command md2txt prints Markdown as plain text, reachable as its own name inside
+// Command md2txt-l prints Markdown as plain text, reachable as its own name inside
 // the acmesh binary.
 package main
 

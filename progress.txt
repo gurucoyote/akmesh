@@ -117,3 +117,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-19  pdf2md erkennt Tabellen: Textspalten und Zellrechtecke ueber q/Q/cm; Beleg 11 Tabellenzeilen im Tarot-Anmeldeformular; XObjects bleiben offen (acmesh-juj).
 2026-11-19  pdf2md liest Formular-XObjects mit (/Matrix, eigene Ressourcen, Tiefe 4); Beleg 'Anmeldung' im Tarot-Formular; acmesh-39w.
 2026-11-19  md2txt gebaut: Markdown nach reinem Text, byte-gleich mit pandoc -t plain (markdown-smart) an Beispielen und drei echten Dateien; acmesh-66u.
+2026-11-19  md2txt heiszt md2txt-l (leichtgewichtiger eigener Parser); goldmark-Kosten gemessen: html 1,5 MB, pdf 13,6 MB, epub 4,8 MB, docx-Schreiber 0,4 MB, alles zusammen 14,0 MB (acmesh-54s.1).

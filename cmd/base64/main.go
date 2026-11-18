@@ -10,8 +10,11 @@ import (
 	"os"
 
 	"acmesh/internal/forked/base64"
+
+	"acmesh/internal/policy"
 )
 
 func main() {
+	policy.Enter()
 	os.Exit(base64.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

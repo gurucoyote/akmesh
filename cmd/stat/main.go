@@ -9,8 +9,11 @@ import (
 	"os"
 
 	"acmesh/internal/stat"
+
+	"acmesh/internal/policy"
 )
 
 func main() {
+	policy.Enter()
 	os.Exit(stat.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

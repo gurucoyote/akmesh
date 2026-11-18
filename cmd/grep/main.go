@@ -10,8 +10,11 @@ import (
 	"os"
 
 	"acmesh/internal/forked/grep"
+
+	"acmesh/internal/policy"
 )
 
 func main() {
+	policy.Enter()
 	os.Exit(grep.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

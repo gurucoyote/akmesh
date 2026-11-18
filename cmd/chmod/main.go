@@ -10,8 +10,11 @@ import (
 	"os"
 
 	"acmesh/internal/forked/chmod"
+
+	"acmesh/internal/policy"
 )
 
 func main() {
+	policy.Enter()
 	os.Exit(chmod.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

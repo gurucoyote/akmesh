@@ -9,8 +9,11 @@ import (
 	"os"
 
 	"acmesh/internal/sum"
+
+	"acmesh/internal/policy"
 )
 
 func main() {
+	policy.Enter()
 	os.Exit(sum.Run("sha256", os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

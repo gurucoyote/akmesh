@@ -9,8 +9,11 @@ import (
 	"os"
 
 	"acmesh/internal/dirname"
+
+	"acmesh/internal/policy"
 )
 
 func main() {
+	policy.Enter()
 	os.Exit(dirname.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

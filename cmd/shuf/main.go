@@ -6,8 +6,11 @@ import (
 	"os"
 
 	"acmesh/internal/tools"
+
+	"acmesh/internal/policy"
 )
 
 func main() {
+	policy.Enter()
 	os.Exit(tools.Run("shuf"))
 }

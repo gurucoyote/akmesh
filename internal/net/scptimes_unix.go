@@ -1,6 +1,6 @@
 //go:build linux
 
-package tools
+package net
 
 import (
 	"os"

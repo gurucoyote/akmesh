@@ -9,8 +9,11 @@ import (
 	"os"
 
 	"acmesh/internal/split"
+
+	"acmesh/internal/policy"
 )
 
 func main() {
+	policy.Enter()
 	os.Exit(split.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

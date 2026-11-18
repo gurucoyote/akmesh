@@ -1,6 +1,6 @@
 //go:build !nonet
 
-package tools
+package net
 
 import (
 	"bufio"

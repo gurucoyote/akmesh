@@ -10,8 +10,11 @@ import (
 	"os"
 
 	"acmesh/internal/forked/xargs"
+
+	"acmesh/internal/policy"
 )
 
 func main() {
+	policy.Enter()
 	os.Exit(xargs.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

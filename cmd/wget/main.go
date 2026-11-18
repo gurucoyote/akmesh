@@ -1,13 +1,19 @@
-// Command wget is the wget tool from internal/tools, reachable as its own
-// command inside the acmesh binary.
+// Command wget is the wget tool, reachable as its own command inside the acmesh
+// binary.
+//
+// It imports only internal/net and not internal/tools: the table in
+// internal/tools pulls every tool we own into the binary (acmesh-mq1).
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/tools"
+	"acmesh/internal/net"
+
+	"acmesh/internal/policy"
 )
 
 func main() {
-	os.Exit(tools.Run("wget"))
+	policy.Enter()
+	os.Exit(net.Run("wget", os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

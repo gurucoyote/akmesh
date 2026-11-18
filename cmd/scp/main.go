@@ -1,13 +1,19 @@
-// Command scp is the scp tool from internal/tools, reachable as its own
-// command inside the acmesh binary.
+// Command scp is the scp tool, reachable as its own command inside the acmesh
+// binary.
+//
+// It imports only internal/net and not internal/tools: the table in
+// internal/tools pulls every tool we own into the binary (acmesh-mq1).
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/tools"
+	"acmesh/internal/net"
+
+	"acmesh/internal/policy"
 )
 
 func main() {
-	os.Exit(tools.Run("scp"))
+	policy.Enter()
+	os.Exit(net.Run("scp", os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

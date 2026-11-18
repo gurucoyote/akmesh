@@ -9,8 +9,11 @@ import (
 	"os"
 
 	"acmesh/internal/sync"
+
+	"acmesh/internal/policy"
 )
 
 func main() {
+	policy.Enter()
 	os.Exit(sync.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

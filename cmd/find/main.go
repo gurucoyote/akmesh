@@ -10,8 +10,11 @@ import (
 	"os"
 
 	"acmesh/internal/forked/find"
+
+	"acmesh/internal/policy"
 )
 
 func main() {
+	policy.Enter()
 	os.Exit(find.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

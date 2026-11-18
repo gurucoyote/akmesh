@@ -1031,3 +1031,28 @@ Probe mit free, df, du, ps, kill und timeout: 2.125.948 Bytes.
 
 Groesse: 11812988 Linux, 11843584 Windows.
 go test ./... gruen, Batterie 169/0 Linux und 149/0 Windows.
+
+## Aufteilung Etappe 6: die Netzgruppe, und die Policy (18.11.2026, acmesh-mq1)
+
+curl, wget, ssh und scp liegen jetzt in internal/net, samt Cookie-Jar, scptimes
+und der Engines. Die nonet-Bauart bleibt erhalten: mit dem Tag sind die
+Wrapper in internal/tools/netcmds.go ausgeblendet, und mit ihnen net/http, TLS
+und die ssh-Bibliothek.
+
+Dabei kam ein echter Defekt heraus. Die Policy wurde bisher nur in
+tools.Run angewandt. Sobald ein Befehl sein eigenes Paket importiert, ist dieser
+Weg umgangen, und die Batterie zeigte es sofort:
+
+    FAIL policy-blocks-network
+    FAIL policy-network-message
+
+Das ist die Regel des Projekts, nicht ein Schoenheitsfehler: ein Befehl, der
+ohne Policy laeuft, ist der Fehler, den es nicht geben darf.
+
+Behoben mit policy.Enter(), das jeder der 55 cmd/main.go als erste Zeile ruft;
+es wendet ACMESH_POLICY einmal pro Prozess an und beendet den Prozess bei
+kaputter Policy, wie vorher tools.Run. tools.Run ruft jetzt denselben Eintritt,
+statt eine zweite Sperre zu halten. Batterie danach wieder 169/0 Linux und
+149/0 Windows.
+
+Groesse: 11817084 Linux, 11847168 Windows.

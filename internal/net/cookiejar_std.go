@@ -1,6 +1,6 @@
 //go:build !nonet && !nocookiejar
 
-package tools
+package net
 
 import (
 	"net/http"

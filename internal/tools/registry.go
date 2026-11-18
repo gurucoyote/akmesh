@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"acmesh/internal/policy"
 	"acmesh/internal/shuf"
@@ -84,16 +83,9 @@ var Commands = map[string]Func{
 // policyOnce makes sure the policy is applied exactly once per process, before
 // any command runs. A broken policy stops the process: running unconfined after a
 // typo would be the worst failure mode this binary could have.
-var policyOnce sync.Once
-
-func ensurePolicy() {
-	policyOnce.Do(func() {
-		if err := policy.InitFromEnv(); err != nil {
-			fmt.Fprintf(os.Stderr, "acmesh: %v\n", err)
-			os.Exit(1)
-		}
-	})
-}
+// ensurePolicy keeps the table's own entry point behind the same rule as the
+// per-command mains, which call policy.Enter in their main function.
+func ensurePolicy() { policy.Enter() }
 
 // Run executes the named command with the arguments the program was started
 // with, minus argv[0]. It is the entry point for the per-command main packages.

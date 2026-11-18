@@ -317,3 +317,17 @@ Belegt (Linux, WSL-Kernel 6.18, Landlock ABI 7):
 Pruefungen: scripts/test-ext.sh Linux 74, Windows 62, alle 0 Fehler. Go-Tests
 neu: internal/policy (Parsing, Tippfehler, relative Pfade, Version, Hosts mit
 Port und Wildcard, fehlende Policy, kaputte Datei).
+
+## Eigene ssh und scp (18.11.2026)
+
+    ./scripts/build-bb.sh linux   -> acmesh     11.350.140 Bytes (10,82 MiB)
+    ./scripts/build-bb.sh windows -> acmesh.exe 11.378.688 Bytes (10,85 MiB)
+
+Gegenueber dem Stand mit u-root-ssh sind das je 20.480 Bytes weniger, obwohl
+scp neu dazugekommen ist. Der Grund: x/crypto war durch die alte ssh schon im
+Binary, unsere Front ist duenner als die u-root-Shell um dieselbe Bibliothek.
+
+Belegt durch scripts/test-ssh.sh gegen einen echten sshd (15 Pruefungen, 0
+Fehler, auf acmesh und acmesh.exe): Ausgabe, Mehrzeiligkeit, Remote-Exitcode 7,
+test -f wahr und falsch, stdin-Pipe, unbekannter Host ohne Freigabe Exit 255,
+Upload, rekursiver Upload, Download, rekursiver Download, jeweils mit Inhalt.

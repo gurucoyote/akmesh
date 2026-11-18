@@ -25,7 +25,7 @@ in one place, and whose behaviour can be measured instead of guessed.
   Linux.
 - Our own tools inside the binary: awk, cut, diff, patch, sed, sha1sum,
   sha256sum, sha512sum, split, stat, tac, nl, env, file, iconv, ps, kill,
-  killall, df, du, free, curl, wget, jq, plus hostname, sync, timeout and uname, which u-root does not build
+  killall, df, du, free, curl, wget, jq, ssh, scp, plus hostname, sync, timeout and uname, which u-root does not build
   for Windows and whose timeout takes a different command line on Linux.
 - ps takes the calls agents type (-e, -f, -ef, aux, -eo FIELDS, -p PID) on both
   platforms with the same columns. On Windows the command line column falls back

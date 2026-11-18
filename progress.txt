@@ -63,3 +63,9 @@
             known_hosts Pflicht mit [host]:port, und der Exit-Status des
             entfernten Befehls kommt nicht an. scp ist nicht enthalten, u-root
             hat keins. In docs/ssh.md festgehalten.
+2026-11-18  Eigene ssh und scp auf x/crypto/ssh, u-root ssh raus. Non-interactive
+            ist der Standard: kein PTY ohne Terminal, kein Passwort-Prompt,
+            Exit-Status des entfernten Befehls kommt durch, stdin wird
+            durchgereicht. scp in beide Richtungen und rekursiv. 15 Pruefungen
+            gegen einen echten sshd auf beiden Zielen gruen, Binary 20 KB
+            kleiner als mit der u-root-ssh.

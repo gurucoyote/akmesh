@@ -5,7 +5,9 @@
 # shell
 
 # files and text
-ls cat more head tail grep find uniq tr tee wc cmp comm
+# head is not here: it is forked into internal/forked/head, and a fork takes the
+# name away from u-root (see scripts/fork-uroot.sh, OURS_ALL).
+ls cat more tail grep find uniq tr tee wc cmp comm
 cp mv rm mkdir touch ln chmod mktemp readlink realpath
 
 # archives, hashes, encoding

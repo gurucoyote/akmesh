@@ -1,0 +1,13 @@
+{
+  "forks": {
+    "head": {
+      "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
+      "files": [
+        {
+          "sha256": "80264fef5244e8518c0d2b256a923c34afffa99a4cf293233fb3dc562c81ceb6",
+          "upstream": "cmds/core/head/head.go"
+        }
+      ]
+    }
+  }
+}

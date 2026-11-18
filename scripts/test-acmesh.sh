@@ -134,6 +134,13 @@ checkcode patch-apply 0 "$(run patch < p.diff >/dev/null 2>&1; echo $?)"
 check patch-result "eins ZWEI drei vier fuenf" "$(tr '\n' ' ' < a.txt | tr -d '\r' | sed 's/ $//')"
 rm -f p.diff a.txt b.txt
 
+# head is a forked u-root command: the short form and -q are the reason
+printf '1\n2\n3\n4\n5\n6\n7\n' > h.txt
+check head-short "1 2 3" "$(run head -5 h.txt | tr -d '\r' | head -3 | tr '\n' ' ' | sed 's/ $//')"
+check head-quiet "abc" "$(printf 'a\nb\n' > h1.txt; printf 'c\n' > h2.txt; run head -q h1.txt h2.txt | tr -d '\r' | tr -d '\n')"
+checkcode head-missing 1 "$(run head /nicht/vorhanden >/dev/null 2>&1; echo $?)"
+rm -f h.txt h1.txt h2.txt
+
 # files
 printf 'abcdefgh' > t.txt
 run truncate -s 4 t.txt

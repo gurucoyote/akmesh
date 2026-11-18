@@ -697,3 +697,38 @@ denselben Dateien und Aufrufen verglichen. Linux-Binary ./acmesh, Windows
 
 Testbilanz: go test ./internal/tools gruen, 21 neue Pruefungen in
 internal/tools/compat_test.go. Batterie 113 Checks Linux, 97 Windows, 0 Fehler.
+
+## Erster Fork: head (18.11.2026, acmesh-e0o)
+
+Vorlage fuer die Fork-Mechanik, gleichzeitig Ticket acmesh-86m (-5 und -q).
+Kopie: internal/forked/head/head.go, 256 Zeilen upstream plus Run() und
+Argumentparser, Upstream-Commit 869f00f6b224ce02b1db51806159d6cd9c246f76.
+
+Gemessen am gebauten Binary (go build ./cmd/head, dann ./scripts/build-bb.sh):
+
+    head -5 (stdin 1..12)       1 2 3 4 5      Exit 0   (vorher: invalid option)
+    head -q a.txt b.txt         a b ohne Kopf  Exit 0   (vorher: -q unbekannt)
+    head -v a.txt               mit Kopf       Exit 0
+    head a.txt b.txt            zwei Koepfe     Exit 0, wie GNU
+    head -n 2 / -c 3            upstream-Verhalten unveraendert
+    head /nicht/vorhanden       Exit 1          (vorher Exit 0 trotz Fehlermeldung)
+    head -Z                     Exit 2 mit usage
+    head -n 2 -c 2              Exit 2 (errCombine)
+
+Driftprobe: UROOT_COMMIT in scripts/build-bb.sh auf Null-Commit gesetzt ->
+TestManifestMatchesPin FAIL mit "fork head was taken from 869f00f... but the
+build pins 0000...", danach zurueckgenommen und wieder gruen.
+
+Kosten, gemessen mit scripts/build-bb.sh vor und nach dem Fork:
+
+    Linux    11481212 -> 11485308 Bytes  (+4096, 4 KiB)
+    Windows  11505664 -> 11511808 Bytes  (+6144, 6 KiB)
+
+Der erste Zwischenstand (+8 KiB) war noch mit u-root's head im Binary: solange
+der Name in scripts/cmds.txt steht, gewinnt u-root und der Fork ist unerreichbar
+(gemessen: head -5 lief weiter in den u-root-Befehl, Exit 0 bei fehlender
+Datei). Erst nach dem Streichen des Namens aus cmds.txt liefert der Fork.
+
+Der Fork ersetzt den u-root-Befehl, er kommt nicht dazu: ein Name, ein Befehl.
+Die 8 KiB sind der Preis fuer den eigenen Argumentparser und die
+Fehlerbehandlung.

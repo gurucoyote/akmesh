@@ -23,6 +23,10 @@ in one place, and whose behaviour can be measured instead of guessed.
   Linux, named acmesh. It carries the 48 u-root commands, the shell (gosh), the ssh client,
   strace on Linux, and our own tools where u-root has a gap or builds only for
   Linux.
+- head is a forked copy of u-root's head (BSD-3-Clause, copyright the u-root
+  authors, see internal/forked/head), because agents type `head -5` and
+  `head -q` and upstream's flag parsing refuses the first and ignores the
+  second.
 - Our own tools inside the binary: awk, cut, diff, patch, sed, sha1sum,
   sha256sum, sha512sum, split, stat, tac, nl, env, file, iconv, ps, kill,
   killall, df, du, free, curl, wget, jq, ssh, scp, plus hostname, sync, timeout and uname, which u-root does not build
@@ -75,5 +79,7 @@ Without arguments the binary lists the commands it carries. The symlink form
 
 ## Licence note
 
-u-root and gobusybox are BSD-3-Clause, mvdan/sh is BSD-3-Clause. A binary that
-links them carries their notices; see `docs/design/acmesh.md`.
+u-root and gobusybox are BSD-3-Clause, mvdan/sh is BSD-3-Clause. The commands
+under internal/forked are copies of u-root source: they keep the u-root
+copyright header and name their upstream commit and file. A binary that links
+all this carries their notices; see `docs/design/acmesh.md`.

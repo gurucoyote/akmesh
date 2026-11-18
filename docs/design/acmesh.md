@@ -83,8 +83,37 @@ Offen: ob acmesh als Shell fuer ein Harness die Policy mitbringt oder nur die
 Haken liefert, an denen das Harness seine Policy einhaengt. Erste Fassung:
 beides, die Policy ist optional und abschaltbar.
 
+
+## Geforkte u-root-Befehle
+
+Fehlt einem u-root-Befehl ein Schalter, den Agenten tippen, wird er geforkt -
+nicht neu geschrieben und nicht per Patch im Checkout veraendert (der Patch
+bleibt den Fehlerpfaden vorbehalten, siehe scripts/patch-uroot.sh).
+
+Ablage: internal/forked/<name>/, ein eigenes Paket, das internal/tools ueber
+eine duenne Huelle aufruft (internal/tools/<name>.go plus Eintrag in der
+Tabelle plus cmd/<name>). Der Dateikopf der Kopie bleibt der Copyright-Kopf der
+u-root-Autoren; darunter stehen zwei Zeilen mit Upstream-Commit und Dateipfad
+und eine Liste der lokalen Aenderungen.
+
+Anlegen: scripts/fork-uroot.sh <name> <upstream-datei>... Das Skript prueft den
+gepinnten Commit, kopiert, benennt package main um, setzt den Herkunftshinweis
+und traegt Datei samt SHA-256 in internal/forked/manifest.json ein. Die
+Umbauten (main nach Run, flag-Paket raus, pkg-Importe mitkopieren) bleiben
+Handarbeit.
+
+Drift-Regel: internal/forked/drift_test.go vergleicht den Commit im Manifest mit
+UROOT_COMMIT aus scripts/build-bb.sh und, wenn der Checkout da ist, die
+SHA-256 der Upstream-Dateien. Wandert der Pin, wird der Test rot, bis jemand die
+Kopie ansieht und das Manifest nachzieht. Stilles Auseinanderlaufen ist der
+Preis des Forks; der Test macht ihn sichtbar.
+
+Bisher geforkt: head (aus acmesh-86m: -5, -q, -v, Exit 1 bei Lesefehler).
+
 ## Lizenz
 
-BSD-3-Clause fuer mvdan/sh, u-root und gobusybox. Ein ausgeliefertes Binary
+BSD-3-Clause fuer mvdan/sh, u-root und gobusybox, auch fuer die nach
+internal/forked kopierten Befehle (der Copyright-Kopf bleibt dort stehen). Ein
+ausgeliefertes Binary
 muss die Hinweise mitfuehren; dazu gehoert ein NOTICE-Dokument im Repo, bevor
 das erste Binary das Haus verlaesst.

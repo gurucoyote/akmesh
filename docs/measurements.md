@@ -876,3 +876,30 @@ Tests: hexdump (3), base64 (3), wc (3), tr (5), touch (4); go test ./...
 gruen. Batterie: 165 Checks Linux, 145 Windows, 0 Fehler; neue Pruefungen
 hexdump-canonical/-ascii/-final-offset, base64-wrap0/-default-wrap, wc-chars,
 wc-bytes, tr-range, tr-complement, tr-squeeze, touch-stamp(-year), touch-date.
+
+## Stufe 1 vollstaendig: file, iconv, env (18.11.2026, acmesh-94e.13)
+
+Die drei zuletzt offenen Befehle aus Stufe 1 stehen schon im Binary; geprueft
+wurde auf beiden Zielen, mit der Batterie und von Hand:
+
+    file script.sh        Linux und Windows: "script.sh: ASCII text"
+    file u8.txt           Linux und Windows: "u8.txt: UTF-8 Unicode text"
+    file -b bin.dat       "ELF data"
+    iconv -f UTF-8 -t ISO-8859-1 u8.txt   Linux und Windows: h<0xE4>llo
+    iconv -f ISO-8859-1 -t UTF-8          "Gruesse" mit echten Umlauten
+    iconv -f CP1252 -t UTF-8              Euro-Zeichen
+    env FOO=bar                           Kind sieht FOO, Ausgabe wie GNU
+    env -u HOME                           HOME fehlt im Kind
+
+Rundlauf diff gegen patch, wie die Abnahme es verlangt:
+
+    diff -u a.txt b.txt > p.diff      Exit 1, sobald es einen Unterschied gibt (wie GNU)
+    patch a2.txt p.diff               Exit 0
+    cmp a2.txt b.txt                  gleich
+    gleiches auf Windows mit acmesh.exe: ebenfalls gleich
+
+Batterie: 165 Pruefungen Linux, 145 Windows, 0 Fehler; diff-header, patch-apply
+und patch-result decken den Rundlauf dauerhaft ab, file-*, iconv-* und env-*
+die drei Befehle.
+
+Groesse: 11796604 Bytes Linux, 11825664 Bytes Windows (mit mvdan/sh 3.14.1).

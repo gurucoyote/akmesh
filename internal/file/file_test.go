@@ -1,6 +1,8 @@
 package file
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -54,4 +56,71 @@ func TestDescribePESignature(t *testing.T) {
 	if !strings.Contains(got, "PE32+") || !strings.Contains(got, "x86-64") {
 		t.Fatalf("PE type came out as %q", got)
 	}
+}
+
+// TestRunTellsTextFromBinary is the part an agent relies on before opening a
+// file: is this text or bytes?
+func TestRunTellsTextFromBinary(t *testing.T) {
+	dir := t.TempDir()
+	text := filepath.Join(dir, "a.txt")
+	if err := os.WriteFile(text, []byte("hallo\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	bin := filepath.Join(dir, "b.bin")
+	if err := os.WriteFile(bin, []byte{0x00, 0x01, 0x02, 0xff}, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := describe(t, text)
+	if !strings.Contains(got, "text") && !strings.Contains(got, "ASCII") {
+		t.Errorf("text file described as %q", got)
+	}
+	got = describe(t, bin)
+	if !strings.Contains(got, "data") {
+		t.Errorf("binary file described as %q", got)
+	}
+}
+
+// TestRunMissingFileReportsIt: a missing path is an error message and a nonzero
+// exit, not an empty answer.
+func TestRunMissingFileReportsIt(t *testing.T) {
+	dir := t.TempDir()
+	out, err := os.Create(filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer out.Close()
+	errFile, err := os.Create(filepath.Join(dir, "err"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer errFile.Close()
+	code := Run([]string{"no-such-file-xyz"}, nil, out, errFile)
+	if code == 0 {
+		t.Fatalf("exit: want nonzero for a missing file, got 0")
+	}
+	msg, _ := os.ReadFile(errFile.Name())
+	if msg == nil || len(msg) == 0 {
+		t.Errorf("no message on stderr")
+	}
+}
+
+// describe runs file on one path and returns its output as a plain string.
+func describe(t *testing.T, path string) string {
+	t.Helper()
+	dir := t.TempDir()
+	out, err := os.Create(filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer out.Close()
+	errFile, err := os.Create(filepath.Join(dir, "err"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer errFile.Close()
+	if code := Run([]string{path}, nil, out, errFile); code != 0 {
+		t.Fatalf("file %s: exit %d", path, code)
+	}
+	data, _ := os.ReadFile(out.Name())
+	return string(data)
 }

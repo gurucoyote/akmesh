@@ -111,7 +111,10 @@ Preis des Forks; der Test macht ihn sichtbar.
 Bisher geforkt: head (acmesh-86m: -5, -q, -v, Exit 1 bei Lesefehler), chmod
 (acmesh-agt: -R, -v/-c mit GNUs Wortlaut, +x wie GNU), cp (acmesh-1fs: -a, -p,
 -t DIR, -n, -v im GNU-Format), xargs (acmesh-icw: -I, -r, -d, -P, Exit
-123/124/127), tar (acmesh-r9r: -czf/-tzf/-xzf, gzip-Erkennung beim Lesen, -C,
+123/124/127), touch (acmesh-6u2: -t im GNU-Format, -d mit den geschriebenen Datumsformen, -r),
+tr (acmesh-6lw: -s, -c, Bereiche wie a-z), wc (acmesh-7ih: -m,
+--files0-from), base64 (acmesh-dv0: -w, -i), hexdump (acmesh-0fd: -C),
+tar (acmesh-r9r: -czf/-tzf/-xzf, gzip-Erkennung beim Lesen, -C,
 --strip-components, --exclude), find
 (acmesh-29n: Startpfad optional, -maxdepth, -mindepth, -exec, -not, -path,
 -print0, "./" wie GNU) und grep (acmesh-2nz: -E, -w, -o, -A/-B/-C, -r/-R,

@@ -133,6 +133,30 @@ check tar-C-listing "a.txt" "$(run tar -tf t2.tar 2>/dev/null | tr -d '\r')"
 checkcode tar-j-refused 2 "$(run tar -cjf t.tbz tdir >/dev/null 2>&1; echo $?)"
 rm -rf tdir tout t.tgz te.tgz t2.tar
 
+# hexdump -C, base64 -w, wc -m, tr -sc/-cd and touch -t are the individual
+# switches; each check guards one spelling an agent writes.
+printf 'AB' > small.bin
+check hexdump-canonical "ja" "$(run hexdump -C small.bin | grep -q '41 42' && echo ja)"
+check hexdump-ascii "|AB|" "$(run hexdump -C small.bin | sed -n 's/.*\(|AB|\).*/\1/p' | tr -d '\r')"
+check hexdump-final-offset "00000002" "$(run hexdump -C small.bin | tail -1 | tr -d '\r')"
+check base64-wrap0 "1" "$(printf 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/dummy\n' | run base64 -w0 | wc -l | tr -d ' ')"
+awk 'BEGIN{for(i=0;i<100;i++)printf "a"}' > long.txt
+check base64-default-wrap "ja" "$(run base64 long.txt 2>/dev/null | head -1 | grep -qE '^.{76}$' && echo ja || echo nein)"
+printf 'abc\n' > wct.txt
+check wc-chars "4" "$(run wc -m wct.txt | awk '{print $1}')"
+check wc-bytes "4" "$(run wc -c wct.txt | awk '{print $1}')"
+check tr-range "ABC" "$(printf 'abc' | run tr a-z A-Z | tr -d '\r')"
+check tr-complement "1234" "$(printf 'ab12cd34' | run tr -cd 0-9 | tr -d '\r')"
+check tr-squeeze "a b" "$(printf 'a   b' | run tr -s ' ' | tr -d '\r')"
+printf 'x' > tstamp.txt
+checkcode touch-stamp 0 "$(run touch -t 202001020304 tstamp.txt >/dev/null 2>&1; echo $?)"
+case "$BIN" in
+*.exe) ;;
+*) check touch-stamp-year "2020" "$(run stat -c %y tstamp.txt 2>/dev/null | cut -c1-4)" ;;
+esac
+checkcode touch-date 0 "$(run touch -d '2020-01-02 03:04:05' tstamp.txt >/dev/null 2>&1; echo $?)"
+rm -f small.bin wct.txt tstamp.txt long.txt
+
 # xargs starts a real program, so the command is the binary itself: echo and
 # false are builtins on Windows and cannot be started.
 check xargs-replace "[a]" "$(printf 'a\n' | run xargs -I{} "$BIN" echo '[{}]' | tr -d '\r')"

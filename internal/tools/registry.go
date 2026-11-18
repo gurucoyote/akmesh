@@ -29,6 +29,7 @@ type Func func(args []string, stdin *os.File, stdout, stderr *os.File) int
 // Commands maps a command name to its implementation.
 var Commands = map[string]Func{
 	"awk":       runAwk,
+	"base64":    runBase64,
 	"basename":  runBasename,
 	"chmod":     runChmod,
 	"cp":        runCp,
@@ -46,6 +47,7 @@ var Commands = map[string]Func{
 	"hostname":  runHostname,
 	"du":        runDu,
 	"free":      runFree,
+	"hexdump":   runHexdump,
 	"iconv":     runIconv,
 	"jq":        runJq,
 	"kill":      runKill,
@@ -71,7 +73,10 @@ var Commands = map[string]Func{
 	"truncate":  runTruncate,
 	"true":      runTrue,
 	"tar":       runTar,
+	"touch":     runTouch,
+	"tr":        runTr,
 	"uname":     runUname,
+	"wc":        runWc,
 	"xargs":     runXargs,
 	"gosh":      runSh,
 }

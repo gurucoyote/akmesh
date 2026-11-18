@@ -1,5 +1,14 @@
 {
   "forks": {
+    "base64": {
+      "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
+      "files": [
+        {
+          "sha256": "ab717e2b376b6913da794441382841fb5f631761e978960cf36475f2307b5561",
+          "upstream": "cmds/core/base64/base64.go"
+        }
+      ]
+    },
     "chmod": {
       "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
       "files": [
@@ -54,6 +63,42 @@
         {
           "sha256": "80264fef5244e8518c0d2b256a923c34afffa99a4cf293233fb3dc562c81ceb6",
           "upstream": "cmds/core/head/head.go"
+        }
+      ]
+    },
+    "hexdump": {
+      "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
+      "files": [
+        {
+          "sha256": "ff97655a6e8ad09750e3fbfa63d9286a236af6006006f8a1c870c48fc3256645",
+          "upstream": "cmds/core/hexdump/hexdump.go"
+        }
+      ]
+    },
+    "touch": {
+      "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
+      "files": [
+        {
+          "sha256": "1c4721157b32edc316d1a4b4b348a20062bde1e00a60dd48ee0f02efb8d7f8d9",
+          "upstream": "cmds/core/touch/touch.go"
+        }
+      ]
+    },
+    "tr": {
+      "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
+      "files": [
+        {
+          "sha256": "25f2e08ac8910b7bc5e1c038ecbe8940ee9ab4fdd98397dcde1c6cf8d216a80a",
+          "upstream": "cmds/core/tr/tr.go"
+        }
+      ]
+    },
+    "wc": {
+      "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
+      "files": [
+        {
+          "sha256": "fecd60d308880e8ed99eddfb9334cf95d83bdcc463f2e4c7f62651dd92e020de",
+          "upstream": "cmds/core/wc/wc.go"
         }
       ]
     },

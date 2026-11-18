@@ -5,13 +5,13 @@
 # shell
 
 # files and text
-# head, find, grep, chmod, cp, xargs and tar are not here: they are forked into internal/forked/, and a fork
+# head, find, grep, chmod, cp, xargs, tar, hexdump, base64, wc, tr and touch are not here: they are forked into internal/forked/, and a fork
 # takes the name away from u-root (see scripts/fork-uroot.sh, OURS_ALL).
-ls cat more tail uniq tr tee wc cmp comm
-mv rm mkdir touch ln mktemp readlink realpath
+ls cat more tail uniq tee cmp comm
+mv rm mkdir ln mktemp readlink realpath
 
 # archives, hashes, encoding
-cpio gzip base64 md5sum shasum dd strings hexdump
+cpio gzip md5sum shasum dd strings
 
 # system and time
 date time uptime sleep id printenv which man

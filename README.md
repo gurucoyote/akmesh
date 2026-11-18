@@ -23,7 +23,8 @@ in one place, and whose behaviour can be measured instead of guessed.
   Linux, named acmesh. It carries the 48 u-root commands, the shell (gosh), the ssh client,
   strace on Linux, and our own tools where u-root has a gap or builds only for
   Linux.
-- chmod, cp, find, grep, head, tar and xargs are forked copies of u-root commands (BSD-3-Clause,
+- base64, chmod, cp, find, grep, head, hexdump, tar, touch, tr, wc and xargs are
+  forked copies of u-root commands (BSD-3-Clause,
   copyright the u-root authors, see internal/forked/), because agents type
   `head -5`, `find -name x`, `find . -maxdepth 1` and `grep -rn`, and upstream's
   flag parsing refuses those spellings.

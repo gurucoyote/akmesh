@@ -830,3 +830,49 @@ chmod-recursive(-mode), chmod-verbose, chmod-try-hint, xargs-replace/-chunk/
 cp-no-clobber, tar-create-gzip, tar-list-gzip, tar-list-without-z, tar-exclude
 (-worked), tar-extract-strip, tar-strip-file, tar-C-create/-listing,
 tar-j-refused.
+
+## Einzelschalter: hexdump -C, base64 -w, wc -m, tr -s/-c, touch -t/-d (18.11.2026)
+
+Geforkt und gegen GNU (debian stable-slim) verglichen, Ausgabe und Exit-Code.
+Hexdump und touch brauchten Werkzeuge, die im slim-Image fehlen bzw. eine
+Zeitzone: hexdump kam per bsdextrautils, touch verglich ich mit TZ=Europe/Berlin.
+
+    hexdump -C                               byte-identisch zur GNU-Ausgabe
+                                             (Offset, 16 Slots in zwei Achtergruppen, |ASCII|)
+    hexdump -C -n 4                          identisch
+
+    base64 (Default 76 Spalten)              identisch
+    base64 -w 10 / -w0                       identisch
+    base64 -d / -d -i                        identisch; ohne -i Exit 1 auf Muell
+
+    wc / wc -l / -m / -c / -lw               identisch
+    wc --files0-from=LISTE                   identisch (je Datei eine Zeile, total)
+
+    tr a-z A-Z                               identisch (Bereiche werden aufgeloest)
+    tr -s a / -s ' '                         identisch (ein SET genuegt)
+    tr -cd 0-9                               identisch
+    tr -c a AB                               identisch (SET2 wird mit dem letzten Zeichen verlaengert)
+    tr -ds a / tr a                          Exit 1, GNUs zwei Zeilen plus Try-Hinweis
+
+    touch -t 202001020304                    identisch (lokale Zeit)
+    touch -t 2001020304                      identisch (zweistelliges Jahr)
+    touch -t 202001020304.05                 identisch
+    touch -d '2020-01-02 03:04:05'           identisch
+    touch -d 2020-01-02 / -d now             identisch
+    touch -r DATEI                           identisch
+
+Zwei Fehler, die die Vergleiche gefunden haben: base64 liess den letzten
+Teilblock weg (der Encoder wurde nicht geschlossen, bei 100 Zeichen Eingabe
+fehlten die letzten Zeichen), und tr behandelte "a-z" als drei Zeichen statt als
+Bereich - damit war jedes tr a-z A-Z falsch. Ausserdem standen tr und wc noch in
+scripts/cmds.txt, also gewann u-root und die Forks waren unerreichbar.
+
+Groesse (vor dieser Runde: 11620476 Linux, 11650560 Windows):
+
+    Linux    11645052 Bytes  (+24576 fuer die fuenf Forks)
+    Windows  11674624 Bytes  (+24064 fuer die fuenf Forks)
+
+Tests: hexdump (3), base64 (3), wc (3), tr (5), touch (4); go test ./...
+gruen. Batterie: 165 Checks Linux, 145 Windows, 0 Fehler; neue Pruefungen
+hexdump-canonical/-ascii/-final-offset, base64-wrap0/-default-wrap, wc-chars,
+wc-bytes, tr-range, tr-complement, tr-squeeze, touch-stamp(-year), touch-date.

@@ -84,6 +84,25 @@ esac
 checkcode chmod-bad-mode 1 "$(run chmod 999 xmode >/dev/null 2>&1; echo $?)"
 check chmod-bad-mode-message "ja" "$(run chmod 999 xmode 2>&1 | grep -q 'unable to decode mode' && echo ja)"
 
+# stat, sync, hostname, policy: the four that had no test at all (acmesh-nyu)
+printf 'sechs\n' > statme.txt
+chmod 644 statme.txt
+check stat-size "6" "$(run stat -c '%s' statme.txt | tr -d '\r')"
+check stat-name "statme.txt" "$(run stat -c '%n' statme.txt | tr -d '\r' | sed 's|.*[/\\]||')"
+case "$BIN" in
+*.exe) ;;
+*) check stat-mode "644" "$(run stat -c '%a' statme.txt | tr -d '\r')" ;;
+esac
+checkcode stat-missing 1 "$(run stat /nicht/vorhanden >/dev/null 2>&1; echo $?)"
+checkcode stat-no-operand 2 "$(run stat >/dev/null 2>&1; echo $?)"
+checkcode sync-file 0 "$(run sync statme.txt >/dev/null 2>&1; echo $?)"
+checkcode sync-missing 1 "$(run sync /nicht/vorhanden >/dev/null 2>&1; echo $?)"
+check hostname-present "ja" "$(run hostname 2>/dev/null | grep -q . && echo ja)"
+checkcode hostname-set-refused 2 "$(run hostname neuer-name >/dev/null 2>&1; echo $?)"
+checkcode policy-unrestricted 1 "$(run policy >/dev/null 2>&1; echo $?)"
+check policy-check-allowed "ja" "$(run policy --check statme.txt 2>/dev/null | grep -q '^allowed: ' && echo ja)"
+checkcode policy-unknown 2 "$(run policy --quatsch >/dev/null 2>&1; echo $?)"
+
 # echo, pwd, true, false: the GNU echo semantics, not u-root's
 check echo-plain "a b" "$(run echo a b | tr -d '\r')"
 check echo-backslash 'a\nb' "$(run echo 'a\nb' | tr -d '\r')"

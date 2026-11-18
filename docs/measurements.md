@@ -637,3 +637,30 @@ deshalb bleibt es bei der Notiz.
 
 Eine Pruefung ist plattformabhaengig: unter Windows gibt es kein x-Bit, dort
 zaehlt nur der Exit-Code von chmod +x.
+
+## Tests fuer stat, sync, hostname, policy (18.11.2026)
+
+Die vier Befehle, die als einzige gar keine Pruefung hatten. Je eine Behauptung
+statt "lief ohne Absturz", alle vier mit Rotsprobe:
+
+    stat     %a ohne fuehrende Null ("644"), %s = 6, %F = "regular file",
+             Standardform beginnt mit "PFAD 6 0644", fehlender Operand Exit 2,
+             unbekannter Schalter Exit 2, fehlende Datei Exit 1
+    sync     vorhandene Datei Exit 0, fehlende Datei Exit 1, ohne Operand
+             Linux 0 / Windows 1 (dort gibt es kein ganze-System-Sync)
+    hostname = os.Hostname(), mit Operand Exit 2 ("setting the name is not
+             supported" statt still ignorieren)
+    policy   ohne ACMESH_POLICY Exit 1 und "no policy ...", --check auf eine
+             lesbare Datei "allowed: " Exit 0, auf eine fehlende "denied: "
+             Exit 1, --help Exit 0, unbekanntes Argument Exit 2
+
+Rotsproben, jeweils FAIL mit dem erwarteten Grund und danach zurueckgenommen:
+
+    stat: "%04o" -> "%o"          -> FAIL TestStatFormatDirectives
+    sync: Fehlerzweig -> return 0 -> "sync on a missing file: exit 0, want 1"
+    hostname: Operand akzeptiert  -> "hostname with an operand: exit 0, want 2"
+    policy: Exit 1 -> 0           -> "no policy = 0 ... want exit 1"
+
+Batterie: 113 Checks Linux, 97 Windows, 0 Fehler. Zwei Pruefungen sind
+plattformabhaengig: das x-Bit und der Modus von chmod/stat gibt es unter
+Windows nicht.

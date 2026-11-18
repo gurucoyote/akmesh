@@ -334,6 +334,40 @@ case "$BIN" in
   ;;
 esac
 
+# httpd: serve a directory, ask for a file and for a missing one. The root is
+# given as an absolute path: the .exe resolves a relative one against its own
+# view of the working directory, and that is not what this check is about.
+HD_DIR="$PWD/hd-test"
+mkdir -p "$HD_DIR" && printf '<h1>hd</h1>' > "$HD_DIR/index.html"
+# A port of this run: a fixed one collides with a server left over from an
+# earlier run, and then the check answers for the wrong directory.
+HTTPD_PORT=$((18100 + ($$ % 400)))
+run httpd -f -p 127.0.0.1:$HTTPD_PORT -h "$HD_DIR" >/dev/null 2>&1 &
+HTTPD_PID=$!
+# The .exe starts slower through the WSL interop than the Linux binary: wait
+# for the port instead of guessing a second (acmesh-m5j).
+tries=0
+while [ $tries -lt 40 ]; do
+  curl -s -m 1 -o /dev/null "http://127.0.0.1:$HTTPD_PORT/index.html" 2>/dev/null && break
+  sleep 0.5
+  tries=$((tries+1))
+done
+if command -v curl >/dev/null 2>&1; then
+  check httpd-file "1" "$(curl -s -m 5 http://127.0.0.1:$HTTPD_PORT/index.html 2>/dev/null | grep -c hd)"
+  check httpd-404 "404" "$(curl -s -m 5 -o /dev/null -w '%{http_code}' http://127.0.0.1:$HTTPD_PORT/nix 2>/dev/null)"
+fi
+kill $HTTPD_PID 2>/dev/null
+# The .exe is wrapped by /init, so the shell's $! is not the server: match the
+# port as well, or the next run finds a server on a closed directory.
+pkill -f "httpd -f -p 127.0.0.1:$HTTPD_PORT" 2>/dev/null
+rm -rf "$HD_DIR"
+
+# html2md: a fragment in, Markdown out, on both targets.
+check html2md-heading "### Titel" "$(printf '<h3>Titel</h3>' | run html2md | tr -d '\r')"
+check html2md-link "1" "$(printf '<p><a href="http://x/y">L</a></p>' | run html2md | tr -d '\r' | grep -c '(http://x/y)')"
+check html2md-escape "5" "$(printf '<p>5*3</p>' | run html2md | wc -c | tr -d ' ')"
+check html2md-stdin-empty "0" "$(printf '' | run html2md | wc -c | tr -d ' ')"
+
 # ps, kill, killall
 check ps-fields "PID COMM" "$(run ps -eo pid,comm | head -1 | tr -s ' ' | tr -d '\r' | sed 's/^ //;s/ $//')"
 check ps-ef-ppid "PPID" "$(run ps -ef | head -1 | tr -d '\r' | grep -o PPID | head -1)"

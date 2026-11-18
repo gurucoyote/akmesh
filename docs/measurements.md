@@ -1190,3 +1190,56 @@ Was beim Bau zu lernen war, jeder Punkt hat einen Lauf gekostet:
 - Der eigene execve des Programms ist nie dabei (das Kind stoppt am
   Exec-Ereignis, nicht an einem Syscall-Paar). Deshalb wird das Programm aus
   der Kommandozeile mit aufgenommen.
+
+## httpd (18.11.2026, acmesh-m5j)
+
+Ein Befehl, der ein Verzeichnis ueber HTTP oder HTTPS ausliefert, mit den
+Optionen von busybox httpd.
+
+    ./acmesh httpd -f -p 127.0.0.1:8099 -h /tmp/www
+    curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8099/           -> 200
+    curl -si http://127.0.0.1:8099/a.css | grep -i content-type              -> text/css; charset=utf-8
+    curl -s -r 0-3 http://127.0.0.1:8099/index.html                          -> <h1>
+    curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8099/nix          -> 404
+    ./acmesh httpd -p 8098                                                    -> "started in the background, pid N", 200 danach
+    ./acmesh httpd -f -p 127.0.0.1:8443 -S c.pem -K k.pem                     -> https 200, Klartext auf demselben Port 400
+    ./acmesh httpd -M x.mjs                                                   -> text/javascript; charset=utf-8
+    ./acmesh httpd -d 'a%20b'                                                 -> a b
+    ./acmesh httpd -e '<a>'                                                   -> &lt;a&gt;
+
+Groesze, gemessen mit measure-size.sh probe:
+
+    probe (base64)          2609276 Bytes
+    probe (base64 html2md)  2957436 Bytes   also 348160 fuer html2md
+    probe (base64 httpd)    6799484 Bytes   also 4190208 fuer httpd mit TLS
+
+Beides zusammen hebt das Binary von 11.927.676 auf 12.365.948 Bytes Linux und
+12.395.520 Bytes Windows. Die Warnlinie im Build steht darum jetzt bei 13 MB,
+der harte Stopp bleibt bei 16 MB.
+
+Batterie: Linux 178 Pruefungen, Windows 156, beide 0 Fehler.
+
+Zwei Fallen, die beim Bau Zeit gekostet haben:
+
+- Ein Hintergrundserver, der die Ausgabe des Aufrufers offen haelt, laesst den
+  Aufrufer haengen (busybox-Verhalten ohne -f). Der Kindprozess bekommt deshalb
+  /dev/null auf allen drei Streams und eine eigene Session.
+- Die .exe laeuft unter /init, der PID aus der Shell ist also nicht der Server.
+  Beim Aufraeumen muss das Muster den Port nennen, sonst bleibt ein Server auf
+  einem geloeschten Verzeichnis stehen und die naechste Pruefung fragt den
+  falschen. Ebenso darf der Port nicht fest sein: er kommt aus der PID dieses
+  Laufs.
+
+## html2md (18.11.2026)
+
+    ./acmesh html2md /root/rekr/content/music/demo.html
+    ### Atmende Seelen
+    play: [AtmendeSeelen.mp3](AtmendeSeelen.mp3) (03:57 min, 128kbit/sec)
+
+Ein HTML-Fragment nach Markdown, Regeln von Turndown und
+JohannesKaufmann/html-to-markdown. Gegenprobe an derselben Seite: 148 Woerter
+vorher und nachher, wie beim Python-Umsetzer in rekr; der Unterschied ist die
+Struktur: die Ueberschrift kommt als "### Atmende Seelen" heraus, nicht als
+"###", Leerzeile, Text.
+
+Groesze: 348160 Bytes (siehe oben). Batterie: Linux 178, Windows 156, 0 Fehler.

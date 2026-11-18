@@ -159,7 +159,7 @@ export GOWORK="$WORKFILE"
 
 # Every name our own tools provide. Where u-root also builds the same name for
 # the target, u-root wins: it is already in the list and needs no extra bytes.
-OURS_ALL="awk basename head find grep chmod cp echo false curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall md5sum nl patch ps sed sha1sum sha256sum sha512sum shuf sort split stat sync tac timeout truncate uname wget sh policy ssh scp pwd true xargs tar hexdump base64 wc tr touch tracedeps"
+OURS_ALL="awk basename head find grep chmod cp echo false curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall md5sum nl patch ps sed sha1sum sha256sum sha512sum shuf sort split stat sync tac timeout truncate uname wget sh policy ssh scp pwd true xargs tar hexdump base64 wc tr touch tracedeps html2md httpd"
 
 PROFILE_FILE="$ROOT/scripts/profiles/$PROFILE.txt"
 if [ ! -f "$PROFILE_FILE" ]; then
@@ -277,6 +277,10 @@ if [ "$SIZE" -gt 16000000 ]; then
 	echo "size: $OUT is $SIZE bytes, over the hard limit of 16000000 (acmesh-94e.15)" >&2
 	exit 1
 fi
-if [ "$SIZE" -gt 12000000 ]; then
-	echo "size: $OUT is $SIZE bytes, over the warning line of 12000000 (acmesh-94e.15)" >&2
+# The warning line was 12 MB. httpd brought the server side with it, measured
+# with measure-size.sh probe: base64 alone 2609276, base64+httpd 6799484, so
+# 4190208 bytes for a static file server with TLS. html2md costs 348160. Both
+# are wanted, so the line moved to 13 MB; the hard stop stays at 16 MB.
+if [ "$SIZE" -gt 13000000 ]; then
+	echo "size: $OUT is $SIZE bytes, over the warning line of 13000000 (acmesh-94e.15, acmesh-m5j)" >&2
 fi

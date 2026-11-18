@@ -362,6 +362,15 @@ kill $HTTPD_PID 2>/dev/null
 pkill -f "httpd -f -p 127.0.0.1:$HTTPD_PORT" 2>/dev/null
 rm -rf "$HD_DIR"
 
+# docx2md: a minimal docx (a zip with word/document.xml) in, Markdown out.
+if command -v python3 >/dev/null 2>&1; then
+  python3 /root/acmesh/scripts/make-test-docx.py dx-test.docx
+  check docx2md-heading "## Kapitel" "$(run docx2md dx-test.docx | tr -d '\r' | head -1)"
+  check docx2md-text "Text" "$(run docx2md dx-test.docx | tr -d '\r' | tail -1)"
+  check docx2md-not-a-docx "1" "$(printf 'kein zip' | run docx2md >/dev/null 2>&1; echo $?)"
+  rm -f dx-test.docx
+fi
+
 # html2md: a fragment in, Markdown out, on both targets.
 check html2md-heading "### Titel" "$(printf '<h3>Titel</h3>' | run html2md | tr -d '\r')"
 check html2md-link "1" "$(printf '<p><a href="http://x/y">L</a></p>' | run html2md | tr -d '\r' | grep -c '(http://x/y)')"

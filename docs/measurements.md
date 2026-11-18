@@ -1243,3 +1243,48 @@ Struktur: die Ueberschrift kommt als "### Atmende Seelen" heraus, nicht als
 "###", Leerzeile, Text.
 
 Groesze: 348160 Bytes (siehe oben). Batterie: Linux 178, Windows 156, 0 Fehler.
+
+## docx2md (18.11.2026, acmesh-gow Etappe 2)
+
+Ein .docx nach Markdown. Der Leser ist selbst geschrieben: archive/zip und
+encoding/xml aus der Standardbibliothek, kein fremdes Paket.
+
+    ./acmesh docx2md "/root/earthartsky.de/AntwortMaxi.docx" > maxi.md
+    ./acmesh docx2md document.docx            # mehrere Dateien nacheinander
+    ./acmesh docx2md < document.docx          # von der Standardeingabe
+
+Was die Teile tragen, an denen es scheitert, wenn man nur den Text liest:
+
+    Ueberschrift    pStyle "Heading1"/"berschrift1"/"Title"  -> # bis ######
+    Liste           numPr + word/numbering.xml (numFmt)      -> "- " oder "1. "
+    Tabelle         w:tbl, erste Zeile als Kopf              -> GFM-Tabelle
+    Link            w:hyperlink r:id + document.xml.rels     -> [Text](Ziel)
+    fett/kursiv     rPr b/i auf dem Lauf                     -> ** / *
+    Zeilenumbruch   w:br als Kind von w:p                    -> zwei Leerzeichen + Umbruch
+
+Gemessen an echten Dateien (AntwortMaxi.docx 308 Woerter, 3 ms; Shownotes
+dokument): vor dem Fix kamen Zeilenumbrueche als eine Zeile heraus, benachbarte
+fette Laeufe ergaben "**fett ****auch fett**", und "11. Juni" wurde zu
+"11\. Juni" maskiert. Alle drei sind jetzt Tests:
+TestLineBreakBetweenRuns, TestAdjacentBoldRunsMerge,
+TestNumbersInTheMiddleAreNotEscaped, dazu TestMarkersAlreadyProtectALine.
+
+Rotprobe: in listItem die Bedingung "format != bullet" mit "&& false"
+abgeschaltet -> genau TestNumberedList faellt, TestBulletList bleibt gruen;
+zurueckgenommen -> gruen.
+
+Groesze, mit measure-size.sh probe:
+
+    probe (base64)           2609276 Bytes
+    probe (base64 docx2md)   3043452 Bytes   also 434176 fuer docx2md
+    acmesh                   12472444 Bytes, acmesh.exe 12504064 Bytes
+
+Batterie: Linux 181 Pruefungen, Windows 159, beide 0 Fehler.
+
+Eine Falle, die eine Stunde gekostet hat und nicht im Bau lag: die .exe wird
+unter WSL ueber /init gestartet, und ein laufender acmesh.exe-Prozess haelt das
+Abbild seines Pfades fest. Nach dem Bau lieferte ./acmesh.exe deshalb weiter den
+alten Stand (der Befehl fehlte, obwohl die Datei byte-identisch mit dem guten
+Bau war: md5 gleich, eine Kopie unter anderem Namen lief richtig). Erst nach
+kill der beiden alten httpd-Prozesse war der neue Befehl da. Wer nach einem Bau
+"der Befehl fehlt" sieht, prueft zuerst laufende acmesh.exe: pgrep -af acmesh.exe.

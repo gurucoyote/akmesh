@@ -111,18 +111,35 @@ func (p *parser) text(s string) {
 	}
 }
 
+// Escape protects text that is about to be written as Markdown, so that what
+// looked like a character stays a character. Other converters in this binary
+// (docxmd) write the same kind of output and use the same rules.
+func Escape(text string) string { return escapeText(text) }
+
+// EscapeMidLine is Escape for text that does not start a line: the rules for
+// "#", "-" and "1." only apply at the start of a line, and applying them
+// everywhere turns "11. Juni" into "11\\. Juni".
+func EscapeMidLine(text string) string { return escapeTextOpt(text, false) }
+
 // escapeText is Turndown's escaping: the characters that would start markup are
 // escaped, and nothing else, so that "x := 1" stays readable.
-func escapeText(s string) string {
+func escapeText(s string) string { return escapeTextOpt(s, true) }
+
+// escapeTextOpt is escapeText with the line start as a parameter.
+func escapeTextOpt(s string, startOfLine bool) string {
 	var b strings.Builder
 	b.Grow(len(s) + 8)
-	lineStart := true
+	lineStart := startOfLine
+	// digitsOnLine says whether everything on this line so far is a number that
+	// began it: only then is a dot a list marker.
+	digitsOnLine := startOfLine
 	for i := 0; i < len(s); i++ {
 		c := s[i]
 		switch {
 		case c == '\n':
 			b.WriteByte(c)
 			lineStart = true
+			digitsOnLine = true
 			continue
 		case strings.IndexByte("\\`*_[]|", c) >= 0:
 			b.WriteByte('\\')
@@ -133,8 +150,9 @@ func escapeText(s string) string {
 		case (c == '-' || c == '+' || c == '=') && lineStart:
 			b.WriteByte('\\')
 			b.WriteByte(c)
-		case c == '.' && digitsBefore(b.String()):
-			// "1." at the start of a line would become an ordered list item.
+		case c == '.' && digitsOnLine && digitsBefore(b.String()):
+			// "1." at the start of a line would become an ordered list item;
+			// "11. Juni" in the middle of a sentence is a date.
 			b.WriteByte('\\')
 			b.WriteByte(c)
 		default:
@@ -142,6 +160,11 @@ func escapeText(s string) string {
 		}
 		if c != ' ' && c != '\t' {
 			lineStart = false
+		}
+		if c < '0' || c > '9' {
+			if c != ' ' && c != '\t' {
+				digitsOnLine = false
+			}
 		}
 	}
 	return b.String()

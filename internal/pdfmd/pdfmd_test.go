@@ -3,6 +3,7 @@ package pdfmd
 import (
 	"bytes"
 	"compress/zlib"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -243,5 +244,61 @@ func TestNoHeadingWithoutContrast(t *testing.T) {
 	}
 	if strings.Contains(got, "#") {
 		t.Errorf("headings without a size difference: %q", got)
+	}
+}
+
+// TestTableFromColumns: three cells per row at fixed x positions are a table.
+// A PDF has no table either - only cells that line up, which is what a reader
+// can see and what pdf-inspector uses.
+func TestTableFromColumns(t *testing.T) {
+	content := "BT /F1 10 Tf 72 700 Td (Name) Tj 100 0 Td (Ort) Tj 100 0 Td (Zeit) Tj ET " +
+		"BT /F1 10 Tf 72 680 Td (Anna) Tj 100 0 Td (Bremen) Tj 100 0 Td (10 Uhr) Tj ET"
+	got, err := Convert(pageWith("", content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "| Name | Ort | Zeit |\n| --- | --- | --- |\n| Anna | Bremen | 10 Uhr |\n"
+	if !strings.Contains(got, want) {
+		t.Errorf("keine Tabelle aus den Spalten:\n%q", got)
+	}
+}
+
+// TestProseStaysProse: a page without aligned cells must not become a table,
+// or every paragraph of a book would.
+func TestProseStaysProse(t *testing.T) {
+	content := "BT /F1 10 Tf 72 700 Td (Ein Satz, der einfach nur Text ist.) Tj ET " +
+		"BT /F1 10 Tf 72 680 Td (Noch ein Satz ohne Spalten.) Tj ET"
+	got, err := Convert(pageWith("", content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got, "|") {
+		t.Errorf("Fliesstext wurde zur Tabelle:\n%q", got)
+	}
+}
+
+// TestTableFromRectangles: many calendars and invoices have no text columns at
+// all - each cell carries a filled rectangle. Text and cells are both drawn
+// through the current transformation matrix, so a reader that ignores it can
+// not put them together.
+func TestTableFromRectangles(t *testing.T) {
+	var b strings.Builder
+	// Two columns, two rows of 100x20 cells, with a 0.5 scale transform.
+	b.WriteString(".5 0 0 .5 0 0 cm ")
+	cells := [][2]string{{"A1", "B1"}, {"A2", "B2"}}
+	for row := 0; row < 2; row++ {
+		for col := 0; col < 2; col++ {
+			x := 100 + col*100
+			y := 600 - row*40
+			b.WriteString(fmt.Sprintf("%d %d 100 20 re f ", x, y))
+			b.WriteString(fmt.Sprintf("BT /F1 10 Tf %d %d Td (%s) Tj ET ", x+5, y+6, cells[row][col]))
+		}
+	}
+	got, err := Convert(pageWith("", b.String()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "| A1 | B1 |") || !strings.Contains(got, "| A2 | B2 |") {
+		t.Errorf("keine Tabelle aus den Rechtecken:\n%q", got)
 	}
 }

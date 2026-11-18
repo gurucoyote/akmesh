@@ -637,12 +637,27 @@ func parseCMap(s string) map[uint32]rune {
 // one glyph after another, so a space may only be inserted where the gap is
 // wider than a word space. Without that, a heading comes out as "W o r l d".
 func textOf(content []byte, fonts map[string]*font) string {
+	lines, rects := textOfLines(content, fonts)
+	// A page whose cells are drawn as rectangles is a table; the text that sits
+	// inside those cells is the table, and the rest of the page order would only
+	// repeat it.
+	if t := tableFromRects(rects, lines); t != "" {
+		return t
+	}
+	return renderLines(lines)
+}
+
+// textOfLines reads a content stream into lines with their positions; the
+// rendering is a separate step, because a table needs the whole page.
+func textOfLines(content []byte, fonts map[string]*font) ([]textLine, []rect) {
 	// A line is collected with the size it was set in: the size is the only
 	// thing in a PDF that says "heading", so it has to survive the reading.
 	var lines []textLine
 	var buf bytes.Buffer
+	var pieces []piece
 	lineSizes := map[float64]int{}
 	curSize := 10.0
+	lineY := 0.0
 	flushLine := func() {
 		t := strings.TrimRight(buf.String(), " \t")
 		if strings.TrimSpace(t) != "" {
@@ -653,13 +668,16 @@ func textOf(content []byte, fonts map[string]*font) string {
 					best, size = n, sz
 				}
 			}
-			lines = append(lines, textLine{text: t, size: size})
+			lines = append(lines, textLine{text: t, size: size, y: lineY, pieces: pieces})
 		}
 		buf.Reset()
+		pieces = nil
 		lineSizes = map[float64]int{}
 	}
 	var cur *font
 	size := 10.0
+	m := identity()
+	var stack []matrix
 	// tx, ty are the text matrix: Td and Tm move it, and the text of the next
 	// operator starts there. The pen moves on its own while a string is
 	// written, so the gap between two pieces is tx minus where the last piece
@@ -704,8 +722,25 @@ func textOf(content []byte, fonts map[string]*font) string {
 		}
 		spacePending = false
 		buf.WriteString(text)
+		// A run with a wide run of spaces inside is how many writers lay out a
+		// row of cells: the gap is in the string, not in the positions. Splitting
+		// it keeps the cells apart, which is what a table needs.
+		px, py := m.apply(tx, ty)
+		if parts := splitWideGaps(text); len(parts) > 1 {
+			offset := 0.0
+			for _, part := range parts {
+				x := px + offset*size/1000
+				if part.text != "" {
+					pieces = append(pieces, piece{text: part.text, x: x, y: py, w: advancePart(part.text, size, m)})
+				}
+				offset += part.offset
+			}
+		} else {
+			pieces = append(pieces, piece{text: text, x: px, y: py, w: advance(b)})
+		}
 		lineSizes[size] += len([]rune(text))
 		curSize = size
+		lineY = ty
 		lastStart = tx
 		lastWidth = advance(b)
 		lineHasText = true
@@ -713,6 +748,17 @@ func textOf(content []byte, fonts map[string]*font) string {
 
 	for _, t := range tokens(string(content)) {
 		switch t.op {
+		case "q":
+			stack = append(stack, m)
+		case "Q":
+			if n := len(stack); n > 0 {
+				m = stack[n-1]
+				stack = stack[:n-1]
+			}
+		case "cm":
+			if len(t.nums) >= 6 {
+				m = m.mul(matrix{a: t.nums[0], b: t.nums[1], c: t.nums[2], d: t.nums[3], e: t.nums[4], f: t.nums[5]})
+			}
 		case "BT":
 			tx, ty = 0, 0
 			lastStart, lastWidth = 0, 0
@@ -760,19 +806,387 @@ func textOf(content []byte, fonts map[string]*font) string {
 		}
 	}
 	flushLine()
-	return renderLines(lines)
+	for i := range lines {
+		if len(lines[i].pieces) > 0 {
+			lines[i].y = lines[i].pieces[0].y
+		}
+	}
+	return lines, collectRects(content)
 }
 
-// textLine is one line of the page with the size most of its characters were
-// set in.
+// matrix is the current transformation matrix of a content stream. Text and
+// rectangles are both placed through it, so a reader that ignores it cannot put
+// a piece of text into the cell it belongs to.
+type matrix struct {
+	a, b, c, d, e, f float64
+}
+
+func identity() matrix { return matrix{a: 1, d: 1} }
+
+// mul returns m applied after n ("cm" concatenates).
+func (m matrix) mul(n matrix) matrix {
+	return matrix{
+		a: m.a*n.a + m.b*n.c,
+		b: m.a*n.b + m.b*n.d,
+		c: m.c*n.a + m.d*n.c,
+		d: m.c*n.b + m.d*n.d,
+		e: m.e*n.a + m.f*n.c + n.e,
+		f: m.e*n.b + m.f*n.d + n.f,
+	}
+}
+
+// apply puts a point of the current space into page coordinates.
+func (m matrix) apply(x, y float64) (float64, float64) {
+	return m.a*x + m.c*y + m.e, m.b*x + m.d*y + m.f
+}
+
+// rect is a filled or stroked rectangle in page coordinates.
+type rect struct {
+	x, y, w, h float64
+}
+
+// collectRects reads the rectangles of a content stream, following q/Q and cm
+// so that the cells and the text end up in the same coordinate system.
+func collectRects(content []byte) []rect {
+	var out []rect
+	var cur *rect
+	m := identity()
+	stack := []matrix{}
+	var pending []rect
+	for _, t := range tokens(string(content)) {
+		switch t.op {
+		case "q":
+			stack = append(stack, m)
+		case "Q":
+			if n := len(stack); n > 0 {
+				m = stack[n-1]
+				stack = stack[:n-1]
+			}
+		case "cm":
+			if len(t.nums) >= 6 {
+				m = m.mul(matrix{a: t.nums[0], b: t.nums[1], c: t.nums[2], d: t.nums[3], e: t.nums[4], f: t.nums[5]})
+			}
+		case "re":
+			if len(t.nums) >= 4 {
+				x1, y1 := m.apply(t.nums[0], t.nums[1])
+				x2, y2 := m.apply(t.nums[0]+t.nums[2], t.nums[1]+t.nums[3])
+				r := rect{x: minf(x1, x2), y: minf(y1, y2), w: absf(x2 - x1), h: absf(y2 - y1)}
+				pending = append(pending, r)
+				cur = &pending[len(pending)-1]
+			}
+		case "f", "F", "f*", "S", "s", "B", "B*", "b", "b*":
+			// The rectangle drawn last is the shape that was painted.
+			if cur != nil {
+				out = append(out, *cur)
+			}
+			cur = nil
+			pending = nil
+		case "n", "W", "W*":
+			cur = nil
+			pending = nil
+		}
+	}
+	return out
+}
+
+func minf(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// tableFromRects builds a table from cells drawn as rectangles. A cell takes the
+// text whose middle falls inside it, which is how a calendar or an invoice is
+// laid out. Only rectangles that could be a cell are used: a page background or
+// a decorative band is too large for that.
+func tableFromRects(rects []rect, lines []textLine) string {
+	var cells []rect
+	for _, r := range rects {
+		if r.w < 6 || r.h < 6 || r.h > 80 || r.w > 300 {
+			continue
+		}
+		cells = append(cells, r)
+	}
+	if len(cells) < 4 {
+		return ""
+	}
+	// Group by row: the y of a cell within a few points is the same row.
+	sortRects(cells, func(a, b rect) bool { return a.y > b.y })
+	type row struct {
+		y   float64
+		col []rect
+	}
+	var rows []row
+	for _, r := range cells {
+		placed := false
+		for i := range rows {
+			if absf(rows[i].y-r.y) <= 2 {
+				rows[i].col = append(rows[i].col, r)
+				placed = true
+				break
+			}
+		}
+		if !placed {
+			rows = append(rows, row{y: r.y, col: []rect{r}})
+		}
+	}
+	// Columns: the distinct left edges across all rows.
+	var xs []float64
+	for _, r := range cells {
+		found := false
+		for _, x := range xs {
+			if absf(x-r.x) <= 3 {
+				found = true
+				break
+			}
+		}
+		if !found {
+			xs = append(xs, r.x)
+		}
+	}
+	if len(xs) < 2 || len(rows) < 2 {
+		return ""
+	}
+	sortFloats(xs)
+	table := make([][]string, len(rows))
+	filled := 0
+	for i, rw := range rows {
+		table[i] = make([]string, len(xs))
+		for _, c := range rw.col {
+			col := 0
+			for k, x := range xs {
+				if absf(x-c.x) <= 3 {
+					col = k
+				}
+			}
+			text := textInRect(c, lines)
+			if text != "" {
+				filled++
+			}
+			if table[i][col] == "" {
+				table[i][col] = text
+			}
+		}
+	}
+	if filled < len(rows) {
+		return ""
+	}
+	var out strings.Builder
+	for i, rw := range table {
+		out.WriteString("|")
+		for _, c := range rw {
+			out.WriteString(" " + strings.ReplaceAll(c, "|", "\\|") + " |")
+		}
+		out.WriteString("\n")
+		if i == 0 {
+			out.WriteString("|")
+			for range rw {
+				out.WriteString(" --- |")
+			}
+			out.WriteString("\n")
+		}
+	}
+	return out.String()
+}
+
+// textInRect returns the text whose middle lies inside the cell.
+func textInRect(c rect, lines []textLine) string {
+	var parts []string
+	for _, l := range lines {
+		for _, pc := range l.pieces {
+			mx := pc.x + pc.w/2
+			my := l.y
+			if mx >= c.x && mx <= c.x+c.w && my >= c.y && my <= c.y+c.h {
+				parts = append(parts, pc.text)
+			}
+		}
+	}
+	return strings.TrimSpace(strings.Join(parts, " "))
+}
+
+func sortRects(v []rect, less func(a, b rect) bool) {
+	for i := 1; i < len(v); i++ {
+		for j := i; j > 0 && less(v[j], v[j-1]); j-- {
+			v[j], v[j-1] = v[j-1], v[j]
+		}
+	}
+}
+
+func sortFloats(v []float64) {
+	for i := 1; i < len(v); i++ {
+		for j := i; j > 0 && v[j] < v[j-1]; j-- {
+			v[j], v[j-1] = v[j-1], v[j]
+		}
+	}
+}
+
+// textLine is one line of the page: its text, the size most of it was set in,
+// its y position and the runs it was made of. Columns are found by comparing
+// those positions; a PDF carries nothing else that says "table".
 type textLine struct {
-	text string
-	size float64
+	text   string
+	size   float64
+	y      float64
+	pieces []piece
 }
 
-// renderLines turns the collected lines into Markdown. The body size is the one
-// that carries the most characters; a line set clearly larger than that is a
-// heading, and the level follows the distance from the body size.
+// piece is one run of text and where it stands on the page.
+type piece struct {
+	text string
+	x    float64
+	y    float64
+	w    float64
+}
+
+// sortedPieces returns the runs of a line from left to right.
+func sortedPieces(l textLine) []piece {
+	out := make([]piece, len(l.pieces))
+	copy(out, l.pieces)
+	for i := 1; i < len(out); i++ {
+		for j := i; j > 0 && out[j].x < out[j-1].x; j-- {
+			out[j], out[j-1] = out[j-1], out[j]
+		}
+	}
+	return out
+}
+
+// cellGap is the distance that separates two cells: a word space is much
+// narrower than that.
+func cellGap(l textLine) float64 {
+	if l.size <= 0 {
+		return 9
+	}
+	return 0.9 * l.size
+}
+
+// startsOf returns where the cells of a line begin.
+func startsOf(l textLine) []float64 {
+	sorted := sortedPieces(l)
+	if len(sorted) == 0 {
+		return nil
+	}
+	gap := cellGap(l)
+	out := []float64{sorted[0].x}
+	lastEnd := sorted[0].x + sorted[0].w
+	for _, pc := range sorted[1:] {
+		if pc.x-lastEnd > gap {
+			out = append(out, pc.x)
+		}
+		lastEnd = pc.x + pc.w
+	}
+	return out
+}
+
+// cellsOf splits a line into its cells at the gaps found by startsOf.
+func cellsOf(l textLine) []string {
+	sorted := sortedPieces(l)
+	if len(sorted) == 0 {
+		return nil
+	}
+	gap := cellGap(l)
+	var cells []string
+	cur := sorted[0].text
+	lastEnd := sorted[0].x + sorted[0].w
+	for _, pc := range sorted[1:] {
+		if pc.x-lastEnd > gap {
+			cells = append(cells, strings.TrimSpace(cur))
+			cur = pc.text
+		} else {
+			cur += pc.text
+		}
+		lastEnd = pc.x + pc.w
+	}
+	return append(cells, strings.TrimSpace(cur))
+}
+
+// tableGroup returns the rows that form a table starting at i: at least two
+// rows, the same number of cells, and cell starts that line up within 3pt. One
+// row is not a table - a line of text with a wide gap is still a line.
+func tableGroup(lines []textLine, i int) []textLine {
+	if i >= len(lines) || len(lines[i].pieces) < 2 {
+		return nil
+	}
+	want := startsOf(lines[i])
+	if len(want) < 2 || !shortCells(cellsOf(lines[i])) {
+		return nil
+	}
+	rows := []textLine{lines[i]}
+	for j := i + 1; j < len(lines); j++ {
+		got := startsOf(lines[j])
+		if len(got) != len(want) || !shortCells(cellsOf(lines[j])) {
+			break
+		}
+		aligned := true
+		for k := range got {
+			if absf(got[k]-want[k]) > 3 {
+				aligned = false
+				break
+			}
+		}
+		if !aligned {
+			break
+		}
+		rows = append(rows, lines[j])
+	}
+	if len(rows) < 2 {
+		return nil
+	}
+	return rows
+}
+
+func shortCells(cells []string) bool {
+	for _, c := range cells {
+		if len([]rune(c)) > 90 {
+			return false
+		}
+	}
+	return true
+}
+
+func absf(v float64) float64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+// renderTable writes GFM: the first row is the header, as in every tool an
+// agent already knows.
+func renderTable(rows []textLine) string {
+	width := 0
+	table := make([][]string, 0, len(rows))
+	for _, r := range rows {
+		cells := cellsOf(r)
+		if len(cells) > width {
+			width = len(cells)
+		}
+		table = append(table, cells)
+	}
+	var out strings.Builder
+	for i, cells := range table {
+		for len(cells) < width {
+			cells = append(cells, "")
+		}
+		out.WriteString("|")
+		for _, c := range cells {
+			out.WriteString(" " + strings.ReplaceAll(c, "|", "\\|") + " |")
+		}
+		out.WriteString("\n")
+		if i == 0 {
+			out.WriteString("|")
+			for range cells {
+				out.WriteString(" --- |")
+			}
+			out.WriteString("\n")
+		}
+	}
+	return out.String()
+}
+
+// renderLines turns the collected lines into Markdown. Aligned rows become a
+// table, a line set clearly larger than the body text becomes a heading (the
+// size tiers pdf-inspector uses), and the rest is text.
 func renderLines(lines []textLine) string {
 	total := map[float64]int{}
 	for _, l := range lines {
@@ -787,16 +1201,28 @@ func renderLines(lines []textLine) string {
 	}
 	var out strings.Builder
 	prevHeading := false
-	for _, l := range lines {
+	for i := 0; i < len(lines); i++ {
+		if rows := tableGroup(lines, i); rows != nil {
+			if out.Len() > 0 {
+				out.WriteString("\n")
+			}
+			out.WriteString(renderTable(rows))
+			i += len(rows) - 1
+			prevHeading = false
+			continue
+		}
+		l := lines[i]
 		level := 0
 		if body > 0 && len([]rune(l.text)) <= 90 {
 			ratio := l.size / body
+			// The tiers are wide, because a document mixes sizes for reasons
+			// that are not a heading (a caption, a table cell, a footer).
 			switch {
-			case ratio >= 1.8:
+			case ratio >= 2.2:
 				level = 1
-			case ratio >= 1.4:
+			case ratio >= 1.7:
 				level = 2
-			case ratio >= 1.15:
+			case ratio >= 1.3:
 				level = 3
 			}
 		}
@@ -1042,4 +1468,51 @@ func cp1252(b byte) rune {
 		return r
 	}
 	return rune(b)
+}
+
+// gapPart is a piece of a run that was separated by a wide run of spaces.
+type gapPart struct {
+	text string
+	// offset is where the part starts, in thousandths of the font size from the
+	// start of the run.
+	offset float64
+}
+
+// splitWideGaps splits a run at three or more spaces, which is a column gap and
+// not a word space. A single or double space stays inside the text. The offset
+// of each part is in thousandths of the font size, counted from the start of the
+// run: a space is taken as 250, a character as 500, which is close enough to
+// place the parts against each other.
+func splitWideGaps(text string) []gapPart {
+	var parts []gapPart
+	pos := 0.0
+	i := 0
+	for i < len(text) {
+		if text[i] == ' ' {
+			j := i
+			for j < len(text) && text[j] == ' ' {
+				j++
+			}
+			pos += float64(j-i) * 250
+			i = j
+			continue
+		}
+		start := pos
+		j := i
+		for j < len(text) {
+			if text[j] == ' ' && j+2 < len(text) && text[j+1] == ' ' && text[j+2] == ' ' {
+				break
+			}
+			j++
+		}
+		parts = append(parts, gapPart{text: text[i:j], offset: start})
+		pos += float64(j-i) * 500
+		i = j
+	}
+	return parts
+}
+
+// advancePart estimates the width of a part when no font metrics are used.
+func advancePart(text string, size float64, m matrix) float64 {
+	return float64(len([]rune(text))) * 0.5 * size * absf(m.a)
 }

@@ -1380,3 +1380,40 @@ unter /tmp/a2.exe richtig lief. Umbenennen und touch halfen nicht, eine Kopie
 unter neuem Namen im selben Verzeichnis schon. Die Batterie laeuft deshalb auf
 einer Kopie mit frischem Pfad, und wer von Hand prueft, kopiert die .exe vorher
 unter einen neuen Namen.
+
+## Tabellen aus PDF (18./19.11.2026, acmesh-juj)
+
+Zwei Wege, beide ohne gezeichnete Gitterlinien:
+
+1. Textspalten. Stuecke einer Zeile, die durch eine Luecke groeszer als 0,9 der
+   Schriftgroesze getrennt sind, sind Zellen; mindestens zwei Zeilen mit
+   gleicher Zellenzahl und Startpunkten innerhalb von 3 pt sind eine Tabelle.
+   Der erste Zeilenkopf wird Tabellenkopf, wie in jedem Werkzeug, das ein Agent
+   kennt.
+2. Zellrechtecke. Viele Kalender und Formulare zeichnen jede Zelle als
+   gefuelltes Rechteck. Rechtecke werden mit der aktuellen Transformationsmatrix
+   (q/Q/cm) in Seitenkoordinaten gebracht, als Zeilen und Spalten geclustert und
+   mit dem Text gefuellt, dessen Mitte in der Zelle liegt. Ohne q/Q/cm passen
+   Text und Rechteck nicht zusammen; die Matrix ist der Kern davon.
+
+Ein Lauf mit drei oder mehr Leerzeichen im Text wird getrennt: manche Erzeuger
+legen die Spalte in den String statt in die Position.
+
+Gegenprobe an echten Dateien (Zeilen mit "|"):
+
+    EAS_AnmeldeformularTarot25_Jeannette(pe).pdf  11 Tabellenzeilen
+      | zum: | Tarot Camp 25 |
+      | am: | 14. - 21. Juni 2025 |
+    EAS_AnmeldeformularTarot25_Claudia.pdf         4
+    FlyerRunenVoehringen.pdf, Tarot Teaser.pdf, Witchcamp-Grid   0
+
+Im Witchcamp-Grid gibt es 22 Rechtecke, aber alle in einer Spalte (x=105,
+w=194) - Tagesbalken, kein Zellgitter. Dort bleibt es beim Text, und das ist
+richtig.
+
+Noch nicht gelesen: Formular-XObjects (/Subtype /Form) mit eigenem
+Inhaltsstrom. In den Anmeldeformularen steht ein Teil der Felder dort, deshalb
+fehlen Zeilen wie "Kursgebuehr:" in der Tabelle. Das ist ein eigenes Ticket.
+Batterie: Linux 189 Pruefungen 0 Fehler, Windows 167 0 Fehler.
+Groesze: pdf2md 2769020 Bytes gegen base64 2609276, acmesh 12562556,
+acmesh.exe 12595712.

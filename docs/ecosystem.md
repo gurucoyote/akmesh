@@ -238,3 +238,26 @@ Entscheidung: vi kommt nicht in den Umfang. Was ein Agent zum Bearbeiten
 braucht, ist da: ed (u-root), sed, awk, diff und patch. Ein vi bleibt ein
 eigenes Thema, falls es je gebraucht wird; dann mit einer Fassung, die keine
 externen Programme und kein /dev/tty voraussetzt.
+
+### Nachtrag zu Ven: Lizenz und Herkunft der Abhaengigkeit (18.11.2026)
+
+Lizenzseite, nachgesehen im Modul-Cache:
+
+    github.com/bkthomps/Ven v0.5.0      MIT      Copyright Bailey Thompson
+    github.com/gdamore/tcell v1.4.0     Apache-2.0
+    github.com/mattn/go-runewidth 0.0.7 MIT      Copyright Yasuhiro Matsumoto
+
+Alle drei sind freizuegig und vertragen sich mit dem BSD-3-Code im Rest des
+Binaries. Die Lizenz ist also nicht der Grund, warum Ven draussen bleibt. Sie
+waere eine Zeile mehr in NOTICE: MIT verlangt den Copyright-Hinweis, Apache-2.0
+zusaetzlich LICENSE und NOTICE.
+
+infocmp kommt nicht von Ven selbst, sondern aus tcell: tcell waehlt im
+Standardfall den dynamischen Terminfo-Treiber (terms_dynamic.go,
+terminfo/dynamic/dynamic.go) und ruft dafuer infocmp auf. Ein Editor, der eine
+Terminfo-Datenbank oder das Programm infocmp vorfinden muss, ist in einer Huelle
+ohne Userland nicht lauffaehig - und genau das ist der Zweck dieses Binaries.
+
+Der Ausweg waere, tcell statisch zu bauen oder Ven zu gabeln. Dann pflegen wir
+einen vi-Fork, dessen Upstream seit 2019 bei Fassung 0.5.0 steht, fuer einen
+Nutzen, den ed und sed heute schon abdecken.

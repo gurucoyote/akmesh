@@ -18,6 +18,8 @@ import (
 	"sync"
 
 	"acmesh/internal/policy"
+	"acmesh/internal/shuf"
+	"acmesh/internal/sort"
 )
 
 // Func is the signature every command implements. It receives the arguments
@@ -51,6 +53,8 @@ var Commands = map[string]Func{
 	"sha256sum": runSum("sha256"),
 	"sha512sum": runSum("sha512"),
 	"sh":        runSh,
+	"shuf":      shufcmd.Run,
+	"sort":      sortcmd.Run,
 	"split":     runSplit,
 	"stat":      runStat,
 	"sync":      runSync,

@@ -503,3 +503,41 @@ keine zusaetzlichen Dateien setzt:
 draußen verweigert. Neu in Go: Summenvektoren,
 Verteilungstabelle gegen cmd/<name>, Zeitlimit liefert 28 statt 7, 302 ohne -L
 liefert den Weiterleitungstext statt einer leeren Ausgabe.
+
+## sort und shuf (18.11.2026)
+
+Beide sind jetzt eigener Code: `internal/sort` (Treiber von uns, Vergleicher
+und -k-Grammatik aus qiangli/coreutils, MIT) und `internal/shuf` (Eigenbau nach
+GNU-Oberflaeche). Die Namen belegen sie selbst; `sort` steht nicht mehr in
+`scripts/cmds.txt`, beide stehen in `OURS_ALL`.
+
+Differenztest gegen echtes GNU sort, 42 Aufrufe, 0 Abweichungen:
+
+    podman run --rm -i -v $PWD:/work:ro,Z docker.io/library/debian:stable-slim \
+        sort -V /work/f.txt
+
+Geprueft: Vorgabe, -r, -u, -n, -f, -d, -b, -i, -M, -V, -h, -g, -s, -z,
+-k2, -k2,2, -k1.1,1.2, -t' ' -k2,2n, -k2,2 -u, -k1,1 -k2,2n, -c, -C, -cu,
+Eingabe von stdin, leere Eingabe. Dabei fielen vier Fehler der Vorlage auf,
+die behoben sind: monthCompare verglich bei gleichem Monat den Text im Key
+statt den Key gleich zu lassen, unitOrder nahm ohne Zahl den ersten Buchstaben
+als SI-Einheit ("Zebra" galt als Zetta), filevercmp war ein Bytevergleich
+statt gnulib-Ordnung ('~' vor allem, Nicht-Alphanumerisches hinter Buchstaben),
+und -g las "0x10" nicht als 16.
+
+Was gegen GNU NICHT abgedeckt ist: nur C/POSIX-Locale. Ein anderes LC_ALL oder
+LC_COLLATE wird mit Exit 2 abgewiesen statt still byteweise zu sortieren.
+
+    go test ./internal/sort ./internal/shuf   -> ok, 16 GNU-Faelle plus
+                                                 Eigenschaftstests fuer -R und shuf
+    ./scripts/test-acmesh.sh ./acmesh         -> 88 checks, 0 failures
+    ./scripts/test-acmesh.sh ./acmesh.exe     -> 74 checks, 0 failures
+
+Groesse (vorher 11.358.332 / 11.383.296):
+
+    acmesh      11.395.196   +36.864
+    acmesh.exe  11.425.792   +42.496
+
+-R verhaelt sich wie GNU: Hash je Schluessel, gleiche Schluessel bleiben
+zusammen. Gemessen: printf 'b\na\nb\n' | ./acmesh sort -R -> b, b, a.
+Wer wirklich durchmischen will, nimmt shuf (eigener Befehl).

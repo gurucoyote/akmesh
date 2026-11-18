@@ -155,7 +155,7 @@ export GOWORK="$WORKFILE"
 
 # Every name our own tools provide. Where u-root also builds the same name for
 # the target, u-root wins: it is already in the list and needs no extra bytes.
-OURS_ALL="awk basename curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall md5sum nl patch ps sed sha1sum sha256sum sha512sum split stat sync tac timeout truncate uname wget sh policy ssh scp"
+OURS_ALL="awk basename curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall md5sum nl patch ps sed sha1sum sha256sum sha512sum shuf sort split stat sync tac timeout truncate uname wget sh policy ssh scp"
 
 PROFILE_FILE="$ROOT/scripts/profiles/$PROFILE.txt"
 if [ ! -f "$PROFILE_FILE" ]; then

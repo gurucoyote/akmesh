@@ -71,6 +71,17 @@ check sed-quiet "b" "$(printf 'a\nb\nc\n' | run sed -n '2p' | tr -d '\r')"
 check awk-sum "summe 5" "$(printf 'x 2\ny 3\n' | run awk '{s+=$2} END {print "summe",s}' | tr -d '\r')"
 check awk-fs "y" "$(printf 'x:y\n' | run awk -F: '{print $2}' | tr -d '\r')"
 
+# sort and shuf: our own code since 2026-11-18, checked against GNU's order
+check sort-default "a b c" "$(printf 'c\na\nb\n' | run sort | tr -d '\r' | tr '\n' ' ' | sed 's/ $//')"
+check sort-numeric "1 2 10" "$(printf '10\n2\n1\n' | run sort -n | tr -d '\r' | tr '\n' ' ' | sed 's/ $//')"
+check sort-key "c 1|b 2|a 10" "$(printf 'b 2\na 10\nc 1\n' | run sort -t' ' -k2,2n | tr -d '\r' | tr '\n' '|' | sed 's/ $//;s/|$//')"
+check sort-version "v1.2.3 v1.9 v1.10" "$(printf 'v1.10\nv1.9\nv1.2.3\n' | run sort -V | tr -d '\r' | tr '\n' ' ' | sed 's/ $//')"
+check sort-unique "1 2" "$(printf '2\n1\n2\n' | run sort -u | tr -d '\r' | tr '\n' ' ' | sed 's/ $//')"
+checkcode sort-disorder 1 "$(printf 'b\na\n' | run sort -c >/dev/null 2>&1; echo $?)"
+checkcode sort-unknown-flag 2 "$(run sort --bogus >/dev/null 2>&1; echo $?)"
+check shuf-count 2 "$(printf 'a\nb\nc\nd\n' | run shuf -n 2 | tr -d '\r' | sed '/^$/d' | wc -l | tr -d ' ')"
+check shuf-range "1 2 3" "$(run shuf -i 1-3 | tr -d '\r' | sort | tr '\n' ' ' | sed 's/ $//')"
+
 # diff and patch: the round trip is the point
 printf 'eins\nzwei\ndrei\nvier\n' > a.txt
 printf 'eins\nZWEI\ndrei\nvier\nfuenf\n' > b.txt

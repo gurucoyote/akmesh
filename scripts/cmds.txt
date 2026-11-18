@@ -5,7 +5,7 @@
 # shell
 
 # files and text
-ls cat more head tail grep find sort uniq tr tee wc cmp comm
+ls cat more head tail grep find uniq tr tee wc cmp comm
 cp mv rm mkdir touch ln chmod mktemp readlink realpath
 
 # archives, hashes, encoding

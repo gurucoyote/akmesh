@@ -63,3 +63,17 @@ acht Netz-Pruefungen werden uebersprungen, nicht als Fehler gezaehlt.
 Die Grenze ist der Befehlssatz, nicht ein Schalter: was im Profil steht, wird
 nicht eingebaut, und was nicht gebaut ist, kann zur Laufzeit auch nicht
 aufgerufen werden.
+
+## Nachtrag 18.11.2026: der Ausschluss greift jetzt wirklich
+
+Zwei Fehler steckten in der Umsetzung, beide behoben:
+
+- cmds.txt fuehrt mehrere Namen pro Zeile, der Ausschluss verglich ganze Zeilen.
+  "exclude ping" traf deshalb nie "ping netcat". Die Liste wird jetzt in eine
+  Zeile pro Name zerlegt, und der Mitgliedstest arbeitet auf der wieder
+  zusammengesetzten Zeile.
+- fs.txt nannte netcat "nc", der Befehl heisst aber netcat.
+
+Ergebnis: acmesh-fs schrumpft von 9,32 auf 6,64 MiB, weil netcat samt crypto/tls
+vorher mitgelaufen ist. Die Pruefung, dass kein Netzcode im Binary ist, gilt
+jetzt fuer das ganze Binary, nicht nur fuer internal/tools.

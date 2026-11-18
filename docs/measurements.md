@@ -383,3 +383,57 @@ Bytes (Go, ungestrippt) und las daraus 1,1 MB Vorteil. Unser Bau laeuft aber mit
 
 TinyGo ist also 1.519.972 Bytes groesser als der gestrippte Go-Bau. Ein
 TinyGo-Bau des fs-Multicalls waere entsprechend rund 11,3 MB statt 9,32 MiB.
+
+## Korrektur 18.11.2026: das fs-Profil enthielt Netzcode
+
+Die Profil-Ausschluesse haben nie gegriffen. scripts/cmds.txt gruppiert die
+Namen auf Zeilen ("ping netcat"), der Filter verglich aber ganze Zeilen, also
+traf "exclude ping" nichts, und die Ausschlussliste nannte netcat zudem "nc".
+Damit blieb netcat im fs-Binary, und netcat zieht crypto/tls mit.
+
+Behoben in scripts/build-bb.sh (Liste wird zu einer Zeile pro Name, Mitgliedstest
+ueber eine wieder zusammengesetzte Zeile) und scripts/profiles/fs.txt (netcat
+statt nc). Gemessen mit Go:
+
+    acmesh-fs vor der Korrektur     9.777.276 Bytes (9,32 MiB)
+    acmesh-fs nach der Korrektur    6.959.228 Bytes (6,64 MiB)
+
+2.817.048 Bytes, die vorher als Netzcode mitgelaufen sind. Die Aussage, das
+fs-Binary enthalte kein net/http und kein TLS, galt nur fuer unseren eigenen
+Code; die u-root-Applets waren nie ausgeschlossen.
+
+## Voller fs-Bau unter TinyGo (18.11.2026)
+
+makebb laesst sich mit -compiler umlenken, das ist der Weg. Der Quelltext wird
+mit -g erzeugt, dann baut TinyGo ihn. Vier Huerden, alle im erzeugten Baum
+geloest, ohne Aenderung am Repository ausser den Skripten:
+
+- Modul und Abhaengigkeiten verlangen Go 1.27, TinyGo traegt 1.25.7: go.mod und
+  vendor/modules.txt werden heruntergesetzt;
+- u-root markiert viele Dateien mit "!tinygo", die Befehle lassen sich aber mit
+  dem Tag tinygo.enable zurueckholen; 5 Dateien brauchten die Ersetzung
+  "!tinygo" -> "(!tinygo || tinygo.enable)";
+- klauspost/compress hat unter TinyGo keine little-endian-Implementierung,
+  weil die einzige Datei an "!purego" haengt: Konstante im erzeugten Baum
+  entfernt;
+- cpio braucht os.Root, time braucht ProcessState.UserTime, beides fehlt in
+  TinyGos os: diese zwei Befehle fallen raus.
+
+Gemessen, gleicher Befehlssatz (fs ohne cpio und time):
+
+    Go, -s -w          6.828.156 Bytes (6,51 MiB)
+    TinyGo, -no-debug  4.430.544 Bytes (4,22 MiB)
+
+Also 2.397.612 Bytes weniger, 35 Prozent kleiner. Der volle fs-Bau mit allen
+Befehlen ist unter Go 6.959.228 Bytes, unter TinyGo nicht baubar.
+
+Was laeuft, geprueft am Binary: jq (6 aus [1,2,3]), sed, awk (Summe 6), sh mit
+Arithmetik, ls, cat. Was nicht laeuft, die Pruefbatterie test-ext.sh:
+61 von 66 gruen, 5 rot. Alle fuenf scheitern an TinyGos os/exec, das kein Dir und
+keine zusaetzlichen Dateien setzt:
+
+    env-assign           "env: files setting not implemented"
+    timeout-expires      "sh: directory setting not implemented"
+    sh-pipe              leere Ausgabe
+    policy-read-inside   leere Ausgabe
+    policy-write-inside  leere Ausgabe

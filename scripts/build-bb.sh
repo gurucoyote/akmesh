@@ -108,7 +108,9 @@ while read -r key value; do
 	esac
 done < "$PROFILE_FILE"
 
-NAMES=$(grep -v '^#' "$ROOT/scripts/cmds.txt" | sed '/^$/d')
+# One name per line: cmds.txt groups names on a line, and the profile excludes
+# compare whole lines. Without this, "exclude ping" never matched "ping netcat".
+NAMES=$(grep -v '^#' "$ROOT/scripts/cmds.txt" | tr ' ' '\n' | sed '/^$/d')
 for c in $PROFILE_EXCLUDE; do
 	NAMES=$(echo "$NAMES" | grep -v "^$c$" || true)
 done
@@ -123,7 +125,9 @@ for c in $UROOT_EXTRA; do
 		PKGS="$PKGS ./cmds/exp/$c"
 	fi
 done
-UROOT_NAMES=" $NAMES $UROOT_EXTRA "
+# Names back on one line for the membership test below.
+NAMES_SPACED=$(echo $NAMES)
+UROOT_NAMES=" $NAMES_SPACED $UROOT_EXTRA "
 OURS=""
 for c in $OURS_ALL; do
 	for x in $PROFILE_EXCLUDE; do
@@ -145,6 +149,13 @@ cd "$UROOT_DIR"
 if [ -n "$TAGS" ]; then
 	export GOFLAGS="-tags=$TAGS"
 	echo "build tags: $TAGS"
+fi
+# A generator-only run is what a non-Go compiler needs: makebb writes the
+# multicall source and the build is done by the caller.
+if [ -n "${ACMESH_GEN_DIR:-}" ]; then
+	"$MAKEBB" -g -gen-dir "$ACMESH_GEN_DIR" -o "$ROOT/$OUT" $PKGS
+	echo "generated: $ACMESH_GEN_DIR"
+	exit 0
 fi
 # shellcheck disable=SC2086
 "$MAKEBB" -o "$ROOT/$OUT" $PKGS

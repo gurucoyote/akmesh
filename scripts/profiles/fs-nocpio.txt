@@ -1,0 +1,6 @@
+# Same as fs, minus the two commands TinyGo cannot build (cpio needs os.Root,
+# time needs ProcessState.UserTime). Only used for a like-for-like size check.
+tags nonet
+exclude curl wget ssh scp
+exclude netcat ping ping6 ip ipconfig tftp httpd dhclient wget2
+exclude cpio time

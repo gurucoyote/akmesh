@@ -1,13 +1,16 @@
-// Command du is the du tool from internal/tools, reachable as its own
-// command inside the acmesh binary.
+// Command du is the du tool, reachable as its own command inside the acmesh
+// binary.
+//
+// It imports only internal/disk and not internal/tools: the table in
+// internal/tools pulls every tool we own into the binary (acmesh-mq1).
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/tools"
+	"acmesh/internal/disk"
 )
 
 func main() {
-	os.Exit(tools.Run("du"))
+	os.Exit(disk.Run("du", os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

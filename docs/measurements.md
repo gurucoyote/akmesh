@@ -1009,3 +1009,25 @@ Tests: die split- und ParseSize-Tests sind mit dem Code gewandert
 Linux, 149 Windows, 0 Fehler. Ein Fehler unterwegs: mein erster sync kannte nur
 den Aufruf ohne Argumente und brach den alten Test, der sync DATEI prueft -
 behoben, bevor irgendetwas committet wurde.
+
+## Aufteilung Etappe 5: Prozess und Datentraeger (18.11.2026, acmesh-mq1)
+
+ps, kill und killall liegen in internal/proc, weil sie ein Prozessmodell teilen
+(procInfo, die Signal-Tabelle, das Auflisten). timeout liegt in
+internal/timeout und holt sich Signaltabelle und Signalnamen aus proc ueber
+NormaliseSignal, SignalNumber und SignalProcess - zwei Tabellen waeren
+auseinandergelaufen. free, df und du liegen in internal/disk mit ihren
+storage_*.go-Dateien.
+
+Die Altdateien platform_unix.go/platform_windows.go/platform_other.go in
+internal/tools wurden dabei nicht mehr gebraucht: ihre Helfer (inodeOf, absPath,
+wholeSystemSync) sind mit den Befehlen umgezogen.
+
+Fehler unterwegs, beide vor dem Commit gefunden: mein erster sync kannte nur den
+Aufruf ohne Dateiargumente, und der Windows-Bau brach mit "absPath redeclared",
+weil internal/disk die Funktion doppelt hatte. Beide behoben.
+
+Probe mit free, df, du, ps, kill und timeout: 2.125.948 Bytes.
+
+Groesse: 11812988 Linux, 11843584 Windows.
+go test ./... gruen, Batterie 169/0 Linux und 149/0 Windows.

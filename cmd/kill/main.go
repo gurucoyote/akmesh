@@ -1,13 +1,16 @@
-// Command kill is the kill tool from internal/tools, reachable as its own
-// command inside the acmesh binary.
+// Command kill is the kill tool, reachable as its own command inside the acmesh
+// binary.
+//
+// It imports only internal/proc and not internal/tools: the table in
+// internal/tools pulls every tool we own into the binary (acmesh-mq1).
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/tools"
+	"acmesh/internal/proc"
 )
 
 func main() {
-	os.Exit(tools.Run("kill"))
+	os.Exit(proc.Run("kill", os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

@@ -1,13 +1,16 @@
-// Command timeout is the timeout tool from internal/tools, reachable as its own
-// command inside the acmesh binary.
+// Command timeout is the timeout tool, reachable as its own command inside the acmesh
+// binary.
+//
+// It imports only internal/timeout and not internal/tools: the table in
+// internal/tools pulls every tool we own into the binary (acmesh-mq1).
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/tools"
+	"acmesh/internal/timeout"
 )
 
 func main() {
-	os.Exit(tools.Run("timeout"))
+	os.Exit(timeout.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

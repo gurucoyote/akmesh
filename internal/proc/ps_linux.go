@@ -1,8 +1,10 @@
 //go:build !windows
 
-package tools
+package proc
 
 import (
+	"acmesh/internal/shared"
+
 	"os"
 	"path/filepath"
 	"strconv"
@@ -21,7 +23,7 @@ func listProcesses() ([]procInfo, error) {
 		return nil, err
 	}
 	bootTime := readBootTime()
-	users := readPasswd()
+	users := shared.ReadPasswd()
 	now := time.Now()
 	out := make([]procInfo, 0, len(entries))
 	for _, e := range entries {
@@ -54,23 +56,6 @@ func readBootTime() time.Time {
 		return time.Unix(secs, 0)
 	}
 	return time.Now()
-}
-
-// readPasswd maps user ids to names; a missing /etc/passwd only costs the name.
-func readPasswd() map[string]string {
-	users := map[string]string{}
-	data, err := os.ReadFile("/etc/passwd")
-	if err != nil {
-		return users
-	}
-	for _, line := range strings.Split(string(data), "\n") {
-		parts := strings.Split(line, ":")
-		if len(parts) < 3 {
-			continue
-		}
-		users[parts[2]] = parts[0]
-	}
-	return users
 }
 
 func readProc(pid int, bootTime time.Time, users map[string]string, now time.Time) (procInfo, bool) {

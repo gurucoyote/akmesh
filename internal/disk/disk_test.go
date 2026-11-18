@@ -1,4 +1,4 @@
-package tools
+package disk
 
 import (
 	"io"
@@ -11,7 +11,7 @@ import (
 
 // capture runs one command with its streams redirected into temp files and
 // returns what it wrote to stdout together with the exit code.
-func capture(t *testing.T, fn Func, args []string) (string, int) {
+func capture(t *testing.T, fn func([]string, *os.File, *os.File, *os.File) int, args []string) (string, int) {
 	t.Helper()
 	dir := t.TempDir()
 	out, err := os.Create(filepath.Join(dir, "stdout"))

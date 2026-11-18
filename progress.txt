@@ -101,3 +101,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-18  acmesh-mq1 Etappe 4: stat, truncate, split, sync, uname, hostname als Pakete; shared.ReadPasswd und shared.ParseSize; gegen GNU nachgemessen, go test gruen, Batterie 169/0 und 149/0.
 2026-11-18  acmesh-mq1 Etappe 6: Netzgruppe in internal/net, und Befund behoben: Policy lief nur ueber tools.Run, jetzt policy.Enter() in jedem main; Batterie 169/0 und 149/0.
 2026-11-18  acmesh-mq1 Etappe 7: letzte Pakete umgezogen, internal/tools nur noch Tabelle und Wrapper; Probe echo+true 2,5 MB statt 10,3 MB; Batterie 169/0 und 149/0.
+2026-11-18  acmesh-94e.11 und 94e.15 zu: Profil ext mit keep-Zeile baut 6,96 MB Linux und 6,98 MB Windows, Groessenbudget im Bau (12 MB Warnung, 16 MB Stopp); beide Ziele gruen 169/0 und 149/0.

@@ -169,14 +169,26 @@ if [ ! -f "$PROFILE_FILE" ]; then
 fi
 TAGS=""
 PROFILE_EXCLUDE=""
+PROFILE_KEEP=""
 while read -r key value; do
 	case "$key" in
 	''|'#'*) continue ;;
 	tags) TAGS="$value" ;;
 	exclude) PROFILE_EXCLUDE="$PROFILE_EXCLUDE $value" ;;
+	keep) PROFILE_KEEP="$PROFILE_KEEP $value" ;;
 	*) echo "profile $PROFILE: unknown line '$key'" >&2; exit 2 ;;
 	esac
 done < "$PROFILE_FILE"
+
+# "keep" is the short way to a small binary: everything that is not named is
+# excluded, ours and u-root's alike (acmesh-94e.11).
+if [ -n "$PROFILE_KEEP" ]; then
+	KEPT=" $PROFILE_KEEP "
+	if [ -n "$PROFILE_EXCLUDE" ]; then
+		echo "profile $PROFILE: keep and exclude together are ambiguous" >&2
+		exit 2
+	fi
+fi
 
 # One name per line: cmds.txt groups names on a line, and the profile excludes
 # compare whole lines. Without this, "exclude ping" never matched "ping netcat".
@@ -184,6 +196,13 @@ NAMES=$(grep -v '^#' "$ROOT/scripts/cmds.txt" | tr ' ' '\n' | sed '/^$/d')
 for c in $PROFILE_EXCLUDE; do
 	NAMES=$(echo "$NAMES" | grep -v "^$c$" || true)
 done
+if [ -n "$PROFILE_KEEP" ]; then
+	KEPTNAMES=""
+	for c in $NAMES; do
+		case "$KEPT" in *" $c "*) KEPTNAMES="$KEPTNAMES $c" ;; esac
+	done
+	NAMES=$(echo $KEPTNAMES | tr ' ' '\n' | sed '/^$/d')
+fi
 PKGS=""
 for c in $NAMES; do
 	PKGS="$PKGS ./cmds/core/$c"
@@ -203,6 +222,9 @@ for c in $OURS_ALL; do
 	for x in $PROFILE_EXCLUDE; do
 		[ "$c" = "$x" ] && continue 2
 	done
+	if [ -n "$PROFILE_KEEP" ]; then
+		case "$KEPT" in *" $c "*) ;; *) continue ;; esac
+	fi
 	case "$UROOT_NAMES" in
 	*" $c "*) ;;
 	*) OURS="$OURS $c" ;;
@@ -236,3 +258,25 @@ if tr -d '\000' < "$ROOT/$OUT" | grep -q 'not present in busybox'; then
 	exit 1
 fi
 ls -l "$ROOT/$OUT"
+
+# Size budget (acmesh-94e.15): a warning above 12 MB, a hard stop above 16 MB,
+# and a growth of more than 1 MB against the previous build of the same target
+# named in the build report. The last size is kept per target, not per profile,
+# because the profile name already says which binary this is.
+SIZE=$(stat -c %s "$ROOT/$OUT" 2>/dev/null || stat -f %z "$ROOT/$OUT")
+STATE="$ROOT/.build/last-size-$GOOS-$PROFILE"
+if [ -f "$STATE" ]; then
+	LAST=$(cat "$STATE")
+	GROWTH=$((SIZE - LAST))
+	if [ "$GROWTH" -gt 1048576 ]; then
+		echo "size: $OUT grew by $GROWTH bytes since the last build of this target ($LAST -> $SIZE)" >&2
+	fi
+fi
+echo "$SIZE" > "$STATE"
+if [ "$SIZE" -gt 16000000 ]; then
+	echo "size: $OUT is $SIZE bytes, over the hard limit of 16000000 (acmesh-94e.15)" >&2
+	exit 1
+fi
+if [ "$SIZE" -gt 12000000 ]; then
+	echo "size: $OUT is $SIZE bytes, over the warning line of 12000000 (acmesh-94e.15)" >&2
+fi

@@ -1091,3 +1091,34 @@ Bytes, weil die Tabelle jeden Befehl mitzog.
 
 Volles Binary: 11821180 Linux, 11854848 Windows.
 go test ./... gruen, Batterie 169/0 Linux und 149/0 Windows.
+
+## Das kleine Binary als Profil, und das Groessenbudget (18.11.2026, acmesh-94e.11, acmesh-94e.15)
+
+scripts/build-bb.sh kennt jetzt die Profilzeile "keep": alles, was nicht genannt
+ist, faellt aus dem Bau, unsere Befehle und die von u-root gleichermassen.
+Vorher konnte ein Profil nur ausschliessen, und unsere eigenen Befehle kamen
+immer alle mit.
+
+Neues Profil scripts/profiles/ext.txt: kein Netz (nonet), keine Compiler,
+ps/kill/killall/uname/hostname/free/df/du/sync/timeout, sh, die Textwerkzeuge,
+sha256sum, file, jq, find.
+
+    ./scripts/build-bb.sh linux ext     acmesh-ext     6963324 Bytes (6,6 MiB)
+    ./scripts/build-bb.sh windows ext   acmesh-ext.exe 6982144 Bytes (6,7 MiB)
+    ./scripts/build-bb.sh linux         acmesh        11821180 Bytes
+    ./scripts/build-bb.sh windows       acmesh.exe    11854848 Bytes
+
+Der kleine Bau ist damit 4,9 MB kleiner als der volle, bei 11,8 MB vorher gab es
+also gar keinen kleinen Bau.
+
+Geprueft auf dem Ziel: acmesh-ext auf Linux (ps -ef, uname -s, free -m, awk,
+sed -n, sha256sum, ls) und acmesh-ext.exe auf Windows (uname -s, ps, awk,
+sha256sum, diff). Ein nicht enthaltener Befehl sagt "command is not present in
+acmesh: curl" und endet mit Exit 1 - nicht mit 0 und nicht mit 127, das ist die
+Antwort des Verteilers von gobusybox.
+
+Groessenbudget im Bau: Warnung ueber 12.000.000 Bytes, harter Fehlschlag ueber
+16.000.000, und ein Zuwachs ueber 1 MB gegenueber dem letzten Bau desselben
+Ziels steht im Baubericht. Die letzte Groesse liegt in .build/last-size-<GOOS>-
+<Profil>, also nicht im Repo. Beide vollen Ziele bauen mit der Pruefung durch,
+Batterie 169/0 Linux und 149/0 Windows.

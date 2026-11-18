@@ -288,7 +288,19 @@ Der Windows-Bau von vannevar ist zurzeit rot:
 Das ist die Ctrl-Z-Behandlung, die ein eigenes File mit Build-Tag braucht.
 
 Fuer acmesh heisst das: vannevar ist der einzige Kandidat, der ohne fremdes
-Programm laeuft, aber er ist 17.014 Zeilen eigener Code fuer Betrachter und
-Editor, braucht fuer Windows erst eine Korrektur und bringt den w3m-Teil mit
-(x/net), den ein Agent in einer Huelle selten braucht. Ven ist klein und baut
-auf beiden Zielen, taugt aber nur dort, wo ein Userland mit ncurses steht.
+Programm laeuft, braucht fuer Windows aber erst eine Korrektur.
+
+Korrektur zu einer frueheren Formulierung: ein vi ohne Betrachter gibt es nicht.
+Wer editiert, muss den Text sehen; jedes Vollbild-vi ist auch ein Leser. Der
+Unterschied bei vannevar ist nicht "Betrachter gegen Editor", sondern der
+w3m-Teil: URLs holen (x/net), Verlauf, :open-Dialoge, Layout-Modus. Das ist eine
+Navigationsmaschine, und die braucht ein Agent, der Dateien liest und schreibt,
+nicht.
+
+Der eigentliche Pruefstein fuer beide ist ein anderer: Ven und vannevar sind
+Vollbildprogramme. Sie brauchen ein Terminal, ein tty, Tastendruecke und ein
+Auge davor. Ein Agent in einer Huelle hat keins davon - er arbeitet mit sed,
+awk, diff, patch und cat. Ein vi in diesem Binary waere also fuer den Menschen
+am Terminal gedacht, nicht fuer den Agenten, und das ist ein anderes Ziel als
+das Projektziel. Ven ist klein und baut auf beiden Zielen, taugt aber nur dort,
+wo ein Userland mit ncurses steht.

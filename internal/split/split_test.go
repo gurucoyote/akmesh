@@ -20,4 +20,3 @@ func TestSuffixName(t *testing.T) {
 		seen[name] = true
 	}
 }
-

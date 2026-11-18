@@ -1,4 +1,4 @@
-package tools
+package file
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 // runFile identifies a file from its first bytes, the way file(1) does for the
 // formats an agent actually meets. It is not a full magic database: the table
 // is short and readable, so that a wrong answer can be traced to a line.
-func runFile(args []string, stdin *os.File, stdout, stderr *os.File) int {
+func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	brief := false
 	mime := false
 	var files []string

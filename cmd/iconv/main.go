@@ -1,16 +1,18 @@
-// Command iconv is the iconv tool from internal/tools, reachable as its own
-// command inside the acmesh binary.
+// Command iconv is the iconv tool, reachable as its own command inside the acmesh
+// binary.
+//
+// It imports only internal/iconv and not internal/tools: the table in
+// internal/tools pulls every tool we own into the binary (acmesh-mq1).
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/tools"
-
+	"acmesh/internal/iconv"
 	"acmesh/internal/policy"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(tools.Run("iconv"))
+	os.Exit(iconv.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

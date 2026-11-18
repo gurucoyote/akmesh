@@ -1,4 +1,4 @@
-package tools
+package jq
 
 import (
 	"io"
@@ -10,7 +10,7 @@ import (
 
 // captureIn runs a command with the given stdin text and returns stdout plus
 // the exit code.
-func captureIn(t *testing.T, fn Func, args []string, input string) (string, int) {
+func captureIn(t *testing.T, fn func([]string, *os.File, *os.File, *os.File) int, args []string, input string) (string, int) {
 	t.Helper()
 	dir := t.TempDir()
 	in := filepath.Join(dir, "stdin")
@@ -66,7 +66,7 @@ func TestJqBasics(t *testing.T) {
 		{"len", []string{`length`}, `[1,2,3]`, "3\n"},
 	}
 	for _, c := range cases {
-		got, code := captureIn(t, runJq, c.args, c.input)
+		got, code := captureIn(t, Run, c.args, c.input)
 		if code != 0 {
 			t.Fatalf("%s: exit %d, output %q", c.name, code, got)
 		}
@@ -79,11 +79,11 @@ func TestJqBasics(t *testing.T) {
 // TestJqVariables checks --arg, --argjson and --slurpfile, which is how a script
 // avoids building a filter by string concatenation.
 func TestJqVariables(t *testing.T) {
-	got, _ := captureIn(t, runJq, []string{"-r", "--arg", "name", "Martin", ".x + $name"}, `{"x":"Hallo "}`)
+	got, _ := captureIn(t, Run, []string{"-r", "--arg", "name", "Martin", ".x + $name"}, `{"x":"Hallo "}`)
 	if got != "Hallo Martin\n" {
 		t.Fatalf("--arg gave %q", got)
 	}
-	got, _ = captureIn(t, runJq, []string{"--argjson", "n", "5", ".a + $n"}, `{"a":2}`)
+	got, _ = captureIn(t, Run, []string{"--argjson", "n", "5", ".a + $n"}, `{"a":2}`)
 	if got != "7\n" {
 		t.Fatalf("--argjson gave %q", got)
 	}
@@ -93,7 +93,7 @@ func TestJqVariables(t *testing.T) {
 	if err := os.WriteFile(extra, []byte(`{"b":2}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got, _ = captureIn(t, runJq, []string{"-c", "--slurpfile", "e", extra, ".a + ($e[0].b)"}, `{"a":1}`)
+	got, _ = captureIn(t, Run, []string{"-c", "--slurpfile", "e", extra, ".a + ($e[0].b)"}, `{"a":1}`)
 	if got != "3\n" {
 		t.Fatalf("--slurpfile gave %q", got)
 	}
@@ -101,27 +101,27 @@ func TestJqVariables(t *testing.T) {
 
 // TestJqExitStatus pins -e, because a script branching on jq relies on it.
 func TestJqExitStatus(t *testing.T) {
-	if _, code := captureIn(t, runJq, []string{"-e", ".a"}, `{"a":true}`); code != 0 {
+	if _, code := captureIn(t, Run, []string{"-e", ".a"}, `{"a":true}`); code != 0 {
 		t.Fatalf("truthy value gave %d, want 0", code)
 	}
-	if _, code := captureIn(t, runJq, []string{"-e", ".a"}, `{"a":false}`); code != 1 {
+	if _, code := captureIn(t, Run, []string{"-e", ".a"}, `{"a":false}`); code != 1 {
 		t.Fatalf("false gave %d, want 1", code)
 	}
-	if _, code := captureIn(t, runJq, []string{"-e", ".a"}, `{"a":null}`); code != 1 {
+	if _, code := captureIn(t, Run, []string{"-e", ".a"}, `{"a":null}`); code != 1 {
 		t.Fatalf("null gave %d, want 1", code)
 	}
-	if _, code := captureIn(t, runJq, []string{"-e", "empty"}, `{"a":1}`); code != 4 {
+	if _, code := captureIn(t, Run, []string{"-e", "empty"}, `{"a":1}`); code != 4 {
 		t.Fatalf("no output gave %d, want 4", code)
 	}
 }
 
 // TestJqRawInput checks -R and -R -s, the usual way to treat text as lines.
 func TestJqRawInput(t *testing.T) {
-	got, _ := captureIn(t, runJq, []string{"-R", "-r", ". + \"!\""}, "eins\nzwei\n")
+	got, _ := captureIn(t, Run, []string{"-R", "-r", ". + \"!\""}, "eins\nzwei\n")
 	if got != "eins!\nzwei!\n" {
 		t.Fatalf("-R gave %q", got)
 	}
-	got, _ = captureIn(t, runJq, []string{"-R", "-s", "-r", "split(\"\\n\") | length"}, "a\nb\nc\n")
+	got, _ = captureIn(t, Run, []string{"-R", "-s", "-r", "split(\"\\n\") | length"}, "a\nb\nc\n")
 	if got != "4\n" {
 		t.Fatalf("-R -s gave %q (three lines plus the trailing empty one)", got)
 	}
@@ -130,13 +130,13 @@ func TestJqRawInput(t *testing.T) {
 // TestJqErrors checks that a broken filter and broken input fail loudly with
 // different codes.
 func TestJqErrors(t *testing.T) {
-	if _, code := captureIn(t, runJq, []string{".a |"}, `{"a":1}`); code != jqExitCompile {
+	if _, code := captureIn(t, Run, []string{".a |"}, `{"a":1}`); code != jqExitCompile {
 		t.Fatalf("broken filter gave %d, want %d", code, jqExitCompile)
 	}
-	if _, code := captureIn(t, runJq, []string{".a"}, `{"a":}`); code != 2 {
+	if _, code := captureIn(t, Run, []string{".a"}, `{"a":}`); code != 2 {
 		t.Fatalf("broken input gave %d, want 2", code)
 	}
-	if _, code := captureIn(t, runJq, []string{"-Z"}, `{}`); code != 2 {
+	if _, code := captureIn(t, Run, []string{"-Z"}, `{}`); code != 2 {
 		t.Fatalf("unknown flag gave %d, want 2", code)
 	}
 }
@@ -148,11 +148,11 @@ func TestJqFiles(t *testing.T) {
 	if err := os.WriteFile(path, []byte(`{"a":[1,2]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got, code := captureIn(t, runJq, []string{"-c", ".a", path}, "")
+	got, code := captureIn(t, Run, []string{"-c", ".a", path}, "")
 	if code != 0 || got != "[1,2]\n" {
 		t.Fatalf("file input gave %q, exit %d", got, code)
 	}
-	got, _ = captureIn(t, runJq, []string{"-c", ".a"}, `{"a":[]}`)
+	got, _ = captureIn(t, Run, []string{"-c", ".a"}, `{"a":[]}`)
 	if !strings.Contains(got, "[]") {
 		t.Fatalf("empty array gave %q", got)
 	}

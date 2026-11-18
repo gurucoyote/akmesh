@@ -1,16 +1,17 @@
-// Command diff is the diff tool from internal/tools, reachable as its own
-// command inside the acmesh binary.
+// Command diff is the diff tool, reachable as its own command inside the acmesh
+// binary.
+//
+// It imports only internal/diffpatch and not internal/tools (acmesh-mq1).
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/tools"
-
+	"acmesh/internal/diffpatch"
 	"acmesh/internal/policy"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(tools.Run("diff"))
+	os.Exit(diffpatch.Run("diff", os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

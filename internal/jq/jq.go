@@ -1,4 +1,4 @@
-package tools
+package jq
 
 import (
 	"bufio"
@@ -21,7 +21,7 @@ const (
 
 // runJq is jq on top of gojq. The switches are the ones agents write: -r, -c,
 // -e, -n, -s, -j, -R, --arg, --argjson, --slurpfile and -f.
-func runJq(args []string, stdin *os.File, stdout, stderr *os.File) int {
+func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	var (
 		rawOutput bool
 		compact   bool

@@ -1056,3 +1056,38 @@ statt eine zweite Sperre zu halten. Batterie danach wieder 169/0 Linux und
 149/0 Windows.
 
 Groesse: 11817084 Linux, 11847168 Windows.
+
+## Aufteilung Etappe 7: der Rest, und das Ende der Sammelstelle (18.11.2026, acmesh-mq1)
+
+Die letzten Befehle liegen jetzt in eigenen Paketen:
+
+    internal/corecmd    echo, pwd, true, false
+    internal/env        env
+    internal/file       file
+    internal/iconv      iconv
+    internal/jq         jq
+    internal/sedawk     sed, awk
+    internal/diffpatch  diff, patch
+    internal/policycmd  policy
+    internal/sh         sh, gosh
+
+internal/tools enthaelt danach nur noch die Tabelle (registry.go) und die
+Wrapper zu den Paketen; jede Implementierung ist draussen. Einzig cmd/sh zieht
+die Tabelle bewusst mit, weil die Shell ihre eingebauten Befehle daraus nimmt.
+
+Nachgemessen, welche cmd-Pakete die Tabelle noch ziehen (go list -deps ./cmd/X,
+Zaehlung der Zeilen mit acmesh/internal/tools): echo, true, jq, file, iconv,
+env, sed, awk, diff, patch und policy stehen bei 0. Vorher stand jeder bei 1.
+
+Proben mit dem neuen Stand:
+
+    probe (echo true)                       2.547.836 Bytes
+    probe (jq file iconv env)               4.116.604 Bytes
+    probe (diff patch awk sed)              3.866.748 Bytes
+    probe (curl ssh)                        7.155.836 Bytes   (Netz, aus Etappe 6)
+
+Zum Vergleich der Anfang: ein Bau mit genau einem eigenen Befehl wog 10.338.428
+Bytes, weil die Tabelle jeden Befehl mitzog.
+
+Volles Binary: 11821180 Linux, 11854848 Windows.
+go test ./... gruen, Batterie 169/0 Linux und 149/0 Windows.

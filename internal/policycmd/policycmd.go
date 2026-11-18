@@ -1,4 +1,4 @@
-package tools
+package policycmd
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 // runPolicy explains and tests the policy of the current process. It is the
 // command a harness calls to see what is enforced, and it is how the test
 // battery proves that reading outside the list really fails.
-func runPolicy(args []string, stdin *os.File, stdout, stderr *os.File) int {
+func Run(cmd string, args []string, stdin *os.File, stdout, stderr *os.File) int {
 	check := ""
 	for i := 0; i < len(args); i++ {
 		switch args[i] {

@@ -1,4 +1,4 @@
-package tools
+package corecmd
 
 import (
 	"fmt"

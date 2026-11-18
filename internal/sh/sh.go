@@ -1,4 +1,4 @@
-package tools
+package sh
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 // language is POSIX-ish bash, but every file it opens, every program it starts
 // and every child those programs start lives inside the policy the process
 // applied before this function ran.
-func runSh(args []string, stdin *os.File, stdout, stderr *os.File) int {
+func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	command := ""
 	var positional []string
 	var scriptFile string

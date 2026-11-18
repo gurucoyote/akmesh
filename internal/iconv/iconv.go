@@ -1,4 +1,4 @@
-package tools
+package iconv
 
 import (
 	"fmt"
@@ -252,7 +252,7 @@ func encodeUTF16(s string, bigEndian bool) []byte {
 //
 // Output goes to stdout; unrepresentable characters are an error unless -c is
 // given, in which case they are dropped.
-func runIconv(args []string, stdin *os.File, stdout, stderr *os.File) int {
+func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	from, to := "", ""
 	ignore := false
 	list := false

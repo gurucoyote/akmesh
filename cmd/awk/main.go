@@ -1,16 +1,18 @@
-// Command awk is the awk tool from internal/tools, reachable as its own
-// command inside the acmesh binary.
+// Command awk is the awk tool, reachable as its own command inside the acmesh
+// binary.
+//
+// It imports only internal/sedawk and not internal/tools: the table in
+// internal/tools pulls every tool we own into the binary (acmesh-mq1).
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/tools"
-
+	"acmesh/internal/sedawk"
 	"acmesh/internal/policy"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(tools.Run("awk"))
+	os.Exit(sedawk.Run("awk", os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

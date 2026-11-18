@@ -1,4 +1,4 @@
-package tools
+package env
 
 import (
 	"errors"
@@ -14,7 +14,7 @@ import (
 // with the adjusted environment and returns its exit code. This is the one
 // command here that starts another process, so it passes the standard streams
 // through untouched.
-func runEnv(args []string, stdin *os.File, stdout, stderr *os.File) int {
+func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	var (
 		clearEnv  bool
 		unset     []string

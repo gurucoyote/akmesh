@@ -575,3 +575,32 @@ Rotsproben gefahren, jede mit dem erwarteten Grund, danach zurueckgenommen:
     "sha256sum": runSum("md5") -> FAIL "printed 90015098..., want the sha256sum digest"
     Monatsordnung gedreht      -> FAIL TestSortMatchesGNU/-M
     -R mit festem Seed         -> FAIL "-R produced the same order five times"
+
+## echo, pwd, true, false (18.11.2026)
+
+Vier Befehle, die in u-root liegen, aber nie in `scripts/cmds.txt` standen -
+ein Agent, der `pwd` oder `echo` tippt, landete im Ausweichpfad, den die Policy
+nicht sieht. Jetzt eigener Code in `internal/tools/corecmds.go`, alle vier in
+`OURS_ALL`.
+
+echo bewusst NICHT von u-root uebernommen: dessen echo interpretiert Escapes
+standardmaessig (`-e` ist dort true). Gemessen gegen GNU echo 9.7:
+
+    /bin/echo 'a\nb'        -> a\nb      (GNU: literal)
+    /bin/echo -e 'a\nb'     -> zwei Zeilen
+    /bin/echo -e 'x\0101y'  -> xAy
+    /bin/echo -e 'x\x41y'   -> xAy
+    /bin/echo -e 'a\cb'     -> "a", ohne Zeilenumbruch
+
+Unsere Fassung liefert dieselben fuenf Faelle (TestEchoMatchesGNU), u-roots
+haette beim ersten und beim letzten abweichend geantwortet. Rotsprobe:
+Escapes standardmaessig an -> FAIL "default-keeps-backslash".
+
+pwd -P loest Symlinks auf, -L bleibt logisch (Vorgabe). Unter Windows druckt
+das Binary einen UNC-Pfad; die Batterie vergleicht deshalb nur die letzte
+Pfadkomponente.
+
+    ./scripts/test-acmesh.sh ./acmesh     -> 95 checks, 0 failures
+    ./scripts/test-acmesh.sh ./acmesh.exe -> 81 checks, 0 failures
+
+Groesse: acmesh 11.403.388 (+8.192), acmesh.exe 11.431.936 (+6.144).

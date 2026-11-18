@@ -71,6 +71,16 @@ check sed-quiet "b" "$(printf 'a\nb\nc\n' | run sed -n '2p' | tr -d '\r')"
 check awk-sum "summe 5" "$(printf 'x 2\ny 3\n' | run awk '{s+=$2} END {print "summe",s}' | tr -d '\r')"
 check awk-fs "y" "$(printf 'x:y\n' | run awk -F: '{print $2}' | tr -d '\r')"
 
+# echo, pwd, true, false: the GNU echo semantics, not u-root's
+check echo-plain "a b" "$(run echo a b | tr -d '\r')"
+check echo-backslash 'a\nb' "$(run echo 'a\nb' | tr -d '\r')"
+check echo-escape-lines 2 "$(run echo -e 'a\nb' | tr -d '\r' | wc -l | tr -d ' ')"
+check echo-no-newline "x" "$(run echo -n x | tr -d '\r')"
+# pwd: the Windows binary prints a UNC path, so compare the last component.
+check pwd-here "$(basename "$PWD")" "$(run pwd | tr -d '\r' | sed 's|.*[/\\]||')"
+checkcode true-exit 0 "$(run true; echo $?)"
+checkcode false-exit 1 "$(run false; echo $?)"
+
 # sort and shuf: our own code since 2026-11-18, checked against GNU's order
 check sort-default "a b c" "$(printf 'c\na\nb\n' | run sort | tr -d '\r' | tr '\n' ' ' | sed 's/ $//')"
 check sort-numeric "1 2 10" "$(printf '10\n2\n1\n' | run sort -n | tr -d '\r' | tr '\n' ' ' | sed 's/ $//')"

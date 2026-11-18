@@ -1,4 +1,4 @@
-BIN=${1:-./ext}
+BIN=${1:-./acmesh}
 # The checks run inside a scratch directory, so the binary path must be
 # absolute before we change directory.
 case "$BIN" in
@@ -10,8 +10,8 @@ if [ ! -f "$BIN" ]; then
 	exit 2
 fi
 
-# The same checks serve both shapes: the combined busybox and the standalone
-# ext binary dispatch on the first argument alike, so no prefix is needed.
+# The battery runs against the acmesh binary for the target it was built for:
+# every check calls it as "acmesh <command> [args]".
 run() {
 	"$BIN" "$@"
 }

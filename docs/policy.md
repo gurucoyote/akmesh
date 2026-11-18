@@ -102,7 +102,7 @@ Job Objects und eingeschraenkte Token fest.
 
 ## Nachweis
 
-Getestet mit der Testbatterie (scripts/test-ext.sh), Linux:
+Getestet mit der Testbatterie (scripts/test-acmesh.sh), Linux:
 
 - policy meldet Exit 0 und nennt die Datei.
 - Lesen in /work: erlaubt und liefert den Inhalt.

@@ -81,7 +81,8 @@ func TestHostMatching(t *testing.T) {
 	}
 }
 
-// TestNoPolicyIsUnrestricted checks the plain busybox use case.
+// TestNoPolicyIsUnrestricted checks the plain acmesh use case: no policy file,
+// no restrictions.
 func TestNoPolicyIsUnrestricted(t *testing.T) {
 	if Active() != nil {
 		t.Skip("a policy is active in this process")
@@ -135,7 +136,7 @@ func TestSupportedReportsKernel(t *testing.T) {
 // TestWriteOnlyPolicyIsAccepted pins the documented "write implies read": a
 // policy may name only write paths, and Enforce hands that rule the read rights
 // as well. This test cannot call Enforce - it would confine the test process
-// for good - so the kernel side is proven live in scripts/test-ext.sh.
+// for good - so the kernel side is proven live in scripts/test-acmesh.sh.
 func TestWriteOnlyPolicyIsAccepted(t *testing.T) {
 	p, err := Parse([]byte(`{"version":1,"write":["/tmp/work"],"system_access":false}`), "test")
 	if err != nil {

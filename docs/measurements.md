@@ -111,6 +111,33 @@ scripts/build-bb.sh (Skriptname bleibt). Frueher hiess es bb; in den aelteren
 Abschnitten dieses Dokuments und in docs/groesse.md steht noch bb, weil das die
 Groessen von damals sind. Inhaltlich ist es dasselbe Binary.
 
+## Ein Binary, ein Name (18.11.2026)
+
+Das eigene ext-Binary ist entfernt, cmd/ext gibt es nicht mehr. Jeder eigene
+Befehl ist nur noch ein cmd/<name>-Paket, das build-bb.sh in dasselbe Binary
+baut. Die Testbatterie heisst deshalb scripts/test-acmesh.sh. In den aelteren
+Abschnitten steht noch scripts/test-ext.sh und die Groesse von ext: das waren
+Messungen am damaligen zweiten Binary, sie bleiben als Verlauf stehen.
+
+## ext entfernt, Meldungen auf acmesh (18.11.2026)
+
+cmd/ext und der zweite Verteiler (tools.Main, usage, Names, List) sind weg.
+Jeder eigene Befehl ist nur noch ein cmd/<name>-Paket. Skripte: build-ext.sh
+geloescht, test-ext.sh heisst test-acmesh.sh.
+
+    ./scripts/build-bb.sh linux   -> acmesh     11.358.332 Bytes (10,83 MiB)
+    ./scripts/test-acmesh.sh ./acmesh -> 76 checks, 0 failures
+    go test ./internal/...        -> ok policy, ok tools
+
+Meldungstext: "acmesh: unknown command" nennt jetzt den aufgerufenen Namen
+(programName aus os.Args[0]).
+
+Grenze, gemessen: `./acmesh gibtsnicht` antwortet weiter mit
+"Failed to run command: command is not present in busybox: gibtsnicht" und der
+Befehlsliste. Dieser Text kommt aus bbmain.ErrNotRegistered und dem
+Runner-main von gobusybox v0.6.0, nicht aus diesem Repo. Ihn zu aendern hiesse,
+den gepinnten u-root-Checkout zu patchen; das ist hier nicht vorgesehen.
+
 ## file, iconv, env (17.11.2026, gebaut und geprueft)
 
     ./scripts/build-bb.sh windows -> acmesh.exe 10.546.688 Bytes (10,06 MiB)

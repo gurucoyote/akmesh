@@ -66,9 +66,9 @@ func Active() *Policy {
 }
 
 // InitFromEnv loads ACMESH_POLICY and applies it. A missing variable means no
-// policy, which keeps the binary usable as a plain busybox. A variable that
-// points at a broken file is a hard error: running unconfined after a typo in a
-// policy would be the worst possible failure mode.
+// policy, which keeps the binary usable as a plain acmesh that restricts
+// nothing. A variable that points at a broken file is a hard error: running
+// unconfined after a typo in a policy would be the worst possible failure mode.
 func InitFromEnv() error {
 	activeMu.Lock()
 	defer activeMu.Unlock()

@@ -24,7 +24,7 @@ gemessen, qcore HEAD 6dd7a3e, Ziel windows/amd64:
 Der Befund: die Last ist das gemeinsame Geruest (multicall, tool, locale,
 collate, x/text, dazu mvdan/sh interp und der goawk-Fork), nicht die einzelnen
 Befehle. Selektiv spart 13 MB gegen die volle Liste - aber als zweites Binary
-neben unserer bb (8,9 MB) ergibt das 37 MB statt 41 MB, fuer doppelte Bauart
+neben unserem acmesh (8,9 MB) ergibt das 37 MB statt 41 MB, fuer doppelte Bauart
 und zwei Verteilungen.
 
 ## Zwei Nebenbefunde, die wichtiger sind als die Groesse
@@ -59,15 +59,17 @@ und zwei Verteilungen.
 - ps, kill, killall, uname, hostname, free, df, du, sync, timeout: selbst,
   in einem eigenen kleinen Multicall.
 
-## Vorschlag
+## Vorschlag (ueberholt)
 
-Ein zweites, kleines Binary `acmesh-ext` (eigener Unterbefehl-Verteiler, ohne
-Fremdgeruest), das genau die Luecken traegt: ps, kill, killall, uname,
-hostname, free, df, du, sync, timeout, spaeter awk und vielleicht sed.
-Geschaetzt 6 bis 12 MB, abhaengig von awk.
+Frueher stand hier ein zweites, kleines Binary `acmesh-ext` (eigener
+Unterbefehl-Verteiler, ohne Fremdgeruest), das genau die Luecken traegt: ps,
+kill, killall, uname, hostname, free, df, du, sync, timeout, spaeter awk und
+vielleicht sed.
 
-Damit bleibt: bb (8,9 MB, 48 u-root-Befehle) plus acmesh-ext (Luecken), beide
-ohne Fremd-Shell-Gabel, und keine 40-MB-Lieferung.
+Seit dem 18.11.2026 gibt es dieses Binary nicht mehr. Die Luecken sind
+integriert: jeder eigene Befehl ist ein eigenes main-Paket unter cmd/<name> und
+wird von scripts/build-bb.sh in dasselbe Binary gebaut, das schon die
+u-root-Befehle traegt.
 
 Die Alternative bleibt offen und ist eine Zeile Arbeit: die volle
 coreutils-Lieferung als ein 40,9-MB-Binary, dafuer mit bashy-Gabel und 153

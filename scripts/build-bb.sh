@@ -1,6 +1,6 @@
 #!/bin/sh
-# Build the acmesh busybox for one platform: one binary that carries the u-root
-# commands, the ssh client and the tools from internal/tools.
+# Build acmesh for one platform: one binary that carries the u-root commands,
+# the ssh client and the tools from internal/tools.
 #
 #   ./scripts/build-bb.sh windows   -> acmesh.exe
 #   ./scripts/build-bb.sh linux     -> acmesh

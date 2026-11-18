@@ -105,7 +105,7 @@ Go-Tests gegen einen httptest-Server, nicht gegen das Netz: Redirect-Kette,
 -Kopfzeilen, POST-Formular, multipart, Basic Auth, Cookies ueber zwei Anfragen,
 Bereichsanfrage, -f mit 404, Zeitueberschreitung, -s mit Body, -sL.
 
-Dazu Faelle in scripts/test-ext.sh gegen eine lokale Datei-URL entfallen, weil
+Dazu Faelle in scripts/test-acmesh.sh gegen eine lokale Datei-URL entfallen, weil
 file:// verboten ist; stattdessen startet der Testlauf einen kleinen Server aus
 dem Go-Test und die Shell-Batterie prueft nur die Schalterparsing-Fehler und
 -h.

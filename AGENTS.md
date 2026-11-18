@@ -15,8 +15,8 @@ are English; documents meant for Martin are German.
 - `cmd/<name>/`: one tiny `main` per own command, so that the combined binary
   reaches it under its plain name (`acmesh sed`). Adding a command means: implement
   in `internal/tools`, register in the table, add `cmd/<name>`.
-- `cmd/ext/`: standalone multicall binary over the same table, for building and
-  testing our tools without the u-root checkout.
+- `scripts/test-acmesh.sh`: the live battery, run against the built binary for
+  either target (`./scripts/test-acmesh.sh ./acmesh.exe`).
 - `scripts/build-bb.sh` writes `.build/go.work` (both modules) and passes the
   u-root packages plus our `cmd/<name>` packages to `makebb`.
 - `docs/design/acmesh.md`: architecture, decisions, licence notes.

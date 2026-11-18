@@ -1,5 +1,5 @@
 // Command sha1sum is the sha1sum tool from internal/tools, reachable as its own
-// command inside the combined busybox.
+// command inside the acmesh binary.
 package main
 
 import (

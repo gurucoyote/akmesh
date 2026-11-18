@@ -22,7 +22,7 @@ Drei Schichten, jede mit einer klaren Aufgabe:
    Formatter. Die Haekel (OpenHandler, StatHandler, ReadDirHandler2,
    ExecHandler, CallHandler) sind der Ort, an dem die Regeln stehen.
 2. Werkzeuge: u-root (BSD-3), mit gobusybox in dasselbe Binary gebaut.
-   Verteilung ueber `os.Args[1]`, also `bb.exe ls pfad`.
+   Verteilung ueber `os.Args[1]`, also `acmesh.exe ls pfad`.
 3. Eigene Befehle und die Policy-Schicht: dort, wo u-root fuer das Ziel nicht
    baut und dort, wo eine Regel durchgesetzt werden muss, die kein
    Fremdprogramm einhaelt.
@@ -42,7 +42,7 @@ dazu: Landlock unter Linux, Job Objects unter Windows, fuer jedes Kind.
   bauen fuer Windows ohne Aenderung.
 - gobusybox statt vieler Einzeldateien: 8,9 MB fuer 48 Befehle plus Shell
   gegen rund 3 MB je Einzel-EXE.
-- Unterbefehl-Form (`bb.exe ls`), nicht Symlink: Symlinks brauchen unter
+- Unterbefehl-Form (`acmesh.exe ls`), nicht Symlink: Symlinks brauchen unter
   Windows Rechte.
 - Die neun Befehle, die fuer Windows nicht bauen, werden per Build-Tag
   ausgeschlossen, nicht gepatcht. Sechs davon bauen wir selbst.

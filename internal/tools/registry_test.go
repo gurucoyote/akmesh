@@ -3,16 +3,15 @@ package tools
 import (
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
 )
 
-// TestCommandTableMatchesEntryPoints checks the wiring the combined binary
-// depends on. The table dispatches a name to a Func, but the busybox only
-// reaches that Func through cmd/<name>/main.go; a table entry without that
-// package, or a main that calls Run with another name, is a command the agent
-// cannot call or a command that silently runs a different tool.
+// TestCommandTableMatchesEntryPoints checks the wiring the acmesh binary depends
+// on. The table dispatches a name to a Func, but the binary only reaches that
+// Func through cmd/<name>/main.go; a table entry without that package, or a main
+// that calls Run with another name, is a command the agent cannot call or a
+// command that silently runs a different tool.
 func TestCommandTableMatchesEntryPoints(t *testing.T) {
 	root := filepath.Join("..", "..", "cmd")
 	entries, err := os.ReadDir(root)
@@ -37,10 +36,6 @@ func TestCommandTableMatchesEntryPoints(t *testing.T) {
 
 	for _, e := range entries {
 		name := e.Name()
-		if name == "ext" {
-			// The standalone multicall binary itself, not a command.
-			continue
-		}
 		if _, ok := Commands[name]; ok {
 			continue
 		}
@@ -62,22 +57,41 @@ func isNetCommand(name string) bool {
 	return false
 }
 
-// TestNamesIsCompleteAndSorted keeps ext --list honest: it is what an agent
-// reads to find out which commands exist in this build.
-func TestNamesIsCompleteAndSorted(t *testing.T) {
-	names := Names()
-	if len(names) != len(Commands) {
-		t.Fatalf("Names() returned %d names for %d commands", len(names), len(Commands))
+// TestRunUnknownCommandNamesTheProgram pins the message a mistyped command
+// produces: it must name the binary the caller started, not a program that does
+// not exist on disk.
+func TestRunUnknownCommandNamesTheProgram(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "stderr")
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("create stderr: %v", err)
 	}
-	if !sort.StringsAreSorted(names) {
-		t.Fatalf("Names() is not sorted: %v", names)
+	oldStderr, oldArgs := os.Stderr, os.Args
+	os.Stderr, os.Args = f, []string{"/usr/local/bin/acmesh.exe"}
+	code := Run("gibtsnicht")
+	os.Stderr, os.Args = oldStderr, oldArgs
+	f.Close()
+
+	if code != 2 {
+		t.Fatalf("unknown command exit %d, want 2", code)
 	}
-	for _, name := range names {
-		if name == "" {
-			t.Fatal("empty command name in the table")
-		}
-		if _, ok := Commands[name]; !ok {
-			t.Fatalf("Names() lists %q which the table does not have", name)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `acmesh.exe: unknown command "gibtsnicht"`
+	if !strings.Contains(string(data), want) {
+		t.Fatalf("message %q, want it to contain %q", data, want)
+	}
+}
+
+// TestNoEmptyCommandName keeps a typo in the table from becoming a command the
+// binary answers to and prints as a blank line.
+func TestNoEmptyCommandName(t *testing.T) {
+	for name := range Commands {
+		if name == "" || strings.TrimSpace(name) != name {
+			t.Fatalf("bad command name %q in the table", name)
 		}
 	}
 }

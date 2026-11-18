@@ -23,8 +23,8 @@ im Binary. Deshalb haengen die Netzbefehle an eigenen Dateien mit
 `//go:build !nonet`: netengine.go, curl.go, wget.go, sshfront.go, scp.go und
 scptimes.go. Mit dem Tag verschwinden sie samt ihrer Importe. Nachweisbar:
 
-    GOFLAGS=-tags=nonet go list -deps ./cmd/ext | grep -cE '^net/http$'   -> 0
-    GOFLAGS=-tags=nonet go list -deps ./cmd/ext | grep -cE '^crypto/tls$' -> 0
+    GOFLAGS=-tags=nonet go list -deps ./cmd/curl | grep -cE '^net/http$'   -> 0
+    GOFLAGS=-tags=nonet go list -deps ./cmd/curl | grep -cE '^crypto/tls$' -> 0
 
 und im Binary fehlen die Meldungen des Netzteils ("known_hosts", "HTTP error
 %d for", "does not allow network access").
@@ -40,7 +40,7 @@ liegen koennen.
 
 ## Pruefungen
 
-scripts/test-ext.sh erkennt selbst, ob ein Build Netz hat (curl -h antwortet).
+scripts/test-acmesh.sh erkennt selbst, ob ein Build Netz hat (curl -h antwortet).
 Der fs-Bau laeuft damit durch dieselbe Batterie: 66 Pruefungen statt 74, die
 acht Netz-Pruefungen werden uebersprungen, nicht als Fehler gezaehlt.
 

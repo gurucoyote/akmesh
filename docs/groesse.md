@@ -27,8 +27,8 @@ zahlt es immer.
    mit sed und awk: 4,1 MB zu 2,8 MB.
 4. Eigene Befehle nur mit der Standardbibliothek. cut, nl, tac, basename,
    stat, truncate, split kosten dann praktisch nichts ueber der Grundlast.
-5. Zwei kleine Binaries statt einer grossen: bb 8,9 MB plus acmesh-ext,
-   statt einer 40,9-MB-Lieferung.
+5. Ein Binary statt einer 40,9-MB-Lieferung: acmesh traegt die u-root-Befehle
+   und unsere eigenen Befehle zusammen, statt zwei getrennte Binaries.
 
 ## Was die Zutaten einzeln kosten (gemessen)
 
@@ -38,11 +38,12 @@ zahlt es immer.
 | sed (Go.Sed) als eigenes CLI | 3,0 MB (ungestrippt) |
 | sed + awk (Go.Sed + goawk) als Bibliotheken | 4,1 MB, gestrippt 2,8 MB |
 | diff + patch (go-difflib + go-gitdiff) | 2,0 MB gestrippt |
-| bb mit 48 u-root-Befehlen samt Shell | 8,9 MB |
+| acmesh mit 48 u-root-Befehlen samt Shell | 8,9 MB |
 
-Hochrechnung fuer acmesh-ext mit Stufe 1: Grundlast 1,0, sed und awk rund 1,8,
-diff und patch rund 1,0, eigene Befehle mit Standardbibliothek nahe null.
-Also 4 bis 5 MB. Zusammen mit bb etwa 13 bis 14 MB gegen 40,9 MB.
+Hochrechnung fuer unsere eigenen Befehle mit Stufe 1: Grundlast 1,0, sed und
+awk rund 1,8, diff und patch rund 1,0, eigene Befehle mit Standardbibliothek
+nahe null. Also 4 bis 5 MB als eigenes Binary; im gemeinsamen Binary faellt die
+Go-Grundlast nur einmal an.
 
 ## Befund am Rande
 
@@ -54,7 +55,7 @@ strikt, ohne Kontext-Fuzz. Wer diff und patch als Paar ausliefert, muss die
 Hunk-Koepfe genau erzeugen - also beim diff-Teil nachbessern oder gits
 Diff-Format uebernehmen.
 
-## Nachtrag: warum zwei Binaries - und warum das nicht bleiben muss
+## Nachtrag: warum es zuerst zwei Binaries waren - und warum das nicht bleibt
 
 Der Grund war eine Werkzeuggrenze, kein Entwurf. makebb nimmt nur Pakete aus dem
 Hauptmodul:
@@ -71,18 +72,17 @@ Mit einem go.work, das beide Module auffuehrt, faellt die Grenze:
         /root/acmesh
     )
 
-Damit gebaut, ein Binary mit allen 48 u-root-Befehlen plus cmd/ext:
+Damit gebaut, ein Binary mit allen 48 u-root-Befehlen plus unseren Befehlen:
 
     9.961.472 Bytes = 9,5 MiB
 
-Gegen zwei Binaries: 8,9 MiB (bb) plus 3,5 MiB (ext) = 12,4 MiB. Das eine
+Gegen zwei Binaries: 8,9 MiB plus 3,5 MiB = 12,4 MiB. Das eine
 Binary spart also rund 3 MB, weil die Go-Laufzeit nur einmal drin ist.
 
-Geprueft am gebauten Binary: `bbb.exe ls C:/Windows`, `bbb.exe ext basename
-/a/b/c.txt`, `bbb.exe ext awk ...`, `bbb.exe ext sed ...` und
-`bbb.exe gosh -c 'echo shell-im-selben-binary'` laufen alle.
+Geprueft am gebauten Binary (18.11.2026): `acmesh ls /root`, `acmesh basename
+/a/b/c.txt`, `acmesh awk ...`, `acmesh sed ...` und
+`acmesh gosh -c 'echo shell-im-selben-binary'` laufen alle.
 
-Offen ist nur die Benennung: unsere Befehle haengen unter "ext", also
-`bbb.exe ext sed`. Damit sie als `bbb.exe sed` erscheinen, braucht jeder Befehl
-ein eigenes kleines main-Paket (18 Dateien), das die gemeinsame Umsetzung
-aufruft. Das ist der saubere Endzustand.
+Die Benennung ist erledigt: jeder eigene Befehl hat ein eigenes kleines
+main-Paket, das die gemeinsame Umsetzung aufruft, also heisst er `acmesh sed`
+und nicht mehr `ext sed`. Das eigene ext-Binary ist entfernt.

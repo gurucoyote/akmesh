@@ -15,7 +15,7 @@ stdout plus stderr gegen bash 5.x, ohne die EXIT-Zeilen unseres Laeufers.
 
     python3 /root/.hermes/cache/scratch/shellsrc/conform/cmp34.py
 
-- mvdan/sh 3.11.0 (unser heutiges bb): 30 von 34.
+- mvdan/sh 3.11.0 (unser heutiges acmesh): 30 von 34.
 - mvdan/sh 3.14.1 upstream: 30 von 34.
 - qiangli/sh (Klon HEAD a4141771): 31 von 34.
 

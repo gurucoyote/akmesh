@@ -1,5 +1,5 @@
 // Command stat is the stat tool from internal/tools, reachable as its own
-// command inside the combined busybox.
+// command inside the acmesh binary.
 package main
 
 import (

@@ -36,7 +36,7 @@ Gemessen: github.com/itchyny/gojq, das uebliche Go-jq. Eigenes Binary:
 5.760.512 Bytes, also 5,49 MB gestrippt. Funktioniert ('.a|length' -> 3,
 '.b.c' -> "x").
 
-Als Bibliothek in acmesh-ext eingebettet sind es rund 4,5 MB Zuwachs, das
+Als Bibliothek in acmesh eingebettet sind es rund 4,5 MB Zuwachs, das
 Binary ginge von 3,5 auf etwa 8 MB.
 
 Selbst schreiben ist keine Option: jq ist eine Sprache mit Lexer, Parser,

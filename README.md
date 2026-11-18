@@ -33,7 +33,8 @@ in one place, and whose behaviour can be measured instead of guessed.
   reading it would mean touching foreign memory.
 - Filesystem policy: set ACMESH_POLICY to a JSON file and the kernel (Landlock)
   refuses every path outside it, for this process and every child. See
-  docs/policy.md. Without the variable the binary is an ordinary busybox.
+  docs/policy.md. Without the variable the binary is an ordinary acmesh and
+  restricts nothing.
 - The shell is our own `sh` (also as `gosh`), mvdan/sh as a library, so the shell
   it ships is the shell the policy covers.
 - Not yet in the binary: the policy layer (path rules in one wrapper for every
@@ -46,13 +47,11 @@ See `docs/design/acmesh.md` for the architecture and the measurements, and
 
     ./scripts/build-bb.sh  windows  # acmesh.exe: everything, one binary
     ./scripts/build-bb.sh  linux    # acmesh
-    ./scripts/build-ext.sh windows  # ext.exe: only our own tools, for testing
-    ./scripts/build-ext.sh linux
 
-Checks run against either shape:
+Checks run against the built binary:
 
-    ./scripts/test-ext.sh ./acmesh.exe
-    ./scripts/test-ext.sh ./acmesh
+    ./scripts/test-acmesh.sh ./acmesh.exe
+    ./scripts/test-acmesh.sh ./acmesh
 
 The script pins the u-root commit and the command list, so a build is
 reproducible. It needs Go 1.27 (`GOTOOLCHAIN=auto` handles that) and

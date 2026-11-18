@@ -31,7 +31,9 @@ wasm selbst zu tun haben, sondern mit unseren Plattformdateien:
   wo syscall.Sync fehlt. Die Bedingung ist jetzt
   "!windows && !wasip1 && !js".
 
-Danach baut cmd/ext (unsere eigenen Befehle, Tag nonet) fuer beide Ziele.
+Danach baute das damalige ext-Binary (unsere eigenen Befehle, Tag nonet) fuer
+beide Ziele. Dieses eigene Binary gibt es seit dem 18.11.2026 nicht mehr; ein
+wasm-Bau geht jetzt ueber die cmd/<name>-Pakete.
 
 ## Groesse
 

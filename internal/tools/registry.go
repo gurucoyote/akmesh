@@ -2,10 +2,9 @@
 // not build for Windows: text tools, diff/patch, sed, awk, checksums and a few
 // system queries.
 //
-// The implementation is one package with one table, so that the same code can
-// be reached three ways: as a subcommand of the ext multicall binary, as a
-// first-class command inside the combined busybox (one tiny main package per
-// name), and from tests.
+// The implementation is one package with one table, so that the same code is
+// reached two ways: as a command of the acmesh binary (one tiny main package
+// per name, which calls Run) and from tests.
 //
 // Size matters here. See docs/groesse.md for the budget and the rules that keep
 // this package small: standard library first, a small library only where the
@@ -15,7 +14,7 @@ package tools
 import (
 	"fmt"
 	"os"
-	"sort"
+	"path/filepath"
 	"sync"
 
 	"acmesh/internal/policy"
@@ -82,7 +81,9 @@ func Run(name string) int {
 	ensurePolicy()
 	fn, ok := Commands[name]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "ext: unknown command %q\n", name)
+		// Only reachable through a table that disagrees with cmd/<name>; the
+		// message names the program that was actually started.
+		fmt.Fprintf(os.Stderr, "%s: unknown command %q\n", programName(), name)
 		return 2
 	}
 	var args []string
@@ -92,44 +93,11 @@ func Run(name string) int {
 	return fn(args, os.Stdin, os.Stdout, os.Stderr)
 }
 
-// Main is the entry point of the multicall binary: ext <command> [args...].
-func Main(args []string) int {
-	ensurePolicy()
-	if len(args) == 0 {
-		usage()
-		return 2
+// programName is the name the program was invoked as, so a message never claims
+// to come from a binary that does not exist.
+func programName() string {
+	if len(os.Args) == 0 || os.Args[0] == "" {
+		return "acmesh"
 	}
-	if args[0] == "--list" || args[0] == "-l" {
-		List()
-		return 0
-	}
-	fn, ok := Commands[args[0]]
-	if !ok {
-		fmt.Fprintf(os.Stderr, "ext: unknown command %q\n", args[0])
-		usage()
-		return 2
-	}
-	return fn(args[1:], os.Stdin, os.Stdout, os.Stderr)
-}
-
-func usage() {
-	fmt.Fprintln(os.Stderr, "usage: ext <command> [args...]")
-	fmt.Fprintln(os.Stderr, "       ext --list")
-}
-
-// Names returns all command names in sorted order.
-func Names() []string {
-	names := make([]string, 0, len(Commands))
-	for name := range Commands {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
-}
-
-// List prints one command name per line.
-func List() {
-	for _, name := range Names() {
-		fmt.Println(name)
-	}
+	return filepath.Base(os.Args[0])
 }

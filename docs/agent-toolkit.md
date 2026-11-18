@@ -56,6 +56,6 @@ u-root. yoke ist bisher NICHT gebaut oder gemessen - steht als offener Punkt.
 
 ## Vorschlag
 
-acmesh-ext bekommt Stufe 1 vollstaendig, dazu aus Stufe 2 ed, od, shuf,
+acmesh bekommt Stufe 1 vollstaendig, dazu aus Stufe 2 ed, od, shuf,
 stdbuf, nohup und die Pruefsummen-Familie. patch ueber go-gitdiff, nicht selbst
 geschrieben. jq vor dem Bau pruefen: ob yoke ohne bashy-Geruest baut, ist offen.

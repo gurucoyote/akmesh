@@ -932,3 +932,30 @@ Batterie nach dem Umbau: 165/0 Linux und 145/0 Windows.
 Was noch fehlt: die uebrigen rund 28 Befehle liegen weiter in einem Paket
 internal/tools (fileops, text, netz, prozess). Fuer die muss der Code erst
 herausgezogen werden, die zwoelf hier hatten ihr Paket schon.
+
+## Aufteilung Etappe 2: Pruefsummen, und sha*sum -c (18.11.2026, acmesh-mq1, acmesh-t5k)
+
+Die vier Pruefsummen-Befehle liegen jetzt in internal/sum, ihre cmd/main.go
+importieren nur dieses Paket. Gleichzeitig ist -c gebaut, der Teil, den das
+Ticket acmesh-t5k verlangt hat (vorher: "sha256sum: -c is not supported yet",
+Exit 2).
+
+Gegen GNU (debian stable-slim), Ausgabe und Exit-Code:
+
+    sha256sum -c gute Liste        "a.txt: OK", Exit 0
+    sha256sum -c Liste mit Fehler  "a.txt: FAILED" + "WARNING: 1 computed checksum did NOT match", Exit 1
+    sha256sum -c Liste mit fehlender Datei
+                                   "nix.txt: FAILED open or read" +
+                                   "sha256sum: nix.txt: No such file or directory" +
+                                   "WARNING: 1 listed file could not be read", Exit 1
+    sha256sum --status -c          nichts auf stdout, Exit 1
+    Trennzeichen "hex *name"       wird verstanden (Binaerform von GNU)
+
+Die Ausgabe ist byte-gleich zu GNU in allen drei Faellen.
+
+Groesse: 11800700 Linux, 11833856 Windows. Probe mit nur sha256sum:
+2.019.452 Bytes (vorher 10.338.428, weil die Tabelle des Pakets alles mitzog).
+Der Aufschlag gegen den Bodenwert von 1.814.652 kommt von crypto/sha256.
+
+Batterie: 169 Checks Linux, 149 Windows, 0 Fehler; neue Pruefungen
+sums-check-ok, sums-check-exit, sums-check-failed, sums-check-failed-exit.

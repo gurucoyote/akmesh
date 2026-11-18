@@ -27,10 +27,26 @@ func TestCommandTableMatchesEntryPoints(t *testing.T) {
 				"the combined binary cannot reach it", name, name)
 			continue
 		}
-		want := `tools.Run("` + name + `")`
-		if !strings.Contains(string(src), want) {
-			t.Errorf("cmd/%s/main.go does not call %s: a copy-paste would dispatch another command",
-				name, want)
+		// Three shapes are allowed since acmesh-mq1: the main calls the table
+		// (tools.Run("name")), it calls a package named after the command
+		// (cp.Run(...)), or it calls such a package with the bare algorithm
+		// name (sum.Run("sha256")). A copy-paste of another command's main is
+		// still caught, because then none of these appear.
+		accepted := []string{
+			`Run("` + name + `"`,
+			name + `.Run(`,
+			`Run("` + strings.TrimSuffix(name, "sum") + `"`,
+		}
+		found := false
+		for _, want := range accepted {
+			if strings.Contains(string(src), want) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("cmd/%s/main.go calls none of %q: a copy-paste would dispatch another command",
+				name, accepted)
 		}
 	}
 

@@ -133,6 +133,16 @@ check tar-C-listing "a.txt" "$(run tar -tf t2.tar 2>/dev/null | tr -d '\r')"
 checkcode tar-j-refused 2 "$(run tar -cjf t.tbz tdir >/dev/null 2>&1; echo $?)"
 rm -rf tdir tout t.tgz te.tgz t2.tar
 
+# sha256sum -c: the check form scripts use to verify a download
+printf 'hallo\n' > sumfile.txt
+run sha256sum sumfile.txt > sums.txt
+check sums-check-ok "sumfile.txt: OK" "$(run sha256sum -c sums.txt 2>/dev/null | tr -d '\r')"
+checkcode sums-check-exit 0 "$(run sha256sum -c sums.txt >/dev/null 2>&1; echo $?)"
+printf '%s  sumfile.txt\n' "0000000000000000000000000000000000000000000000000000000000000000" > sums-bad.txt
+check sums-check-failed "sumfile.txt: FAILED" "$(run sha256sum -c sums-bad.txt 2>/dev/null | tr -d '\r')"
+checkcode sums-check-failed-exit 1 "$(run sha256sum -c sums-bad.txt >/dev/null 2>&1; echo $?)"
+rm -f sumfile.txt sums.txt sums-bad.txt
+
 # hexdump -C, base64 -w, wc -m, tr -sc/-cd and touch -t are the individual
 # switches; each check guards one spelling an agent writes.
 printf 'AB' > small.bin

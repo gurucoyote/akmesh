@@ -903,3 +903,32 @@ und patch-result decken den Rundlauf dauerhaft ab, file-*, iconv-* und env-*
 die drei Befehle.
 
 Groesse: 11796604 Bytes Linux, 11825664 Bytes Windows (mit mvdan/sh 3.14.1).
+
+## Aufteilung internal/tools, Etappe 1: die forked Befehle (18.11.2026, acmesh-mq1)
+
+Gemessen mit scripts/measure-size.sh, das die Zahl mit dem Befehl zusammen
+ausgibt (neues Skript, damit keine Zahl mehr aus dem Gedaechtnis kommt).
+
+Vorher: cmd/<name>/main.go rief internal/tools.Run("name"), und die Tabelle in
+internal/tools zieht jeden eigenen Befehl mit. Ein Binary mit genau einem
+eigenen Befehl wog 10.338.428 Bytes, mit zwei eigenen exakt dasselbe.
+
+Nachher: die zwoelf forked Befehle importieren ihr eigenes Paket
+(internal/forked/<name>), nicht mehr die Tabelle.
+
+    probe (base64)            1.753.212 Bytes   vorher 10.338.428
+    probe (base64 wc tr)      1.871.996 Bytes   vorher 10.338.428
+    Bodenwert echo true pwd   1.814.652 Bytes   (u-root allein, Verteiler + Go-Laufzeit)
+
+Das heisst: der Verteiler kostet nichts, jeder weitere eigene Befehl rund 60 KB
+im Probe-Bau. Die 8,6 MB Unterschied waren die nicht gebrauchten Befehle.
+
+Volles Binary unveraendert: 11796604 Linux, 11827200 Windows. Erwartet, denn
+dort sind ohnehin alle Befehle drin; die Tabelle in internal/tools bleibt als
+Rueckweg fuer die Tests stehen.
+
+Batterie nach dem Umbau: 165/0 Linux und 145/0 Windows.
+
+Was noch fehlt: die uebrigen rund 28 Befehle liegen weiter in einem Paket
+internal/tools (fileops, text, netz, prozess). Fuer die muss der Code erst
+herausgezogen werden, die zwoelf hier hatten ihr Paket schon.

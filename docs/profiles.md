@@ -44,6 +44,13 @@ scripts/test-ext.sh erkennt selbst, ob ein Build Netz hat (curl -h antwortet).
 Der fs-Bau laeuft damit durch dieselbe Batterie: 66 Pruefungen statt 74, die
 acht Netz-Pruefungen werden uebersprungen, nicht als Fehler gezaehlt.
 
+## Verwandte Tags
+
+- `nocookiejar`: ersetzt den Cookie-Jar durch nil, weil net/http/cookiejar in
+  TinyGo fehlt. Cookie-Schalter melden sich dann als nicht unterstuetzt, statt
+  den Bau zu verhindern. Siehe docs/tinygo.md.
+- Mit `nonet` und `nocookiejar` zusammen bauen alle Varianten.
+
 ## Ein eigenes Profil
 
     # scripts/profiles/nur-lesen.txt

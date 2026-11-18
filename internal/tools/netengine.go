@@ -12,7 +12,6 @@ import (
 	"mime/multipart"
 	"net"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"os"
 
@@ -307,7 +306,10 @@ func buildClient(opts netOptions, stderr *os.File) (*http.Client, error) {
 	if opts.Insecure {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
-	jar, _ := cookiejar.New(nil)
+	// The jar comes from a helper: TinyGo's standard library has no
+	// net/http/cookiejar, so a build tag swaps in nil and cookie options then
+	// report themselves as unsupported instead of breaking the build.
+	jar := newCookieJar()
 	client := &http.Client{Transport: transport, Jar: jar}
 	if opts.MaxTime > 0 {
 		client.Timeout = opts.MaxTime
@@ -332,6 +334,11 @@ func buildClient(opts netOptions, stderr *os.File) (*http.Client, error) {
 		}
 	}
 	if len(opts.Cookies) > 0 {
+		if jar == nil {
+			fmt.Fprintln(stderr, "curl: cookies are not supported in this build")
+		}
+	}
+	if len(opts.Cookies) > 0 && jar != nil {
 		u, err := url.Parse(opts.URL)
 		if err != nil {
 			return nil, err
@@ -344,7 +351,7 @@ func buildClient(opts netOptions, stderr *os.File) (*http.Client, error) {
 			jar.SetCookies(u, []*http.Cookie{{Name: strings.TrimSpace(name), Value: strings.TrimSpace(value)}})
 		}
 	}
-	if opts.JarFile != "" {
+	if opts.JarFile != "" && jar != nil {
 		if cookies, err := readCookieFile(opts.JarFile); err == nil {
 			u, err := url.Parse(opts.URL)
 			if err == nil {

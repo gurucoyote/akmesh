@@ -73,3 +73,10 @@
             bleiben erhalten, auch rekursiv. 4 KB Zuwachs. -C wird ehrlich
             abgelehnt, weil x/crypto/ssh nur compressionNone kann; Fortsetzen
             ist kein scp-Schalter, dafuer waere sftp-reget noetig.
+2026-11-18  Profile eingefuehrt: build-bb.sh nimmt ein Profil aus
+            scripts/profiles, "tags" setzt Build-Tags, "exclude" streicht Namen.
+            fs-Profil ohne Netz, 1,50 MiB kleiner, net/http und TLS wirklich
+            nicht im Binary. Cookie-Jar ueber Tag austauschbar, damit ein Bau
+            ohne net/http/cookiejar ehrlich meldet statt zu scheitern. TinyGo
+            aufgesetzt und gemessen: Datei- und Textteil baut, Netzteil nicht,
+            weil TinyGos net/http keinen Proxy kennt.

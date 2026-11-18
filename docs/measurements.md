@@ -351,3 +351,22 @@ scp-Protokoll selbst hat keine Kompression. Fortsetzen gibt es in scp nicht,
 auch nicht in OpenSSH; dafuer waere ein sftp-reget noetig.
 
 Pruefungen: scripts/test-ssh.sh jetzt 18 Faelle je Ziel, beide 0 Fehler.
+
+## Profile und TinyGo (18.11.2026)
+
+    ./scripts/build-bb.sh linux full  -> acmesh     11.354.236 Bytes (10,83 MiB)
+    ./scripts/build-bb.sh linux fs    -> acmesh-fs   9.777.276 Bytes (9,32 MiB)
+
+fs ist 1.576.960 Bytes kleiner. In seinem Abhaengigkeitsgraphen kommen net/http,
+crypto/tls und golang.org/x/crypto/ssh nicht mehr vor (go list -deps: je 0), und
+die Meldungen des Netzteils fehlen im Binary. Pruefungen: 66 statt 74, die acht
+Netzpruefungen werden uebersprungen.
+
+TinyGo 0.39.0 (Go 1.25.7, LLVM 19.1.2) baut mit dem Tag nonet sechs Einzelbefehle
+aus demselben Paket: basename 7.381.640, jq 7.381.840, sh 7.381.792, sed
+7.381.680, awk 7.381.632, cut 7.381.680 Bytes. Go baut denselben Einzelbefehl in
+8.478.113 Bytes. Hello-World unter TinyGo: 1.083.552 Bytes.
+
+Die Netzbefehle bauen unter TinyGo nicht: http.Transport hat dort kein
+Proxy-Feld, und net/http/cookiejar fehlt. golang.org/x/crypto/ssh allein baut
+(2.496.232 Bytes), es ist also der Http-Teil.

@@ -58,7 +58,7 @@ Drei Routen je Luecke:
 
 ### B2. u-root-Befehle, die den Namen abgeben muessten (R2)
 
-    sort -k -t -h -V               -k/-t ist das Standardmuster fuer Logs und
+    sort -k -t -h -V -R            -k/-t ist das Standardmuster fuer Logs und
                                    Tabellen; ohne sie ist sort nur ein
                                    Zeilenalphabet
     wc -m (Chars) --files0-from    -r heisst bei u-root "runes", der

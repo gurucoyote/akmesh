@@ -360,6 +360,23 @@ kill $HTTPD_PID 2>/dev/null
 # The .exe is wrapped by /init, so the shell's $! is not the server: match the
 # port as well, or the next run finds a server on a closed directory.
 pkill -f "httpd -f -p 127.0.0.1:$HTTPD_PORT" 2>/dev/null
+
+# Without -f the command has to go to the background, name its pid and leave the
+# caller free; the page must be there afterwards (acmesh-rds). The pid comes from
+# the message, not from $!, because the child detaches itself.
+BG_PORT=$((HTTPD_PORT + 1))
+BG_OUT=$($BIN httpd -p 127.0.0.1:$BG_PORT -h "$HD_DIR" 2>&1)
+check httpd-detach-pid "1" "$(printf '%s' "$BG_OUT" | grep -c 'pid [0-9]')"
+BG_PID=$(printf '%s' "$BG_OUT" | grep -o 'pid [0-9]*' | cut -d' ' -f2)
+tries=0
+while [ $tries -lt 20 ]; do
+  curl -s -m 1 -o /dev/null "http://127.0.0.1:$BG_PORT/index.html" 2>/dev/null && break
+  sleep 0.5
+  tries=$((tries+1))
+done
+check httpd-detach-serves "1" "$(curl -s -m 5 http://127.0.0.1:$BG_PORT/index.html 2>/dev/null | grep -c hd)"
+kill "$BG_PID" 2>/dev/null
+pkill -f "httpd -f -p 127.0.0.1:$BG_PORT" 2>/dev/null
 rm -rf "$HD_DIR"
 
 # docx2md: a minimal docx (a zip with word/document.xml) in, Markdown out.

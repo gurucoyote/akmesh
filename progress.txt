@@ -112,3 +112,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-18  acmesh-m5j: httpd mit busybox-Optionen plus TLS und no-store, CGI bewusst draussen; html2md wurde fertig (Turndown-Regeln, 148 Woerter gleich).
 2026-11-18  html2md und httpd kamen in einem Commit zusammen (gemeinsame Skriptzeilen); Commit-Nachricht nennt beide Tickets.
 2026-11-18  docx2md gebaut: Ueberschriften aus dem Stil, Listen aus dem numbering-Teil, Tabellen als GFM, Links aus den rels; mit Rotproben und drei an echten Dateien gefundenen Fehlern (Zeilenumbruch, fette Nachbarn, Jahreszahl).
+2026-11-18  acmesh-rds gefixt: der Hintergrund-httpd startet sich ueber os.Executable() mit dem Befehlsnamen als erstem Argument; Rotprobe zeigt die alte Meldung, danach Batterie 183/161 gruen.

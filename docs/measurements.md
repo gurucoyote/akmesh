@@ -1288,3 +1288,39 @@ alten Stand (der Befehl fehlte, obwohl die Datei byte-identisch mit dem guten
 Bau war: md5 gleich, eine Kopie unter anderem Namen lief richtig). Erst nach
 kill der beiden alten httpd-Prozesse war der neue Befehl da. Wer nach einem Bau
 "der Befehl fehlt" sieht, prueft zuerst laufende acmesh.exe: pgrep -af acmesh.exe.
+
+## httpd Hintergrundbetrieb (21.11.2026, acmesh-rds)
+
+Der Fehler: ohne -f startete kein Server, sondern die Meldung
+
+    httpd: exec: "httpd": executable file not found in $PATH     (exit 1)
+
+Ursache: der Verteiler setzt os.Args[0] auf den Befehlsnamen, also "httpd";
+exec.Command(os.Args[0]) sucht diesen Namen dann im PATH statt das laufende
+Binary zu starten.
+
+Reparatur: das Kind wird mit os.Executable() als Programm und dem Befehlsnamen
+als erstem Argument gestartet, also acmesh httpd -f ...; ein eigenstaendig
+gebautes cmd/httpd braucht den Namen nicht und bekommt ihn nicht
+(detachArgv in internal/httpd/httpd.go).
+
+Beweis am gebauten Binary:
+
+    $ ./acmesh httpd -p 127.0.0.1:18081 -h /tmp/www2
+    httpd: started in the background, pid 3999217          exit 0
+    $ curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18081/     -> 200
+    $ kill 3999217                                            -> Port zu, 000
+
+Derselbe Weg in der eigenen Shell und als eigenstaendiges Binary:
+
+    $ ./acmesh sh -c '/root/acmesh/acmesh httpd -p 127.0.0.1:18082 -h /tmp/www2'
+    httpd: started in the background, pid ... / curl -> 200
+    $ /tmp/hd2 -p 127.0.0.1:18083                            -> pid ..., curl 200
+
+Rotprobe: mit wiederhergestelltem exec.Command(os.Args[0]) kommt genau die
+Meldung aus dem Ticket (exit 1, kein Server); zurueckgenommen -> pid und 200.
+
+Drei Go-Tests fuer den reinen Teil (detachArgv): Name im Mehrfachbinary, kein
+Name beim eigenstaendigen Binary, kein zweites -f. Batterie: zwei neue
+Pruefungen httpd-detach-pid und httpd-detach-serves, damit der Weg ohne -f
+nicht wieder still kaputtgehen kann.

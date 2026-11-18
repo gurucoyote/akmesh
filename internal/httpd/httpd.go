@@ -556,8 +556,12 @@ func detach(stderr *os.File) error {
 	}
 	defer devnull.Close()
 
-	args := append([]string{"-f"}, os.Args[1:]...)
-	cmd := exec.Command(os.Args[0], args...)
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	args := detachArgv(exe, os.Args[0], os.Args[1:])
+	cmd := exec.Command(exe, args...)
 	cmd.Env = append(os.Environ(), "ACMESH_HTTPD_CHILD=1")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = devnull, devnull, devnull
 	cmd.SysProcAttr = detachedAttr()
@@ -566,4 +570,36 @@ func detach(stderr *os.File) error {
 	}
 	fmt.Fprintf(stderr, "httpd: started in the background, pid %d\n", cmd.Process.Pid)
 	return nil
+}
+
+// detachArgv builds the arguments of the background child.
+//
+// Inside the acmesh binary the dispatcher has already set os.Args[0] to the
+// command name ("httpd"), so the child must be started as
+// <path of this binary> httpd -f ...: without the path exec would search PATH
+// for a program called "httpd" (acmesh-rds), and without the name a multicall
+// binary would not know which command to run. A standalone binary (cmd/httpd
+// built on its own, or a copy under another name) is its own command and needs
+// no name.
+func detachArgv(exe, argv0 string, args []string) []string {
+	var out []string
+	name := filepath.Base(argv0)
+	if name != filepath.Base(exe) {
+		out = append(out, name)
+	}
+	if !hasFlag(args, "-f") {
+		out = append(out, "-f")
+	}
+	return append(out, args...)
+}
+
+// hasFlag says whether the argument list contains that flag, so that a second
+// -f is not added on every restart.
+func hasFlag(args []string, flag string) bool {
+	for _, a := range args {
+		if a == flag {
+			return true
+		}
+	}
+	return false
 }

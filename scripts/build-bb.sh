@@ -65,6 +65,39 @@ fi
 git -C "$UROOT_DIR" fetch -q origin
 git -C "$UROOT_DIR" checkout -q "$UROOT_COMMIT"
 
+# makebb is pinned. The generator decides the shape of the whole binary, so an
+# unreviewed newer version would change the build without a change here. The
+# module path and version are read back from the installed tool.
+MAKEBB_MODULE=github.com/u-root/gobusybox/src
+MAKEBB_VERSION=v0.6.0
+MAKEBB="$GOPATH/bin/makebb"
+if [ ! -x "$MAKEBB" ]; then
+	MAKEBB="$GOPATH/bin/makebb.exe"
+fi
+makebb_is_pinned() {
+	go version -m "$1" 2>/dev/null |
+		awk -v mod="$MAKEBB_MODULE" -v ver="$MAKEBB_VERSION" \
+			'$1 == "mod" && $2 == mod && $3 == ver { ok = 1 } END { exit !ok }'
+}
+install_makebb() {
+	# GOOS/GOARCH are set for the target above; the tool itself must be built
+	# for this host, otherwise it lands in bin/<goos>_<goarch>/.
+	env -u GOOS -u GOARCH GOBIN="$GOPATH/bin" go install "$MAKEBB_MODULE/cmd/makebb@$MAKEBB_VERSION"
+	MAKEBB="$GOPATH/bin/makebb"
+	if [ ! -x "$MAKEBB" ]; then
+		MAKEBB="$GOPATH/bin/makebb.exe"
+	fi
+	if ! makebb_is_pinned "$MAKEBB"; then
+		echo "makebb is not at $MAKEBB_VERSION: the build would use another generator" >&2
+		exit 1
+	fi
+}
+# The tool comes first: installing it extracts gobusybox into the module cache,
+# and the rename below needs that copy to exist.
+if [ ! -x "$MAKEBB" ] || ! makebb_is_pinned "$MAKEBB"; then
+	install_makebb
+fi
+
 # u-root's dispatcher calls itself "busybox" in the two messages a mistyped
 # command produces. The binary is called acmesh, so those words are replaced in
 # every copy of gobusybox the build can link: the vendored one inside the u-root
@@ -97,27 +130,11 @@ rename_in_dispatcher() {
 rename_in_dispatcher "not present in busybox" "not present in acmesh"
 rename_in_dispatcher "busybox dispatched" "acmesh dispatched"
 
-MAKEBB="$GOPATH/bin/makebb"
-if [ ! -x "$MAKEBB" ]; then
-	MAKEBB="$GOPATH/bin/makebb.exe"
-fi
-# makebb embeds gobusybox's dispatcher with //go:embed, so the rename above only
-# reaches the generated source through a makebb that was built after it. Rebuild
-# when the tool is missing or still carries u-root's wording.
-NEEDS_MAKEBB=0
-if [ ! -x "$MAKEBB" ]; then
-	NEEDS_MAKEBB=1
-elif tr -d '\000' < "$MAKEBB" | grep -q 'not present in busybox'; then
-	NEEDS_MAKEBB=1
-fi
-if [ "$NEEDS_MAKEBB" -eq 1 ]; then
-	# GOOS/GOARCH are set for the target above; the tool itself must be built
-	# for this host, otherwise it lands in bin/<goos>_<goarch>/.
-	env -u GOOS -u GOARCH GOBIN="$GOPATH/bin" go install github.com/u-root/gobusybox/src/cmd/makebb@latest
-	MAKEBB="$GOPATH/bin/makebb"
-	if [ ! -x "$MAKEBB" ]; then
-		MAKEBB="$GOPATH/bin/makebb.exe"
-	fi
+# makebb embeds that source with //go:embed, so a tool installed before the
+# rename still carries the old word. Rebuild it once now that the source is
+# patched; if the word survives anyway, stop rather than ship it.
+if tr -d '\000' < "$MAKEBB" | grep -q 'not present in busybox'; then
+	install_makebb
 	if tr -d '\000' < "$MAKEBB" | grep -q 'not present in busybox'; then
 		echo "makebb still embeds u-root's busybox wording: the rename cannot reach the build" >&2
 		exit 1

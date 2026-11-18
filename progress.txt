@@ -83,3 +83,4 @@
 Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lockere Zusicherungen angezogen, jede neue Pruefung rot gesehen.
 2026-11-18  cmd/ext entfernt und vollstaendig integriert; Meldungen nennen den Programmnamen, test-ext.sh heisst test-acmesh.sh, bb/busybox in der Doku durch acmesh ersetzt.
 2026-11-18  u-root-Meldung gepatcht: build-bb.sh ersetzt "busybox" in gobusybox und baut makebb neu, acmesh sagt jetzt "not present in acmesh"; Bau prueft sein Binary selbst.
+2026-11-18  makebb auf v0.6.0 gepinnt, Version per go version -m geprueft; frischer Pfad ohne makebb getestet. Befund: Go-Toolchain ist ebenfalls nicht gepinnt.

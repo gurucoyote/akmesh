@@ -143,8 +143,29 @@ Binary und bricht ab, wenn der alte Text noch drin ist.
     ./scripts/test-acmesh.sh ./acmesh     -> 79 checks, 0 failures
     ./scripts/test-acmesh.sh ./acmesh.exe -> 65 checks, 0 failures
 
-Nebenbefund: makebb wird mit @latest installiert, ist also nicht gepinnt. Ein
-neuer makebb-Stand aendert den generierten Code, auch ohne Aenderung hier.
+(Beide Groessen mit go1.27.0 gebaut, siehe den Toolchain-Befund im naechsten
+Abschnitt.)
+
+## makebb gepinnt (18.11.2026)
+
+MAKEBB_VERSION=v0.6.0 steht in scripts/build-bb.sh; der Bau liest die Version
+mit go version -m aus dem installierten Werkzeug und laedt nur, wenn es fehlt
+oder nicht auf v0.6.0 steht. Danach ersetzt er den Dispatcher-Text und baut
+makebb genau dann neu, wenn der alte Text noch eingebettet ist.
+
+Frischer Pfad geprueft: makebb geloescht, Modul-Cache auf den alten Text
+zurueckgesetzt, ./scripts/build-bb.sh linux laeuft durch und das Binary meldet
+"not present in acmesh".
+
+    ./scripts/build-bb.sh linux   -> acmesh     11.358.332 Bytes (10,83 MiB)
+    ./scripts/build-bb.sh windows -> acmesh.exe 11.383.296 Bytes (10,84 MiB)
+    ./scripts/test-acmesh.sh ./acmesh     -> 79 checks, 0 failures
+    ./scripts/test-acmesh.sh ./acmesh.exe -> 65 checks, 0 failures
+
+Wichtiger als makebb: auch der Go-Toolchain ist nicht gepinnt. GOTOOLCHAIN=auto
+hat waehrend dieser Arbeit von go1.27.0 auf go1.27.4 gewechselt, und derselbe
+Quellstand ergibt damit 11.341.948 gegen 11.358.332 Bytes. Reproduzierbar ist
+der Bau erst, wenn auch die Toolchain feststeht.
 
 ## file, iconv, env (17.11.2026, gebaut und geprueft)
 

@@ -31,7 +31,9 @@ are English; documents meant for Martin are German.
   Do not pin u-root to an older commit to avoid that.
 - `GOCACHE=/root/acmesh/.cache` must be set: the default cache is read-only
   here and produces misleading toolchain errors. The script sets it.
-- `makebb` takes GOOS/GOARCH from the environment, it has no `-goos` flag.
+- `makebb` takes GOOS/GOARCH from the environment, it has no `-goos` flag. It is
+  pinned to v0.6.0 in the script and re-read from the installed tool with
+  `go version -m`; a different version is replaced, not used.
 - The build renames gobusybox's two dispatcher messages from "busybox" to
   "acmesh" in the pinned checkout and rebuilds `makebb` when it still embeds the
   old text (go:embed). It fails instead of shipping the old wording.

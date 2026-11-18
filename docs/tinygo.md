@@ -96,7 +96,18 @@ Kryptopakete bauen: aes, cipher, des, ecdh, ecdsa, ed25519, hmac, md5, rand, rsa
 sha1, sha256, sha512, tls, x509, dazu pem, hex, crc32, json, regexp, reflect,
 os/exec, os/user, syscall, gzip, zlib. Nur net/http/cookiejar fehlt.
 
-Die Krypto selbst arbeitet auch zur Laufzeit. Beleg: ein Programm mit
+Ein Programm, das die Krypto auch benutzt, trennt die beiden Versionen deutlich.
+Unter 0.39 scheitert schon das Linken, sobald crypto/rand im Spiel ist:
+
+    /root/3rd/tinygo/src/internal/syscall/unix/getrandom.go:26:
+        linker could not find symbol runtime.vgetrandom
+    /usr/lib/go/src/crypto/internal/sysrand/rand.go:48:
+        linker could not find symbol crypto/internal/sysrand.fatal
+
+Unter 0.44 laeuft dasselbe Programm und liefert: sha256 32 Bytes, X25519 32
+Bytes, ed25519 Signatur 64 Bytes, RSA 2048 Bit, tls.VersionTLS13 als 772.
+
+Die Krypto selbst arbeitet also zur Laufzeit. Beleg: ein Programm mit
 golang.org/x/crypto/ssh verbindet sich unter TinyGo 0.44 mit einem echten sshd
 und fuehrt einen Befehl aus ("hallo-von-tinygo"), derselbe Quelltext mit Go
 gebaut liefert "hallo-von-go". ssh verschluesselt mit den Kryptopaketen selbst,

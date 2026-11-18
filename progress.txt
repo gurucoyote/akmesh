@@ -108,3 +108,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-18  acmesh-94e.7/8/12 und 93y: Vi-Kandidat Ven geprueft und verworfen (braucht infocmp und /dev/tty), lsof verworfen, Tracer laeuft im Container, strace-Sammler als P1-Ticket, Tests fuer elf Pakete.
 2026-11-18  acmesh-n0p: tracedeps gebaut (eigener ptrace-Verfolger, nicht u-root), Batterie 172/0 und 150/0.
 2026-11-18  acmesh-94e: Epic geschlossen, alle Kinder zu, ps-Kommandozeile und winmode als eigene Tickets geloest.
+2026-11-18  acmesh-m6x: winmode eingeschaetzt (kein upstream, 627 Zeilen Paket plus drei Interp-Haken, UNC-Test wirkungslos); Empfehlung kleine Schicht, nicht jetzt.

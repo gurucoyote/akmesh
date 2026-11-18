@@ -316,3 +316,35 @@ Zeilen, und die Fallen stehen in docs/measurements.md.
 Was u-root weiterhin liefert, ist die strace-Ausgabe selbst; der Befehl bleibt
 fuer den Menschen und fuer den Fall, dass jemand die Spur Zeile fuer Zeile
 sehen will.
+
+## winmode: Einschaetzung (18.11.2026, acmesh-m6x)
+
+Frage war, ob sich POSIX-Rechtebits unter Windows nachruesten lassen, so wie es
+qiangli/sh in seinem Fork tut.
+
+Upstream bringt es nicht: mvdan.cc/sh/v3 steht bei v3.14.1, und diese Fassung
+hat kein winmode (geprueft ueber proxy.golang.org und die Dateiliste im Zip).
+Ein Versionssprung hilft also nicht.
+
+Die Gabel bringt ein eigenes Paket mit, 627 Zeilen ohne Tests: winmode.go (273,
+ueberwiegend Begruendung, wie die DACL geordnet sein muss), winmode_windows.go
+(319, baut die DACL von Hand) und winmode_other.go (35, Stummel). Einziger
+Import ist golang.org/x/sys/windows, das wir schon fuehren. Die Tests der Gabel
+umfassen 407 Zeilen.
+
+Der Aufwand liegt nicht im Paket, sondern in den Haken: die Gabel hat
+interp/handler.go (chmod-Builtin, test -r/-w/-x), interp/os_windows.go
+(stat-Modus, -O/-G) und interp/test.go (SameFile) mitgeaendert. Uebernehmen
+heiszt also entweder die Gabel als Modul ziehen (25,2 MB) oder die drei Haken
+in unserem eigenen Code nachbauen - bei uns sind das chmod.go:82, chmod.go:96
+und cp_cp.go:86.
+
+Testbarkeit ist der eigentliche Preis: von WSL aus auf einem UNC-Pfad ist
+chmod wirkungslos. Gemessen: 'acmesh.exe chmod 444 f.txt' und danach
+'chmod 755' liessen die Datei bei 644. Ein echter Nachweis braucht eine Datei
+auf einem Windows-Laufwerk und eine Gegenprobe, die die ACL liest.
+
+Empfehlung: nicht jetzt. Wenn doch, zuerst eine Schicht von etwa 40 Zeilen um
+os.Chmod, die nur das Read-only-Attribut setzt (deckt chmod -w und +w); die
+volle Modus-Ablage erst, wenn ein Agent unter Windows 755 von 644
+unterscheiden muss.

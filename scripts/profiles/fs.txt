@@ -1,0 +1,7 @@
+# A filesystem-oriented build: no networking at all. The net tools are absent,
+# not disabled: their files are excluded and the "nonet" tag removes the code
+# from our own package, so net/http, TLS and x/crypto are never linked.
+tags nonet
+exclude curl wget ssh scp
+# u-root applets that open sockets or configure interfaces.
+exclude nc ping ping6 ip ipconfig tftp httpd dhclient wget2

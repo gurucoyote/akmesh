@@ -2,8 +2,11 @@
 # Build the acmesh busybox for one platform: one binary that carries the u-root
 # commands, the ssh client and the tools from internal/tools.
 #
-#   ./scripts/build-bb.sh windows   -> bb.exe
-#   ./scripts/build-bb.sh linux     -> bb
+#   ./scripts/build-bb.sh windows   -> acmesh.exe
+#   ./scripts/build-bb.sh linux     -> acmesh
+#
+# A second argument picks a profile from scripts/profiles: full (default) or fs
+# (no networking at all: the code is excluded, not switched off at runtime).
 #
 # Two things make the single binary possible:
 #   - a go.work that lists both the pinned u-root checkout and this repository,
@@ -15,6 +18,7 @@
 set -eu
 
 PLATFORM=${1:-linux}
+PROFILE=${2:-full}
 case "$PLATFORM" in
 windows)
 	export GOOS=windows GOARCH=amd64
@@ -35,6 +39,17 @@ linux)
 esac
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+# A profile other than full gets its own file name, so both builds can sit next
+# to each other without one overwriting the other.
+case "$PROFILE" in
+full) ;;
+*)
+	case "$OUT" in
+	*.exe) OUT="${OUT%.exe}-$PROFILE.exe" ;;
+	*) OUT="$OUT-$PROFILE" ;;
+	esac
+	;;
+esac
 UROOT_COMMIT=869f00f6b224ce02b1db51806159d6cd9c246f76
 UROOT_DIR="$ROOT/.build/uroot"
 
@@ -76,7 +91,27 @@ export GOWORK="$WORKFILE"
 # the target, u-root wins: it is already in the list and needs no extra bytes.
 OURS_ALL="awk basename curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall md5sum nl patch ps sed sha1sum sha256sum sha512sum split stat sync tac timeout truncate uname wget sh policy ssh scp"
 
+PROFILE_FILE="$ROOT/scripts/profiles/$PROFILE.txt"
+if [ ! -f "$PROFILE_FILE" ]; then
+	echo "unknown profile $PROFILE; available:" >&2
+	ls "$ROOT/scripts/profiles" | sed 's/\.txt$//' >&2
+	exit 2
+fi
+TAGS=""
+PROFILE_EXCLUDE=""
+while read -r key value; do
+	case "$key" in
+	''|'#'*) continue ;;
+	tags) TAGS="$value" ;;
+	exclude) PROFILE_EXCLUDE="$PROFILE_EXCLUDE $value" ;;
+	*) echo "profile $PROFILE: unknown line '$key'" >&2; exit 2 ;;
+	esac
+done < "$PROFILE_FILE"
+
 NAMES=$(grep -v '^#' "$ROOT/scripts/cmds.txt" | sed '/^$/d')
+for c in $PROFILE_EXCLUDE; do
+	NAMES=$(echo "$NAMES" | grep -v "^$c$" || true)
+done
 PKGS=""
 for c in $NAMES; do
 	PKGS="$PKGS ./cmds/core/$c"
@@ -91,6 +126,9 @@ done
 UROOT_NAMES=" $NAMES $UROOT_EXTRA "
 OURS=""
 for c in $OURS_ALL; do
+	for x in $PROFILE_EXCLUDE; do
+		[ "$c" = "$x" ] && continue 2
+	done
 	case "$UROOT_NAMES" in
 	*" $c "*) ;;
 	*) OURS="$OURS $c" ;;
@@ -102,6 +140,12 @@ for c in $OURS; do
 done
 
 cd "$UROOT_DIR"
+# shellcheck disable=SC2086
+# makebb has no -tags flag; the go tool it calls does read GOFLAGS.
+if [ -n "$TAGS" ]; then
+	export GOFLAGS="-tags=$TAGS"
+	echo "build tags: $TAGS"
+fi
 # shellcheck disable=SC2086
 "$MAKEBB" -o "$ROOT/$OUT" $PKGS
 ls -l "$ROOT/$OUT"

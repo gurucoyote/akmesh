@@ -16,6 +16,10 @@ run() {
 	"$BIN" "$@"
 }
 
+# A profile without networking lacks curl, wget, ssh and scp; those checks are
+# skipped rather than failed, so the same battery serves every build.
+if "$BIN" curl -h >/dev/null 2>&1; then HAS_NET=1; else HAS_NET=0; fi
+
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/exttest.XXXXXX") || exit 2
 trap 'rm -rf "$WORK"' EXIT
 cd "$WORK" || exit 2
@@ -111,6 +115,7 @@ checkcode jq-bad-filter 3 "$(echo '{}' | run jq '.a |' >/dev/null 2>&1; echo $?)
 checkcode jq-bad-json 2 "$(echo '{"a":}' | run jq .a >/dev/null 2>&1; echo $?)"
 checkcode jq-exit-false 1 "$(echo '{"a":false}' | run jq -e .a >/dev/null 2>&1; echo $?)"
 
+if [ "$HAS_NET" = 1 ]; then
 # curl and wget: the checks that need no network. The transfer itself is covered
 # by the Go tests against a local server.
 check curl-help "1" "$(run curl -h | grep -c 'Only http and https' | tr -d '\r')"
@@ -119,6 +124,7 @@ checkcode curl-file-scheme 3 "$(run curl -s file:///etc/passwd >/dev/null 2>&1; 
 check wget-help "1" "$(run wget -h | grep -c 'Not supported' | tr -d '\r')"
 checkcode wget-recursive-refused 2 "$(run wget -r http://example.com >/dev/null 2>&1; echo $?)"
 checkcode wget-unknown-flag 2 "$(run wget -N http://example.com >/dev/null 2>&1; echo $?)"
+fi
 
 # free, df, du
 check free-mem-row "1" "$(run free | grep -c '^Mem:' | tr -d '\r')"
@@ -194,8 +200,10 @@ case "$BIN" in
 	check policy-write-inside "ok" "$(ACMESH_POLICY="$POL" "$BIN" sh -c "echo ok > $WORK/work/neu.txt; cat $WORK/work/neu.txt" 2>/dev/null | tr -d '\r')"
 	check policy-check-allowed "0" "$(ACMESH_POLICY="$POL" "$BIN" policy --check "$WORK/work/in.txt" >/dev/null 2>&1; echo $?)"
 	check policy-check-denied "1" "$(ACMESH_POLICY="$POL" "$BIN" policy --check /etc/hostname >/dev/null 2>&1; echo $?)"
-	check policy-blocks-network "ja" "$(ACMESH_POLICY="$POL" "$BIN" curl -s https://example.com >/dev/null 2>&1 || echo ja)"
-	check policy-network-message "ja" "$(ACMESH_POLICY="$POL" "$BIN" curl -s https://example.com 2>&1 | grep -q 'does not allow network access' && echo ja)"
+	if [ "$HAS_NET" = 1 ]; then
+		check policy-blocks-network "ja" "$(ACMESH_POLICY="$POL" "$BIN" curl -s https://example.com >/dev/null 2>&1 || echo ja)"
+		check policy-network-message "ja" "$(ACMESH_POLICY="$POL" "$BIN" curl -s https://example.com 2>&1 | grep -q 'does not allow network access' && echo ja)"
+	fi
 	# A broken policy must stop the process instead of running unconfined.
 	printf '{"version":9}' > "$WORK/broken.json"
 	checkcode policy-broken-refused 1 "$(ACMESH_POLICY="$WORK/broken.json" "$BIN" echo x >/dev/null 2>&1; echo $?)"

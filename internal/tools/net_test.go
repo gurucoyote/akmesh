@@ -20,7 +20,11 @@ func newTestServer(t *testing.T) *httptest.Server {
 		fmt.Fprint(w, "hallo welt")
 	})
 	mux.HandleFunc("/redirect", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/hello", http.StatusFound)
+		// The 302 carries a body of its own, so a test can tell "stopped at the
+		// redirect" from "printed nothing at all".
+		w.Header().Set("Location", "/hello")
+		w.WriteHeader(http.StatusFound)
+		fmt.Fprint(w, "umleitung")
 	})
 	mux.HandleFunc("/echo", func(w http.ResponseWriter, r *http.Request) {
 		r.ParseMultipartForm(1 << 20)
@@ -99,8 +103,10 @@ func TestCurlNoFollowWithoutL(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d", code)
 	}
-	if strings.Contains(out, "hallo welt") {
-		t.Fatalf("without -L the redirect must not be followed, got %q", out)
+	// The body of the 302 itself, not nothing: a curl that prints no body at all
+	// would also satisfy a bare "must not contain the target" check.
+	if out != "umleitung" {
+		t.Fatalf("without -L the answer must be the redirect body, got %q", out)
 	}
 }
 
@@ -197,9 +203,12 @@ func TestCurlTimeout(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("fast request failed with %d", code)
 	}
+	// The endpoint sleeps 300 ms against a 100 ms budget, so the only correct
+	// answer is curl's timeout code. Accepting a connect error here as well
+	// would hide a timeout that is never enforced.
 	_, code = capture(t, runCurl, []string{"-s", "--max-time", "0.1", server.URL + "/slow"})
-	if code != exitTimeout && code != exitConnect {
-		t.Fatalf("slow request returned %d, want timeout or connect error", code)
+	if code != exitTimeout {
+		t.Fatalf("slow request returned %d, want %d (timeout)", code, exitTimeout)
 	}
 }
 

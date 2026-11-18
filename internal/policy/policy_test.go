@@ -3,6 +3,7 @@ package policy
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -115,14 +116,33 @@ func TestInitFromEnvFailsClosed(t *testing.T) {
 	}
 }
 
-// TestSupportedReportsKernel checks that the message is informative rather than
-// empty, whatever the kernel supports.
+// TestSupportedReportsKernel pins the shape the policy command prints, so the
+// explanation a harness reads names the mechanism instead of a vague "ok".
 func TestSupportedReportsKernel(t *testing.T) {
 	ok, detail := Supported()
-	if detail == "" {
-		t.Fatalf("empty detail")
+	if ok {
+		if m, err := regexp.MatchString(`^landlock ABI [0-9]+$`, detail); err != nil || !m {
+			t.Fatalf("detail %q, want \"landlock ABI <n>\"", detail)
+		}
+		return
 	}
-	if ok && !strings.Contains(detail, "landlock") {
-		t.Fatalf("detail %q does not name landlock", detail)
+	// Without Landlock the detail must say why, not stay empty.
+	if !strings.Contains(detail, "landlock") {
+		t.Fatalf("unsupported kernel reports %q, want a reason", detail)
+	}
+}
+
+// TestWriteOnlyPolicyIsAccepted pins the documented "write implies read": a
+// policy may name only write paths, and Enforce hands that rule the read rights
+// as well. This test cannot call Enforce - it would confine the test process
+// for good - so the kernel side is proven live in scripts/test-ext.sh.
+func TestWriteOnlyPolicyIsAccepted(t *testing.T) {
+	p, err := Parse([]byte(`{"version":1,"write":["/tmp/work"],"system_access":false}`), "test")
+	if err != nil {
+		t.Fatalf("a write-only policy must load: %v", err)
+	}
+	writes := p.WritePaths()
+	if len(writes) != 1 || writes[0] != "/tmp/work" {
+		t.Fatalf("write paths %v, want [/tmp/work]", writes)
 	}
 }

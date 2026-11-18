@@ -437,3 +437,13 @@ keine zusaetzlichen Dateien setzt:
     sh-pipe              leere Ausgabe
     policy-read-inside   leere Ausgabe
     policy-write-inside  leere Ausgabe
+
+## Tests nach der Durchsicht (18.11.)
+
+    go test ./internal/...      -> ok policy, ok tools
+    ./scripts/test-ext.sh ./ext -> 76 checks, 0 failures
+
+76 Prüfungen, davon zwei neu: "write implies read", drinnen erlaubt und
+draußen verweigert. Neu in Go: Summenvektoren,
+Verteilungstabelle gegen cmd/<name>, Zeitlimit liefert 28 statt 7, 302 ohne -L
+liefert den Weiterleitungstext statt einer leeren Ausgabe.

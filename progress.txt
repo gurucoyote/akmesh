@@ -80,3 +80,4 @@
             ohne net/http/cookiejar ehrlich meldet statt zu scheitern. TinyGo
             aufgesetzt und gemessen: Datei- und Textteil baut, Netzteil nicht,
             weil TinyGos net/http keinen Proxy kennt.
+Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lockere Zusicherungen angezogen, jede neue Pruefung rot gesehen.

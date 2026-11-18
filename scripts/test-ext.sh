@@ -200,6 +200,13 @@ case "$BIN" in
 	check policy-write-inside "ok" "$(ACMESH_POLICY="$POL" "$BIN" sh -c "echo ok > $WORK/work/neu.txt; cat $WORK/work/neu.txt" 2>/dev/null | tr -d '\r')"
 	check policy-check-allowed "0" "$(ACMESH_POLICY="$POL" "$BIN" policy --check "$WORK/work/in.txt" >/dev/null 2>&1; echo $?)"
 	check policy-check-denied "1" "$(ACMESH_POLICY="$POL" "$BIN" policy --check /etc/hostname >/dev/null 2>&1; echo $?)"
+	# "Write implies read": a policy that names only the write path must still
+	# allow reading it, because the write rule carries the read rights. Two runs,
+	# one inside and one outside, so a policy that blocks everything cannot pass
+	# this as a success.
+	printf '{"version":1,"write":["%s"]}' "$WORK/work" > "$WORK/write-only.json"
+	check policy-write-only-inside-allowed "0" "$(ACMESH_POLICY="$WORK/write-only.json" "$BIN" policy --check "$WORK/work/in.txt" >/dev/null 2>&1; echo $?)"
+	check policy-write-only-outside-denied "1" "$(ACMESH_POLICY="$WORK/write-only.json" "$BIN" policy --check /etc/hostname >/dev/null 2>&1; echo $?)"
 	if [ "$HAS_NET" = 1 ]; then
 		check policy-blocks-network "ja" "$(ACMESH_POLICY="$POL" "$BIN" curl -s https://example.com >/dev/null 2>&1 || echo ja)"
 		check policy-network-message "ja" "$(ACMESH_POLICY="$POL" "$BIN" curl -s https://example.com 2>&1 | grep -q 'does not allow network access' && echo ja)"

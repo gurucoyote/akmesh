@@ -122,6 +122,11 @@ gleich mit "HTTP/1.1 400 Bad Request", also Klartext auf einem TLS-Port; das
 abgelaufene Zertifikat wird nicht beanstandet, waehrend Go es mit "certificate
 has expired" ablehnt.
 
+Auch die Schnittstelle ist kleiner: ein Programm, das conn.ConnectionState() aufruft,
+baut unter TinyGo nicht ("type *net.TLSConn has no field or method
+ConnectionState"), derselbe Quelltext mit Go gebaut verhandelt TLS 1.3
+(Version 0x304, Cipher 0x1301, example.com liefert 200 OK).
+
 Das ist kein Einzelfall: TinyGo-Issue #5696, angelegt am 17.09.2026, offen,
 zuletzt aktualisiert am 22.10.2026, beschreibt genau das ("hosted TLS handshake
 returns success without negotiating TLS"). PR #5700, der Go's crypto/tls auf

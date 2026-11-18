@@ -16,7 +16,7 @@ func TestDiffReplaysToTarget(t *testing.T) {
 	for round := 0; round < 200; round++ {
 		a := randomLines(rng, alphabet)
 		b := randomLines(rng, alphabet)
-		ops, err := diffLines(a, b)
+		ops, err := diffLines(a, b, diffOptions{})
 		if err != nil {
 			t.Fatalf("diffLines: %v", err)
 		}
@@ -51,7 +51,7 @@ func TestHunkHeaderCounts(t *testing.T) {
 	for round := 0; round < 100; round++ {
 		a := randomLines(rng, alphabet)
 		b := randomLines(rng, alphabet)
-		ops, err := diffLines(a, b)
+		ops, err := diffLines(a, b, diffOptions{})
 		if err != nil {
 			t.Fatalf("diffLines: %v", err)
 		}
@@ -83,7 +83,7 @@ func TestHunkHeaderCounts(t *testing.T) {
 func TestHunkStartsLineUp(t *testing.T) {
 	a := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"}
 	b := []string{"1", "2", "3", "4X", "5", "6", "7", "8", "9", "10", "11", "12Y"}
-	ops, err := diffLines(a, b)
+	ops, err := diffLines(a, b, diffOptions{})
 	if err != nil {
 		t.Fatalf("diffLines: %v", err)
 	}

@@ -41,11 +41,11 @@ func TestStatFormatDirectives(t *testing.T) {
 		t.Fatalf("type = %d, %q", code, out)
 	}
 
-	// The default form has to name the file and its mode; an agent greps for
-	// the path, a human reads the mode.
+	// The default form is the block GNU prints: an agent greps for "File:",
+	// "Size:" and the mode, so those labels have to be there.
 	out, code = captureIn(t, runStat, []string{path}, "")
-	if code != 0 || !strings.Contains(out, path) || !strings.HasPrefix(out, path+" 6 0644 ") {
-		t.Fatalf("default output %q does not carry name, size and mode", out)
+	if code != 0 || !strings.Contains(out, "File: "+path) || !strings.Contains(out, "Size: 6") || !strings.Contains(out, "(0644/-rw-r--r--)") {
+		t.Fatalf("default output %q lacks the GNU labels File, Size and mode", out)
 	}
 }
 

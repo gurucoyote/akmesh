@@ -78,8 +78,11 @@ func readFileSystems() ([]diskRow, error) {
 		}
 		device := fields[2] // major:minor
 		mount := unescapeMount(fields[4])
-		source := ""
+		source, fsType := "", ""
 		for i, f := range fields {
+			if f == "-" && i+1 < len(fields) {
+				fsType = fields[i+1]
+			}
 			if f == "-" && i+2 < len(fields) {
 				source = unescapeMount(fields[i+2])
 				break
@@ -104,12 +107,18 @@ func readFileSystems() ([]diskRow, error) {
 		if size > 0 {
 			percent = int((size - free) * 100 / size)
 		}
+		inodes := int64(st.Files)
+		ifree := int64(st.Ffree)
 		rows = append(rows, diskRow{
 			Filesystem: source,
+			Type:       fsType,
 			Size:       size,
 			Used:       used,
 			Avail:      avail,
 			UsePercent: percent,
+			Inodes:     inodes,
+			IUsed:      inodes - ifree,
+			IFree:      ifree,
 			MountedOn:  mount,
 		})
 	}

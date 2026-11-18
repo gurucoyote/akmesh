@@ -15,6 +15,9 @@ func normaliseSignal(name string) (string, error) {
 	clean := strings.ToUpper(strings.TrimSpace(name))
 	clean = strings.TrimPrefix(clean, "SIG")
 	switch clean {
+	case "0", "EXIT":
+		// Signal 0 is the existence check: nothing is sent, the handle decides.
+		return "EXIT", nil
 	case "TERM", "15", "KILL", "9", "QUIT", "3", "INT", "2":
 		return "KILL", nil
 	}
@@ -22,6 +25,14 @@ func normaliseSignal(name string) (string, error) {
 }
 
 func signalProcess(pid int, name string) error {
+	if name == "EXIT" {
+		h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
+		if err != nil {
+			return fmt.Errorf("%d: %v", pid, err)
+		}
+		windows.CloseHandle(h)
+		return nil
+	}
 	h, err := windows.OpenProcess(windows.PROCESS_TERMINATE, false, uint32(pid))
 	if err != nil {
 		return fmt.Errorf("%d: %v", pid, err)
@@ -34,3 +45,15 @@ func signalProcess(pid int, name string) error {
 }
 
 func signalNames() []string { return []string{"KILL", "TERM"} }
+
+func signalNumber(name string) int {
+	switch name {
+	case "EXIT":
+		return 0
+	case "KILL":
+		return 9
+	case "TERM":
+		return 15
+	}
+	return 0
+}

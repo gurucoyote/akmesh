@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -21,6 +22,8 @@ func runKill(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch {
+		case a == "-l" || a == "--list":
+			return runKillList(args[i+1:], stdout, stderr)
 		case a == "-s" || a == "--signal":
 			if i+1 >= len(args) {
 				fmt.Fprintln(stderr, "kill: -s needs a signal")
@@ -62,6 +65,31 @@ func runKill(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		}
 	}
 	return code
+}
+
+// runKillList is kill -l: names in signal order, or one translation.
+// "kill -l 9" prints KILL, "kill -l KILL" prints 9, as the POSIX form does.
+func runKillList(rest []string, stdout, stderr *os.File) int {
+	if len(rest) == 0 {
+		names := signalNames()
+		sort.Slice(names, func(i, j int) bool { return signalNumber(names[i]) < signalNumber(names[j]) })
+		for _, name := range names {
+			fmt.Fprintln(stdout, name)
+		}
+		return 0
+	}
+	arg := rest[0]
+	name, err := normaliseSignal(arg)
+	if err != nil {
+		fmt.Fprintf(stderr, "kill: %v\n", err)
+		return 2
+	}
+	if _, err := strconv.Atoi(arg); err == nil {
+		fmt.Fprintln(stdout, name)
+		return 0
+	}
+	fmt.Fprintln(stdout, signalNumber(name))
+	return 0
 }
 
 func isNumber(s string) bool {

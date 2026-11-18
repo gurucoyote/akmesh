@@ -27,6 +27,9 @@ func normaliseSignal(name string) (string, error) {
 }
 
 var signalTable = map[string]syscall.Signal{
+	// Signal 0 sends nothing: kill -0 PID is the existence check, and GNU
+	// accepts it under the name EXIT as well.
+	"EXIT": 0,
 	"HUP":  syscall.SIGHUP,
 	"INT":  syscall.SIGINT,
 	"QUIT": syscall.SIGQUIT,
@@ -62,6 +65,8 @@ func signalProcess(pid int, name string) error {
 }
 
 // signalNames is used by the help text of kill and killall.
+func signalNumber(name string) int { return int(signalTable[name]) }
+
 func signalNames() []string {
 	names := make([]string, 0, len(signalTable))
 	for name := range signalTable {

@@ -21,6 +21,8 @@ func signalProcess(pid int, name string) error { return errNoProcesses }
 
 func signalNames() []string { return nil }
 
+func signalNumber(string) int { return 0 }
+
 func listProcesses() ([]procInfo, error) { return nil, errNoProcesses }
 
 func readBootTime() time.Time { return time.Time{} }

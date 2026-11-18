@@ -11,7 +11,8 @@ import (
 	"github.com/rwtodd/Go.Sed/sed"
 )
 
-// runSed implements sed through the Go.Sed engine: -e, -f, -n, -i.
+// runSed implements sed through the Go.Sed engine: -e, -f, -n, -i and -E
+// (accepted because the engine is extended by default).
 //
 // The engine uses Go's regular expressions, so GNU back references such as
 // \(...\)/\1 are not understood; capture groups are written ( ) and used as $1.
@@ -41,6 +42,10 @@ func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 				return 1
 			}
 			programs = append(programs, string(data))
+		case "-E", "-r", "--regexp-extended":
+			// The engine matches with Go's regular expressions, which are
+			// extended already; the flag is accepted so a command line that
+			// carries it keeps working.
 		case "-n", "--quiet", "--silent":
 			quiet = true
 		case "-i", "--in-place":

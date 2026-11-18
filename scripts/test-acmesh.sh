@@ -129,7 +129,8 @@ printf 'eins\nzwei\ndrei\nvier\n' > a.txt
 printf 'eins\nZWEI\ndrei\nvier\nfuenf\n' > b.txt
 run diff a.txt b.txt > p.diff
 check diff-header "--- a/a.txt" "$(head -1 p.diff | tr -d '\r')"
-checkcode patch-apply 0 "$(run patch p.diff >/dev/null 2>&1; echo $?)"
+# GNU form: the diff comes on stdin, a positional name would be the file to patch
+checkcode patch-apply 0 "$(run patch < p.diff >/dev/null 2>&1; echo $?)"
 check patch-result "eins ZWEI drei vier fuenf" "$(tr '\n' ' ' < a.txt | tr -d '\r' | sed 's/ $//')"
 rm -f p.diff a.txt b.txt
 

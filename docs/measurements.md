@@ -664,3 +664,36 @@ Rotsproben, jeweils FAIL mit dem erwarteten Grund und danach zurueckgenommen:
 Batterie: 113 Checks Linux, 97 Windows, 0 Fehler. Zwei Pruefungen sind
 plattformabhaengig: das x-Bit und der Modus von chmod/stat gibt es unter
 Windows nicht.
+
+## coreutils-Schalter in internal/tools (18.11.2026, acmesh-nl9)
+
+Gegen GNU coreutils im Container (docker.io/library/debian:stable-slim) mit
+denselben Dateien und Aufrufen verglichen. Linux-Binary ./acmesh, Windows
+./acmesh.exe aus scripts/build-bb.sh, jeweils 11 MiB.
+
+    stat -c %a %A %s %F %i %U:%G %h %b   identisch
+    stat -t                              identisch in allen 16 Feldern, %f und
+                                         %D in hex (vorher dezimal: falsch)
+    stat --printf '%n\t%s\n'             Tab echt, kein eigener Zeilenumbruch
+    stat -L / ohne -L                    Link als Link, mit -L als Zieldatei
+    stat -f -c %T /                      ext4 (Host), overlayfs im Container
+    stat (Standardblock)                 Labels File, Size, Device, Inode, Links,
+                                         Access, Modify, Change wie GNU
+    diff -i a A                          Exit 0 (vorher 1 mit leerem Kopf)
+    diff -w / -b                         Exit 0
+    diff -q                              "Files A and B differ", kein Hunk
+    diff -r a b                          "Only in a: x", Exit 1
+    diff -r -N a b                       Kopf "diff -r -N a/x b/x" plus Hunk
+    patch w.txt < p.diff                 Exit 0, Datei geaendert
+    patch -N doppelt                     "Reversed (or previously applied)
+                                         patch detected!  Skipping patch.", Exit 1
+    patch -R                             Exit 0, Ausgangsstand wiederhergestellt
+    patch -f -p1                         Exit 0
+    timeout -s KILL 1 sleep 5            137 (GNU: 137)
+    timeout 1 sleep 5                    124 (GNU: 124)
+    timeout --preserve-status 1 sleep 5  143 (GNU: 143)
+    kill -s 0 PID                        Exit 0, freie PID Exit 1
+    kill -l                              enthaelt EXIT und KILL
+
+Testbilanz: go test ./internal/tools gruen, 21 neue Pruefungen in
+internal/tools/compat_test.go. Batterie 113 Checks Linux, 97 Windows, 0 Fehler.

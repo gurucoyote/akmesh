@@ -219,3 +219,27 @@ kommt aus derselben Quelle.
   timeout unsere eigenen, also gelten die B1-Zeilen, nicht die u-root-Zeilen.
 - Die usage-Zeile von u-root date nennt `-d FILE`, das Flag existiert nicht.
   Entweder Doku oder Schalter - beides jetzt falsch.
+
+### B1 erledigt am 18.11.2026 (Ticket acmesh-nl9)
+
+Von der Liste oben sind alle Schalter bis auf zwei umgesetzt und auf Linux und
+Windows gebaut:
+
+    du -d, diff -q -r -N -i -w -b, patch -R -N -f, sed -E -r, cut -b
+    --complement --output-delimiter, nl -ba und -d, tac -s -r,
+    stat --printf -f -L -t, split -d -n --additional-suffix,
+    truncate -r, timeout -s -k --preserve-status, uname -v -o -p -i,
+    df -i -T -P, kill -l -s (auch -s 0 als Existenztest), dirname -z, free -t -w
+
+Offen bleiben sha*sum -c/--check (eigene Ursache, eigenes Ticket) und
+ps -u --ppid -C -o feld= (Aufwand M).
+
+Zwei Befunde dabei:
+
+- patch hatte bisher eine eigene Aufrufform: ein positionales Argument war die
+  Patchdatei. GNU liest `patch [DATEI [PATCHDATEI]]`, also ist das erste
+  Argument die zu patchende Datei. Die Batterie benutzte die alte Form und
+  wurde auf `patch < p.diff` umgestellt.
+- timeout gab auf Windows 137 statt 124 zurueck, weil TERM dort intern zu KILL
+  wird. Jetzt entscheidet der angeforderte Signalname: -s KILL 137, sonst 124,
+  --preserve-status 128+Signal.

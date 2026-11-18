@@ -261,3 +261,34 @@ ohne Userland nicht lauffaehig - und genau das ist der Zweck dieses Binaries.
 Der Ausweg waere, tcell statisch zu bauen oder Ven zu gabeln. Dann pflegen wir
 einen vi-Fork, dessen Upstream seit 2019 bei Fassung 0.5.0 steht, fuer einen
 Nutzen, den ed und sed heute schon abdecken.
+
+### Ven gegen vannevar (18.11.2026)
+
+Beide sind in Go, beide auf tcell-Basis, beide koennten einen vi abgeben. Der
+Unterschied liegt genau an den zwei Punkten, an denen Ven scheitert.
+
+    Ven 0.5.0                        vannevar (/root/vannevar)
+    fremd, MIT                       eigenes Projekt, keine Lizenzdatei
+    4.566.803 Linux / 3.534.848 Win   14.416.706 Linux, Windows-Bau rot
+    tcell v1 (Apache-2.0)            tcell v2 (Apache-2.0)
+    ruft infocmp, braucht /dev/tty   eigene Terminfo, Fallback ohne /dev/tty
+    vi-Nachbau                       w3m-Nachbau mit Editor-Funktionen
+
+Ven nutzt tcell v1 mit dem dynamischen Terminfo-Treiber und loest deshalb
+infocmp extern. vannevar baut den Bildschirm mit
+tcell.NewTerminfoScreenFromTtyTerminfo und bringt die Terminfo selbst mit;
+in run.go steht ausserdem eine Behandlung fuer fehlendes /dev/tty
+(run.go:1737), also ein Rueckfall statt eines Abbruchs.
+
+Der Windows-Bau von vannevar ist zurzeit rot:
+
+    internal/app/vannevar/run/run.go:1722:20: undefined: syscall.Kill
+    internal/app/vannevar/run/run.go:1722:39: undefined: syscall.SIGTSTP
+
+Das ist die Ctrl-Z-Behandlung, die ein eigenes File mit Build-Tag braucht.
+
+Fuer acmesh heisst das: vannevar ist der einzige Kandidat, der ohne fremdes
+Programm laeuft, aber er ist 17.014 Zeilen eigener Code fuer Betrachter und
+Editor, braucht fuer Windows erst eine Korrektur und bringt den w3m-Teil mit
+(x/net), den ein Agent in einer Huelle selten braucht. Ven ist klein und baut
+auf beiden Zielen, taugt aber nur dort, wo ein Userland mit ncurses steht.

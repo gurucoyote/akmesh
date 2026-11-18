@@ -1,13 +1,16 @@
-// Command basename is the basename tool from internal/tools, reachable as its own
-// command inside the acmesh binary.
+// Command basename is the basename tool, reachable as its own command inside the acmesh
+// binary.
+//
+// It imports only internal/basename and not internal/tools: the table in
+// internal/tools pulls every tool we own into the binary (acmesh-mq1).
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/tools"
+	"acmesh/internal/basename"
 )
 
 func main() {
-	os.Exit(tools.Run("basename"))
+	os.Exit(basename.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

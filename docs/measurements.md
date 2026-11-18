@@ -959,3 +959,23 @@ Der Aufschlag gegen den Bodenwert von 1.814.652 kommt von crypto/sha256.
 
 Batterie: 169 Checks Linux, 149 Windows, 0 Fehler; neue Pruefungen
 sums-check-ok, sums-check-exit, sums-check-failed, sums-check-failed-exit.
+
+## Aufteilung Etappe 3: die kleinen Textbefehle (18.11.2026, acmesh-mq1)
+
+basename, dirname, nl, tac und cut liegen jetzt in eigenen Paketen
+(internal/basename, internal/dirname, internal/nl, internal/tac,
+internal/cut). Die gemeinsamen Dateihelfer (OpenInputs, CloseInputs,
+ReadAllLines) stehen in internal/shared, damit sie einmal existieren und nicht
+in jedes Paket kopiert werden. truncate bleibt vorerst bei fileops, das kommt
+mit der Datei-Gruppe.
+
+Probe mit den vier Textbefehlen: 2.031.740 Bytes; vorher trug ein Bau mit einem
+einzigen eigenen Befehl 10.338.428 Bytes.
+
+Groesse des vollen Binarys: 11804796 Linux, 11835904 Windows (der Umbau selbst
+aendert sie kaum, weil dort alle Befehle drin sind).
+
+go test ./... gruen. Der Test fuer die cut-Liste (1, 1,3, 2-4, 5-) ist mit dem
+Code nach internal/cut gewandert, statt in internal/tools zurueckzubleiben.
+
+Batterie: 169 Checks Linux, 149 Windows, 0 Fehler.

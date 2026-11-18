@@ -358,7 +358,7 @@ func pageText(d map[string]*object, page *object) string {
 			}
 		}
 	}
-	return textOf(content, readFonts(d, resources))
+	return textOfPage(d, content, readFonts(d, resources), resources)
 }
 
 // readFonts maps a resource name to its font. The name to object mapping lives
@@ -637,7 +637,28 @@ func parseCMap(s string) map[uint32]rune {
 // one glyph after another, so a space may only be inserted where the gap is
 // wider than a word space. Without that, a heading comes out as "W o r l d".
 func textOf(content []byte, fonts map[string]*font) string {
-	lines, rects := textOfLines(content, fonts)
+	return textOfPage(nil, content, fonts, "")
+}
+
+// textOfPage reads one page with the document at hand, so that the text inside
+// a form XObject is read too.
+func textOfPage(d map[string]*object, content []byte, fonts map[string]*font, resources string) string {
+	var lines []textLine
+	var rects []rect
+	if d == nil {
+		lines, rects = textOfLines(content, fonts)
+	} else {
+		r := &contentReader{
+			fonts:     fonts,
+			doc:       d,
+			m:         identity(),
+			xobjects:  xobjectsOf(d, resources),
+			lineSizes: map[float64]int{},
+		}
+		r.run(content, 0)
+		r.flushLine()
+		lines, rects = r.lines, r.rects
+	}
 	// A page whose cells are drawn as rectangles is a table; the text that sits
 	// inside those cells is the table, and the rest of the page order would only
 	// repeat it.
@@ -645,173 +666,6 @@ func textOf(content []byte, fonts map[string]*font) string {
 		return t
 	}
 	return renderLines(lines)
-}
-
-// textOfLines reads a content stream into lines with their positions; the
-// rendering is a separate step, because a table needs the whole page.
-func textOfLines(content []byte, fonts map[string]*font) ([]textLine, []rect) {
-	// A line is collected with the size it was set in: the size is the only
-	// thing in a PDF that says "heading", so it has to survive the reading.
-	var lines []textLine
-	var buf bytes.Buffer
-	var pieces []piece
-	lineSizes := map[float64]int{}
-	curSize := 10.0
-	lineY := 0.0
-	flushLine := func() {
-		t := strings.TrimRight(buf.String(), " \t")
-		if strings.TrimSpace(t) != "" {
-			size := curSize
-			best := 0
-			for sz, n := range lineSizes {
-				if n > best {
-					best, size = n, sz
-				}
-			}
-			lines = append(lines, textLine{text: t, size: size, y: lineY, pieces: pieces})
-		}
-		buf.Reset()
-		pieces = nil
-		lineSizes = map[float64]int{}
-	}
-	var cur *font
-	size := 10.0
-	m := identity()
-	var stack []matrix
-	// tx, ty are the text matrix: Td and Tm move it, and the text of the next
-	// operator starts there. The pen moves on its own while a string is
-	// written, so the gap between two pieces is tx minus where the last piece
-	// ended - not the Td value itself.
-	tx, ty := 0.0, 0.0
-	lastStart, lastWidth := 0.0, 0.0
-	lineHasText := false
-	spacePending := false
-
-	newLine := func() {
-		if lineHasText {
-			flushLine()
-			lineHasText = false
-		}
-		spacePending = false
-	}
-	advance := func(b []byte) float64 {
-		if w := cur.width(b, size); w > 0 {
-			return w
-		}
-		return float64(len([]rune(string(b)))) * 0.5 * size
-	}
-	emit := func(b []byte) {
-		if len(b) == 0 {
-			return
-		}
-		text := string(b)
-		if cur != nil {
-			text = cur.decode(b)
-		}
-		if text == "" {
-			return
-		}
-		gap := tx - (lastStart + lastWidth)
-		// A word space is about a quarter of the font size. Missing widths in a
-		// CID font make the estimate uncertain, so the line stays readable and
-		// the threshold is generous rather than putting a space inside a word.
-		if lineHasText && (spacePending || gap > 0.35*size) {
-			if !strings.HasSuffix(buf.String(), " ") && !strings.HasPrefix(text, " ") {
-				buf.WriteString(" ")
-			}
-		}
-		spacePending = false
-		buf.WriteString(text)
-		// A run with a wide run of spaces inside is how many writers lay out a
-		// row of cells: the gap is in the string, not in the positions. Splitting
-		// it keeps the cells apart, which is what a table needs.
-		px, py := m.apply(tx, ty)
-		if parts := splitWideGaps(text); len(parts) > 1 {
-			offset := 0.0
-			for _, part := range parts {
-				x := px + offset*size/1000
-				if part.text != "" {
-					pieces = append(pieces, piece{text: part.text, x: x, y: py, w: advancePart(part.text, size, m)})
-				}
-				offset += part.offset
-			}
-		} else {
-			pieces = append(pieces, piece{text: text, x: px, y: py, w: advance(b)})
-		}
-		lineSizes[size] += len([]rune(text))
-		curSize = size
-		lineY = ty
-		lastStart = tx
-		lastWidth = advance(b)
-		lineHasText = true
-	}
-
-	for _, t := range tokens(string(content)) {
-		switch t.op {
-		case "q":
-			stack = append(stack, m)
-		case "Q":
-			if n := len(stack); n > 0 {
-				m = stack[n-1]
-				stack = stack[:n-1]
-			}
-		case "cm":
-			if len(t.nums) >= 6 {
-				m = m.mul(matrix{a: t.nums[0], b: t.nums[1], c: t.nums[2], d: t.nums[3], e: t.nums[4], f: t.nums[5]})
-			}
-		case "BT":
-			tx, ty = 0, 0
-			lastStart, lastWidth = 0, 0
-		case "Tf":
-			if len(t.nums) > 0 {
-				size = t.nums[0]
-			}
-			cur = fonts[t.name]
-		case "Td", "TD":
-			if len(t.nums) >= 2 {
-				tx += t.nums[0]
-				ty += t.nums[1]
-				if t.nums[1] != 0 {
-					newLine()
-					lastStart, lastWidth = tx, 0
-				}
-			}
-		case "T*":
-			newLine()
-		case "Tm":
-			if len(t.nums) >= 6 {
-				if t.nums[5] != ty && lineHasText {
-					newLine()
-				}
-				tx, ty = t.nums[4], t.nums[5]
-				lastStart, lastWidth = tx, 0
-			}
-		case "Tj":
-			emit(t.str)
-		case "TJ":
-			for _, piece := range t.pieces {
-				emit(piece)
-			}
-			for _, n := range t.nums {
-				// A large negative adjustment is a word space, a small one is
-				// kerning inside a word.
-				if n <= -100 {
-					spacePending = true
-				}
-			}
-		case "'", `"`:
-			newLine()
-			lastStart, lastWidth = tx, 0
-			emit(t.str)
-		}
-	}
-	flushLine()
-	for i := range lines {
-		if len(lines[i].pieces) > 0 {
-			lines[i].y = lines[i].pieces[0].y
-		}
-	}
-	return lines, collectRects(content)
 }
 
 // matrix is the current transformation matrix of a content stream. Text and
@@ -845,55 +699,301 @@ type rect struct {
 	x, y, w, h float64
 }
 
-// collectRects reads the rectangles of a content stream, following q/Q and cm
-// so that the cells and the text end up in the same coordinate system.
-func collectRects(content []byte) []rect {
-	var out []rect
-	var cur *rect
-	m := identity()
-	stack := []matrix{}
-	var pending []rect
-	for _, t := range tokens(string(content)) {
-		switch t.op {
-		case "q":
-			stack = append(stack, m)
-		case "Q":
-			if n := len(stack); n > 0 {
-				m = stack[n-1]
-				stack = stack[:n-1]
-			}
-		case "cm":
-			if len(t.nums) >= 6 {
-				m = m.mul(matrix{a: t.nums[0], b: t.nums[1], c: t.nums[2], d: t.nums[3], e: t.nums[4], f: t.nums[5]})
-			}
-		case "re":
-			if len(t.nums) >= 4 {
-				x1, y1 := m.apply(t.nums[0], t.nums[1])
-				x2, y2 := m.apply(t.nums[0]+t.nums[2], t.nums[1]+t.nums[3])
-				r := rect{x: minf(x1, x2), y: minf(y1, y2), w: absf(x2 - x1), h: absf(y2 - y1)}
-				pending = append(pending, r)
-				cur = &pending[len(pending)-1]
-			}
-		case "f", "F", "f*", "S", "s", "B", "B*", "b", "b*":
-			// The rectangle drawn last is the shape that was painted.
-			if cur != nil {
-				out = append(out, *cur)
-			}
-			cur = nil
-			pending = nil
-		case "n", "W", "W*":
-			cur = nil
-			pending = nil
-		}
-	}
-	return out
-}
-
 func minf(a, b float64) float64 {
 	if a < b {
 		return a
 	}
 	return b
+}
+
+// textOfLines reads a content stream into lines with their positions; the
+// rendering is a separate step, because a table needs the whole page.
+func textOfLines(content []byte, fonts map[string]*font) ([]textLine, []rect) {
+	r := &contentReader{fonts: fonts, m: identity(), lineSizes: map[float64]int{}}
+	r.run(content, 0)
+	r.flushLine()
+	return r.lines, r.rects
+}
+
+// contentReader walks one content stream and collects the text and the
+// rectangles in page coordinates. It is a struct rather than a function because
+// a form XObject is a content stream of its own: it has to be read with the
+// matrix it is placed with, and its text belongs to the same page.
+type contentReader struct {
+	fonts map[string]*font
+	doc   map[string]*object
+	m     matrix
+
+	lines []textLine
+	rects []rect
+
+	cur          *font
+	size         float64
+	tx, ty       float64
+	lastStart    float64
+	lastWidth    float64
+	buf          bytes.Buffer
+	pieces       []piece
+	lineSizes    map[float64]int
+	lineHasText  bool
+	spacePending bool
+
+	xobjects    map[string]string
+	pendingRect *rect
+}
+
+func (r *contentReader) newLine() {
+	if r.lineHasText {
+		r.flushLine()
+		r.lineHasText = false
+	}
+	r.spacePending = false
+}
+
+func (r *contentReader) flushLine() {
+	t := strings.TrimRight(r.buf.String(), " \t")
+	if strings.TrimSpace(t) != "" {
+		size := r.size
+		best := 0
+		for sz, n := range r.lineSizes {
+			if n > best {
+				best, size = n, sz
+			}
+		}
+		y := r.ty
+		if len(r.pieces) > 0 {
+			y = r.pieces[0].y
+		}
+		r.lines = append(r.lines, textLine{text: t, size: size, y: y, pieces: r.pieces})
+	}
+	r.buf.Reset()
+	r.pieces = nil
+	r.lineSizes = map[float64]int{}
+}
+
+func (r *contentReader) advance(b []byte) float64 {
+	if w := r.cur.width(b, r.size); w > 0 {
+		return w
+	}
+	return float64(len([]rune(string(b)))) * 0.5 * r.size
+}
+
+func (r *contentReader) emit(b []byte) {
+	if len(b) == 0 {
+		return
+	}
+	text := string(b)
+	if r.cur != nil {
+		text = r.cur.decode(b)
+	}
+	if text == "" {
+		return
+	}
+	gap := r.tx - (r.lastStart + r.lastWidth)
+	if r.lineHasText && (r.spacePending || gap > 0.35*r.size) {
+		if !strings.HasSuffix(r.buf.String(), " ") && !strings.HasPrefix(text, " ") {
+			r.buf.WriteString(" ")
+		}
+	}
+	r.spacePending = false
+	r.buf.WriteString(text)
+	px, py := r.m.apply(r.tx, r.ty)
+	// A run with a wide run of spaces inside is how many writers lay out a row
+	// of cells: the gap is in the string, not in the positions.
+	if parts := splitWideGaps(text); len(parts) > 1 {
+		offset := 0.0
+		for _, part := range parts {
+			x := px + offset*r.size/1000
+			if part.text != "" {
+				r.pieces = append(r.pieces, piece{text: part.text, x: x, y: py, w: advancePart(part.text, r.size, r.m)})
+			}
+			offset += part.offset
+		}
+	} else {
+		r.pieces = append(r.pieces, piece{text: text, x: px, y: py, w: r.advance(b)})
+	}
+	r.lineSizes[r.size] += len([]rune(text))
+	r.lastStart = r.tx
+	r.lastWidth = r.advance(b)
+	r.lineHasText = true
+}
+
+// run interprets one content stream. depth keeps a form inside a form inside a
+// page from running away.
+func (r *contentReader) run(content []byte, depth int) {
+	if depth > 4 {
+		return
+	}
+	stack := []matrix{}
+	saved := r.m
+	defer func() { r.m = saved }()
+	for _, t := range tokens(string(content)) {
+		switch t.op {
+		case "q":
+			stack = append(stack, r.m)
+		case "Q":
+			if n := len(stack); n > 0 {
+				r.m = stack[n-1]
+				stack = stack[:n-1]
+			}
+		case "cm":
+			if len(t.nums) >= 6 {
+				r.m = r.m.mul(matrix{a: t.nums[0], b: t.nums[1], c: t.nums[2], d: t.nums[3], e: t.nums[4], f: t.nums[5]})
+			}
+		case "re":
+			if len(t.nums) >= 4 {
+				x1, y1 := r.m.apply(t.nums[0], t.nums[1])
+				x2, y2 := r.m.apply(t.nums[0]+t.nums[2], t.nums[1]+t.nums[3])
+				r.pendingRect = &rect{x: minf(x1, x2), y: minf(y1, y2), w: absf(x2 - x1), h: absf(y2 - y1)}
+			}
+		case "f", "F", "f*", "S", "s", "B", "B*", "b", "b*":
+			if r.pendingRect != nil {
+				r.rects = append(r.rects, *r.pendingRect)
+				r.pendingRect = nil
+			}
+		case "n", "W", "W*":
+			r.pendingRect = nil
+		case "Do":
+			r.doXObject(t.name, depth)
+		case "BT":
+			r.tx, r.ty = 0, 0
+			r.lastStart, r.lastWidth = 0, 0
+		case "Tf":
+			if len(t.nums) > 0 {
+				r.size = t.nums[0]
+			}
+			r.cur = r.fonts[t.name]
+		case "Td", "TD":
+			if len(t.nums) >= 2 {
+				r.tx += t.nums[0]
+				r.ty += t.nums[1]
+				if t.nums[1] != 0 {
+					r.newLine()
+					r.lastStart, r.lastWidth = r.tx, 0
+				}
+			}
+		case "T*":
+			r.newLine()
+		case "Tm":
+			if len(t.nums) >= 6 {
+				if t.nums[5] != r.ty && r.lineHasText {
+					r.newLine()
+				}
+				r.tx, r.ty = t.nums[4], t.nums[5]
+				r.lastStart, r.lastWidth = r.tx, 0
+			}
+		case "Tj":
+			r.emit(t.str)
+		case "TJ":
+			for _, piece := range t.pieces {
+				r.emit(piece)
+			}
+			for _, n := range t.nums {
+				// A large negative adjustment is a word space, a small one is
+				// kerning inside a word.
+				if n <= -100 {
+					r.spacePending = true
+				}
+			}
+		case "'", `"`:
+			r.newLine()
+			r.lastStart, r.lastWidth = r.tx, 0
+			r.emit(t.str)
+		}
+	}
+}
+
+// pendingRect is the rectangle drawn last, waiting for the paint operator.
+var _ = 0
+
+func (r *contentReader) doXObject(name string, depth int) {
+	if name == "" || r.doc == nil {
+		return
+	}
+	ref := r.xobjects[name]
+	if ref == "" {
+		return
+	}
+	obj := r.doc[ref]
+	if obj == nil || !hasTag(obj.dict, "/Subtype/Form") {
+		return
+	}
+	// The form is placed with its own matrix, applied after the current one.
+	fm := identity()
+	if raw := value(obj.dict, "Matrix"); strings.HasPrefix(raw, "[") {
+		f := strings.Fields(strings.NewReplacer("[", " ", "]", " ").Replace(raw))
+		if len(f) >= 6 {
+			nums := make([]float64, 6)
+			ok := true
+			for i := range nums {
+				v, err := strconv.ParseFloat(f[i], 64)
+				if err != nil {
+					ok = false
+					break
+				}
+				nums[i] = v
+			}
+			if ok {
+				fm = matrix{a: nums[0], b: nums[1], c: nums[2], d: nums[3], e: nums[4], f: nums[5]}
+			}
+		}
+	}
+	// A form carries its own resources, and they win over the page's.
+	fonts := r.fonts
+	var xobjects map[string]string
+	if raw := value(obj.dict, "Resources"); raw != "" {
+		res := raw
+		if !strings.HasPrefix(raw, "<<") {
+			if refs := refsIn(raw); len(refs) > 0 {
+				if resObj := r.doc[refs[0]]; resObj != nil {
+					res = resObj.dict
+				}
+			}
+		}
+		if f := readFonts(r.doc, res); len(f) > 0 {
+			fonts = f
+		}
+		xobjects = xobjectsOf(r.doc, res)
+	}
+	body := decoded(obj)
+	inner := &contentReader{
+		fonts:     fonts,
+		doc:       r.doc,
+		m:         r.m.mul(fm),
+		xobjects:  xobjects,
+		lineSizes: map[float64]int{},
+	}
+	if inner.xobjects == nil {
+		inner.xobjects = r.xobjects
+	}
+	// The text of a form belongs to the line it sits on, so an open line of the
+	// page is closed first and the form's lines follow.
+	r.newLine()
+	inner.run(body, depth+1)
+	inner.flushLine()
+	r.lines = append(r.lines, inner.lines...)
+	r.rects = append(r.rects, inner.rects...)
+}
+
+// xobjectsOf returns the name to object mapping of a resource dictionary.
+func xobjectsOf(d map[string]*object, resources string) map[string]string {
+	raw := value(resources, "XObject")
+	if raw == "" {
+		return nil
+	}
+	dict := raw
+	if !strings.HasPrefix(raw, "<<") {
+		if refs := refsIn(raw); len(refs) > 0 {
+			if obj := d[refs[0]]; obj != nil {
+				dict = obj.dict
+			}
+		}
+	}
+	out := nameRefs(dict)
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // tableFromRects builds a table from cells drawn as rectangles. A cell takes the

@@ -302,3 +302,26 @@ func TestTableFromRectangles(t *testing.T) {
 		t.Errorf("keine Tabelle aus den Rechtecken:\n%q", got)
 	}
 }
+
+// TestTextFromFormXObject: a form field, a stamp or a header of a form is often
+// a form XObject - its own content stream with its own resources. A reader that
+// only follows the page content loses that text, and in a form that is exactly
+// the part that says what the field is.
+func TestTextFromFormXObject(t *testing.T) {
+	form := "BT /F1 11 Tf 5 6 Td (Kursgebuehr: 630) Tj ET"
+	doc := pdf(
+		"<< /Type /Catalog /Pages 2 0 R >>",
+		"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+		"<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> /XObject << /X1 6 0 R >> >> /Contents 5 0 R >>",
+		"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+		"<< /Length 22 >>\nstream\nq 1 0 0 1 70 700 cm /X1 Do Q\nendstream",
+		"<< /Type /XObject /Subtype /Form /BBox [0 0 200 20] /Resources << /Font << /F1 4 0 R >> >> /Length "+itoa(len(form))+" >>\nstream\n"+form+"\nendstream",
+	)
+	got, err := Convert(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "Kursgebuehr: 630") {
+		t.Errorf("Text aus dem Form-XObject fehlt:\n%q", got)
+	}
+}

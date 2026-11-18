@@ -404,8 +404,10 @@ if command -v python3 >/dev/null 2>&1; then
   check pdf2md-text "Hallo PDF" "$(run pdf2md p-test.pdf | tr -d '\r' | head -1)"
   python3 /root/acmesh/scripts/make-test-pdf-table.py pt-test.pdf
   check pdf2md-table "| Name: | Anna Beispiel |" "$(run pdf2md pt-test.pdf | tr -d '\r' | head -1)"
+  python3 /root/acmesh/scripts/make-test-pdf-form.py pf-test.pdf
+  check pdf2md-form-xobject "Feldtext" "$(run pdf2md pf-test.pdf | tr -d '\r' | head -1)"
   check pdf2md-not-pdf "1" "$(printf 'kein pdf' | run pdf2md >/dev/null 2>&1; echo $?)"
-  rm -f p-test.pdf pt-test.pdf
+  rm -f p-test.pdf pt-test.pdf pf-test.pdf
 fi
 
 # docx2md: a minimal docx (a zip with word/document.xml) in, Markdown out.

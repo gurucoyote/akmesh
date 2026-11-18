@@ -1417,3 +1417,33 @@ fehlen Zeilen wie "Kursgebuehr:" in der Tabelle. Das ist ein eigenes Ticket.
 Batterie: Linux 189 Pruefungen 0 Fehler, Windows 167 0 Fehler.
 Groesze: pdf2md 2769020 Bytes gegen base64 2609276, acmesh 12562556,
 acmesh.exe 12595712.
+
+## Formular-XObjects (19.11.2026, acmesh-39w)
+
+Ein Formular, ein Stempel, eine Kopfzeile ist oft ein Form-XObject: eigener
+Inhaltsstrom, eigene Ressourcen, platziert per "Do" unter einer eigenen Matrix.
+pdf2md liest es jetzt mit: das /Matrix des XObject wird an die aktuelle Matrix
+angehaengt, die Ressourcen des Formulars gewinnen ueber die der Seite, und die
+Tiefe ist auf vier Ebenen begrenzt (ein Formular im Formular im Formular).
+Der Text des Formulars wird an die Stelle gehaengt, an der es steht, also in
+dieselbe Zeile beziehungsweise Tabellenzeile.
+
+Beleg: im EAS_AnmeldeformularTarot25_Jeannette(pe).pdf erscheint jetzt
+"Anmeldung" am Kopf, vorher fehlte die Zeile ganz. Rotprobe: der Test
+TestTextFromFormXObject war rot, bevor run/doXObject eingebaut war
+("Text aus dem Form-XObject fehlt").
+
+Was weiterhin Text statt Tabellenzeile bleibt: "Kursgebuehr: EUR 630,-". Der
+Wert steht dort in einem anderen Lauf als das Label und die Spaltenkanten
+liegen weiter auseinander als die Gruppentoleranz von 3 pt.
+
+Batterie: Linux 190 Pruefungen 0 Fehler, Windows 168 0 Fehler, neuer Fall
+pdf2md-form-xobject (Feldtext aus einem Form-XObject). Groesze: acmesh
+12562556, acmesh.exe 12597248, pdf2md 2769020 Bytes.
+
+Der Pfadcache traf wieder zu: nach dem Bau listete ./acmesh.exe pdf2md nicht
+auf, eine Kopie (/tmp/acmesh-check.exe) gab "Feldtext" aus, und "strings
+acmesh.exe | grep -c pdf2md" fand den Namen zehnmal - die Datei war also neu,
+nur das Abbild unter dem Pfad nicht. Auch rm und Neubau halfen nicht. Wer unter
+WSL von Hand prueft, kopiert die .exe vorher unter einen neuen Namen; die
+Batterie macht das von sich aus.

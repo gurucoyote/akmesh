@@ -32,6 +32,9 @@ are English; documents meant for Martin are German.
 - `GOCACHE=/root/acmesh/.cache` must be set: the default cache is read-only
   here and produces misleading toolchain errors. The script sets it.
 - `makebb` takes GOOS/GOARCH from the environment, it has no `-goos` flag.
+- The build renames gobusybox's two dispatcher messages from "busybox" to
+  "acmesh" in the pinned checkout and rebuilds `makebb` when it still embeds the
+  old text (go:embed). It fails instead of shipping the old wording.
 - Build artifacts (`acmesh`, `acmesh.exe`, `.cache/`, `.gopath/`) stay untracked.
 
 ## Policy first

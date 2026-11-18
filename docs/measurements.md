@@ -132,11 +132,19 @@ geloescht, test-ext.sh heisst test-acmesh.sh.
 Meldungstext: "acmesh: unknown command" nennt jetzt den aufgerufenen Namen
 (programName aus os.Args[0]).
 
-Grenze, gemessen: `./acmesh gibtsnicht` antwortet weiter mit
-"Failed to run command: command is not present in busybox: gibtsnicht" und der
-Befehlsliste. Dieser Text kommt aus bbmain.ErrNotRegistered und dem
-Runner-main von gobusybox v0.6.0, nicht aus diesem Repo. Ihn zu aendern hiesse,
-den gepinnten u-root-Checkout zu patchen; das ist hier nicht vorgesehen.
+Gepatcht am 18.11.2026: `./acmesh gibtsnicht` antwortet mit
+"command is not present in acmesh". Der Text steckt per //go:embed in makebb,
+deshalb ersetzt build-bb.sh ihn in den gobusybox-Quellen und baut makebb neu,
+wenn es noch den alten Text enthaelt. Der Bau prueft danach sein eigenes
+Binary und bricht ab, wenn der alte Text noch drin ist.
+
+    ./scripts/build-bb.sh linux   -> acmesh     11.341.948 Bytes (10,82 MiB)
+    ./scripts/build-bb.sh windows -> acmesh.exe 11.367.936 Bytes (10,84 MiB)
+    ./scripts/test-acmesh.sh ./acmesh     -> 79 checks, 0 failures
+    ./scripts/test-acmesh.sh ./acmesh.exe -> 65 checks, 0 failures
+
+Nebenbefund: makebb wird mit @latest installiert, ist also nicht gepinnt. Ein
+neuer makebb-Stand aendert den generierten Code, auch ohne Aenderung hier.
 
 ## file, iconv, env (17.11.2026, gebaut und geprueft)
 

@@ -155,6 +155,11 @@ checkcode kill-bad-signal 2 "$(run kill -NOSUCHSIGNAL 1 >/dev/null 2>&1; echo $?
 checkcode kill-bad-pid 2 "$(run kill keinpid >/dev/null 2>&1; echo $?)"
 checkcode killall-no-match 1 "$(run killall gibtsnicht 2>/dev/null; echo $?)"
 
+# unknown command: the dispatcher names acmesh, not u-root's busybox
+checkcode unknown-command-exit 1 "$(run gibtsnicht >/dev/null 2>&1; echo $?)"
+check unknown-command-message "ja" "$(run gibtsnicht 2>&1 | grep -q 'not present in acmesh' && echo ja)"
+check unknown-command-no-busybox "0" "$(run gibtsnicht 2>&1 | grep -c busybox | tr -d '\r')"
+
 # system
 check uname-machine "x86_64" "$(run uname -m | tr -d '\r')"
 # The child command depends on the target: a Windows binary sees the Windows

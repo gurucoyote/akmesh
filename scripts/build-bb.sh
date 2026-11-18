@@ -65,14 +65,63 @@ fi
 git -C "$UROOT_DIR" fetch -q origin
 git -C "$UROOT_DIR" checkout -q "$UROOT_COMMIT"
 
-if [ ! -x "$GOPATH/bin/makebb" ]; then
-	# GOOS/GOARCH are set for the target above; the tool itself must be built
-	# for this host, otherwise it lands in bin/<goos>_<goarch>/.
-	env -u GOOS -u GOARCH GOBIN="$GOPATH/bin" go install github.com/u-root/gobusybox/src/cmd/makebb@latest
-fi
+# u-root's dispatcher calls itself "busybox" in the two messages a mistyped
+# command produces. The binary is called acmesh, so those words are replaced in
+# every copy of gobusybox the build can link: the vendored one inside the u-root
+# checkout and the extracted module under GOPATH. A workspace build (GOWORK)
+# ignores vendor/, a plain build does not, hence both. If u-root rewords the
+# text, the build stops here instead of shipping the old name.
+DISPATCHER_FILES="$UROOT_DIR/vendor/github.com/u-root/gobusybox/src/pkg/bb/bbmain/register.go
+$(ls -d "$GOPATH"/pkg/mod/github.com/u-root/gobusybox/*/pkg/bb/bbmain/register.go 2>/dev/null || true)"
+rename_in_dispatcher() {
+	old=$1
+	new=$2
+	found=0
+	for file in $DISPATCHER_FILES; do
+		[ -f "$file" ] || continue
+		found=1
+		if grep -q "$new" "$file"; then
+			continue
+		fi
+		if ! grep -q "$old" "$file"; then
+			echo "u-root no longer says \"$old\" in $file: the dispatcher text changed" >&2
+			exit 1
+		fi
+		sed -i "s/$old/$new/" "$file"
+	done
+	if [ "$found" -eq 0 ]; then
+		echo "no gobusybox register.go found: the dispatcher text cannot be renamed" >&2
+		exit 1
+	fi
+}
+rename_in_dispatcher "not present in busybox" "not present in acmesh"
+rename_in_dispatcher "busybox dispatched" "acmesh dispatched"
+
 MAKEBB="$GOPATH/bin/makebb"
 if [ ! -x "$MAKEBB" ]; then
 	MAKEBB="$GOPATH/bin/makebb.exe"
+fi
+# makebb embeds gobusybox's dispatcher with //go:embed, so the rename above only
+# reaches the generated source through a makebb that was built after it. Rebuild
+# when the tool is missing or still carries u-root's wording.
+NEEDS_MAKEBB=0
+if [ ! -x "$MAKEBB" ]; then
+	NEEDS_MAKEBB=1
+elif tr -d '\000' < "$MAKEBB" | grep -q 'not present in busybox'; then
+	NEEDS_MAKEBB=1
+fi
+if [ "$NEEDS_MAKEBB" -eq 1 ]; then
+	# GOOS/GOARCH are set for the target above; the tool itself must be built
+	# for this host, otherwise it lands in bin/<goos>_<goarch>/.
+	env -u GOOS -u GOARCH GOBIN="$GOPATH/bin" go install github.com/u-root/gobusybox/src/cmd/makebb@latest
+	MAKEBB="$GOPATH/bin/makebb"
+	if [ ! -x "$MAKEBB" ]; then
+		MAKEBB="$GOPATH/bin/makebb.exe"
+	fi
+	if tr -d '\000' < "$MAKEBB" | grep -q 'not present in busybox'; then
+		echo "makebb still embeds u-root's busybox wording: the rename cannot reach the build" >&2
+		exit 1
+	fi
 fi
 
 # The workspace is what lets makebb see our own packages.
@@ -159,4 +208,10 @@ if [ -n "${ACMESH_GEN_DIR:-}" ]; then
 fi
 # shellcheck disable=SC2086
 "$MAKEBB" -o "$ROOT/$OUT" $PKGS
+# The rename above must reach the binary. A vendor/module mismatch would build
+# fine and still ship u-root's wording, so the build checks its own output.
+if tr -d '\000' < "$ROOT/$OUT" | grep -q 'not present in busybox'; then
+	echo "$OUT still says busybox: the dispatcher rename did not reach the build" >&2
+	exit 1
+fi
 ls -l "$ROOT/$OUT"

@@ -86,3 +86,15 @@ Folge fuer acmesh: Rechtebits und damit `[ -r ]`, `[ -w ]`, `[ -x ]` und chmod
 sind unter Windows nur auf echten Windows-Pfaden deutbar, nicht auf Dateien,
 die ueber den WSL-Share erreicht werden. Upstream mvdan/sh hat winmode nicht;
 wer diese Bits braucht, nimmt die Gabel per replace.
+
+## Entscheidung (18.11.2026, Martin)
+
+Upstream mvdan/sh 3.14.1, nicht die Gabel. Gruende: 5,1 MB gegen 25,2 MB und
+kein Eigenanteil von 447k Zeilen; der einzige Kompatibilitaetsunterschied ist
+printf. go.mod steht jetzt auf v3.14.1 (vorher v3.11.0 als indirekte Abhaengigkeit
+ueber u-root), der Bau beider Ziele laeuft damit durch.
+
+Offen und ausgelagert: winmode. Die Rechtebits in Windows-DACLs waeren der
+einzige Grund fuer die Gabel. Ticket: "winmode aus qiangli/sh einzeln pruefen
+(ohne den Fork zu erben)" - dort stehen drei Wege, vom Kopieren der
+winmode-Dateien bis zu einer eigenen Schicht um os.Chmod.

@@ -774,3 +774,59 @@ gruen. Batterie: 128 Checks Linux, 112 Windows, 0 Fehler; neue Pruefungen
 find-optional-path, find-dot-prefix, find-maxdepth, find-exec, find-missing,
 grep-extended, grep-ignore-case, grep-word, grep-context, grep-only-match,
 grep-no-match, grep-recursive.
+
+## Forks: chmod, xargs, cp, tar (18.11.2026, acmesh-agt, acmesh-icw, acmesh-1fs, acmesh-r9r)
+
+Verglichen mit GNU (debian stable-slim), Ausgabe und Exit-Code.
+
+    chmod                                     GNU
+    chmod -v 755 f.txt                        identisch ("mode of 'f.txt' changed from 0644 (rw-r--r--) to 0755 (rwxr-xr-x)")
+    chmod -c 755 f.txt (unveraendert)         identisch (keine Ausgabe)
+    chmod -R 700 sub                          identisch
+    chmod +x / u+x                            identisch (Patch +x bleibt im Fork)
+    chmod --reference=a.txt b.txt             identisch
+    chmod 999 f.txt                           Exit 1, "invalid mode: '999'" + Try-Zeile
+    chmod 755                                 Exit 1, "missing operand after '755'" + Try-Zeile
+
+    xargs                                     GNU
+    xargs -I{} echo '[{}]'                    identisch (eine Zeile, Leerzeichen bleiben)
+    xargs -n 2 echo                           identisch
+    xargs -0 echo                             identisch
+    xargs -d, echo                            identisch
+    xargs -r echo  (leer)                     identisch (kein Lauf)
+    Kind schlaegt fehl                        Exit 123 (GNU), Befehl fehlt: 127
+
+    cp                                        GNU
+    cp -a src dst                             identisch, Modus 640 und mtime 2020-01-02 03:04:05 erhalten
+    cp -R src dst                             identisch
+    cp -t DIR a b                             identisch
+    cp -n a b                                 identisch (b bleibt)
+    cp -v a b                                 identisch ("'a' -> 'b'")
+    cp nix x                                  Exit 1, "cannot stat 'nix': No such file or directory"
+
+    tar                                       GNU
+    tar -czf x.tgz d                          gzip-Archiv, GNU liest es (tar -tzf und -xzf)
+    tar -tzf x.tgz                            identisch zur GNU-Liste
+    tar -tf x.tgz (ohne -z)                   identisch (gzip am Magic erkannt)
+    tar -xzf gt.tgz (GNU-Archiv)              entpackt vollstaendig
+    tar -czf y.tgz --exclude='*.log' d        skip.log fehlt, Rest vollstaendig
+    tar -xzf x.tgz -C out --strip-components=1  a.txt und sub/b.txt oben
+    tar -cf z.tar -C d a.txt                  Archiv enthaelt nur a.txt
+    tar -cjf x.tbz                            Exit 2 mit Meldung (kein bzip2 im Binary)
+
+Befund beim Bauen: tar war noch in scripts/cmds.txt, also gewann u-root und der
+Fork war im Binary unerreichbar - dieselbe Falle wie bei head. Erst nach dem
+Streichen des Namens war -czf da.
+
+Groesse (vor dieser Runde: 11501692 Linux, 11527168 Windows):
+
+    Linux    11620476 Bytes  (+118784 fuer chmod, xargs, cp, tar)
+    Windows  11650560 Bytes  (+123392 fuer chmod, xargs, cp, tar)
+
+Tests: internal/forked/chmod (4), xargs (6), cp (4), tar (5); go test ./...
+gruen. Batterie: 152 Checks Linux, 133 Windows, 0 Fehler; neue Pruefungen
+chmod-recursive(-mode), chmod-verbose, chmod-try-hint, xargs-replace/-chunk/
+-no-run-empty/-child-fails, cp-archive(-mode/-nested), cp-target-dir/-files,
+cp-no-clobber, tar-create-gzip, tar-list-gzip, tar-list-without-z, tar-exclude
+(-worked), tar-extract-strip, tar-strip-file, tar-C-create/-listing,
+tar-j-refused.

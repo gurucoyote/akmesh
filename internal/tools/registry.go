@@ -30,6 +30,8 @@ type Func func(args []string, stdin *os.File, stdout, stderr *os.File) int
 var Commands = map[string]Func{
 	"awk":       runAwk,
 	"basename":  runBasename,
+	"chmod":     runChmod,
+	"cp":        runCp,
 	"cut":       runCut,
 	"diff":      runDiff,
 	"dirname":   runDirname,
@@ -68,7 +70,9 @@ var Commands = map[string]Func{
 	"timeout":   runTimeout,
 	"truncate":  runTruncate,
 	"true":      runTrue,
+	"tar":       runTar,
 	"uname":     runUname,
+	"xargs":     runXargs,
 	"gosh":      runSh,
 }
 

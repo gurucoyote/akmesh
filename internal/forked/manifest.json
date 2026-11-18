@@ -1,5 +1,27 @@
 {
   "forks": {
+    "chmod": {
+      "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
+      "files": [
+        {
+          "sha256": "511eb75eab515d33e1bb82d7dd47c3fe8346b47906ad9f04bed3c49d69f936f7",
+          "upstream": "cmds/core/chmod/chmod.go"
+        }
+      ]
+    },
+    "cp": {
+      "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
+      "files": [
+        {
+          "sha256": "80a8b3cfc8a09387c091f76beb31377b5b29ecb78eea76633bd0b8d5851a1439",
+          "upstream": "cmds/core/cp/cp.go"
+        },
+        {
+          "sha256": "7cc3d854264619f5ef62e9e90116921f2ae2f8184bbc3e9f08850990f8ec76bf",
+          "upstream": "pkg/cp/cp.go"
+        }
+      ]
+    },
     "find": {
       "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
       "files": [
@@ -32,6 +54,15 @@
         {
           "sha256": "80264fef5244e8518c0d2b256a923c34afffa99a4cf293233fb3dc562c81ceb6",
           "upstream": "cmds/core/head/head.go"
+        }
+      ]
+    },
+    "xargs": {
+      "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
+      "files": [
+        {
+          "sha256": "4e3d97be1712724b6f6fbac9ecf90d82483bac56c7b043878216d906044746ba",
+          "upstream": "cmds/core/xargs/xargs.go"
         }
       ]
     }

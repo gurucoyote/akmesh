@@ -82,7 +82,63 @@ case "$BIN" in
 *) check chmod-plusx-bit "yes" "$([ -x xmode ] && echo yes || echo no)" ;;
 esac
 checkcode chmod-bad-mode 1 "$(run chmod 999 xmode >/dev/null 2>&1; echo $?)"
-check chmod-bad-mode-message "ja" "$(run chmod 999 xmode 2>&1 | grep -q 'unable to decode mode' && echo ja)"
+# GNU says "invalid mode: '999'" plus the hint line; the fork follows GNU.
+check chmod-bad-mode-message "ja" "$(run chmod 999 xmode 2>&1 | grep -q "invalid mode: '999'" && echo ja)"
+check chmod-try-hint "ja" "$(run chmod 999 xmode 2>&1 | grep -q "Try 'chmod --help'" && echo ja)"
+mkdir -p cdir/sub && printf 'z\n' > cdir/sub/f.txt
+checkcode chmod-recursive 0 "$(run chmod -R 700 cdir >/dev/null 2>&1; echo $?)"
+# Mode bits are only real on unix; Windows keeps its own ACLs behind them.
+case "$BIN" in
+*.exe) ;;
+*) check chmod-recursive-mode "rwx------" "$(run ls -ld cdir/sub | awk '{print $1}' | cut -c2-10)" ;;
+esac
+case "$BIN" in
+*.exe) ;;
+*)
+	chmod 644 cdir/sub/f.txt 2>/dev/null
+	check chmod-verbose "ja" "$(run chmod -v 755 cdir/sub/f.txt 2>&1 | grep -q "changed from 0644 (rw-r--r--) to 0755 (rwxr-xr-x)" && echo ja)"
+	;;
+esac
+rm -rf cdir
+# cp: -a (mode and time), -t and -n are the reasons it got forked
+mkdir -p cpsrc/sub && printf 'a\n' > cpsrc/a.txt && printf 'b\n' > cpsrc/sub/b.txt
+chmod 640 cpsrc/a.txt 2>/dev/null
+checkcode cp-archive 0 "$(run cp -a cpsrc cpdst >/dev/null 2>&1; echo $?)"
+case "$BIN" in
+*.exe) ;;
+*) check cp-archive-mode "640" "$(run stat -c %a cpdst/a.txt 2>/dev/null | tr -d '\r')" ;;
+esac
+check cp-archive-nested "b" "$(run cat cpdst/sub/b.txt | tr -d '\r\n')"
+mkdir -p cptarget
+checkcode cp-target-dir 0 "$(run cp -t cptarget cpsrc/a.txt cpsrc/sub/b.txt >/dev/null 2>&1; echo $?)"
+check cp-target-files "2" "$(run ls cptarget | wc -l | tr -d ' ')"
+printf 'old\n' > cpdst/a.txt
+run cp -n cpsrc/sub/b.txt cpdst/a.txt >/dev/null 2>&1
+check cp-no-clobber "old" "$(run cat cpdst/a.txt | tr -d '\r\n')"
+rm -rf cpsrc cpdst cptarget
+
+# tar: -czf and -tzf are what every agent writes
+mkdir -p tdir/sub && printf 'x\n' > tdir/a.txt && printf 'y\n' > tdir/sub/b.txt && printf 'z\n' > tdir/skip.log
+checkcode tar-create-gzip 0 "$(run tar -czf t.tgz tdir >/dev/null 2>&1; echo $?)"
+# The separator differs per target, so the check looks for the file name only.
+check tar-list-gzip "ja" "$(run tar -tzf t.tgz 2>/dev/null | grep -q 'a\.txt' && echo ja)"
+check tar-list-without-z "ja" "$(run tar -tf t.tgz 2>/dev/null | grep -q 'a\.txt' && echo ja)"
+checkcode tar-exclude 0 "$(run tar -czf te.tgz --exclude='*.log' tdir >/dev/null 2>&1; echo $?)"
+check tar-exclude-worked "" "$(run tar -tzf te.tgz 2>/dev/null | grep 'skip.log')"
+mkdir -p tout
+checkcode tar-extract-strip 0 "$(run tar -xzf t.tgz -C tout --strip-components=1 >/dev/null 2>&1; echo $?)"
+check tar-strip-file "x" "$(run cat tout/a.txt 2>/dev/null | tr -d '\r\n')"
+checkcode tar-C-create 0 "$(run tar -cf t2.tar -C tdir a.txt >/dev/null 2>&1; echo $?)"
+check tar-C-listing "a.txt" "$(run tar -tf t2.tar 2>/dev/null | tr -d '\r')"
+checkcode tar-j-refused 2 "$(run tar -cjf t.tbz tdir >/dev/null 2>&1; echo $?)"
+rm -rf tdir tout t.tgz te.tgz t2.tar
+
+# xargs starts a real program, so the command is the binary itself: echo and
+# false are builtins on Windows and cannot be started.
+check xargs-replace "[a]" "$(printf 'a\n' | run xargs -I{} "$BIN" echo '[{}]' | tr -d '\r')"
+check xargs-chunk "1 2" "$(printf '1\n2\n' | run xargs -n 2 "$BIN" echo | tr -d '\r')"
+check xargs-no-run-empty "" "$(printf '' | run xargs -r "$BIN" echo | tr -d '\r\n')"
+checkcode xargs-child-fails 123 "$(printf 'x\n' | run xargs "$BIN" false >/dev/null 2>&1; echo $?)"
 
 # stat, sync, hostname, policy: the four that had no test at all (acmesh-nyu)
 printf 'sechs\n' > statme.txt

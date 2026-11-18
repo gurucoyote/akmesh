@@ -108,7 +108,11 @@ SHA-256 der Upstream-Dateien. Wandert der Pin, wird der Test rot, bis jemand die
 Kopie ansieht und das Manifest nachzieht. Stilles Auseinanderlaufen ist der
 Preis des Forks; der Test macht ihn sichtbar.
 
-Bisher geforkt: head (acmesh-86m: -5, -q, -v, Exit 1 bei Lesefehler), find
+Bisher geforkt: head (acmesh-86m: -5, -q, -v, Exit 1 bei Lesefehler), chmod
+(acmesh-agt: -R, -v/-c mit GNUs Wortlaut, +x wie GNU), cp (acmesh-1fs: -a, -p,
+-t DIR, -n, -v im GNU-Format), xargs (acmesh-icw: -I, -r, -d, -P, Exit
+123/124/127), tar (acmesh-r9r: -czf/-tzf/-xzf, gzip-Erkennung beim Lesen, -C,
+--strip-components, --exclude), find
 (acmesh-29n: Startpfad optional, -maxdepth, -mindepth, -exec, -not, -path,
 -print0, "./" wie GNU) und grep (acmesh-2nz: -E, -w, -o, -A/-B/-C, -r/-R,
 Exit 0/1/2 und -c je Datei wie GNU). Bei find fiel pkg/ls weg, bei grep das

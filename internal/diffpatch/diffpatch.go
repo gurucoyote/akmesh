@@ -124,10 +124,10 @@ func runDiff(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		return 2
 	}
 	if opts.labelA == "" {
-		opts.labelA = "a/" + files[0]
+		opts.labelA = files[0]
 	}
 	if opts.labelB == "" {
-		opts.labelB = "b/" + files[0]
+		opts.labelB = files[1]
 	}
 	infoA, errA := os.Stat(files[0])
 	infoB, errB := os.Stat(files[1])
@@ -393,6 +393,29 @@ func hunks(ops []opLine) []hunk {
 	return out
 }
 
+// headerNames collects the "---" names of a patch, in order. A name of
+// /dev/null means "file does not exist yet" and stays empty.
+func headerNames(text string) []string {
+	var names []string
+	var pending string
+	for _, line := range strings.Split(text, "\n") {
+		switch {
+		case strings.HasPrefix(line, "--- "):
+			pending = strings.TrimSpace(strings.TrimPrefix(line, "--- "))
+			if i := strings.IndexByte(pending, '\t'); i >= 0 {
+				pending = pending[:i]
+			}
+			if pending == "/dev/null" {
+				pending = ""
+			}
+		case strings.HasPrefix(line, "+++ "):
+			names = append(names, pending)
+			pending = ""
+		}
+	}
+	return names
+}
+
 // runPatch applies a unified or git patch. The GNU forms are understood:
 //
 //	patch [options] [ORIGINALFILE [PATCHFILE]]
@@ -476,7 +499,17 @@ func runPatch(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		defer f.Close()
 		r = f
 	}
-	list, _, err := gitdiff.Parse(bufio.NewReader(r))
+	// The parser behind gitdiff files both names under the post-image name for
+	// a plain unified diff ("--- a.txt" / "+++ b.txt" comes back as b.txt
+	// twice). patch has to write the pre-image file, so the "---" names are
+	// read from the raw patch as well and win (acmesh-bwv).
+	raw, err := io.ReadAll(r)
+	if err != nil {
+		fmt.Fprintf(stderr, "patch: %v\n", err)
+		return 1
+	}
+	oldNames := headerNames(string(raw))
+	list, _, err := gitdiff.Parse(bufio.NewReader(strings.NewReader(string(raw))))
 	if err != nil {
 		fmt.Fprintf(stderr, "patch: %v\n", err)
 		return 1
@@ -486,15 +519,22 @@ func runPatch(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		return 2
 	}
 	code := 0
-	for _, file := range list {
+	for idx, file := range list {
 		if reverse {
 			file = reverseFile(file)
 		}
+		if idx < len(oldNames) && oldNames[idx] != "" {
+			file.OldName, file.NewName = oldNames[idx], file.NewName
+		}
 		name := target
 		if name == "" {
-			name = stripName(file.NewName, strip)
+			// patch modifies the file the "---" line names; the "+++" name
+			// is the result, which does not exist yet on a create patch.
+			// Preferring the new name broke plain `diff a b | patch` once the
+			// labels became real file names (acmesh-bwv).
+			name = stripName(file.OldName, strip)
 			if name == "" {
-				name = stripName(file.OldName, strip)
+				name = stripName(file.NewName, strip)
 			}
 			// Without an explicit -p, GNU falls back to the file name alone
 			// when the full path is not there. That makes a/foo patches apply

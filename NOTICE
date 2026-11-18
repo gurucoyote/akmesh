@@ -1,0 +1,39 @@
+acmesh bundles third-party code. This file records whose it is and under which
+licence it is distributed, so that a binary leaving the house carries the
+notices it must carry.
+
+The full licence texts are in the module cache after a build
+($GOPATH/pkg/mod/...) and in the vendor trees of the projects themselves. What
+follows is the notice, not a replacement for the text.
+
+1. u-root
+   Source:  https://github.com/u-root/u-root
+   Pinned:  869f00f6b224ce02b1db51806159d6cd9c246f76
+   Licence: BSD-3-Clause
+   Used as: the commands in this binary, either linked from u-root directly or
+            forked into internal/forked (see internal/forked/manifest.json).
+   Copyright (c) The u-root Authors.
+
+2. gobusybox (part of u-root, separate module)
+   Source:  https://github.com/u-root/gobusybox
+   Pinned:  v0.6.0
+   Licence: BSD-3-Clause
+   Used as: the build tool (makebb) and the dispatcher around the command
+            table.
+   Copyright (c) The u-root Authors.
+
+3. mvdan/sh
+   Source:  https://github.com/mvdan/sh
+   Pinned:  v3.14.1
+   Licence: BSD-3-Clause
+   Used as: the shell behind "sh" and "gosh".
+   Copyright (c) 2016, Daniel Martí.
+
+4. Go standard library and golang.org/x/sys
+   Licence: BSD-3-Clause (the Go authors)
+   Used as: everything underneath.
+
+What a distributed binary has to carry: the three notices above with their
+copyright lines, and the licence texts. A build that ships acmesh without them
+is not distributable, which is why they live in the repository next to the code
+that uses them rather than in a tarball nobody reads.

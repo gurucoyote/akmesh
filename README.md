@@ -83,4 +83,6 @@ Without arguments the binary lists the commands it carries. The symlink form
 u-root and gobusybox are BSD-3-Clause, mvdan/sh is BSD-3-Clause. The commands
 under internal/forked are copies of u-root source: they keep the u-root
 copyright header and name their upstream commit and file. A binary that links
-all this carries their notices; see `docs/design/acmesh.md`.
+all this carries their notices. `NOTICE` names the three projects, their
+pinned versions and their copyright lines; `docs/design/acmesh.md` says how a
+distribution has to be handled.

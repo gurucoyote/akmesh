@@ -541,3 +541,37 @@ Groesse (vorher 11.358.332 / 11.383.296):
 -R verhaelt sich wie GNU: Hash je Schluessel, gleiche Schluessel bleiben
 zusammen. Gemessen: printf 'b\na\nb\n' | ./acmesh sort -R -> b, b, a.
 Wer wirklich durchmischen will, nimmt shuf (eigener Befehl).
+
+## Testabdeckung je Befehl (18.11.2026)
+
+Zaehlung gegen die Befehlstabelle (34 Namen), nicht gegen Dateien:
+
+    Go-Tests beruehren direkt      9   curl wget df du free split sha*sum jq ps
+    nur die Live-Batterie         25   awk basename cut diff dirname env file
+                                       iconv kill killall nl patch sed tac
+                                       timeout truncate uname sort shuf ...
+    keine Pruefung irgendwo        4   stat sync hostname policy
+
+Die Batterie (scripts/test-acmesh.sh, 88 Pruefungen auf Linux) ist eine echte
+Ebene: sie laeuft gegen das gebaute Binary. Sie ist aber Smoke - sie belegt
+"Antwort kommt", nicht "Antwort ist richtig". Bei stat z.B. prueft sie nichts,
+obwohl Agenten `stat -c '%a %n'` parsen.
+
+Hollow-Test-Pruefung: die vorhandenen Negativtests tragen ihren Gegenbeleg
+(TestCurlNoFollowWithoutL prueft den Rumpf der 302, nicht nur "enthält das Ziel
+nicht"). Der eine t.Skip in internal/policy ist begruendet (eine aktive Policy
+im Prozess) und nicht als Dauerausnahme gedacht.
+
+Neu geschlossen: die Tabelle konnte einen Namen auf den falschen Befehl zeigen,
+ohne dass irgendein Test das merkte - cmd/<name>/main.go ruft Run("name")
+richtig, waehrend der Tabelleneintrag auf den Nachbarn zeigt. Dagegen jetzt
+TestNoCommandSharesAnotherImplementation und, fuer die Closures der Summen,
+TestSumsAreWiredToTheirOwnAlgorithm (vergleicht gegen die veroeffentlichten
+Vektoren von "abc").
+
+Rotsproben gefahren, jede mit dem erwarteten Grund, danach zurueckgenommen:
+
+    "stat": runSync            -> FAIL "stat and sync share one implementation"
+    "sha256sum": runSum("md5") -> FAIL "printed 90015098..., want the sha256sum digest"
+    Monatsordnung gedreht      -> FAIL TestSortMatchesGNU/-M
+    -R mit festem Seed         -> FAIL "-R produced the same order five times"

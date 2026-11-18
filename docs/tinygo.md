@@ -194,6 +194,17 @@ einem Werkzeug, das ein Agent hunderte Male startet, ist das der falsche Tausch.
 - Ob ein netdev mit OS-TLS curl unter TinyGo wirklich traegt, ist ungemessen und
   waere ein eigenes Stueck Arbeit.
 
+## TinyGo ist am 18.11.2026 geloescht
+
+Beide Installationen unter /root/3rd (0.39 und 0.44, zusammen 2,2 GB) sind weg,
+die Caches dazu. Die Skripte hier bleiben, brauchen aber wieder ein TinyGo:
+
+    curl -LO https://github.com/tinygo-org/tinygo/releases/download/v0.44.0/tinygo0.44.0.linux-amd64.tar.gz
+    tar xzf tinygo0.44.0.linux-amd64.tar.gz
+    TINYGO=$PWD/tinygo/bin/tinygo sh scripts/build-tinygo.sh linux fs
+
+Die Zusammenfassung fuer den Alltag liegt in /root/docs/2026-11-18_tinygo.md.
+
 ## Brauchen wir TinyGo? (18.11.2026)
 
 Kurz: nein, fuer nichts, was auf unserer Liste steht.

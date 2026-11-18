@@ -370,3 +370,16 @@ aus demselben Paket: basename 7.381.640, jq 7.381.840, sh 7.381.792, sed
 Die Netzbefehle bauen unter TinyGo nicht: http.Transport hat dort kein
 Proxy-Feld, und net/http/cookiejar fehlt. golang.org/x/crypto/ssh allein baut
 (2.496.232 Bytes), es ist also der Http-Teil.
+
+## Korrektur 18.11.2026: TinyGo spart nichts
+
+Der erste TinyGo-Vergleich stellte 7.381.640 Bytes (TinyGo) gegen 8.478.113
+Bytes (Go, ungestrippt) und las daraus 1,1 MB Vorteil. Unser Bau laeuft aber mit
+-s -w. Richtig gemessen, gleicher Befehl, Tag nonet:
+
+    TinyGo                    7.381.640 Bytes (7,04 MiB)
+    Go gestrippt              5.861.668 Bytes (5,59 MiB)
+    Go ungestrippt            8.478.113 Bytes (8,09 MiB)
+
+TinyGo ist also 1.519.972 Bytes groesser als der gestrippte Go-Bau. Ein
+TinyGo-Bau des fs-Multicalls waere entsprechend rund 11,3 MB statt 9,32 MiB.

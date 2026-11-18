@@ -40,8 +40,17 @@ Textteil durch:
     awk        7.381.632
     cut        7.381.680
 
-Unter Go gebaut ist derselbe Einzelbefehl 8.478.113 Bytes (basename). TinyGo
-spart hier also rund 1,1 MB, gemessen am selben Paketausschnitt. Die Groesse ist
+Der Vergleich mit Go muss gestrippt sein, weil unser Bau mit -s -w laeuft.
+Gemessen am selben Befehl (basename, Tag nonet):
+
+    TinyGo                           7.381.640 Bytes (7,04 MiB)
+    Go, ungestrippt                  8.478.113 Bytes (8,09 MiB)
+    Go, gestrippt (-s -w)            5.861.668 Bytes (5,59 MiB)
+
+Also ist TinyGo hier nicht kleiner, sondern 1.519.972 Bytes groesser als der
+gestrippte Go-Bau. Eine fruehere Fassung dieses Dokuments hat TinyGo mit dem
+ungestrippten Go-Bau verglichen und daraus einen Vorteil von 1,1 MB gemacht; das
+war ein Messfehler. Die Groesse ist
 bei allen Befehlen fast gleich, weil die Registry alle Befehle in einem Binary
 haelt; das ist bei Go genauso.
 
@@ -76,8 +85,13 @@ Baue, nicht als Ersatz fuer den normalen Bau.
 
 ## Fazit
 
-TinyGo traegt den Datei-und-Text-Teil eines acmesh ohne Netz: rund 1,1 MB
-kleiner pro Einzelbefehl, aber mit den Einschraenkungen der kleineren
-Standardbibliothek, ohne Debugger und mit langen Uebersetzungszeiten. Fuer einen
-schlanken Datei-Baustein (fs-Profil) ist es ein gangbarer Weg; fuer den vollen
-Befehlssatz mit curl und wget braeuchte es einen eigenen Netzmotor.
+TinyGo traegt den Datei- und Text-Teil eines acmesh ohne Netz, aber es spart
+nichts: derselbe Befehlssatz ist gestrippt 5,59 MiB unter Go und 7,04 MiB unter
+TinyGo, also 1,5 MB mehr. Dazu die Einschraenkungen der kleineren
+Standardbibliothek (kein Cookie-Jar, kein Proxy, kein net/http/cookiejar), kein
+Debugger und lange Uebersetzungszeiten.
+
+Fuer einen kleinen Datei-Baustein bringt TinyGo damit keinen
+Groessenvorteil; interessant waere es erst fuer Ziele, die Go nicht bedient, etwa
+Mikrocontroller oder Wasm mit kleinerem Runtime. Fuer den vollen Befehlssatz mit
+curl und wget braeuchte es ohnehin einen eigenen Netzmotor.

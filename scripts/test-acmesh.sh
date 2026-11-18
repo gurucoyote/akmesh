@@ -410,6 +410,16 @@ if command -v python3 >/dev/null 2>&1; then
   rm -f p-test.pdf pt-test.pdf pf-test.pdf
 fi
 
+# md2txt: the plain text of Markdown, the way pandoc -t plain writes it.
+printf '# Titel\n\nEin **fetter** [Link](http://x/y).\n' > m-test.md
+check md2txt-heading "Titel" "$(run md2txt m-test.md | tr -d '\r' | head -1)"
+check md2txt-inline "Ein fetter Link." "$(run md2txt m-test.md | tr -d '\r' | sed -n '3p')"
+printf '| a | b |\n| --- | --- |\n| 1 | 2 |\n' > m-tab.md
+check md2txt-table "  a   b" "$(run md2txt m-tab.md | tr -d '\r' | head -1)"
+printf '%s\n' "Ein Absatz, der bewusst viel laenger als zweiundsiebzig Zeichen ist, damit der Umbruch greift und die Zeile danach kuerzer bleibt als das Limit." > m-wrap.md
+check md2txt-wrap "0" "$(run md2txt m-wrap.md | awk 'length($0)>72' | wc -l | tr -d ' ')"
+rm -f m-test.md m-tab.md m-wrap.md
+
 # docx2md: a minimal docx (a zip with word/document.xml) in, Markdown out.
 if command -v python3 >/dev/null 2>&1; then
   python3 /root/acmesh/scripts/make-test-docx.py dx-test.docx

@@ -1447,3 +1447,49 @@ acmesh.exe | grep -c pdf2md" fand den Namen zehnmal - die Datei war also neu,
 nur das Abbild unter dem Pfad nicht. Auch rm und Neubau halfen nicht. Wer unter
 WSL von Hand prueft, kopiert die .exe vorher unter einen neuen Namen; die
 Batterie macht das von sich aus.
+
+## md2txt (19.11.2026, acmesh-66u)
+
+Markdown nach reinem Text, mit pandoc 3.6.4 als Maszstab. Gemessen, nicht
+geraten (pandoc -f markdown-smart -t plain):
+
+    # Titel              -> Titel
+    **fett**, *kursiv*   -> fett, kursiv
+    `code`               -> code
+    [Link](url)          -> Link          (URL entfaellt)
+    <https://auto.link>  -> https://auto.link
+    ![alt](bild.png)     -> [alt]
+    - a / 1. eins        -> "- a" / "1.  eins" (zwei Leerzeichen nach dem Punkt)
+      nested             -> zwei Leerzeichen je Ebene
+    > Zitat              -> zwei Leerzeichen eingerueckt, Zeilen zusammengefuehrt
+    ```code```           -> vier Leerzeichen eingerueckt
+    Tabelle              -> Spalten gepolstert auf Breite+2, eine Zeile aus
+                            Minuszeichen nach der ersten Zeile
+    ---                  -> 72 Minuszeichen
+    Absatz               -> Umbruch bei 72 Zeichen
+
+Zwei Eigenheiten, die im Vergleich auffielen und die wir bewusst anders machen
+beziehungsweise uebernommen haben:
+
+1. pandoc ersetzt ohne -f markdown-smart " --- " im Absatz durch einen
+   Gedankenstrich. Wir ersetzen nichts stillschweigend; die Gegenprobe laeuft
+   deshalb gegen markdown-smart.
+2. Eine Liste, die direkt auf eine Absatzzeile folgt, ist in pandoc keine Liste,
+   sondern Teil des Absatzes. Ohne diese Regel wurde aus "Rules:" plus Liste bei
+   uns eine Liste, und die Zeilenzahlen wichen ab; der Absatzsammler bricht
+   deshalb nicht mehr bei einem Listenzeichen ab.
+
+Gegenprobe, Byte fuer Byte gegen pandoc:
+
+    md-beispiel.md (Ueberschriften, Listen, Zitat, Code, Tabelle, hr)  identisch
+    md-b2.md (lange Absaetze, verschachtelte Listen, harter Umbruch,
+              Definitionsliste, Sonderzeichen)                       identisch
+    /root/AGENTS.md, acmesh/README.md, roderik/AGENTS.md             identisch
+    zwei Tabellenproben (2 und 3 Spalten)                            identisch
+
+Batterie: Linux 194 Pruefungen 0 Fehler, Windows 172 0 Fehler, neue Faelle
+md2txt-heading, md2txt-inline, md2txt-table, md2txt-wrap.
+
+Groesze: probe (base64 md2txt) 2650236 gegen base64 2609276, also 40960 Bytes -
+der kleinste der Dokumentbefehle, weil er nur Standardbibliothek und einen
+eigenen kleinen Parser braucht. acmesh 12591228, acmesh.exe 12624896.

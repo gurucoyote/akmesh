@@ -1,13 +1,16 @@
-// Command sync is the sync tool from internal/tools, reachable as its own
-// command inside the acmesh binary.
+// Command sync is the sync tool, reachable as its own command inside the acmesh
+// binary.
+//
+// It imports only internal/sync and not internal/tools: the table in
+// internal/tools pulls every tool we own into the binary (acmesh-mq1).
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/tools"
+	"acmesh/internal/sync"
 )
 
 func main() {
-	os.Exit(tools.Run("sync"))
+	os.Exit(sync.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

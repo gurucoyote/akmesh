@@ -979,3 +979,33 @@ go test ./... gruen. Der Test fuer die cut-Liste (1, 1,3, 2-4, 5-) ist mit dem
 Code nach internal/cut gewandert, statt in internal/tools zurueckzubleiben.
 
 Batterie: 169 Checks Linux, 149 Windows, 0 Fehler.
+
+## Aufteilung Etappe 4: die Datei-Gruppe (18.11.2026, acmesh-mq1)
+
+stat, truncate, split, sync, uname und hostname liegen in eigenen Paketen unter
+internal/. stat hat seine Formathelfer (statfmt.go) und die beiden
+Plattformdateien (statfs_linux.go, statfs_other.go) mitgenommen; die
+Passwortabfrage fuer %U und %G steht als shared.ReadPasswd mit Build-Tags in
+internal/shared, weil ps sie spaeter auch braucht. truncate und split teilen
+sich shared.ParseSize (2K, +5, -5).
+
+Nachgemessen gegen GNU (debian stable-slim) nach dem Umbau, damit die Aufteilung
+nicht still etwas veraendert:
+
+    stat -c %U:%G /etc/passwd     root:root            gleich
+    stat -c %a %n /etc/passwd     644                 (GNU meldet %n ebenfalls als fehlende Datei)
+    stat -f -c %T /               ext4                (im Container overlayfs, der Name kommt von dort)
+    stat -t /etc/passwd           gleich bis auf das Geburtsdatum, das wir als 0 zeigen
+    stat -c %s /etc/passwd        1431                gleich
+    sync, sync DATEI              Exit 0, Datei wird geflusht (Windows: Hinweis statt Vortaeuschung)
+
+Probe mit den sechs Befehlen: 1.843.324 Bytes, also kaum mehr als der Bodenwert
+von 1.814.652 - der Aufschlag ist syscall und time.
+
+Groesse: 11808892 Linux, 11838976 Windows.
+
+Tests: die split- und ParseSize-Tests sind mit dem Code gewandert
+(internal/split, internal/shared); go test ./... gruen. Batterie: 169 Checks
+Linux, 149 Windows, 0 Fehler. Ein Fehler unterwegs: mein erster sync kannte nur
+den Aufruf ohne Argumente und brach den alten Test, der sync DATEI prueft -
+behoben, bevor irgendetwas committet wurde.

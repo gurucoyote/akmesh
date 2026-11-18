@@ -1,9 +1,12 @@
 //go:build linux
 
-package tools
+package stat
 
 import (
+	"acmesh/internal/shared"
+
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -110,7 +113,7 @@ func itoa(n int64) string {
 // userName and groupName resolve the numeric owner to a name, as GNU stat does
 // for %U %G. An unknown id stays a number instead of an invented name.
 func userName(uid uint64) string {
-	if name, ok := readPasswd()[strconv.FormatUint(uid, 10)]; ok && name != "" {
+	if name, ok := shared.ReadPasswd()[strconv.FormatUint(uid, 10)]; ok && name != "" {
 		return name
 	}
 	return strconv.FormatUint(uid, 10)
@@ -128,4 +131,25 @@ func groupName(gid uint64) string {
 		}
 	}
 	return want
+}
+
+func absPath(p string) (string, error) { return filepath.Abs(p) }
+
+// unescapeMount turns the octal escapes of mountinfo back into characters.
+func unescapeMount(s string) string {
+	if !strings.Contains(s, "\\") {
+		return s
+	}
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+3 < len(s) {
+			if n, err := strconv.ParseUint(s[i+1:i+4], 8, 8); err == nil {
+				b.WriteByte(byte(n))
+				i += 3
+				continue
+			}
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -50,4 +51,44 @@ func ReadAllLines(r io.Reader) ([]string, error) {
 	text = strings.TrimSuffix(text, "\n")
 	text = strings.TrimSuffix(text, "\r")
 	return strings.Split(text, "\n"), nil
+}
+
+// ParseSize reads a size operand: plain bytes, K/M/G suffixes, and the
+// + and - forms that grow or shrink an existing file.
+func ParseSize(s string, cur int64) (int64, error) {
+	if s == "" {
+		return 0, fmt.Errorf("empty size")
+	}
+	rel := byte(0)
+	switch s[0] {
+	case '+', '-':
+		rel = s[0]
+		s = s[1:]
+	}
+	mult := int64(1)
+	if len(s) > 0 {
+		switch s[len(s)-1] {
+		case 'K', 'k':
+			mult = 1024
+			s = s[:len(s)-1]
+		case 'M', 'm':
+			mult = 1024 * 1024
+			s = s[:len(s)-1]
+		case 'G', 'g':
+			mult = 1024 * 1024 * 1024
+			s = s[:len(s)-1]
+		}
+	}
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("bad size %q", s)
+	}
+	n *= mult
+	switch rel {
+	case '+':
+		return cur + n, nil
+	case '-':
+		return cur - n, nil
+	}
+	return n, nil
 }

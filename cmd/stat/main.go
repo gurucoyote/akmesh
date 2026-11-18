@@ -1,13 +1,16 @@
-// Command stat is the stat tool from internal/tools, reachable as its own
-// command inside the acmesh binary.
+// Command stat is the stat tool, reachable as its own command inside the acmesh
+// binary.
+//
+// It imports only internal/stat and not internal/tools: the table in
+// internal/tools pulls every tool we own into the binary (acmesh-mq1).
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/tools"
+	"acmesh/internal/stat"
 )
 
 func main() {
-	os.Exit(tools.Run("stat"))
+	os.Exit(stat.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

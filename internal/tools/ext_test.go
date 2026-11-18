@@ -103,33 +103,3 @@ func randomLines(rng *rand.Rand, alphabet []string) []string {
 	}
 	return out
 }
-
-// TestSuffixName checks that split names stay unique and ordered.
-func TestSuffixName(t *testing.T) {
-	seen := map[string]bool{}
-	// 26^2 names is the capacity of a two letter suffix; beyond that the
-	// caller must refuse, which runSplit does.
-	for i := 0; i < 26*26; i++ {
-		name := suffixName(i, 2)
-		if len(name) != 2 {
-			t.Fatalf("suffix %q has length %d", name, len(name))
-		}
-		if seen[name] {
-			t.Fatalf("suffix %q repeated at index %d", name, i)
-		}
-		seen[name] = true
-	}
-}
-
-// TestParseSize covers the size syntax of truncate and split.
-func TestParseSize(t *testing.T) {
-	if n, err := parseSize("2K", 0); err != nil || n != 2048 {
-		t.Fatalf("2K = %d, %v", n, err)
-	}
-	if n, err := parseSize("+5", 10); err != nil || n != 15 {
-		t.Fatalf("+5 from 10 = %d, %v", n, err)
-	}
-	if n, err := parseSize("-5", 10); err != nil || n != 5 {
-		t.Fatalf("-5 from 10 = %d, %v", n, err)
-	}
-}

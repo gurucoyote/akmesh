@@ -98,3 +98,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-18  acmesh-mq1 Etappe 1: zwoelf forked Befehle ziehen ihr eigenes Paket; Probe-Bau faellt von 10,3 MB auf 1,75 MB, Messskript scripts/measure-size.sh neu, Batterie 165/0 und 145/0.
 2026-11-18  acmesh-mq1 Etappe 2 und acmesh-t5k: Pruefsummen in internal/sum, sha*sum -c byte-gleich zu GNU (OK, FAILED, unlesbar getrennt, --status), Probe 2,02 MB statt 10,3 MB, Batterie 169/0 und 149/0.
 2026-11-18  acmesh-mq1 Etappe 3: basename, dirname, nl, tac, cut in eigenen Paketen, Dateihelfer in internal/shared, Probe 2,03 MB, go test gruen, Batterie 169/0 und 149/0.
+2026-11-18  acmesh-mq1 Etappe 4: stat, truncate, split, sync, uname, hostname als Pakete; shared.ReadPasswd und shared.ParseSize; gegen GNU nachgemessen, go test gruen, Batterie 169/0 und 149/0.

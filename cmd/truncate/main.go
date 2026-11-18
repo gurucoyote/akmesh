@@ -1,13 +1,16 @@
-// Command truncate is the truncate tool from internal/tools, reachable as its own
-// command inside the acmesh binary.
+// Command truncate is the truncate tool, reachable as its own command inside the acmesh
+// binary.
+//
+// It imports only internal/truncate and not internal/tools: the table in
+// internal/tools pulls every tool we own into the binary (acmesh-mq1).
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/tools"
+	"acmesh/internal/truncate"
 )
 
 func main() {
-	os.Exit(tools.Run("truncate"))
+	os.Exit(truncate.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

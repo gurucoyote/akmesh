@@ -24,6 +24,15 @@ WORK=$(mktemp -d "${TMPDIR:-/tmp}/exttest.XXXXXX") || exit 2
 trap 'rm -rf "$WORK"' EXIT
 cd "$WORK" || exit 2
 
+# Under WSL the .exe is started through /init, and that keeps the image of a
+# path: after a build, running ./acmesh.exe again hands back the old one while a
+# copy under another name is already the new one (measured 18.11.2026, same md5,
+# different behaviour). So the battery runs on a copy with a fresh path, which
+# is the same file.
+case "$BIN" in
+*.exe) cp "$BIN" "$WORK/acmesh-under-test.exe" && BIN="$WORK/acmesh-under-test.exe" ;;
+esac
+
 fails=0
 checks=0
 
@@ -378,6 +387,24 @@ check httpd-detach-serves "1" "$(curl -s -m 5 http://127.0.0.1:$BG_PORT/index.ht
 kill "$BG_PID" 2>/dev/null
 pkill -f "httpd -f -p 127.0.0.1:$BG_PORT" 2>/dev/null
 rm -rf "$HD_DIR"
+
+# rtf2md: a paragraph, a bold word and a code page byte.
+if command -v python3 >/dev/null 2>&1; then
+  python3 /root/acmesh/scripts/make-test-rtf.py r-test.rtf
+  check rtf2md-paragraph "Eins" "$(run rtf2md r-test.rtf | tr -d '\r' | head -1)"
+  check rtf2md-bold "**Zwei**ä" "$(run rtf2md r-test.rtf | tr -d '\r' | tail -1)"
+  check rtf2md-not-rtf "1" "$(printf 'kein rtf' | run rtf2md >/dev/null 2>&1; echo $?)"
+  rm -f r-test.rtf
+fi
+
+# pdf2md: a PDF without compression is the smallest thing a reader has to
+# handle; the text operator is the claim.
+if command -v python3 >/dev/null 2>&1; then
+  python3 /root/acmesh/scripts/make-test-pdf.py p-test.pdf
+  check pdf2md-text "Hallo PDF" "$(run pdf2md p-test.pdf | tr -d '\r' | head -1)"
+  check pdf2md-not-pdf "1" "$(printf 'kein pdf' | run pdf2md >/dev/null 2>&1; echo $?)"
+  rm -f p-test.pdf
+fi
 
 # docx2md: a minimal docx (a zip with word/document.xml) in, Markdown out.
 if command -v python3 >/dev/null 2>&1; then

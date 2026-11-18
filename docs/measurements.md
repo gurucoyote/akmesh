@@ -1324,3 +1324,59 @@ Drei Go-Tests fuer den reinen Teil (detachArgv): Name im Mehrfachbinary, kein
 Name beim eigenstaendigen Binary, kein zweites -f. Batterie: zwei neue
 Pruefungen httpd-detach-pid und httpd-detach-serves, damit der Weg ohne -f
 nicht wieder still kaputtgehen kann.
+
+## rtf2md und pdf2md (18.11.2026, acmesh-gow Etappe 3 und 4)
+
+Beide lesen selbst, kein fremdes Paket: rtf2md ein Tokenizer ueber die Gruppen
+und Steuerwoerter, pdf2md archive/zip-los mit compress/zlib und den Operatoren
+des Inhaltsstroms.
+
+    ./acmesh rtf2md story.rtf
+    ./acmesh pdf2md bericht.pdf
+
+rtf2md nimmt: \par und Backslash am Zeilenende als Absatz, \line als harten
+Umbruch, \tab, \b/\i als Auszeichnung, \'hh als Byte der Codepage, \uN als
+Zeichen (Rueckfallzeichen werden geschluckt), Ueberschriften aus \sN und dem
+Namen im Stylesheet, Aufzaehlungen als "- ". Font-, Farbtabelle, Info und Bilder
+werden uebersprungen. An "Blitz and Donner.rtf": 1575 Woerter, Absaetze, fette
+Titelzeile und die krummen Anfuehrungszeichen stimmen.
+
+pdf2md nimmt: Objekte per Scan (auch bei kaputter xref), Flate-Entpackung,
+Seiten in der Reihenfolge des Seitenbaums, ToUnicode-Map, WinAnsi sonst, zwei
+Byte je Zeichen bei Type0, Zeichenbreiten aus /W und /Widths fuer den Abstand
+zwischen Woertern, und Ueberschriften aus der Schriftgroesze relativ zum
+Fliesstext (Stufen 1.8, 1.4, 1.15 - derselbe Ansatz wie pdf-inspector, auf dem
+anydoc aufbaut).
+
+Gegenprobe gegen pdftotext an echten Dateien (Woerter):
+
+    FlyerRunenVoehringen.pdf           pdftotext 452   pdf2md 461
+    TarotCamp/Tarot Teaser.pdf         pdftotext  84   pdf2md  84
+    WorldWide+Witchcamp+Grid.pdf       pdftotext 322   pdf2md 372
+
+Die dritte Datei setzt jeden Buchstaben einzeln ueber Td; ohne vollstaendige
+Breitentabelle bleibt dort gelegentlich ein Leerzeichen im Wort ("G rid"), der
+Text ist aber vollstaendig. Was pdf2md nicht kann und nicht vortaeuscht: eine
+gescannte Seite hat keinen Text, ein verschluesseltes PDF wird mit Meldung
+abgelehnt, und Tabellen werden nicht erkannt - dafuer braucht es die
+Rechteck-Zeichenoperationen und die Ausrichtung der Textstuecke, wie
+pdf-inspector es macht. Das ist ein eigenes Ticket.
+
+Groesze, mit measure-size.sh probe:
+
+    probe (base64)           2609276 Bytes
+    probe (base64 rtf2md)    2707580 Bytes   also 98304 fuer rtf2md
+    probe (base64 pdf2md)    2744444 Bytes   also 135168 fuer pdf2md
+    acmesh 12537980, acmesh.exe 12569600 Bytes
+
+Tests: rtf2md elf, pdf2md zwoelf, inklusive Rotproben (NumFmt-Bedingung,
+Schriftgroeszen-Ueberschrift).
+Batterie: Linux 188 Pruefungen 0 Fehler, Windows 166 0 Fehler.
+
+Eine zweite WSL-Falle, gemessen 18.11.2026: der Pfadcache. Nach einem Bau
+lieferte /root/acmesh/acmesh.exe weiter den alten Stand (die neuen Befehle
+fehlten), obwohl md5 von acmesh.exe und einer Kopie gleich waren und die Kopie
+unter /tmp/a2.exe richtig lief. Umbenennen und touch halfen nicht, eine Kopie
+unter neuem Namen im selben Verzeichnis schon. Die Batterie laeuft deshalb auf
+einer Kopie mit frischem Pfad, und wer von Hand prueft, kopiert die .exe vorher
+unter einen neuen Namen.

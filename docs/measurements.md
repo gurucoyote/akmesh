@@ -1122,3 +1122,24 @@ Groessenbudget im Bau: Warnung ueber 12.000.000 Bytes, harter Fehlschlag ueber
 Ziels steht im Baubericht. Die letzte Groesse liegt in .build/last-size-<GOOS>-
 <Profil>, also nicht im Repo. Beide vollen Ziele bauen mit der Pruefung durch,
 Batterie 169/0 Linux und 149/0 Windows.
+
+## Linux-Binary bauen und messen (18.11.2026, acmesh-94e.2)
+
+Der Bau laeuft auf beiden Zielen aus demselben Skript, die Zahlen sind von heute:
+
+    ./scripts/build-bb.sh linux     acmesh      11825276 Bytes
+    ./scripts/build-bb.sh windows   acmesh.exe  11854848 Bytes
+    ./scripts/build-bb.sh linux ext acmesh-ext   6963324 Bytes
+    ./scripts/build-bb.sh windows ext acmesh-ext.exe 6982144 Bytes
+
+Befehle im Binary, gezaehlt ueber die Ausgabe des Verteilers:
+
+    Linux    88 Befehle
+    Windows  87 Befehle
+
+Der Unterschied ist genau strace, das ptrace braucht und deshalb nur fuer Linux
+baut (cmds/core/strace, siehe docs/ecosystem.md). Alle anderen Namen sind auf
+beiden Zielen dieselben - geprueft mit comm ueber die sortierten Listen; es gibt
+keinen Namen, der nur unter Windows existiert.
+
+Batterie: Linux 169 Pruefungen, Windows 149, beide 0 Fehler.

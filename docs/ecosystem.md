@@ -163,3 +163,78 @@ Was ein solcher Sammler noch leisten muss:
 Offen und zu pruefen: ob der Tracer in einem Container laeuft. Docker und Podman
 blocken ptrace per seccomp standardmaessig; ob die eigene Kindprozess-Verfolgung
 davon betroffen ist, muss gemessen werden (Ticket).
+
+## Tracer im Container (gemessen 18.11.2026, acmesh-94e.12)
+
+Frage war, ob u-roots Tracer in einem Container laeuft, weil Docker und Podman
+ptrace per seccomp standardmaessig blocken.
+
+Gemessen mit dem eigenen Binary als Sonde in debian:stable-slim, dreimal:
+
+    podman run --rm -v acmesh:/acmesh:ro ... /acmesh strace /acmesh echo hallo
+    podman run --rm --cap-add SYS_PTRACE ... /acmesh strace /acmesh echo hallo
+    podman run --rm --security-opt seccomp=unconfined ... /acmesh strace ...
+
+Ergebnis: alle drei Laeufe verfolgen die Syscalls des Kindes. Der Standardfall
+ohne jede Zusatzoption reicht, weil ein Prozess seine eigenen Kinder verfolgen
+darf; blockiert wird das Anhaengen an fremde Prozesse (PTRACE_ATTACH), und das
+braucht u-root nicht.
+
+Die Zeile "ptrace(PTRACE_SYSCALL): on pid N: no such process" am Ende eines
+Laufs ist harmlos: das Kind ist schon tot, wenn der Tracer nachfasst. Sie
+taucht mit und ohne SYS_PTRACE auf.
+
+Der Sammler, der aus der Spur eine Kopierliste macht, ist eigenes Ticket
+(strace-Sammler, P1).
+
+## lsof und strace: Entscheidung (18.11.2026, acmesh-94e.8)
+
+strace: bleibt drin, aber nur fuer Linux. u-root baut es aus cmds/core/strace,
+3,67 MB gemessen, und es ist das einzige Werkzeug im Binary, das ptrace nutzt.
+Eingeschraenkt: nur -o als Option, Argumente als Zahlen, kein -e und kein -p;
+fuer den Sammler ist trotzdem die Bibliothek pkg/strace die Grundlage, nicht
+die Textausgabe. Windows hat kein ptrace, das naechste Konzept dort waere ETW;
+bis dahin fehlt strace im Windows-Binary, und das ist ehrlich so gewollt.
+
+lsof: wird nicht gebaut. Es gibt kein eigenstaendiges Go-lsof-CLI, nur
+Bibliotheken, die /proc oder libproc lesen. Ein Agent kommt an dieselbe
+Information ohne neuen Befehl:
+
+    ls -l /proc/<pid>/fd
+    cat /proc/<pid>/maps
+
+Beides laeuft mit dem, was das Binary schon kann (ls und cat). Ein eigener
+lsof-Nachbau waere nur dann noetig, wenn sich zeigt, dass Agenten danach
+greifen und dann auf python oder powershell ausweichen.
+
+## vi: Ven geprueft (18.11.2026, acmesh-94e.7)
+
+Ven (github.com/bkthomps/Ven) ist ein vi-Nachbau in Go, MIT, Autor Bailey
+Thompson, Fassung 0.5.0, angelegt 2019, 13 Sterne.
+
+Bau: beide Ziele bauen ohne Aenderung.
+
+    GOOS=linux   go install github.com/bkthomps/Ven@latest   Ven      4566803 Bytes
+    GOOS=windows go install github.com/bkthomps/Ven@latest   Ven.exe  3534848 Bytes
+
+Lauf auf Linux in einer tmux-Sitzung: Datei oeffnen, i, Text tippen, Escape,
+:wq - die Datei enthaelt den Text, der Editor endet mit Exit 0. Die
+vim-Grundbewegungen sind da (h j k l, w b e, gg G, x, dd, D, / Suche, :w :wq
+:q :q!).
+
+Zwei Haken, die fuer dieses Projekt zaehlen:
+
+1. Ven oeffnet /dev/tty selbst. Ohne Terminal endet es mit "open /dev/tty: no
+   such device or address".
+2. Ven ruft infocmp auf. Auf einem nackten Alpine ohne ncurses endet es mit
+   "exec: infocmp: executable file not found in $PATH".
+
+Ein Editor, der ein zweites Programm braucht, passt nicht zu einem Binary, das
+genau deshalb existiert, damit die Huelle nichts weiter mitbringen muss. Dazu
+kommt der Pflegezustand: eine Fassung, wenige Sterne, seit Jahren keine
+Bewegung.
+
+Entscheidung: vi kommt nicht in den Umfang. Was ein Agent zum Bearbeiten
+braucht, ist da: ed (u-root), sed, awk, diff und patch. Ein vi bleibt ein
+eigenes Thema, falls es je gebraucht wird; dann mit einer Fassung, die keine
+externen Programme und kein /dev/tty voraussetzt.

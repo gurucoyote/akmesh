@@ -105,3 +105,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-18  acmesh-bwv: diff beschriftet mit der jeweiligen Datei (--- erste, +++ zweite), patch schreibt die Vordatei; Batterie-Erwartung angepasst, neue Tests.
 2026-11-18  acmesh-94e.4: NOTICE mit u-root, gobusybox und mvdan/sh (Versionen, Copyright), im README verlinkt.
 2026-11-18  acmesh-94e.2: Linux und Windows gemessen, 88 gegen 87 Befehle (strace), Groessen und Batterie in docs/measurements.md.
+2026-11-18  acmesh-94e.7/8/12 und 93y: Vi-Kandidat Ven geprueft und verworfen (braucht infocmp und /dev/tty), lsof verworfen, Tracer laeuft im Container, strace-Sammler als P1-Ticket, Tests fuer elf Pakete.

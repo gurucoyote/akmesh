@@ -331,3 +331,23 @@ Belegt durch scripts/test-ssh.sh gegen einen echten sshd (15 Pruefungen, 0
 Fehler, auf acmesh und acmesh.exe): Ausgabe, Mehrzeiligkeit, Remote-Exitcode 7,
 test -f wahr und falsch, stdin-Pipe, unbekannter Host ohne Freigabe Exit 255,
 Upload, rekursiver Upload, Download, rekursiver Download, jeweils mit Inhalt.
+
+## scp -p (18.11.2026)
+
+    ./scripts/build-bb.sh linux   -> acmesh     11.354.236 Bytes (10,83 MiB)
+    ./scripts/build-bb.sh windows -> acmesh.exe 11.382.272 Bytes (10,86 MiB)
+
+Zuwachs gegenueber scp ohne -p: 4.096 Bytes je Ziel. Umsetzung: T-Records des
+scp-Protokolls in beide Richtungen, rund 60 Zeilen samt einer kleinen
+Plattformdatei fuer die Zugriffszeit (Linux) beziehungsweise fuer ihr Fehlen
+(Windows).
+
+Belegt: Datei mit Zeitstempel 2020-01-02 03:04:05 behaelt ihn beim Hochladen und
+beim Herunterladen, Modus 600 bleibt 600, rekursiv behalten die Kinder ihre
+Zeiten; ohne -p bekommt die Kopie die aktuelle Zeit.
+
+-C wird abgelehnt: x/crypto/ssh unterstuetzt nur compressionNone, das
+scp-Protokoll selbst hat keine Kompression. Fortsetzen gibt es in scp nicht,
+auch nicht in OpenSSH; dafuer waere ein sftp-reget noetig.
+
+Pruefungen: scripts/test-ssh.sh jetzt 18 Faelle je Ziel, beide 0 Fehler.

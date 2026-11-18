@@ -36,13 +36,8 @@ func runScp(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			printScpHelp(stdout)
 			return 0
 		case a == "-p":
-			v, ok := next("-p")
-			if !ok {
-				return 1
-			}
-			opts.Port = v
-		case strings.HasPrefix(a, "-p") && len(a) > 2:
-			opts.Port = a[2:]
+			// As in OpenSSH scp: -p preserves times, -P sets the port.
+			preserve = true
 		case a == "-P":
 			v, ok := next("-P")
 			if !ok {
@@ -74,12 +69,21 @@ func runScp(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			overrides[strings.ToLower(strings.TrimSpace(name))] = strings.TrimSpace(value)
 		case a == "-r":
 			recursive = true
-		case a == "-p2":
+		case a == "-rp" || a == "-pr":
+			recursive = true
 			preserve = true
 		case a == "-q":
 			quiet = true
 		case a == "-v":
 			opts.Verbose = true
+		case a == "-C":
+			// The channel compression of OpenSSH is not implemented in
+			// x/crypto/ssh, and the scp protocol itself has none.
+			fmt.Fprintln(stderr, "scp: -C (compression) is not supported, the ssh library cannot negotiate it")
+			return 1
+		case a == "-l":
+			fmt.Fprintln(stderr, "scp: -l (bandwidth limit) is not supported")
+			return 1
 		case strings.HasPrefix(a, "-") && len(a) > 1:
 			fmt.Fprintf(stderr, "scp: unsupported option %q\n", a)
 			return 1
@@ -87,7 +91,6 @@ func runScp(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			paths = append(paths, a)
 		}
 	}
-	_ = preserve
 	_ = quiet
 	if len(paths) < 2 {
 		fmt.Fprintln(stderr, "usage: scp [options] SOURCE... DEST")
@@ -109,7 +112,7 @@ func runScp(args []string, stdin *os.File, stdout, stderr *os.File) int {
 				fmt.Fprintf(stderr, "scp: %v\n", err)
 				return 1
 			}
-			if code := downloadOne(opts, remotePath, dstPath, recursive, stderr); code != 0 {
+			if code := downloadOne(opts, remotePath, dstPath, recursive, preserve, stderr); code != 0 {
 				return code
 			}
 		}
@@ -135,7 +138,7 @@ func runScp(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	}
 	defer client.Close()
 	for _, src := range srcs {
-		if code := uploadOne(client, src, dstPath, recursive, stderr); code != 0 {
+		if code := uploadOne(client, src, dstPath, recursive, preserve, stderr); code != 0 {
 			return code
 		}
 	}
@@ -173,7 +176,7 @@ func splitRemote(arg string) (remote, p string) {
 }
 
 // uploadOne sends a file, or a tree with -r, to the remote directory.
-func uploadOne(client *ssh.Client, src, dstDir string, recursive bool, stderr *os.File) int {
+func uploadOne(client *ssh.Client, src, dstDir string, recursive, preserve bool, stderr *os.File) int {
 	info, err := os.Stat(src)
 	if err != nil {
 		fmt.Fprintf(stderr, "scp: %v\n", err)
@@ -214,7 +217,7 @@ func uploadOne(client *ssh.Client, src, dstDir string, recursive bool, stderr *o
 		fmt.Fprintf(stderr, "scp: remote refused: %v\n", err)
 		return 1
 	}
-	if err := sendTree(writer, ack, src, info, recursive); err != nil {
+	if err := sendTree(writer, ack, src, info, recursive, preserve); err != nil {
 		fmt.Fprintf(stderr, "scp: %v\n", err)
 		return 1
 	}
@@ -227,7 +230,20 @@ func uploadOne(client *ssh.Client, src, dstDir string, recursive bool, stderr *o
 }
 
 // sendTree writes the C and D records for one path and its children.
-func sendTree(w io.Writer, ack *scpAck, src string, info os.FileInfo, recursive bool) error {
+func sendTree(w io.Writer, ack *scpAck, src string, info os.FileInfo, recursive, preserve bool) error {
+	if preserve {
+		// A T record announces the times of the entry that follows.
+		atime := info.ModTime()
+		if st, ok := statTimes(info); ok {
+			atime = st.atime
+		}
+		if _, err := fmt.Fprintf(w, "T%d 0 %d 0\n", info.ModTime().Unix(), atime.Unix()); err != nil {
+			return err
+		}
+		if err := ack.read(); err != nil {
+			return err
+		}
+	}
 	if info.IsDir() {
 		if _, err := fmt.Fprintf(w, "D%04o 0 %s\n", info.Mode().Perm(), filepath.Base(src)); err != nil {
 			return err
@@ -245,7 +261,7 @@ func sendTree(w io.Writer, ack *scpAck, src string, info os.FileInfo, recursive 
 				return err
 			}
 			child := filepath.Join(src, entry.Name())
-			if err := sendTree(w, ack, child, childInfo, recursive); err != nil {
+			if err := sendTree(w, ack, child, childInfo, recursive, preserve); err != nil {
 				return err
 			}
 		}
@@ -279,7 +295,7 @@ func sendTree(w io.Writer, ack *scpAck, src string, info os.FileInfo, recursive 
 }
 
 // downloadOne fetches a file or tree from the remote side.
-func downloadOne(opts sshOptions, remotePath, localPath string, recursive bool, stderr *os.File) int {
+func downloadOne(opts sshOptions, remotePath, localPath string, recursive, preserve bool, stderr *os.File) int {
 	if opts.Verbose {
 		fmt.Fprintf(stderr, "scp: %s@%s:%s\n", opts.User, opts.Host, opts.Port)
 	}
@@ -307,8 +323,12 @@ func downloadOne(opts sshOptions, remotePath, localPath string, recursive bool, 
 	}
 	session.Stderr = stderr
 	sourceCmd := "scp -f "
+	if preserve {
+		// The source announces times only when it was asked to preserve them.
+		sourceCmd = "scp -f -p "
+	}
 	if recursive {
-		sourceCmd = "scp -f -r "
+		sourceCmd += "-r "
 	}
 	if err := session.Start(sourceCmd + shellQuote(remotePath)); err != nil {
 		fmt.Fprintf(stderr, "scp: %v\n", err)
@@ -322,10 +342,13 @@ func downloadOne(opts sshOptions, remotePath, localPath string, recursive bool, 
 		return 1
 	}
 	var dirStack []string
+	var pending *scpTimes
 	target := localPath
+	localIsDir := false
 	if info, err := os.Stat(localPath); err == nil && info.IsDir() {
 		// An existing directory is the parent for everything that arrives.
 		target = localPath
+		localIsDir = true
 	}
 	for {
 		code, err := reader.ReadByte()
@@ -346,10 +369,12 @@ func downloadOne(opts sshOptions, remotePath, localPath string, recursive bool, 
 			fmt.Fprintf(stderr, "scp: remote: %s", message)
 			return 1
 		case 'T':
-			if _, err := reader.ReadString('\n'); err != nil {
+			header, err := reader.ReadString('\n')
+			if err != nil {
 				fmt.Fprintf(stderr, "scp: %v\n", err)
 				return 1
 			}
+			pending = parseScpTimes(header)
 			if err := ack.send(); err != nil {
 				return 1
 			}
@@ -380,6 +405,10 @@ func downloadOne(opts sshOptions, remotePath, localPath string, recursive bool, 
 			if _, err := os.Stat(filepath.Join(parent)); err != nil {
 				fmt.Fprintf(stderr, "scp: %v\n", err)
 				return 1
+			}
+			if pending != nil {
+				applyScpTimes(dir, pending)
+				pending = nil
 			}
 			dirStack = append(dirStack, dir)
 			if target == "" {
@@ -423,7 +452,10 @@ func downloadOne(opts sshOptions, remotePath, localPath string, recursive bool, 
 			if parent == "" {
 				parent = "."
 			}
-			localFile := filepath.Join(parent, name)
+			localFile := localPath
+			if localIsDir || len(dirStack) > 0 {
+				localFile = filepath.Join(parent, name)
+			}
 			if err := ack.send(); err != nil {
 				return 1
 			}
@@ -438,6 +470,10 @@ func downloadOne(opts sshOptions, remotePath, localPath string, recursive bool, 
 				return 1
 			}
 			f.Close()
+			if pending != nil {
+				applyScpTimes(localFile, pending)
+				pending = nil
+			}
 			status, err := reader.ReadByte()
 			if err != nil {
 				fmt.Fprintf(stderr, "scp: %v\n", err)
@@ -507,6 +543,7 @@ func printScpHelp(stdout *os.File) {
   -i KEY          private key
   -o Key=Value    same keys as ssh
   -F FILE         config file
+  -p              preserve modification and access times
   -r              recursive
   -q              quiet
   -v              verbose

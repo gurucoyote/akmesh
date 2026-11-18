@@ -59,7 +59,8 @@ OpenSSH dabei ist.
     acmesh scp -r -P 2222 -i key ordner root@host:/tmp/
     acmesh scp -P 2222 -i key root@host:/tmp/datei.txt ./ziel/
 
-- `-P` ist der Port wie bei OpenSSH scp, `-p` wird ebenfalls angenommen.
+- `-P` ist der Port wie bei OpenSSH scp. `-p` erhaelt Modus, Aenderungs- und
+  Zugriffszeit, in beide Richtungen und auch rekursiv.
 - `-r` uebertraegt Baeume in beide Richtungen.
 - `-i`, `-o`, `-F`, `-v` wie bei ssh.
 - Ein Pfad mit Doppelpunkt vor dem ersten Schraegstrich ist entfernt:
@@ -67,8 +68,20 @@ OpenSSH dabei ist.
 - Von entfernt nach entfernt geht nicht; die Meldung sagt, dass die Kopie ueber
   diese Maschine laufen soll.
 
-Nicht enthalten: Zeitstempel bleiben nicht erhalten, und ein abgebrochener
-Transfer wird nicht fortgesetzt.
+Nicht enthalten, mit Grund:
+
+- `-C` (Kompression): Die Kompression von OpenSSH sitzt im SSH-Transport, nicht
+  im scp-Protokoll. golang.org/x/crypto/ssh kann sie nicht aushandeln
+  (supportedCompressions enthaelt nur "none"). Deshalb lehnt der Befehl mit
+  einer Meldung ab, statt still unkomprimiert zu uebertragen.
+- Fortsetzen: Das ist kein scp-Schalter, auch OpenSSH scp kennt keins (-c ist
+  dort die Chiffre). Wer fortsetzen will, nimmt rsync oder das reget in sftp.
+  Ein eigener sftp-Client waere ein eigenes Stueck Arbeit, nicht ein Schalter.
+
+Belegt fuer -p: eine Datei mit Zeitstempel 2020-01-02 wird hochgeladen und
+kommt mit genau diesem Zeitstempel an, in beide Richtungen; ein Modus 600 bleibt
+600; rekursiv bleiben die Zeiten der Kinder erhalten. Ohne -p bekommt die Kopie
+die aktuelle Zeit, wie bei OpenSSH.
 
 ## Nachweis
 

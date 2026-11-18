@@ -69,3 +69,7 @@
             durchgereicht. scp in beide Richtungen und rekursiv. 15 Pruefungen
             gegen einen echten sshd auf beiden Zielen gruen, Binary 20 KB
             kleiner als mit der u-root-ssh.
+2026-11-18  scp -p umgesetzt: T-Records in beide Richtungen, Zeiten und Modus
+            bleiben erhalten, auch rekursiv. 4 KB Zuwachs. -C wird ehrlich
+            abgelehnt, weil x/crypto/ssh nur compressionNone kann; Fortsetzen
+            ist kein scp-Schalter, dafuer waere sftp-reget noetig.

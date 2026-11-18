@@ -62,15 +62,17 @@ sleep 1
 # hands it the directory over).
 cd "$WORK" || exit 2
 
-# The connection switches every call shares.
+# The connection switches every call shares. ssh takes -p for the port, scp takes
+# -P, exactly as the original tools do.
 SSHOPTS="-o StrictHostKeyChecking=no -i clientkey -p $PORT"
+SCPOPTS="-o StrictHostKeyChecking=no -i clientkey -P $PORT"
 r() {
 	# shellcheck disable=SC2086
 	"$BIN" ssh $SSHOPTS "$@"
 }
 rscp() {
 	# shellcheck disable=SC2086
-	"$BIN" scp $SSHOPTS "$@"
+	"$BIN" scp $SCPOPTS "$@"
 }
 
 check ssh-output "hallo" "$(r root@127.0.0.1 'echo hallo' </dev/null | tr -d '\r')"
@@ -107,6 +109,15 @@ check scp-download-content "eins" "$(cat "$WORK/back/a.txt" 2>/dev/null | tr -d 
 rscp -r "root@127.0.0.1:$WORK/src" "$WORK/back/" </dev/null >/dev/null 2>&1
 check scp-download-tree-status "0" "$?"
 check scp-download-tree-content "zwei" "$(cat "$WORK/back/src/sub/b.txt" 2>/dev/null | tr -d '\r')"
+
+# -p keeps the modification time in both directions, -C is refused honestly.
+touch -d '2020-01-02 03:04:05' stamp.txt 2>/dev/null || touch -t 202001020304.05 stamp.txt
+rscp -p stamp.txt "root@127.0.0.1:$WORK/keep.txt" </dev/null >/dev/null 2>&1
+check scp-preserve-upload "0" "$?"
+rscp -p "root@127.0.0.1:$WORK/keep.txt" "$WORK/keep-back.txt" </dev/null >/dev/null 2>&1
+check scp-preserve-download-year "2020" "$(date -d @"$(stat -c %Y "$WORK/keep-back.txt" 2>/dev/null || echo 0)" +%Y 2>/dev/null || echo fehlt)"
+rscp -C stamp.txt "root@127.0.0.1:$WORK/x.txt" </dev/null >/dev/null 2>&1
+check scp-compression-refused "1" "$?"
 
 printf '%d checks, %d failures\n' "$checks" "$fail"
 [ "$fail" -eq 0 ]

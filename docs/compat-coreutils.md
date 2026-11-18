@@ -176,7 +176,32 @@ Modul liegt nur im go.work, ein require zwaenge jeden Fremdbau ins Netz),
 und der Upstream-Commit steht im Dateikopf, damit Drift beim naechsten
 Pin-Wechsel auffaellt.
 
-Tickets:
+### Reihenfolge der Vorlagen (nachgezogen 2026-11-18)
+
+Nicht jeder Befehl wird am besten bei u-root geforkt. Vor der Kopie die
+Quelle waehlen, in dieser Reihenfolge:
+
+1. Eigenbau, wenn die Luecke klein ist (du -d, diff -q, sed -E ...).
+2. qiangli/coreutils (MIT, Copyright (c) 2026 Qiang Li; Zeiger in
+   docs/ecosystem.md), wenn dort schon eine GNU-vollstaendige Fassung liegt.
+   Gemessen: cmds/sort 934 Zeilen mit -k -t -h -V -R --random-source -z
+   --files0-from, cmds/shuf 343 Zeilen mit -n -e -i -o -r -z und
+   --random-source/--random-seed. Beides MIT, also kopierbar.
+   Preis: sort haengt dort an pkg/locale, pkg/collate, pkg/ctype (zusammen
+   rund 95 KB Quelltext ohne Tests) fuer die glibc-Locale-Schicht. Im
+   Harness genuegt C-Locale, also Byte-Order; die Schicht wird beim
+   Uebernehmen gekuerzt und die Kuerzung in docs/design/acmesh.md begruendet.
+   shuf haengt nur an tool/ (Applet-Geruest), das durch eigene
+   Argumentbehandlung ersetzt wird.
+3. u-root forken, wo keine der beiden Quellen passt (grep, chmod, tar, cp,
+   xargs, find, tr, wc, base64, head, touch, hexdump).
+4. Neu schreiben, wo alle Quellen mehr kosten als der Nutzen.
+
+Folge fuer die Tickets: acmesh-91n (sort) ist von "u-root forken" auf
+"qiangli/coreutils als Vorlage" umgestellt, acmesh-f0z (shuf) ist neu und
+kommt aus derselben Quelle.
+
+### Ticketliste
 
     acmesh-nl9  low hanging fruits in internal/tools (Route R1)
     acmesh-e0o  Fork-Mechanik, blockiert alle Fork-Tickets
@@ -186,7 +211,7 @@ Tickets:
     acmesh-agt  chmod     acmesh-r9r  tar       acmesh-1fs  cp
     acmesh-icw  xargs     acmesh-7ih  wc        acmesh-6lw  tr
     acmesh-dv0  base64    acmesh-86m  head      acmesh-6u2  touch
-    acmesh-0fd  hexdump
+    acmesh-0fd  hexdump   acmesh-f0z  shuf
 
 ## G. Offen
 

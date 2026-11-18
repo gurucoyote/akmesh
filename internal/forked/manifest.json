@@ -1,5 +1,31 @@
 {
   "forks": {
+    "find": {
+      "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
+      "files": [
+        {
+          "sha256": "958b929f08e05c91e429860df2fde4ba03998584406e66ba005d589fcde192a5",
+          "upstream": "cmds/core/find/find.go"
+        },
+        {
+          "sha256": "b616a1d015db33ce2d4354238f18257f0478695ea5cdad51a913491a8a843aba",
+          "upstream": "pkg/find/find.go"
+        },
+        {
+          "sha256": "3bfa44110f365f7af9f74e999d01b249771506b191a66b1f79936c5c671df9a8",
+          "upstream": "pkg/find/matchers.go"
+        }
+      ]
+    },
+    "grep": {
+      "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
+      "files": [
+        {
+          "sha256": "02b4be440bfff55f978191e518a4d9c8a7fa0d2a6aeeb352a6f42f7b85e53314",
+          "upstream": "cmds/core/grep/grep.go"
+        }
+      ]
+    },
     "head": {
       "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
       "files": [

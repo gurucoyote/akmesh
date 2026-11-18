@@ -108,7 +108,13 @@ SHA-256 der Upstream-Dateien. Wandert der Pin, wird der Test rot, bis jemand die
 Kopie ansieht und das Manifest nachzieht. Stilles Auseinanderlaufen ist der
 Preis des Forks; der Test macht ihn sichtbar.
 
-Bisher geforkt: head (aus acmesh-86m: -5, -q, -v, Exit 1 bei Lesefehler).
+Bisher geforkt: head (acmesh-86m: -5, -q, -v, Exit 1 bei Lesefehler), find
+(acmesh-29n: Startpfad optional, -maxdepth, -mindepth, -exec, -not, -path,
+-print0, "./" wie GNU) und grep (acmesh-2nz: -E, -w, -o, -A/-B/-C, -r/-R,
+Exit 0/1/2 und -c je Datei wie GNU). Bei find fiel pkg/ls weg, bei grep das
+flag-Paket und unixflag: ein Fork, der weniger Fremdcode mitzieht, ist der
+kleinere. Ein Dateiname aus pkg/ bekommt das Elternverzeichnis als Praefix
+(pkg/find/find.go -> find_find.go), sonst kollidiert er mit dem Befehl selbst.
 
 ## Lizenz
 

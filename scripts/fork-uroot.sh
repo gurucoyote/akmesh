@@ -53,7 +53,15 @@ for rel in "$@"; do
 		echo "no such upstream file: $rel" >&2
 		exit 1
 	fi
+	# Only the command's own directory keeps the bare file name. Everything
+	# from pkg/ gets its parent as a prefix, because pkg/find/find.go and
+	# cmds/core/find/find.go would otherwise land on the same file.
 	file=$(basename "$rel")
+	parent=$(basename "$(dirname "$rel")")
+	case "$rel" in
+	cmds/core/"$NAME"/*) ;;
+	*) file="${parent}_${file}" ;;
+	esac
 	cp "$src" "$DEST/$file"
 	# package main -> package <name>, so the copy can be imported.
 	sed -i "s/^package main$/package $NAME/" "$DEST/$file"
@@ -63,7 +71,7 @@ import sys
 path, commit, rel = sys.argv[1], sys.argv[2], sys.argv[3]
 lines = open(path).read().split("\n")
 insert = len(lines)
-for i, line in enumerate(lines[:20]):
+for i, line in enumerate(lines):
     if line.startswith("//") or line.strip() == "":
         continue
     insert = i

@@ -38,6 +38,8 @@ var Commands = map[string]Func{
 	"env":       runEnv,
 	"df":        runDf,
 	"file":      runFile,
+	"find":      runFind,
+	"grep":      runGrep,
 	"head":      runHead,
 	"hostname":  runHostname,
 	"du":        runDu,

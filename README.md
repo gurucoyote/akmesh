@@ -23,10 +23,10 @@ in one place, and whose behaviour can be measured instead of guessed.
   Linux, named acmesh. It carries the 48 u-root commands, the shell (gosh), the ssh client,
   strace on Linux, and our own tools where u-root has a gap or builds only for
   Linux.
-- head is a forked copy of u-root's head (BSD-3-Clause, copyright the u-root
-  authors, see internal/forked/head), because agents type `head -5` and
-  `head -q` and upstream's flag parsing refuses the first and ignores the
-  second.
+- head, find and grep are forked copies of u-root commands (BSD-3-Clause,
+  copyright the u-root authors, see internal/forked/), because agents type
+  `head -5`, `find -name x`, `find . -maxdepth 1` and `grep -rn`, and upstream's
+  flag parsing refuses those spellings.
 - Our own tools inside the binary: awk, cut, diff, patch, sed, sha1sum,
   sha256sum, sha512sum, split, stat, tac, nl, env, file, iconv, ps, kill,
   killall, df, du, free, curl, wget, jq, ssh, scp, plus hostname, sync, timeout and uname, which u-root does not build

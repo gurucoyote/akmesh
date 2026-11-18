@@ -134,6 +134,25 @@ checkcode patch-apply 0 "$(run patch < p.diff >/dev/null 2>&1; echo $?)"
 check patch-result "eins ZWEI drei vier fuenf" "$(tr '\n' ' ' < a.txt | tr -d '\r' | sed 's/ $//')"
 rm -f p.diff a.txt b.txt
 
+# find and grep are forked u-root commands: the agent spellings are the point
+mkdir -p fdir/sub && printf 'x\n' > fdir/a.txt && printf 'y\n' > fdir/sub/b.txt
+check find-optional-path "1" "$(cd fdir && run find -name 'a.txt' | wc -l | tr -d ' ')"
+check find-dot-prefix "./a.txt" "$(cd fdir && run find . -maxdepth 1 -name 'a.txt' | tr -d '\r')"
+check find-maxdepth "0" "$(cd fdir && run find . -maxdepth 1 -name 'b.txt' | wc -l | tr -d ' ')"
+# -exec runs a real program, so the executable has to exist on the target too: the
+# binary itself is the one command both platforms have.
+check find-exec "a.txt" "$(cd fdir && run find . -maxdepth 1 -name 'a.txt' -exec "$BIN" echo {} \; | tr -d '\r' | sed 's|^\./||')"
+checkcode find-missing 1 "$(run find /nicht/vorhanden >/dev/null 2>&1; echo $?)"
+printf 'alpha\nBravo\ncharlie\ndelta alpha\n' > g.txt
+check grep-extended "2" "$(run grep -E 'a.ph' g.txt | wc -l | tr -d ' ')"
+check grep-ignore-case "Bravo" "$(run grep -i bravo g.txt | tr -d '\r')"
+check grep-word "2" "$(run grep -w alpha g.txt | wc -l | tr -d ' ')"
+check grep-context "4" "$(run grep -A 1 alpha g.txt | wc -l | tr -d ' ')"
+check grep-only-match "alp" "$(run grep -o alp g.txt | head -1 | tr -d '\r')"
+checkcode grep-no-match 1 "$(run grep zenix g.txt >/dev/null 2>&1; echo $?)"
+check grep-recursive "ja" "$(run grep -r alpha . 2>/dev/null | grep -q 'g\.txt' && echo ja)"
+rm -rf fdir g.txt
+
 # head is a forked u-root command: the short form and -q are the reason
 printf '1\n2\n3\n4\n5\n6\n7\n' > h.txt
 check head-short "1 2 3" "$(run head -5 h.txt | tr -d '\r' | head -3 | tr '\n' ' ' | sed 's/ $//')"

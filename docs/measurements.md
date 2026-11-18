@@ -732,3 +732,45 @@ Datei). Erst nach dem Streichen des Namens aus cmds.txt liefert der Fork.
 Der Fork ersetzt den u-root-Befehl, er kommt nicht dazu: ein Name, ein Befehl.
 Die 8 KiB sind der Preis fuer den eigenen Argumentparser und die
 Fehlerbehandlung.
+
+## Forks: find und grep (18.11.2026, acmesh-29n, acmesh-2nz)
+
+Beide nach der Mechanik aus acmesh-e0o geforkt. Verglichen mit GNU (debian
+stable-slim) auf denselben Dateien, Ausgabe und Exit-Code.
+
+    find                                      GNU
+    find . -name '*.txt'                      identisch, mit "./"-Praefix
+    find -name a.txt (ohne Startpfad)         identisch (vorher: usage, Exit 1)
+    find . -maxdepth 1 -type d                identisch (".", "./sub")
+    find . -mindepth 2 -type f                identisch
+    find . -type f -not -name '*.log'         identisch
+    find . -name '*.txt' -exec CMD {} ;       laeuft, kein impliziter Print
+    find /nicht/vorhanden                     Exit 1
+
+    grep                                      GNU
+    grep alpha a.txt                          identisch
+    grep -E 'al.a'                            identisch
+    grep -i bravo                             identisch
+    grep -w alp / -w alpha                    identisch
+    grep -o alp / -o -n alpha                 identisch
+    grep -A 1 / -B 1 / -C 1 / -C 2 alpha      identisch, inklusive "--" nur bei Luecke
+    grep -rn alpha .                          identisch, "./"-Praefix
+    grep -l / -c (eine und zwei Dateien)      identisch
+    grep zenix                                Exit 1 (vorher Exit 0)
+    grep '('                                  Exit 2 mit Meldung (vorher: Panic)
+
+Zwei Fehler, die die Vergleiche gefunden haben: ein Verzeichnis auf maxdepth
+wurde uebersprungen statt gemeldet (find . -maxdepth 1 -type d fehlte ./sub),
+und bei grep wurden after-context-Zeilen doppelt gedruckt und "--" auch ohne
+Luecke gesetzt.
+
+Groesse (vor find/grep: 11485308 Linux, 11511808 Windows):
+
+    Linux    11501692 Bytes  (+16384 fuer beide Forks)
+    Windows  11527168 Bytes  (+15360 fuer beide Forks)
+
+Tests: internal/forked/find (6) und internal/forked/grep (6), go test ./...
+gruen. Batterie: 128 Checks Linux, 112 Windows, 0 Fehler; neue Pruefungen
+find-optional-path, find-dot-prefix, find-maxdepth, find-exec, find-missing,
+grep-extended, grep-ignore-case, grep-word, grep-context, grep-only-match,
+grep-no-match, grep-recursive.

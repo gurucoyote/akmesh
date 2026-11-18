@@ -194,6 +194,23 @@ einem Werkzeug, das ein Agent hunderte Male startet, ist das der falsche Tausch.
 - Ob ein netdev mit OS-TLS curl unter TinyGo wirklich traegt, ist ungemessen und
   waere ein eigenes Stueck Arbeit.
 
+## Brauchen wir TinyGo? (18.11.2026)
+
+Kurz: nein, fuer nichts, was auf unserer Liste steht.
+
+- Linux und Windows: Go baut es nativ, schneller, ohne Patch an Abhaengigkeiten.
+  TinyGo spart im fs-Profil 35 Prozent Groesse, kostet aber fuenf von 66
+  Pruefungen (os/exec ohne Dir und Dateien) und zwei Befehle (cpio, time).
+- wasm: Go kann es selbst, wasip1 und js/wasm, ohne Zusatzwerkzeug.
+- Mikrocontroller: TinyGo ist dort die einzige Go-Option, aber unser Befehlssatz
+  baut dafuer nicht. Ein Versuch mit cmd/basename fuer esp32-coreboard-v2
+  scheitert an mvdan.cc/sh: "undefined: syscall.Stat_t", "undefined: os.SameFile".
+  Das liegt an unserer Architektur, jeder Befehl zieht die ganze Registry mit.
+
+Die Untergrenze fuer ESP32 gemessen: ein Hallo-Welt-Programm mit TinyGo 0.44 ist
+207.488 Bytes (203 KiB). Das ist fuer 4 MiB Flash nicht viel; gross wird es erst
+durch die Pakete, die man mitnimmt.
+
 ## Fazit
 
 Krypto-Rechenarbeit traegt TinyGo, TLS nicht: auf Linux ist crypto/tls ein

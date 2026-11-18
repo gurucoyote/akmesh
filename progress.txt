@@ -84,3 +84,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-18  cmd/ext entfernt und vollstaendig integriert; Meldungen nennen den Programmnamen, test-ext.sh heisst test-acmesh.sh, bb/busybox in der Doku durch acmesh ersetzt.
 2026-11-18  u-root-Meldung gepatcht: build-bb.sh ersetzt "busybox" in gobusybox und baut makebb neu, acmesh sagt jetzt "not present in acmesh"; Bau prueft sein Binary selbst.
 2026-11-18  makebb auf v0.6.0 gepinnt, Version per go version -m geprueft; frischer Pfad ohne makebb getestet. Befund: Go-Toolchain ist ebenfalls nicht gepinnt.
+2026-11-18: coreutils-Abgleich gemessen (docs/compat-coreutils.md), Fork-Entscheidung festgehalten, 16 Tickets acmesh-nl9 bis acmesh-0fd angelegt.

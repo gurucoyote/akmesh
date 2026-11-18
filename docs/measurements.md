@@ -1143,3 +1143,50 @@ beiden Zielen dieselben - geprueft mit comm ueber die sortierten Listen; es gibt
 keinen Namen, der nur unter Windows existiert.
 
 Batterie: Linux 169 Pruefungen, Windows 149, beide 0 Fehler.
+
+## tracedeps (18.11.2026, acmesh-n0p)
+
+Ein Befehl, der ein Programm unter ptrace startet und die Dateien ausgibt, die
+es geoeffnet oder gestartet hat. Zweck: die Kopierliste fuer eine
+distroless-Huelle, ohne eine Spur als Text zu lesen.
+
+    ./acmesh tracedeps /tmp/k.sh        (k.sh: #!/bin/sh; cat /etc/hostname)
+    /bin/cat
+    /etc/hostname
+    /tmp/k.sh
+
+Mit -probes kommen die Pfade dazu, die nur geprueft wurden (PATH-Suche):
+
+    ./acmesh tracedeps -probes /tmp/k.sh
+    /bin/cat
+    /etc/hostname
+    /sbin/cat
+    /tmp
+    /tmp/k.sh
+    /usr/bin/cat
+    /usr/local/bin/cat
+    /usr/local/sbin/cat
+    /usr/sbin/cat
+
+Groesze: 11.837.564 Bytes Linux (vorher 11.825.276, also +12.288),
+11.857.408 Bytes Windows (dort ist nur der Stummel drin, der sagt, dass es den
+Befehl nur unter Linux gibt). Batterie: Linux 172 Pruefungen, Windows 150,
+beide 0 Fehler.
+
+Was beim Bau zu lernen war, jeder Punkt hat einen Lauf gekostet:
+
+- Ohne runtime.LockOSThread gibt es keine ptrace-Ereignisse: der Thread, der
+  das Kind gestartet hat, muss es auch weiterfuehren.
+- Nach dem ersten Stopp muss einmal PtraceSyscall kommen, sonst laeuft das Kind
+  gar nicht erst los und Wait4 wartet ewig.
+- fork, vfork und clone melden ein Ereignis statt eines Syscall-Exit-Stopps.
+  Wer eine Enter/Exit-Parität fuehrt, muss sie dort zuruecksetzen, sonst ist
+  jeder spaetere Syscall um eins verschoben und die Pfade fehlen.
+- Robuster als Paritaet: die Argumente bei jedem Syscall-Stopp lesen. Der
+  Exit-Stopp wiederholt sie in denselben Registern, Doppelte landen im selben
+  Map-Eintrag.
+- /proc/<pid>/mem liefert EIO auf Seiten eines frisch geforkten Kindes, also
+  genau dort, wo die interessanten Pfade liegen. PTRACE_PEEKDATA geht.
+- Der eigene execve des Programms ist nie dabei (das Kind stoppt am
+  Exec-Ereignis, nicht an einem Syscall-Paar). Deshalb wird das Programm aus
+  der Kommandozeile mit aufgenommen.

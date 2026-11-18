@@ -304,3 +304,15 @@ awk, diff, patch und cat. Ein vi in diesem Binary waere also fuer den Menschen
 am Terminal gedacht, nicht fuer den Agenten, und das ist ein anderes Ziel als
 das Projektziel. Ven ist klein und baut auf beiden Zielen, taugt aber nur dort,
 wo ein Userland mit ncurses steht.
+
+## Nachtrag: eigener Verfolger statt u-root (18.11.2026, acmesh-n0p)
+
+Der Sammler ist gebaut, aber nicht auf u-roots pkg/strace. Ein Import haette
+den ganzen u-root-Block in unsere go.mod geholt (go mod tidy wollte das Modul
+aufloesen und damit fremde Abhaengigkeiten nachziehen) - fuer einen Befehl zu
+viel. Der Verfolger steht jetzt in internal/tracedeps auf x/sys/unix, rund 200
+Zeilen, und die Fallen stehen in docs/measurements.md.
+
+Was u-root weiterhin liefert, ist die strace-Ausgabe selbst; der Befehl bleibt
+fuer den Menschen und fuer den Fall, dass jemand die Spur Zeile fuer Zeile
+sehen will.

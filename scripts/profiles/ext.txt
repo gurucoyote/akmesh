@@ -2,7 +2,7 @@
 # check a download. No networking (the nonet tag drops the code, not just the
 # commands), no compilers, no crypto beyond sha256sum (acmesh-94e.11).
 tags nonet
-keep ps kill killall uname hostname free df du sync timeout
+keep ps kill killall uname hostname free df du sync timeout tracedeps
 keep sh echo pwd true false env
 keep cat ls rm mkdir mv chmod touch cp
 keep awk sed diff patch cut sort grep head tail wc tr xargs nl basename dirname

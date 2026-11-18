@@ -316,6 +316,24 @@ check du-total "1" "$(run du -s -c du1 | grep -c total | tr -d '\r')"
 checkcode du-unknown 2 "$(run du -Z >/dev/null 2>&1; echo $?)"
 rm -rf du1
 
+# tracedeps: only Linux has ptrace, and only amd64 has the register layout it reads.
+case "$BIN" in
+*.exe) ;;
+*)
+  printf '#!/bin/sh\ncat td-in.txt\n' > td.sh && printf 'hallo\n' > td-in.txt
+  chmod +x td.sh
+  check tracedeps-script "1" "$(run tracedeps ./td.sh 2>/dev/null | tr -d '\r' | grep -c 'td-in.txt' | tr -d ' ')"
+  check tracedeps-program "1" "$(run tracedeps ./td.sh 2>/dev/null | tr -d '\r' | grep -c 'td.sh' | tr -d ' ')"
+  checkcode tracedeps-usage 2 "$(run tracedeps >/dev/null 2>&1; echo $?)"
+  rm -f td.sh td-in.txt
+  ;;
+esac
+case "$BIN" in
+*.exe)
+  check tracedeps-says-no-windows "ja" "$(run tracedeps ls 2>&1 | grep -q 'linux/amd64 only' && echo ja)"
+  ;;
+esac
+
 # ps, kill, killall
 check ps-fields "PID COMM" "$(run ps -eo pid,comm | head -1 | tr -s ' ' | tr -d '\r' | sed 's/^ //;s/ $//')"
 check ps-ef-ppid "PPID" "$(run ps -ef | head -1 | tr -d '\r' | grep -o PPID | head -1)"

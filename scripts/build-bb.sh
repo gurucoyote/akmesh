@@ -141,6 +141,10 @@ if tr -d '\000' < "$MAKEBB" | grep -q 'not present in busybox'; then
 	fi
 fi
 
+# Bad command lines must not look like success. Two u-root commands print their
+# usage and carry on; the patches and their guards live in patch-uroot.sh.
+"$ROOT/scripts/patch-uroot.sh" "$UROOT_DIR"
+
 # The workspace is what lets makebb see our own packages.
 WORKFILE="$ROOT/.build/go.work"
 cat > "$WORKFILE" <<EOF

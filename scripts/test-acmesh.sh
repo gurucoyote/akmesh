@@ -71,6 +71,19 @@ check sed-quiet "b" "$(printf 'a\nb\nc\n' | run sed -n '2p' | tr -d '\r')"
 check awk-sum "summe 5" "$(printf 'x 2\ny 3\n' | run awk '{s+=$2} END {print "summe",s}' | tr -d '\r')"
 check awk-fs "y" "$(printf 'x:y\n' | run awk -F: '{print $2}' | tr -d '\r')"
 
+# silent success: a bad flag must never end with exit 0
+checkcode ls-unknown-flag 2 "$(run ls -Z >/dev/null 2>&1; echo $?)"
+checkcode ls-sort-time 2 "$(run ls -t >/dev/null 2>&1; echo $?)"
+touch xmode
+checkcode chmod-plusx 0 "$(run chmod +x xmode >/dev/null 2>&1; echo $?)"
+# Windows has no execute bit, so the mode itself is only checked where it exists.
+case "$BIN" in
+*.exe) ;;
+*) check chmod-plusx-bit "yes" "$([ -x xmode ] && echo yes || echo no)" ;;
+esac
+checkcode chmod-bad-mode 1 "$(run chmod 999 xmode >/dev/null 2>&1; echo $?)"
+check chmod-bad-mode-message "ja" "$(run chmod 999 xmode 2>&1 | grep -q 'unable to decode mode' && echo ja)"
+
 # echo, pwd, true, false: the GNU echo semantics, not u-root's
 check echo-plain "a b" "$(run echo a b | tr -d '\r')"
 check echo-backslash 'a\nb' "$(run echo 'a\nb' | tr -d '\r')"

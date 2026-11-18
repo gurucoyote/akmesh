@@ -46,6 +46,13 @@ dazu: Landlock unter Linux, Job Objects unter Windows, fuer jedes Kind.
   Windows Rechte.
 - Die neun Befehle, die fuer Windows nicht bauen, werden per Build-Tag
   ausgeschlossen, nicht gepatcht. Sechs davon bauen wir selbst.
+- Ausnahme von "nicht patchen": Fehlerpfade, die einen Erfolg vortaeuschen.
+  `ls` druckte bei einem unbekannten Schalter die Usage und listete trotzdem,
+  Exit 0; `chmod +x` scheiterte ohne eine Zeile Meldung. Beides liegt in
+  `scripts/patch-uroot.sh`, wird bei jedem Build auf den gepinnten Checkout
+  angewandt und bricht ab, wenn der erwartete Upstream-Text fehlt. Ein neuer
+  Schalter wird weiterhin NICHT so nachgeruestet - dafuer gilt der Fork
+  (Abschnitt "Eigene Befehle").
 
 ## Eigene Befehle (geplant)
 

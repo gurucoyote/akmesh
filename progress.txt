@@ -87,3 +87,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-18: coreutils-Abgleich gemessen (docs/compat-coreutils.md), Fork-Entscheidung festgehalten, 16 Tickets acmesh-nl9 bis acmesh-0fd angelegt.
 2026-11-18: sort und shuf als eigener Code eingebaut (sort aus qiangli/coreutils, shuf Eigenbau), 42 GNU-Faelle ohne Abweichung, Ticket acmesh-91n und acmesh-f0z.
 2026-11-18: Testabdeckung je Befehl gezaehlt und Verdrahtungsluecke mit Rotsproben geschlossen; echo, pwd, true, false als eigene Befehle eingebaut (Ticket acmesh-4ex).
+2026-11-18: stille Fehlschlaege beendet - patches fuer ls (Exit 2) und chmod (+x, Meldung) im Build, Wachen geprueft, Batterie 101/0 Linux und 86/0 Windows (Ticket acmesh-7s9).

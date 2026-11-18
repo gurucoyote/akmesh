@@ -604,3 +604,36 @@ Pfadkomponente.
     ./scripts/test-acmesh.sh ./acmesh.exe -> 81 checks, 0 failures
 
 Groesse: acmesh 11.403.388 (+8.192), acmesh.exe 11.431.936 (+6.144).
+
+## Stille Fehlschlaege von u-root-Befehlen (18.11.2026)
+
+Drei gemessene Faelle, alle behoben:
+
+    ls -Z, ls -t, ls -1    vorher Exit 0 nach gedruckter Usage (und die
+                           Verzeichnisliste kam trotzdem); jetzt Exit 2
+    chmod +x DATEI         vorher Exit 1, KEINE Meldung, nichts geaendert;
+                           jetzt 0755
+    chmod 999 DATEI        vorher still; jetzt "chmod: ... unable to decode
+                           mode", Exit 1 (GNU chmod exit 1, im Container gemessen)
+
+Ursache bei ls: `f.Parse(...)` mit ContinueOnError, Rueckgabe ignoriert, danach
+wird trotzdem gelistet. Ursache bei chmod: die Klassenbuchstaben waren Pflicht,
+GNU erlaubt "+x", und main hat den Fehler verworfen statt ihn zu drucken.
+
+Bauform: scripts/patch-uroot.sh, aufgerufen aus build-bb.sh nach dem
+Dispatcher-Rename. Jeder Patch ist ein woertlicher Austausch mit zwei Wachen -
+steht der neue Text schon da, wird der Schritt uebersprungen; fehlt der alte,
+bricht der Build ab. Der Riegel wurde geprueft: ein gefaelschter Checkout
+(/tmp/fakeuroot mit umformulierter ls.go) endet mit
+"patch-uroot: expected text not found in .../ls.go", Exit 1.
+
+Noch offen und nur festgehalten: cp, rm, mv, mkdir, find und gzip beenden einen
+unbekannten Schalter mit Exit 1 statt GNU's 2. Die Meldung ist eindeutig
+("flag provided but not defined: ..." plus Usage), der Agent erkennt den Fehler,
+deshalb bleibt es bei der Notiz.
+
+    ./scripts/test-acmesh.sh ./acmesh     -> 101 checks, 0 failures
+    ./scripts/test-acmesh.sh ./acmesh.exe -> 86 checks, 0 failures
+
+Eine Pruefung ist plattformabhaengig: unter Windows gibt es kein x-Bit, dort
+zaehlt nur der Exit-Code von chmod +x.

@@ -2087,7 +2087,12 @@ Bewusste Grenzen, im Code und im Ticket:
   ClientHello sonst durch einen CONNECT-Tunnel muesste.
 
 Groesse: 16.507.004 Bytes gegen 15.233.148 vorher, also +1.273.856 (1,27 MB).
-Batterie: 222 Pruefungen Linux, 0 Fehler.
+Windows: akmesh.exe 16.611.840 Bytes (vorher 15.308.288).
+
+Batterie: 222 Pruefungen Linux, 0 Fehler; 200 Pruefungen Windows, 0 Fehler.
+Der erste Windows-Lauf meldete einen Fehler (httpd-detach-serves) und der
+zweite vier 404er auf /index.html: ein Restprozess aus dem abgebrochenen Lauf
+hielt den Port. Nach dem Aufraeumen 200/0. Als acmesh-bvy aufgenommen.
 
 Tests: Profiltabelle mit exakter Zuordnung (eine falsche Zuordnung wurde in
 der Rotprobe erkannt), unbekanntes Profil Exit ungleich 0, echter

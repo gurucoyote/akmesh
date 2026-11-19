@@ -13,7 +13,7 @@
       "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
       "files": [
         {
-          "sha256": "511eb75eab515d33e1bb82d7dd47c3fe8346b47906ad9f04bed3c49d69f936f7",
+          "sha256": "708a0bbf54ef6cdb6354eb3960da6e3cd016851b9edcdaf9e49a1a22f403c304",
           "upstream": "cmds/core/chmod/chmod.go"
         }
       ]

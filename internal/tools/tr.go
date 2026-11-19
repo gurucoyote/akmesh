@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"acmesh/internal/forked/tr"
+	"akmesh/internal/forked/tr"
 )
 
 // runTr is the glue between the command table and the forked u-root command.

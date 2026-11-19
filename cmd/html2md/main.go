@@ -1,12 +1,12 @@
 // Command html2md turns an HTML fragment into Markdown, reachable as its own
-// name inside the acmesh binary.
+// name inside the akmesh binary.
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/htmlmd"
-	"acmesh/internal/policy"
+	"akmesh/internal/htmlmd"
+	"akmesh/internal/policy"
 )
 
 func main() {

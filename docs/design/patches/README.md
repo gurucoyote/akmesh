@@ -42,7 +42,7 @@ mit `replace` gebaut und ein PDF gerendert:
     patch -p1 --dry-run        ok (vier Dateien)
     go build -ldflags="-s -w"  9212066 Bytes
     /tmp/patchbuild/out.pdf    27534 Bytes
-    acmesh pdf2md out.pdf      "## Größentest / Umlaute: äöüß, ..." (Umlaute korrekt)
+    akmesh pdf2md out.pdf      "## Größentest / Umlaute: äöüß, ..." (Umlaute korrekt)
 
 Gemessene Groeszen (leeres Programm 1.597.602 Bytes): upstream 12.218.530,
 ohne chroma 9.097.378, ohne chroma und ohne Google-Schriften 8.016.034. Zahlen

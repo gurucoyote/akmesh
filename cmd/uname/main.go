@@ -1,4 +1,4 @@
-// Command uname is the uname tool, reachable as its own command inside the acmesh
+// Command uname is the uname tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/uname and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/uname"
+	"akmesh/internal/uname"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

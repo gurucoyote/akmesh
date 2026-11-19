@@ -1,12 +1,12 @@
 // Command md2txt-l prints Markdown as plain text, reachable as its own name inside
-// the acmesh binary.
+// the akmesh binary.
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/md2txt"
-	"acmesh/internal/policy"
+	"akmesh/internal/md2txt"
+	"akmesh/internal/policy"
 )
 
 func main() {

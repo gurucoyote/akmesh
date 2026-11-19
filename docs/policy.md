@@ -1,13 +1,13 @@
 # Policy: was die Shell im Harness anfassen darf
 
-Das ist der Grund, warum acmesh existiert. Ein Harness soll dem Agenten nicht
+Das ist der Grund, warum akmesh existiert. Ein Harness soll dem Agenten nicht
 die echte Shell geben, sondern eine, in der die Regeln an einer Stelle gesetzt
 und ohne Raten durchgesetzt werden.
 
 ## Wo die Regel sitzt
 
 Die Regel sitzt nicht in den Befehlen, sondern im Kernel. Beim Start liest
-acmesh die Datei aus `ACMESH_POLICY`, baut daraus eine Landlock-Regel und
+akmesh die Datei aus `AKMESH_POLICY`, baut daraus eine Landlock-Regel und
 wendet sie auf sich selbst an. Landlock ist eine Linux-Eigenschaft: ab diesem
 Moment gilt die Regel fuer diesen Prozess und fuer jedes Kind, das er startet.
 
@@ -50,16 +50,16 @@ oeffnen als gedacht.
 
 ## Fehlverhalten ist geschlossen
 
-Wenn `ACMESH_POLICY` gesetzt ist und die Datei nicht lesbar, nicht gueltig oder
-nicht durchsetzbar ist, beendet sich acmesh mit Exit 1 und einer Meldung. Es
+Wenn `AKMESH_POLICY` gesetzt ist und die Datei nicht lesbar, nicht gueltig oder
+nicht durchsetzbar ist, beendet sich akmesh mit Exit 1 und einer Meldung. Es
 laeuft nicht ungeschuetzt weiter. Das ist die einzige vertretbare Richtung.
 
-Ohne `ACMESH_POLICY` ist acmesh ein normaler Busybox-Ersatz ohne Regeln.
+Ohne `AKMESH_POLICY` ist akmesh ein normaler Busybox-Ersatz ohne Regeln.
 
 ## Nachsehen und pruefen
 
-    acmesh policy                    # was gilt, Exit 0 wenn durchgesetzt
-    acmesh policy --check /etc/shadow # versucht wirklich zu lesen
+    akmesh policy                    # was gilt, Exit 0 wenn durchgesetzt
+    akmesh policy --check /etc/shadow # versucht wirklich zu lesen
 
 `policy` zeigt die Datei, die Aufzaehlung der Pfade und die Kernel-Version
 (Landlock ABI). `--check` macht einen echten Leseversuch in diesem Prozess: Exit
@@ -67,7 +67,7 @@ Ohne `ACMESH_POLICY` ist acmesh ein normaler Busybox-Ersatz ohne Regeln.
 
 ## Die Shell
 
-`acmesh sh` (auch als `gosh` erreichbar) ist mvdan/sh als Bibliothek, also eine
+`akmesh sh` (auch als `gosh` erreichbar) ist mvdan/sh als Bibliothek, also eine
 POSIX-nahe Shell mit den gewohnten Dingern: Variablen, Arithmetik, Pipes,
 Umleitungen, `&&`, `||`, Funktionen, `case`, `for`. Sie ersetzt die u-root-gosh
 und ist dabei kleiner, weil die Zeilenbearbeitung nicht mitkommt.
@@ -80,7 +80,7 @@ verweigert.
 ## Windows
 
 Landlock gibt es nur unter Linux. Auf Windows laesst sich dieselbe Regel heute
-nicht durchsetzen. Deshalb gilt: ist `ACMESH_POLICY` gesetzt, verweigert das
+nicht durchsetzen. Deshalb gilt: ist `AKMESH_POLICY` gesetzt, verweigert das
 Windows-Binary den Dienst mit Exit 1 und der Meldung, dass eine Dateisystem-Policy
 dort nicht durchgesetzt werden kann. Eine Attrappe, die so tut als ob, waere
 schlimmer als eine ehrliche Absage. Ticket `acmesh-94e.3` haelt den Weg ueber
@@ -90,7 +90,7 @@ Job Objects und eingeschraenkte Token fest.
 
 - Die Regel gilt fuer den Prozessbaum, nicht fuer das ganze System. Ein Prozess
   ausserhalb der Shell sieht die Regel nicht. Der Harness muss den Agenten also
-  durch acmesh laufen lassen, nicht daneben.
+  durch akmesh laufen lassen, nicht daneben.
 - Netz wird auf Host-Ebene geprueft, in curl und wget, nicht im Kernel. Landlock
   kann nur Ports, keine Namen. Ein Programm, das selbst Sockets oeffnet, ist
   damit nicht gebunden; das waere eine eigene Stufe (Landlock-Netz oder
@@ -102,7 +102,7 @@ Job Objects und eingeschraenkte Token fest.
 
 ## Nachweis
 
-Getestet mit der Testbatterie (scripts/test-acmesh.sh), Linux:
+Getestet mit der Testbatterie (scripts/test-akmesh.sh), Linux:
 
 - policy meldet Exit 0 und nennt die Datei.
 - Lesen in /work: erlaubt und liefert den Inhalt.

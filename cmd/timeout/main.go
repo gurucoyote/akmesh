@@ -1,4 +1,4 @@
-// Command timeout is the timeout tool, reachable as its own command inside the acmesh
+// Command timeout is the timeout tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/timeout and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/timeout"
+	"akmesh/internal/timeout"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

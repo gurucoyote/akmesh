@@ -28,12 +28,12 @@ func runEnv(t *testing.T, args []string) (string, string, int) {
 
 // TestRunListsTheEnvironment: without arguments env prints what it inherited.
 func TestRunListsTheEnvironment(t *testing.T) {
-	t.Setenv("ACMESH_ENV_TEST", "wert")
+	t.Setenv("AKMESH_ENV_TEST", "wert")
 	out, _, code := runEnv(t, nil)
 	if code != 0 {
 		t.Fatalf("exit: want 0, got %d", code)
 	}
-	if !strings.Contains(out, "ACMESH_ENV_TEST=wert") {
+	if !strings.Contains(out, "AKMESH_ENV_TEST=wert") {
 		t.Errorf("inherited variable missing from the listing")
 	}
 }
@@ -41,12 +41,12 @@ func TestRunListsTheEnvironment(t *testing.T) {
 // TestRunUnsetsOnlyForTheChild: env -u drops one name, and does it in the
 // child's environment only.
 func TestRunUnsetsOnlyForTheChild(t *testing.T) {
-	t.Setenv("ACMESH_ENV_TEST", "wert")
+	t.Setenv("AKMESH_ENV_TEST", "wert")
 	out, _, code := runEnv(t, nil)
-	if code != 0 || !strings.Contains(out, "ACMESH_ENV_TEST=wert") {
+	if code != 0 || !strings.Contains(out, "AKMESH_ENV_TEST=wert") {
 		t.Fatalf("precondition failed: exit %d", code)
 	}
-	if v, ok := os.LookupEnv("ACMESH_ENV_TEST"); !ok || v != "wert" {
+	if v, ok := os.LookupEnv("AKMESH_ENV_TEST"); !ok || v != "wert" {
 		t.Errorf("env changed its own process: %q %v", v, ok)
 	}
 }

@@ -36,7 +36,7 @@ Gemessen: github.com/itchyny/gojq, das uebliche Go-jq. Eigenes Binary:
 5.760.512 Bytes, also 5,49 MB gestrippt. Funktioniert ('.a|length' -> 3,
 '.b.c' -> "x").
 
-Als Bibliothek in acmesh eingebettet sind es rund 4,5 MB Zuwachs, das
+Als Bibliothek in akmesh eingebettet sind es rund 4,5 MB Zuwachs, das
 Binary ginge von 3,5 auf etwa 8 MB.
 
 Selbst schreiben ist keine Option: jq ist eine Sprache mit Lexer, Parser,
@@ -56,25 +56,25 @@ ueberraschen.
 
 Die erste Schaetzung oben (rund 4,5 MB als Bibliothek) war falsch: sie kam
 zustande, indem vom eigenstaendigen gojq-Binary (5,49 MB) eine geratene
-Grundlast abgezogen wurde. Jetzt gemessen, mit einer Probe direkt im acmesh,
+Grundlast abgezogen wurde. Jetzt gemessen, mit einer Probe direkt im akmesh,
 die gojq.Parse, Compile und Run benutzt (also Parser und Auswerter):
 
 | Stand | linux | windows |
 |---|---|---|
-| acmesh ohne jq | 10.657.916 (10,16 MiB) | 10.669.568 (10,18 MiB) |
-| acmesh mit jq | 11.460.732 (10,93 MiB) | 11.486.720 (10,95 MiB) |
+| akmesh ohne jq | 10.657.916 (10,16 MiB) | 10.669.568 (10,18 MiB) |
+| akmesh mit jq | 11.460.732 (10,93 MiB) | 11.486.720 (10,95 MiB) |
 | Zuwachs | 802.816 (784 KB) | 817.152 (798 KB) |
 
 Nur der Parser ohne Auswerter waere 596 KB gewesen; der Unterschied von rund
 200 KB ist der Auswerter, und den braucht man.
 
-Probe im Binary ausgefuehrt: '{"a":[1,2,3]}' | acmesh.exe zzjq '.a|length' -> 3
+Probe im Binary ausgefuehrt: '{"a":[1,2,3]}' | akmesh.exe zzjq '.a|length' -> 3
 und '.a|add' -> 6 auf Linux.
 
 Folge fuer die Entscheidung: jq muss nicht als eigenes Binary danebenliegen.
 0,8 MB sind weniger als ein Siebtel des eigenstaendigen gojq, und dafuer ist der
 Befehl dann einfach da, wo alle anderen sind.
 
-Entschieden am 18.11.2026: jq kommt ins acmesh, nicht als eigenes Binary.
+Entschieden am 18.11.2026: jq kommt ins akmesh, nicht als eigenes Binary.
 Gebaut in internal/tools/jq.go, gemessen 804 KB Linux und 821 KB Windows
 (siehe docs/measurements.md).

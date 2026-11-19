@@ -1,4 +1,4 @@
-// Command du is the du tool, reachable as its own command inside the acmesh
+// Command du is the du tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/disk and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/disk"
+	"akmesh/internal/disk"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

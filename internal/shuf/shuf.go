@@ -29,7 +29,7 @@ type options struct {
 	randSource string
 }
 
-// Run is the entry point the acmesh table calls.
+// Run is the entry point the akmesh table calls.
 func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	o, files, errMsg := parseArgs(args)
 	if errMsg != "" {
@@ -38,7 +38,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			fmt.Fprint(stdout, usageText)
 			return 0
 		case "version":
-			fmt.Fprintln(stdout, "shuf (acmesh) 1.0")
+			fmt.Fprintln(stdout, "shuf (akmesh) 1.0")
 			return 0
 		}
 		fmt.Fprintf(stderr, "shuf: %s\n", errMsg)

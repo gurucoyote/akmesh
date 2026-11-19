@@ -4,7 +4,7 @@
 // configuration file with prefix mappings.
 //
 // What it does not do is CGI. That is the one busybox feature left out on
-// purpose: a hull exists so that a web page cannot reach a shell (acmesh noise).
+// purpose: a hull exists so that a web page cannot reach a shell (akmesh noise).
 package httpd
 
 import (
@@ -173,7 +173,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	// busybox httpd goes to the background unless -f is given. A Go program
 	// cannot fork itself safely, so the same arguments are started again as a
 	// child with -f and this process returns to the shell.
-	if !opts.Foreground && !opts.Inetd && os.Getenv("ACMESH_HTTPD_CHILD") == "" {
+	if !opts.Foreground && !opts.Inetd && os.Getenv("AKMESH_HTTPD_CHILD") == "" {
 		if err := detach(stderr); err != nil {
 			fmt.Fprintf(stderr, "httpd: %v\n", err)
 			return 1
@@ -562,7 +562,7 @@ func detach(stderr *os.File) error {
 	}
 	args := detachArgv(exe, os.Args[0], os.Args[1:])
 	cmd := exec.Command(exe, args...)
-	cmd.Env = append(os.Environ(), "ACMESH_HTTPD_CHILD=1")
+	cmd.Env = append(os.Environ(), "AKMESH_HTTPD_CHILD=1")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = devnull, devnull, devnull
 	cmd.SysProcAttr = detachedAttr()
 	if err := cmd.Start(); err != nil {
@@ -574,7 +574,7 @@ func detach(stderr *os.File) error {
 
 // detachArgv builds the arguments of the background child.
 //
-// Inside the acmesh binary the dispatcher has already set os.Args[0] to the
+// Inside the akmesh binary the dispatcher has already set os.Args[0] to the
 // command name ("httpd"), so the child must be started as
 // <path of this binary> httpd -f ...: without the path exec would search PATH
 // for a program called "httpd" (acmesh-rds), and without the name a multicall

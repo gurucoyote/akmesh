@@ -7,7 +7,7 @@ Stand der Messungen: 19.11.2026.
 
 Fuer md2pdf soll Markdown zu PDF werden, ohne fremdes Werkzeug, im Binary. Der
 naechstliegende Renderer ist goldmark-pdf v0.4.2 (MIT). Er bringt aber zwei Dinge mit,
-die zu acmesh nicht passen:
+die zu akmesh nicht passen:
 
 1. chroma samt allen Lexern, nur fuer Syntaxfarben im Codeblock. Kostet 3,12 MB.
 2. Die Schriften kommen zur Laufzeit ueber HTTP von Google. Der Beleg steht im
@@ -47,7 +47,7 @@ Fork ohne chroma und ohne Google-Schriften        8.016.034   +6,42 MB
 go-epub allein (Vergleich, md2epub)               4.141.218   +2,54 MB
 ```
 
-Bezogen auf acmesh heute (12.591.228 Bytes roh, abgelesen an acmesh und an
+Bezogen auf akmesh heute (12.591.228 Bytes roh, abgelesen an akmesh und an
 .build/last-size-linux-full am 19.11.2026) heisst das:
 
 ```
@@ -66,7 +66,7 @@ mit 19,0 MB und 6 MB Luft bis zur Warnung, das unveraenderte goldmark-pdf mit
 die Groesze, sondern dass er ohne Netz auskommt.
 
 Achtung beim Lesen alter Notizen: die Messungen der anderen Sitzung zu diesem
-Ticket sind in base64 notiert (Faktor 4/3), die acmesh-Groesze dort aber in rohen
+Ticket sind in base64 notiert (Faktor 4/3), die akmesh-Groesze dort aber in rohen
 Bytes. Base64 16.279.762 entspricht 12.209.821 rohen Bytes; beide Messreihen
 meinen also dasselbe, nur anders gezaehlt.
 
@@ -100,7 +100,7 @@ Unveraendert gegenueber dem Original, weil nicht angefasst:
 
 ## Empfehlung
 
-md2pdf auf den Fork bauen, als eigenes Paket im acmesh-Baum, mit vier getrennten
+md2pdf auf den Fork bauen, als eigenes Paket im akmesh-Baum, mit vier getrennten
 Schriftpfaden. Drei Gruende, in dieser Reihenfolge:
 
 1. Das Original holt seine Schrift zur Laufzeit ueber HTTP. Ein Busybox-Binary, das

@@ -473,7 +473,7 @@ func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 	return code
 }
 
-// Run implements grep for the acmesh dispatcher.
+// Run implements grep for the akmesh dispatcher.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	p, err := parse(args)
 	if err != nil {

@@ -108,7 +108,7 @@ func TestHostnamePrintsTheKernelName(t *testing.T) {
 }
 
 // TestPolicyCommandExplainsItself covers the command a harness calls to see
-// what is enforced. Without ACMESH_POLICY the process is unrestricted, and the
+// what is enforced. Without AKMESH_POLICY the process is unrestricted, and the
 // exit code says so (1), which is the signal a harness reads.
 func TestPolicyCommandExplainsItself(t *testing.T) {
 	dir := t.TempDir()

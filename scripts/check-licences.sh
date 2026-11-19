@@ -1,7 +1,7 @@
 #!/bin/sh
 # Refuses a build whose dependency tree carries a licence we cannot ship.
 #
-# Why this exists: acmesh is distributed as a binary, and the licence of that
+# Why this exists: akmesh is distributed as a binary, and the licence of that
 # binary is the sum of its dependencies. Two cases bit us while planning
 # md2docx - fumiama/go-docx is AGPL-3.0, and zikani03/goldmark-docx has no
 # licence file at all - so the check is part of the build gate and not a note in

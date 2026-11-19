@@ -1,4 +1,4 @@
-// Command dirname is the dirname tool, reachable as its own command inside the acmesh
+// Command dirname is the dirname tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/dirname and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/dirname"
+	"akmesh/internal/dirname"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-acmesh bundles third-party code. This file records whose it is and under which
+akmesh bundles third-party code. This file records whose it is and under which
 licence it is distributed, so that a binary leaving the house carries the
 notices it must carry.
 
@@ -53,6 +53,6 @@ follows is the notice, not a replacement for the text.
    either form.
 
 What a distributed binary has to carry: the notices above with their
-copyright lines, and the licence texts. A build that ships acmesh without them
+copyright lines, and the licence texts. A build that ships akmesh without them
 is not distributable, which is why they live in the repository next to the code
 that uses them rather than in a tarball nobody reads.

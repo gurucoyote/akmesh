@@ -416,7 +416,7 @@ func parseFlags(args []string) (params, []string, error) {
 	return p, rest, nil
 }
 
-// Run implements tr for the acmesh dispatcher.
+// Run implements tr for the akmesh dispatcher.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	p, rest, err := parseFlags(args)
 	if err != nil {

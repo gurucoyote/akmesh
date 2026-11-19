@@ -31,16 +31,16 @@ und im Binary fehlen die Meldungen des Netzteils ("known_hosts", "HTTP error
 
 ## Groessen
 
-    ./scripts/build-bb.sh linux full  -> acmesh     11.354.236 Bytes (10,83 MiB)
-    ./scripts/build-bb.sh linux fs    -> acmesh-fs  9.777.276 Bytes (9,32 MiB)
+    ./scripts/build-bb.sh linux full  -> akmesh     11.354.236 Bytes (10,83 MiB)
+    ./scripts/build-bb.sh linux fs    -> akmesh-fs  9.777.276 Bytes (9,32 MiB)
 
 Das sind 1.576.960 Bytes weniger, also 1,50 MiB. Ein Profil schreibt in eine
-eigene Datei (acmesh-fs, acmesh-fs.exe), damit die Varianten nebeneinander
+eigene Datei (akmesh-fs, akmesh-fs.exe), damit die Varianten nebeneinander
 liegen koennen.
 
 ## Pruefungen
 
-scripts/test-acmesh.sh erkennt selbst, ob ein Build Netz hat (curl -h antwortet).
+scripts/test-akmesh.sh erkennt selbst, ob ein Build Netz hat (curl -h antwortet).
 Der fs-Bau laeuft damit durch dieselbe Batterie: 66 Pruefungen statt 74, die
 acht Netz-Pruefungen werden uebersprungen, nicht als Fehler gezaehlt.
 
@@ -74,6 +74,6 @@ Zwei Fehler steckten in der Umsetzung, beide behoben:
   zusammengesetzten Zeile.
 - fs.txt nannte netcat "nc", der Befehl heisst aber netcat.
 
-Ergebnis: acmesh-fs schrumpft von 9,32 auf 6,64 MiB, weil netcat samt crypto/tls
+Ergebnis: akmesh-fs schrumpft von 9,32 auf 6,64 MiB, weil netcat samt crypto/tls
 vorher mitgelaufen ist. Die Pruefung, dass kein Netzcode im Binary ist, gilt
 jetzt fuer das ganze Binary, nicht nur fuer internal/tools.

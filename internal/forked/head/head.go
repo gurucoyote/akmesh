@@ -150,7 +150,7 @@ func usage(stderr io.Writer) {
 	fmt.Fprintln(stderr, "usage: head [-n NUM] [-c NUM] [-q] [-v] [FILE...]")
 }
 
-// Run implements head for the acmesh dispatcher.
+// Run implements head for the akmesh dispatcher.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	bytes, count := 0, 0
 	quiet, verbose := false, false

@@ -1,4 +1,4 @@
-// Command truncate is the truncate tool, reachable as its own command inside the acmesh
+// Command truncate is the truncate tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/truncate and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/truncate"
+	"akmesh/internal/truncate"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

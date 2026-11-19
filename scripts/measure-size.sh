@@ -5,7 +5,7 @@
 #   ./scripts/measure-size.sh                 # the repository binaries
 #   ./scripts/measure-size.sh probe base64 wc # a throwaway binary with only those
 #
-# A probe builds into /tmp and never touches acmesh or acmesh.exe.
+# A probe builds into /tmp and never touches akmesh or akmesh.exe.
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 export GOCACHE="$ROOT/.cache" GOPATH="$ROOT/.gopath" GOTOOLCHAIN=auto
@@ -15,7 +15,7 @@ export CGO_ENABLED=0
 mode=${1:-binaries}
 case "$mode" in
 binaries)
-	for f in "$ROOT/acmesh" "$ROOT/acmesh.exe"; do
+	for f in "$ROOT/akmesh" "$ROOT/akmesh.exe"; do
 		[ -f "$f" ] || continue
 		printf '%s %s bytes\n' "$(basename "$f")" "$(stat -c %s "$f")"
 	done
@@ -35,7 +35,7 @@ probe)
 		fi
 	done
 	export GOOS=linux GOARCH=amd64
-	out=/tmp/acmesh-probe-$$
+	out=/tmp/akmesh-probe-$$
 	cd "$ROOT/.build/uroot"
 	# shellcheck disable=SC2086
 	"$GOPATH/bin/makebb" -o "$out" $pkgs >/dev/null

@@ -50,7 +50,7 @@ Regeln, die wir dabei festlegen (und pruefen) muessen:
 - Exit-Codes wie curl: 6 Namensaufloesung, 7 Verbindung, 22 HTTP-Fehler mit -f,
   28 Zeitueberschreitung, 0 sonst.
 - Keine Nicht-HTTP-Protokolle. Kein FTP, kein file:// - das waere ein Loch in
-  der Policy, gegen die acmesh gebaut wird.
+  der Policy, gegen die akmesh gebaut wird.
 
 Was wir nicht bauen: -w Formatsprache, Fortschrittsbalken, HTTP/2-Priorisierung,
 Brotli als eigene Abhaengigkeit.

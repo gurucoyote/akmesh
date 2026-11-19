@@ -203,7 +203,7 @@ func runExec(argv []string, name string, stdin io.Reader, stdout, stderr io.Writ
 	return cmd.Run()
 }
 
-// Run implements find for the acmesh dispatcher.
+// Run implements find for the akmesh dispatcher.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	o, err := parse(args)
 	if err != nil {

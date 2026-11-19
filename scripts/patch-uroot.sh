@@ -62,7 +62,7 @@ cat > "$TMP/ls.old" <<'EOF'
 	return c.list(f.Args())
 EOF
 cat > "$TMP/ls.new" <<'EOF'
-	// acmesh: an unknown flag used to print the usage and then list the
+	// akmesh: an unknown flag used to print the usage and then list the
 	// directory anyway, with exit 0. Fail like GNU instead.
 	if err := f.Parse(unixflag.ArgsToGoArgs(args[1:])); err != nil {
 		os.Exit(2)
@@ -82,7 +82,7 @@ EOF
 cat > "$TMP/chmod-mode.new" <<'EOF'
 	reMode := regexp.MustCompile("^([ugoa]*)([-+=])(.*)")
 	m := reMode.FindStringSubmatch(modeString)
-	// acmesh: GNU allows the class to be omitted; "+x" means "a+x".
+	// akmesh: GNU allows the class to be omitted; "+x" means "a+x".
 	if len(m) >= 2 && m[1] == "" {
 		m[1] = "a"
 	}
@@ -96,7 +96,7 @@ cat > "$TMP/chmod-main.old" <<'EOF'
 EOF
 cat > "$TMP/chmod-main.new" <<'EOF'
 	if err := command(os.Stderr, *recursive, *reference).run(flag.Args()...); err != nil {
-		// acmesh: the error used to disappear. GNU chmod exits 1 for a bad
+		// akmesh: the error used to disappear. GNU chmod exits 1 for a bad
 		// mode and for a missing operand, so keep that code.
 		fmt.Fprintln(os.Stderr, "chmod:", err)
 		os.Exit(1)

@@ -3,10 +3,10 @@
 # TinyGo's standard library cannot carry. Every drop is logged, so the report says
 # exactly which commands the TinyGo build is missing.
 set -u
-GEN=/root/acmesh/.build/tgfs
-OUT=/root/acmesh/acmesh-fs-tinygo
+GEN=/root/akmesh/.build/tgfs
+OUT=/root/akmesh/akmesh-fs-tinygo
 TG=/root/3rd/tinygo44/bin/tinygo
-LOG=/root/acmesh/.build/tgfs-dropped.txt
+LOG=/root/akmesh/.build/tgfs-dropped.txt
 : > "$LOG"
 
 cd "$GEN" || exit 2

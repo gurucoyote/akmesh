@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"acmesh/internal/forked/find"
+	"akmesh/internal/forked/find"
 )
 
 // runFind is the glue between the command table and the forked u-root command.

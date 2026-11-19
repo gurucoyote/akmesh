@@ -95,7 +95,7 @@ func canonical(r io.Reader, w io.Writer) error {
 	return nil
 }
 
-// Run implements hexdump for the acmesh dispatcher.
+// Run implements hexdump for the akmesh dispatcher.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	canonicalOut := false
 	var limit int64

@@ -27,7 +27,7 @@ zahlt es immer.
    mit sed und awk: 4,1 MB zu 2,8 MB.
 4. Eigene Befehle nur mit der Standardbibliothek. cut, nl, tac, basename,
    stat, truncate, split kosten dann praktisch nichts ueber der Grundlast.
-5. Ein Binary statt einer 40,9-MB-Lieferung: acmesh traegt die u-root-Befehle
+5. Ein Binary statt einer 40,9-MB-Lieferung: akmesh traegt die u-root-Befehle
    und unsere eigenen Befehle zusammen, statt zwei getrennte Binaries.
 
 ## Was die Zutaten einzeln kosten (gemessen)
@@ -38,7 +38,7 @@ zahlt es immer.
 | sed (Go.Sed) als eigenes CLI | 3,0 MB (ungestrippt) |
 | sed + awk (Go.Sed + goawk) als Bibliotheken | 4,1 MB, gestrippt 2,8 MB |
 | diff + patch (go-difflib + go-gitdiff) | 2,0 MB gestrippt |
-| acmesh mit 48 u-root-Befehlen samt Shell | 8,9 MB |
+| akmesh mit 48 u-root-Befehlen samt Shell | 8,9 MB |
 
 Hochrechnung fuer unsere eigenen Befehle mit Stufe 1: Grundlast 1,0, sed und
 awk rund 1,8, diff und patch rund 1,0, eigene Befehle mit Standardbibliothek
@@ -68,8 +68,8 @@ Mit einem go.work, das beide Module auffuehrt, faellt die Grenze:
     go 1.27.0
 
     use (
-        /root/acmesh/.build/uroot
-        /root/acmesh
+        /root/akmesh/.build/uroot
+        /root/akmesh
     )
 
 Damit gebaut, ein Binary mit allen 48 u-root-Befehlen plus unseren Befehlen:
@@ -79,10 +79,10 @@ Damit gebaut, ein Binary mit allen 48 u-root-Befehlen plus unseren Befehlen:
 Gegen zwei Binaries: 8,9 MiB plus 3,5 MiB = 12,4 MiB. Das eine
 Binary spart also rund 3 MB, weil die Go-Laufzeit nur einmal drin ist.
 
-Geprueft am gebauten Binary (18.11.2026): `acmesh ls /root`, `acmesh basename
-/a/b/c.txt`, `acmesh awk ...`, `acmesh sed ...` und
-`acmesh gosh -c 'echo shell-im-selben-binary'` laufen alle.
+Geprueft am gebauten Binary (18.11.2026): `akmesh ls /root`, `akmesh basename
+/a/b/c.txt`, `akmesh awk ...`, `akmesh sed ...` und
+`akmesh gosh -c 'echo shell-im-selben-binary'` laufen alle.
 
 Die Benennung ist erledigt: jeder eigene Befehl hat ein eigenes kleines
-main-Paket, das die gemeinsame Umsetzung aufruft, also heisst er `acmesh sed`
+main-Paket, das die gemeinsame Umsetzung aufruft, also heisst er `akmesh sed`
 und nicht mehr `ext sed`. Das eigene ext-Binary ist entfernt.

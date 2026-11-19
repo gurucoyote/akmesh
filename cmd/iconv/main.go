@@ -1,4 +1,4 @@
-// Command iconv is the iconv tool, reachable as its own command inside the acmesh
+// Command iconv is the iconv tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/iconv and not internal/tools: the table in
@@ -8,8 +8,8 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/iconv"
-	"acmesh/internal/policy"
+	"akmesh/internal/iconv"
+	"akmesh/internal/policy"
 )
 
 func main() {

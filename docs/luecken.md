@@ -24,7 +24,7 @@ gemessen, qcore HEAD 6dd7a3e, Ziel windows/amd64:
 Der Befund: die Last ist das gemeinsame Geruest (multicall, tool, locale,
 collate, x/text, dazu mvdan/sh interp und der goawk-Fork), nicht die einzelnen
 Befehle. Selektiv spart 13 MB gegen die volle Liste - aber als zweites Binary
-neben unserem acmesh (8,9 MB) ergibt das 37 MB statt 41 MB, fuer doppelte Bauart
+neben unserem akmesh (8,9 MB) ergibt das 37 MB statt 41 MB, fuer doppelte Bauart
 und zwei Verteilungen.
 
 ## Zwei Nebenbefunde, die wichtiger sind als die Groesse

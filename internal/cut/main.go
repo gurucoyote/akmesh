@@ -3,7 +3,7 @@
 package cut
 
 import (
-	"acmesh/internal/shared"
+	"akmesh/internal/shared"
 	"bufio"
 	"fmt"
 	"os"

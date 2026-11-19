@@ -1,7 +1,7 @@
 // Command base64 is the base64 tool, reachable as its own command inside the
-// acmesh binary.
+// akmesh binary.
 //
-// It imports only acmesh/internal/forked/base64 and not internal/tools: the table in
+// It imports only akmesh/internal/forked/base64 and not internal/tools: the table in
 // internal/tools pulls every tool we own into the binary, and a build that
 // carries one command should carry one command (see acmesh-mq1).
 package main
@@ -9,9 +9,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/forked/base64"
+	"akmesh/internal/forked/base64"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-// Command cut is the cut tool, reachable as its own command inside the acmesh
+// Command cut is the cut tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/cut and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/cut"
+	"akmesh/internal/cut"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

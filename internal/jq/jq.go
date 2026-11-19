@@ -53,7 +53,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			printJqHelp(stdout)
 			return 0
 		case a == "--version" || a == "-V":
-			fmt.Fprintln(stdout, "jq-acmesh-1.0 (gojq)")
+			fmt.Fprintln(stdout, "jq-akmesh-1.0 (gojq)")
 			return 0
 		case a == "-r" || a == "--raw-output":
 			rawOutput = true

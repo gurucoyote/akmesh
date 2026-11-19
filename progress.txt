@@ -3,7 +3,7 @@
             ein Windows-Binary, 8,9 MB, 48 Befehle plus gosh (mvdan/sh),
             gebaut mit gobusybox aus u-root 869f00f.
             Unter Windows gelaufen: ls, grep, tar, gosh mit Schleife.
-            Ticketing mit bd, Praefix acmesh, sieben Tickets unter einem Epic.
+            Ticketing mit bd, Praefix akmesh, sieben Tickets unter einem Epic.
             Offen: die neun Befehle, die fuer Windows nicht bauen; die
             Policy-Huelle; die Kernel-Durchsetzung.
 2026-11-17  Ecosystem geprueft (docs/ecosystem.md).
@@ -32,9 +32,9 @@
             bb.exe 10,0 MiB, bb 10,1 MiB, ssh auf beiden Zielen, strace und
             df/du/free/kill/ps unter Linux. 19 Pruefungen je Ziel gruen.
             Bekannt kaputt: u-root df unter WSL.
-2026-11-17  Binary heisst acmesh. file, iconv und env gebaut (eigene Tabellen,
-            keine Fremdbibliothek), 27 Pruefungen je Ziel gruen. acmesh.exe
-            10,06 MiB, acmesh 10,15 MiB.
+2026-11-17  Binary heisst akmesh. file, iconv und env gebaut (eigene Tabellen,
+            keine Fremdbibliothek), 27 Pruefungen je Ziel gruen. akmesh.exe
+            10,06 MiB, akmesh 10,15 MiB.
 2026-11-18  ps, kill, killall gebaut, eine Umsetzung fuer beide Ziele.
             ps kennt -e, -f, -ef, aux, -eo FELDER, -p PID; kill und killall mit
             Signalen, killall ohne .exe und ohne Gross-/Kleinschreibung.
@@ -47,13 +47,13 @@
 2026-11-18  curl und wget auf einem gemeinsamen Motor (netengine.go). curl mit
             29 Schaltern, zusammengefasste Kuerzel wie -fsSL, Exit-Codes wie
             curl; wget als eigene Front auf denselben Motor, u-root wget ist
-            raus. +53 KB im acmesh, 50 Pruefungen je Ziel gruen, Go-Tests gegen
+            raus. +53 KB im akmesh, 50 Pruefungen je Ziel gruen, Go-Tests gegen
             httptest.
-2026-11-18  jq als Befehl im acmesh (gojq), 804 KB Linux und 821 KB Windows.
+2026-11-18  jq als Befehl im akmesh (gojq), 804 KB Linux und 821 KB Windows.
             Schalter: -r -c -j -e -n -s -R -f --arg --argjson --slurpfile,
             Kuerzel kombinierbar. Exit 3 bei kaputtem Filter, 2 bei kaputtem
             JSON, 5 bei Laufzeitfehler. 58 Pruefungen je Ziel gruen.
-2026-11-18  Policy-Schicht: ACMESH_POLICY mit JSON, Landlock ab ABI 1 (hier 7)
+2026-11-18  Policy-Schicht: AKMESH_POLICY mit JSON, Landlock ab ABI 1 (hier 7)
             wendet die Regeln auf den Prozess an, Kinder erben sie. Eigene Shell
             sh/gosh auf mvdan/sh ersetzt u-root gosh und ist dabei kleiner.
             Netz auf Host-Ebene in curl/wget. Kaputte Policy beendet mit Exit 1,
@@ -81,8 +81,8 @@
             aufgesetzt und gemessen: Datei- und Textteil baut, Netzteil nicht,
             weil TinyGos net/http keinen Proxy kennt.
 Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lockere Zusicherungen angezogen, jede neue Pruefung rot gesehen.
-2026-11-18  cmd/ext entfernt und vollstaendig integriert; Meldungen nennen den Programmnamen, test-ext.sh heisst test-acmesh.sh, bb/busybox in der Doku durch acmesh ersetzt.
-2026-11-18  u-root-Meldung gepatcht: build-bb.sh ersetzt "busybox" in gobusybox und baut makebb neu, acmesh sagt jetzt "not present in acmesh"; Bau prueft sein Binary selbst.
+2026-11-18  cmd/ext entfernt und vollstaendig integriert; Meldungen nennen den Programmnamen, test-ext.sh heisst test-akmesh.sh, bb/busybox in der Doku durch akmesh ersetzt.
+2026-11-18  u-root-Meldung gepatcht: build-bb.sh ersetzt "busybox" in gobusybox und baut makebb neu, akmesh sagt jetzt "not present in akmesh"; Bau prueft sein Binary selbst.
 2026-11-18  makebb auf v0.6.0 gepinnt, Version per go version -m geprueft; frischer Pfad ohne makebb getestet. Befund: Go-Toolchain ist ebenfalls nicht gepinnt.
 2026-11-18: coreutils-Abgleich gemessen (docs/compat-coreutils.md), Fork-Entscheidung festgehalten, 16 Tickets acmesh-nl9 bis acmesh-0fd angelegt.
 2026-11-18: sort und shuf als eigener Code eingebaut (sort aus qiangli/coreutils, shuf Eigenbau), 42 GNU-Faelle ohne Abweichung, Ticket acmesh-91n und acmesh-f0z.
@@ -120,7 +120,7 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-19  md2txt heiszt md2txt-l (leichtgewichtiger eigener Parser); goldmark-Kosten gemessen: html 1,5 MB, pdf 13,6 MB, epub 4,8 MB, docx-Schreiber 0,4 MB, alles zusammen 14,0 MB (acmesh-54s.1).
 2026-11-19  Lizenz-Gate scripts/check-licences.sh eingebaut (AGPL und lizenzlose Module fallen durch, Verbotsliste mit fumiama/go-docx und zikani03/goldmark-docx), Rotprobe belegt, in check-all.sh eingehaengt.
 2026-11-19  Groeszenlinie auf warn 25000000 / hart 30000000 angehoben (Entscheidung Martin: md2pdf ueber den schlanken goldmark-pdf-Fork); acmesh-54s.1 geschlossen.
-2026-11-19  md2pdf gebaut (goldmark-pdf-Fork ohne chroma, Patch-Skript im Bau), acmesh 15077500 Bytes, Rundlauf mit pdf2md gruen, Linux-Batterie 199/0; acmesh-y9r und acmesh-54s.2 in Arbeit.
+2026-11-19  md2pdf gebaut (goldmark-pdf-Fork ohne chroma, Patch-Skript im Bau), akmesh 15077500 Bytes, Rundlauf mit pdf2md gruen, Linux-Batterie 199/0; acmesh-y9r und acmesh-54s.2 in Arbeit.
 2026-11-19  Luecke geschlossen: Label-Wert-Paare werden Tabellenzeilen (zwei Regeln plus Zeilengruppierung nach Grundlinie), vier Go-Tests mit drei Rotproben, Batterie 201/0, an echten Formularen keine Wortzahl-Aenderung.
 2026-11-19  md2docx gebaut (eigener Schreiber, zip+xml, goldmark-AST), drei unabhaengige Leser als Beleg (docx2md, notker check/read, Word COM), Groesze +53248, Linux 207/0; acmesh-54s.3.
 
@@ -133,3 +133,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
   as "&amp;". Cost: raw HTML tags in Markdown vanish instead of showing as text.
 - Binary 13.35 MB (was 13.34), four new tests, all green.
 2026-11-19  md2epub und epub2md gebaut (goldmark-HTML plus eigenes Zip, kein Fremdmodul), +90112 Bytes, Rundlauf gruen, Belege: Zip-/XML-Pruefung und pandoc als fremder Leser; Go-Tests 16 mit vier Rotproben, Batterie Linux 214/0.
+2026-11-19  Umbenennung acmesh -> akmesh (Ak Mesh): Modul, Importe, Binaernamen, AKMESH_POLICY, Skripte, Dokumente, Verzeichnis /root/akmesh, bd-Prefix; bestehende Ticket-IDs bleiben. Beide Bauten und Batterien gruen (214/192), Groesse unveraendert. Dabei gefunden: Registry-Test war schon vorher rot (eigenes Paket vs. Tabelle), Ticket angelegt und Test korrigiert mit Rotprobe.

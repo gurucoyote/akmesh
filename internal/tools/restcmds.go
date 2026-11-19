@@ -3,15 +3,15 @@ package tools
 import (
 	"os"
 
-	"acmesh/internal/corecmd"
-	"acmesh/internal/diffpatch"
-	"acmesh/internal/env"
-	"acmesh/internal/file"
-	"acmesh/internal/iconv"
-	"acmesh/internal/jq"
-	"acmesh/internal/policycmd"
-	"acmesh/internal/sedawk"
-	"acmesh/internal/sh"
+	"akmesh/internal/corecmd"
+	"akmesh/internal/diffpatch"
+	"akmesh/internal/env"
+	"akmesh/internal/file"
+	"akmesh/internal/iconv"
+	"akmesh/internal/jq"
+	"akmesh/internal/policycmd"
+	"akmesh/internal/sedawk"
+	"akmesh/internal/sh"
 )
 
 // The last command implementations moved into their own packages in acmesh-mq1;

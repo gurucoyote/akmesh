@@ -113,7 +113,7 @@ func calculateMode(modeString string) (mode os.FileMode, octval uint64, mask uin
 
 	reMode := regexp.MustCompile("^([ugoa]*)([-+=])(.*)")
 	m := reMode.FindStringSubmatch(modeString)
-	// acmesh: GNU allows the class to be omitted; "+x" means "a+x".
+	// akmesh: GNU allows the class to be omitted; "+x" means "a+x".
 	if len(m) >= 2 && m[1] == "" {
 		m[1] = "a"
 	}
@@ -318,7 +318,7 @@ func parse(args []string) (rest []string, recursive, verbose, changedOnly bool, 
 	return rest, recursive, verbose, changedOnly, reference, nil
 }
 
-// Run implements chmod for the acmesh dispatcher.
+// Run implements chmod for the akmesh dispatcher.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) > 0 && (args[0] == "--help" || args[0] == "-h") {
 		usageText(stdout)

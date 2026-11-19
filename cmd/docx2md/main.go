@@ -1,12 +1,12 @@
 // Command docx2md turns a .docx into Markdown, reachable as its own name inside
-// the acmesh binary.
+// the akmesh binary.
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/docxmd"
-	"acmesh/internal/policy"
+	"akmesh/internal/docxmd"
+	"akmesh/internal/policy"
 )
 
 func main() {

@@ -279,7 +279,7 @@ func run(args []string, stdin io.Reader, w, stderr io.Writer) int {
 	return code
 }
 
-// Run implements cp for the acmesh dispatcher.
+// Run implements cp for the akmesh dispatcher.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	return run(args, stdin, stdout, stderr)
 }

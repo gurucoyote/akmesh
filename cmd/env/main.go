@@ -1,4 +1,4 @@
-// Command env is the env tool, reachable as its own command inside the acmesh
+// Command env is the env tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/env and not internal/tools: the table in
@@ -8,8 +8,8 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/env"
-	"acmesh/internal/policy"
+	"akmesh/internal/env"
+	"akmesh/internal/policy"
 )
 
 func main() {

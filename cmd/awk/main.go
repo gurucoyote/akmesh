@@ -1,4 +1,4 @@
-// Command awk is the awk tool, reachable as its own command inside the acmesh
+// Command awk is the awk tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/sedawk and not internal/tools: the table in
@@ -8,8 +8,8 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/sedawk"
-	"acmesh/internal/policy"
+	"akmesh/internal/sedawk"
+	"akmesh/internal/policy"
 )
 
 func main() {

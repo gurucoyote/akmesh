@@ -1,4 +1,4 @@
-BIN=${1:-./acmesh}
+BIN=${1:-./akmesh}
 # The checks run inside a scratch directory, so the binary path must be
 # absolute before we change directory.
 case "$BIN" in
@@ -10,8 +10,8 @@ if [ ! -f "$BIN" ]; then
 	exit 2
 fi
 
-# The battery runs against the acmesh binary for the target it was built for:
-# every check calls it as "acmesh <command> [args]".
+# The battery runs against the akmesh binary for the target it was built for:
+# every check calls it as "akmesh <command> [args]".
 run() {
 	"$BIN" "$@"
 }
@@ -25,7 +25,7 @@ trap 'rm -rf "$WORK"' EXIT
 cd "$WORK" || exit 2
 
 # Under WSL the .exe is started through /init, and that keeps the image of a
-# path: after a build, running ./acmesh.exe again hands back the old one while a
+# path: after a build, running ./akmesh.exe again hands back the old one while a
 # copy under another name is already the new one (measured 18.11.2026, same md5,
 # different behaviour). So the battery runs on a copy with a fresh path, which
 # is the same file.
@@ -390,7 +390,7 @@ rm -rf "$HD_DIR"
 
 # rtf2md: a paragraph, a bold word and a code page byte.
 if command -v python3 >/dev/null 2>&1; then
-  python3 /root/acmesh/scripts/make-test-rtf.py r-test.rtf
+  python3 /root/akmesh/scripts/make-test-rtf.py r-test.rtf
   check rtf2md-paragraph "Eins" "$(run rtf2md r-test.rtf | tr -d '\r' | head -1)"
   check rtf2md-bold "**Zwei**ä" "$(run rtf2md r-test.rtf | tr -d '\r' | tail -1)"
   check rtf2md-not-rtf "1" "$(printf 'kein rtf' | run rtf2md >/dev/null 2>&1; echo $?)"
@@ -400,14 +400,14 @@ fi
 # pdf2md: a PDF without compression is the smallest thing a reader has to
 # handle; the text operator is the claim.
 if command -v python3 >/dev/null 2>&1; then
-  python3 /root/acmesh/scripts/make-test-pdf.py p-test.pdf
+  python3 /root/akmesh/scripts/make-test-pdf.py p-test.pdf
   check pdf2md-text "Hallo PDF" "$(run pdf2md p-test.pdf | tr -d '\r' | head -1)"
-  python3 /root/acmesh/scripts/make-test-pdf-table.py pt-test.pdf
+  python3 /root/akmesh/scripts/make-test-pdf-table.py pt-test.pdf
   check pdf2md-table "| Name: | Anna Beispiel |" "$(run pdf2md pt-test.pdf | tr -d '\r' | head -1)"
-  python3 /root/acmesh/scripts/make-test-pdf-labels.py pl-test.pdf
+  python3 /root/akmesh/scripts/make-test-pdf-labels.py pl-test.pdf
   check pdf2md-labels "| Ort: | Pumpkin Mart |" "$(run pdf2md pl-test.pdf | tr -d '\r' | head -1)"
   check pdf2md-labels-rows "7" "$(run pdf2md pl-test.pdf | tr -d '\r' | grep -c '|')"
-  python3 /root/acmesh/scripts/make-test-pdf-form.py pf-test.pdf
+  python3 /root/akmesh/scripts/make-test-pdf-form.py pf-test.pdf
   check pdf2md-form-xobject "Feldtext" "$(run pdf2md pf-test.pdf | tr -d '\r' | head -1)"
   check pdf2md-not-pdf "1" "$(printf 'kein pdf' | run pdf2md >/dev/null 2>&1; echo $?)"
   rm -f p-test.pdf pt-test.pdf pf-test.pdf pl-test.pdf
@@ -463,7 +463,7 @@ rm -f m-test.md m-tab.md m-wrap.md
 
 # docx2md: a minimal docx (a zip with word/document.xml) in, Markdown out.
 if command -v python3 >/dev/null 2>&1; then
-  python3 /root/acmesh/scripts/make-test-docx.py dx-test.docx
+  python3 /root/akmesh/scripts/make-test-docx.py dx-test.docx
   check docx2md-heading "## Kapitel" "$(run docx2md dx-test.docx | tr -d '\r' | head -1)"
   check docx2md-text "Text" "$(run docx2md dx-test.docx | tr -d '\r' | tail -1)"
   check docx2md-not-a-docx "1" "$(printf 'kein zip' | run docx2md >/dev/null 2>&1; echo $?)"
@@ -485,9 +485,9 @@ checkcode kill-bad-signal 2 "$(run kill -NOSUCHSIGNAL 1 >/dev/null 2>&1; echo $?
 checkcode kill-bad-pid 2 "$(run kill keinpid >/dev/null 2>&1; echo $?)"
 checkcode killall-no-match 1 "$(run killall gibtsnicht 2>/dev/null; echo $?)"
 
-# unknown command: the dispatcher names acmesh, not u-root's busybox
+# unknown command: the dispatcher names akmesh, not u-root's busybox
 checkcode unknown-command-exit 1 "$(run gibtsnicht >/dev/null 2>&1; echo $?)"
-check unknown-command-message "ja" "$(run gibtsnicht 2>&1 | grep -q 'not present in acmesh' && echo ja)"
+check unknown-command-message "ja" "$(run gibtsnicht 2>&1 | grep -q 'not present in akmesh' && echo ja)"
 check unknown-command-no-busybox "0" "$(run gibtsnicht 2>&1 | grep -c busybox | tr -d '\r')"
 
 # system
@@ -523,32 +523,32 @@ case "$BIN" in
 *.exe)
 	# A policy cannot be enforced on Windows, and the binary refuses instead of
 	# running unconfined.
-	checkcode policy-refused 1 "$(ACMESH_POLICY="$POL" "$BIN" policy >/dev/null 2>&1; echo $?)"
+	checkcode policy-refused 1 "$(AKMESH_POLICY="$POL" "$BIN" policy >/dev/null 2>&1; echo $?)"
 	;;
 *)
-	check policy-active "0" "$(ACMESH_POLICY="$POL" "$BIN" policy >/dev/null 2>&1; echo $?)"
-	check policy-shows-source "ja" "$(ACMESH_POLICY="$POL" "$BIN" policy 2>/dev/null | grep -q "$POL" && echo ja)"
-	check policy-read-inside "drin" "$(ACMESH_POLICY="$POL" "$BIN" sh -c "cat $WORK/work/in.txt" 2>/dev/null | tr -d '\r')"
-	check policy-blocks-read "ja" "$(ACMESH_POLICY="$POL" "$BIN" sh -c 'cat /etc/hostname' >/dev/null 2>&1 || echo ja)"
-	check policy-blocks-write "ja" "$(ACMESH_POLICY="$POL" "$BIN" sh -c "echo x > $WORK/aussen.txt" >/dev/null 2>&1 || echo ja)"
+	check policy-active "0" "$(AKMESH_POLICY="$POL" "$BIN" policy >/dev/null 2>&1; echo $?)"
+	check policy-shows-source "ja" "$(AKMESH_POLICY="$POL" "$BIN" policy 2>/dev/null | grep -q "$POL" && echo ja)"
+	check policy-read-inside "drin" "$(AKMESH_POLICY="$POL" "$BIN" sh -c "cat $WORK/work/in.txt" 2>/dev/null | tr -d '\r')"
+	check policy-blocks-read "ja" "$(AKMESH_POLICY="$POL" "$BIN" sh -c 'cat /etc/hostname' >/dev/null 2>&1 || echo ja)"
+	check policy-blocks-write "ja" "$(AKMESH_POLICY="$POL" "$BIN" sh -c "echo x > $WORK/aussen.txt" >/dev/null 2>&1 || echo ja)"
 	check policy-no-outside-file "ja" "$([ ! -f "$WORK/aussen.txt" ] && echo ja)"
-	check policy-write-inside "ok" "$(ACMESH_POLICY="$POL" "$BIN" sh -c "echo ok > $WORK/work/neu.txt; cat $WORK/work/neu.txt" 2>/dev/null | tr -d '\r')"
-	check policy-check-allowed "0" "$(ACMESH_POLICY="$POL" "$BIN" policy --check "$WORK/work/in.txt" >/dev/null 2>&1; echo $?)"
-	check policy-check-denied "1" "$(ACMESH_POLICY="$POL" "$BIN" policy --check /etc/hostname >/dev/null 2>&1; echo $?)"
+	check policy-write-inside "ok" "$(AKMESH_POLICY="$POL" "$BIN" sh -c "echo ok > $WORK/work/neu.txt; cat $WORK/work/neu.txt" 2>/dev/null | tr -d '\r')"
+	check policy-check-allowed "0" "$(AKMESH_POLICY="$POL" "$BIN" policy --check "$WORK/work/in.txt" >/dev/null 2>&1; echo $?)"
+	check policy-check-denied "1" "$(AKMESH_POLICY="$POL" "$BIN" policy --check /etc/hostname >/dev/null 2>&1; echo $?)"
 	# "Write implies read": a policy that names only the write path must still
 	# allow reading it, because the write rule carries the read rights. Two runs,
 	# one inside and one outside, so a policy that blocks everything cannot pass
 	# this as a success.
 	printf '{"version":1,"write":["%s"]}' "$WORK/work" > "$WORK/write-only.json"
-	check policy-write-only-inside-allowed "0" "$(ACMESH_POLICY="$WORK/write-only.json" "$BIN" policy --check "$WORK/work/in.txt" >/dev/null 2>&1; echo $?)"
-	check policy-write-only-outside-denied "1" "$(ACMESH_POLICY="$WORK/write-only.json" "$BIN" policy --check /etc/hostname >/dev/null 2>&1; echo $?)"
+	check policy-write-only-inside-allowed "0" "$(AKMESH_POLICY="$WORK/write-only.json" "$BIN" policy --check "$WORK/work/in.txt" >/dev/null 2>&1; echo $?)"
+	check policy-write-only-outside-denied "1" "$(AKMESH_POLICY="$WORK/write-only.json" "$BIN" policy --check /etc/hostname >/dev/null 2>&1; echo $?)"
 	if [ "$HAS_NET" = 1 ]; then
-		check policy-blocks-network "ja" "$(ACMESH_POLICY="$POL" "$BIN" curl -s https://example.com >/dev/null 2>&1 || echo ja)"
-		check policy-network-message "ja" "$(ACMESH_POLICY="$POL" "$BIN" curl -s https://example.com 2>&1 | grep -q 'does not allow network access' && echo ja)"
+		check policy-blocks-network "ja" "$(AKMESH_POLICY="$POL" "$BIN" curl -s https://example.com >/dev/null 2>&1 || echo ja)"
+		check policy-network-message "ja" "$(AKMESH_POLICY="$POL" "$BIN" curl -s https://example.com 2>&1 | grep -q 'does not allow network access' && echo ja)"
 	fi
 	# A broken policy must stop the process instead of running unconfined.
 	printf '{"version":9}' > "$WORK/broken.json"
-	checkcode policy-broken-refused 1 "$(ACMESH_POLICY="$WORK/broken.json" "$BIN" echo x >/dev/null 2>&1; echo $?)"
+	checkcode policy-broken-refused 1 "$(AKMESH_POLICY="$WORK/broken.json" "$BIN" echo x >/dev/null 2>&1; echo $?)"
 	;;
 esac
 

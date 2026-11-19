@@ -3,7 +3,7 @@
 // system queries.
 //
 // The implementation is one package with one table, so that the same code is
-// reached two ways: as a command of the acmesh binary (one tiny main package
+// reached two ways: as a command of the akmesh binary (one tiny main package
 // per name, which calls Run) and from tests.
 //
 // Size matters here. See docs/groesse.md for the budget and the rules that keep
@@ -16,9 +16,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"acmesh/internal/policy"
-	"acmesh/internal/shuf"
-	"acmesh/internal/sort"
+	"akmesh/internal/policy"
+	"akmesh/internal/shuf"
+	"akmesh/internal/sort"
 )
 
 // Func is the signature every command implements. It receives the arguments
@@ -109,7 +109,7 @@ func Run(name string) int {
 // to come from a binary that does not exist.
 func programName() string {
 	if len(os.Args) == 0 || os.Args[0] == "" {
-		return "acmesh"
+		return "akmesh"
 	}
 	return filepath.Base(os.Args[0])
 }

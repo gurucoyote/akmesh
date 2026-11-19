@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 // runPolicy explains and tests the policy of the current process. It is the
@@ -51,7 +51,7 @@ func Run(cmd string, args []string, stdin *os.File, stdout, stderr *os.File) int
 	}
 
 	if active == nil {
-		fmt.Fprintln(stdout, "no policy: ACMESH_POLICY is not set, this process is unrestricted")
+		fmt.Fprintln(stdout, "no policy: AKMESH_POLICY is not set, this process is unrestricted")
 		return 1
 	}
 	ok, detail := policy.Supported()

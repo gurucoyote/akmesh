@@ -217,7 +217,7 @@ func (c *cmd) report(count cnt, fname string) {
 	fmt.Fprintln(c.stdout, strings.Join(fields, " "))
 }
 
-// Run implements wc for the acmesh dispatcher.
+// Run implements wc for the akmesh dispatcher.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	var p params
 	var rest []string

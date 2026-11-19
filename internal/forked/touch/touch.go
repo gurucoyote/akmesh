@@ -161,7 +161,7 @@ func (c *cmd) run() error {
 	return errs
 }
 
-// Run implements touch for the acmesh dispatcher.
+// Run implements touch for the akmesh dispatcher.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	var (
 		access, modification, noCreate bool

@@ -1,9 +1,9 @@
 #!/bin/sh
-# Build acmesh for one platform: one binary that carries the u-root commands,
+# Build akmesh for one platform: one binary that carries the u-root commands,
 # the ssh client and the tools from internal/tools.
 #
-#   ./scripts/build-bb.sh windows   -> acmesh.exe
-#   ./scripts/build-bb.sh linux     -> acmesh
+#   ./scripts/build-bb.sh windows   -> akmesh.exe
+#   ./scripts/build-bb.sh linux     -> akmesh
 #
 # A second argument picks a profile from scripts/profiles: full (default) or fs
 # (no networking at all: the code is excluded, not switched off at runtime).
@@ -14,7 +14,7 @@
 #   - one small main package per tool under cmd/<name>.
 #
 # The u-root checkout is pinned, so a build is reproducible. This script never
-# touches the acmesh repository's git.
+# touches the akmesh repository's git.
 set -eu
 
 PLATFORM=${1:-linux}
@@ -22,13 +22,13 @@ PROFILE=${2:-full}
 case "$PLATFORM" in
 windows)
 	export GOOS=windows GOARCH=amd64
-	OUT=acmesh.exe
+	OUT=akmesh.exe
 	# ssh and scp come from internal/tools now, for both targets.
 	UROOT_EXTRA=""
 	;;
 linux)
 	export GOOS=linux GOARCH=amd64
-	OUT=acmesh
+	OUT=akmesh
 	# strace is Linux only. ssh and scp come from internal/tools now.
 	UROOT_EXTRA="strace"
 	;;
@@ -103,16 +103,20 @@ if [ ! -x "$MAKEBB" ] || ! makebb_is_pinned "$MAKEBB"; then
 fi
 
 # u-root's dispatcher calls itself "busybox" in the two messages a mistyped
-# command produces. The binary is called acmesh, so those words are replaced in
+# command produces. The binary is called akmesh, so those words are replaced in
 # every copy of gobusybox the build can link: the vendored one inside the u-root
 # checkout and the extracted module under GOPATH. A workspace build (GOWORK)
 # ignores vendor/, a plain build does not, hence both. If u-root rewords the
 # text, the build stops here instead of shipping the old name.
 DISPATCHER_FILES="$UROOT_DIR/vendor/github.com/u-root/gobusybox/src/pkg/bb/bbmain/register.go
 $(ls -d "$GOPATH"/pkg/mod/github.com/u-root/gobusybox/*/pkg/bb/bbmain/register.go 2>/dev/null || true)"
+# rename_in_dispatcher NEW OLD...: the first argument is what has to stand in
+# the file, the rest are the wordings that may stand there now. A checkout
+# patched by an earlier build already carries the binary name, so accepting only
+# u-root's original text would stop the second build of a renamed project.
 rename_in_dispatcher() {
-	old=$1
-	new=$2
+	new=$1
+	shift
 	found=0
 	for file in $DISPATCHER_FILES; do
 		[ -f "$file" ] || continue
@@ -120,26 +124,33 @@ rename_in_dispatcher() {
 		if grep -q "$new" "$file"; then
 			continue
 		fi
-		if ! grep -q "$old" "$file"; then
-			echo "u-root no longer says \"$old\" in $file: the dispatcher text changed" >&2
+		done_rename=0
+		for old in "$@"; do
+			if grep -q "$old" "$file"; then
+				sed -i "s/$old/$new/" "$file"
+				done_rename=1
+				break
+			fi
+		done
+		if [ "$done_rename" -eq 0 ]; then
+			echo "u-root says neither \"$new\" nor $* in $file: the dispatcher text changed" >&2
 			exit 1
 		fi
-		sed -i "s/$old/$new/" "$file"
 	done
 	if [ "$found" -eq 0 ]; then
 		echo "no gobusybox register.go found: the dispatcher text cannot be renamed" >&2
 		exit 1
 	fi
 }
-rename_in_dispatcher "not present in busybox" "not present in acmesh"
-rename_in_dispatcher "busybox dispatched" "acmesh dispatched"
+rename_in_dispatcher "not present in akmesh" "not present in busybox" "not present in acmesh"
+rename_in_dispatcher "akmesh dispatched" "busybox dispatched" "acmesh dispatched"
 
 # makebb embeds that source with //go:embed, so a tool installed before the
 # rename still carries the old word. Rebuild it once now that the source is
 # patched; if the word survives anyway, stop rather than ship it.
-if tr -d '\000' < "$MAKEBB" | grep -q 'not present in busybox'; then
+if tr -d '\000' < "$MAKEBB" | grep -q 'not present in busybox\|not present in acmesh'; then
 	install_makebb
-	if tr -d '\000' < "$MAKEBB" | grep -q 'not present in busybox'; then
+	if tr -d '\000' < "$MAKEBB" | grep -q 'not present in busybox\|not present in acmesh'; then
 		echo "makebb still embeds u-root's busybox wording: the rename cannot reach the build" >&2
 		exit 1
 	fi
@@ -248,16 +259,16 @@ if [ -n "$TAGS" ]; then
 fi
 # A generator-only run is what a non-Go compiler needs: makebb writes the
 # multicall source and the build is done by the caller.
-if [ -n "${ACMESH_GEN_DIR:-}" ]; then
-	"$MAKEBB" -g -gen-dir "$ACMESH_GEN_DIR" -o "$ROOT/$OUT" $PKGS
-	echo "generated: $ACMESH_GEN_DIR"
+if [ -n "${AKMESH_GEN_DIR:-}" ]; then
+	"$MAKEBB" -g -gen-dir "$AKMESH_GEN_DIR" -o "$ROOT/$OUT" $PKGS
+	echo "generated: $AKMESH_GEN_DIR"
 	exit 0
 fi
 # shellcheck disable=SC2086
 "$MAKEBB" -o "$ROOT/$OUT" $PKGS
 # The rename above must reach the binary. A vendor/module mismatch would build
 # fine and still ship u-root's wording, so the build checks its own output.
-if tr -d '\000' < "$ROOT/$OUT" | grep -q 'not present in busybox'; then
+if tr -d '\000' < "$ROOT/$OUT" | grep -q 'not present in busybox\|not present in acmesh'; then
 	echo "$OUT still says busybox: the dispatcher rename did not reach the build" >&2
 	exit 1
 fi

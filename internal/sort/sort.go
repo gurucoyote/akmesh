@@ -4,7 +4,7 @@
 //
 // The ordering comparators and the -k key grammar are ported from
 // qiangli/coreutils cmds/sort (MIT, Copyright (c) 2026 Qiang Li); the driver,
-// the argument parser and the -R implementation are acmesh's own. Only the
+// the argument parser and the -R implementation are akmesh's own. Only the
 // C/POSIX locale is supported: text compares by byte, numbers use '.' as the
 // decimal point. A non-C LC_COLLATE or LC_NUMERIC is not silently ignored -
 // see checkLocale.
@@ -36,7 +36,7 @@ type options struct {
 	globals                                keyOpts
 }
 
-// Run is the entry point the acmesh table calls.
+// Run is the entry point the akmesh table calls.
 func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	o, operands, errMsg := parseArgs(args)
 	if errMsg != "" {
@@ -45,7 +45,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			return 0
 		}
 		if errMsg == "version" {
-			fmt.Fprintln(stdout, "sort (acmesh) 1.0")
+			fmt.Fprintln(stdout, "sort (akmesh) 1.0")
 			return 0
 		}
 		fmt.Fprintf(stderr, "sort: %s\n", errMsg)

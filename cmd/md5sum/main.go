@@ -1,5 +1,5 @@
 // Command md5sum is the checksum tool, reachable as its own command inside the
-// acmesh binary.
+// akmesh binary.
 //
 // It imports only internal/sum and not internal/tools: the table in
 // internal/tools pulls every tool we own into the binary (acmesh-mq1).
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/sum"
+	"akmesh/internal/sum"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-# TinyGo an acmesh gemessen
+# TinyGo an akmesh gemessen
 
 Stand 18.11.2026. TinyGo 0.39.0, LLVM 19.1.2, mitgeliefertes Go 1.25.7, liegt in
 /root/3rd/tinygo. Kein Podman, kein Alpine: TinyGo ist ein Host-Compiler wie Go
@@ -17,10 +17,10 @@ Compiler laeuft ohne weitere Einrichtung, ein Hello-World baut und gibt aus:
 
 ## Zwei Huerden
 
-Erste Huerde, die Go-Version: acmesh steht auf `go 1.27`, TinyGo bringt 1.25.7
+Erste Huerde, die Go-Version: akmesh steht auf `go 1.27`, TinyGo bringt 1.25.7
 mit und laesst sich mit GOTOOLCHAIN nicht hochziehen. Fuer den Test wurde eine
 Kopie des Pakets mit `go 1.25` und aelteren x/crypto-, x/sys- und
-x/term-Versionen genommen (v0.40.0, v0.34.0, v0.33.0). Am acmesh-Modul selbst
+x/term-Versionen genommen (v0.40.0, v0.34.0, v0.33.0). Am akmesh-Modul selbst
 wurde dafuer nichts geaendert.
 
 Zweite Huerde, die Standardbibliothek: TinyGo hat kein net/http/cookiejar, und
@@ -143,7 +143,7 @@ Was man tun muesste, damit TLS traegt:
 - fuer curl/wget zusaetzlich den fehlenden Proxy im http.Transport ersetzen und
   einen eigenen Cookie-Jar mitbringen.
 
-Fuer uns heisst das: Krypto kann TinyGo, TLS nicht. Ein acmesh mit curl und wget
+Fuer uns heisst das: Krypto kann TinyGo, TLS nicht. Ein akmesh mit curl und wget
 darf nicht auf TinyGo gebaut werden, solange #5696 offen ist, sonst gehen
 Anmeldedaten im Klartext raus.
 

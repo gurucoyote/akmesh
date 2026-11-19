@@ -1,4 +1,4 @@
-// Command nl is the nl tool, reachable as its own command inside the acmesh
+// Command nl is the nl tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/nl and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/nl"
+	"akmesh/internal/nl"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

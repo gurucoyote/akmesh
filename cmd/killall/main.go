@@ -1,4 +1,4 @@
-// Command killall is the killall tool, reachable as its own command inside the acmesh
+// Command killall is the killall tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/proc and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/proc"
+	"akmesh/internal/proc"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

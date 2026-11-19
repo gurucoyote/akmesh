@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"acmesh/internal/forked/chmod"
+	"akmesh/internal/forked/chmod"
 )
 
 // runChmod is the glue between the command table and the forked u-root command.

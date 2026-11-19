@@ -1,4 +1,4 @@
-// Command hostname is the hostname tool, reachable as its own command inside the acmesh
+// Command hostname is the hostname tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/hostname and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/hostname"
+	"akmesh/internal/hostname"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

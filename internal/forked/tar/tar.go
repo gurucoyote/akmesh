@@ -33,7 +33,7 @@ import (
 	"strconv"
 	"strings"
 
-	"acmesh/internal/forked/tar/tarutil"
+	"akmesh/internal/forked/tar/tarutil"
 )
 
 type params struct {
@@ -330,7 +330,7 @@ func modeString(mode int64) string {
 	return string(b)
 }
 
-// Run implements tar for the acmesh dispatcher.
+// Run implements tar for the akmesh dispatcher.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	p, rest, err := parse(args)
 	if err != nil {

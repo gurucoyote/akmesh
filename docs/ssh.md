@@ -22,14 +22,14 @@ Das ist der Punkt, auf den es bei Agenten ankommt:
 - BatchMode ist dann der Standard; `-o BatchMode=yes` setzt es auch bei einem
   Terminal.
 - Der Exit-Status des entfernten Befehls ist der Exit-Status von ssh.
-- stdin wird durchgereicht, also `cat datei | acmesh ssh host 'cat > ziel'`.
+- stdin wird durchgereicht, also `cat datei | akmesh ssh host 'cat > ziel'`.
 - Auf stderr landet nur, was wirklich eine Meldung ist, ohne Zeitstempel.
 
 Belegt:
 
-    acmesh ssh -p 2222 -i key root@127.0.0.1 'exit 7'   -> Exit 7
-    acmesh ssh -p 2222 -i key root@127.0.0.1 'test -f /etc/hostname' -> Exit 0
-    echo x | acmesh ssh -p 2222 -i key root@127.0.0.1 'cat'         -> x
+    akmesh ssh -p 2222 -i key root@127.0.0.1 'exit 7'   -> Exit 7
+    akmesh ssh -p 2222 -i key root@127.0.0.1 'test -f /etc/hostname' -> Exit 0
+    echo x | akmesh ssh -p 2222 -i key root@127.0.0.1 'cat'         -> x
 
 ## Schalter
 
@@ -55,9 +55,9 @@ Eigene Umsetzung des scp-Protokolls ueber dieselbe Verbindung, also dieselben
 Schalter und dieselbe Konfiguration. Auf der Gegenseite genuegt das scp, das bei
 OpenSSH dabei ist.
 
-    acmesh scp -P 2222 -i key datei.txt root@host:/tmp/
-    acmesh scp -r -P 2222 -i key ordner root@host:/tmp/
-    acmesh scp -P 2222 -i key root@host:/tmp/datei.txt ./ziel/
+    akmesh scp -P 2222 -i key datei.txt root@host:/tmp/
+    akmesh scp -r -P 2222 -i key ordner root@host:/tmp/
+    akmesh scp -P 2222 -i key root@host:/tmp/datei.txt ./ziel/
 
 - `-P` ist der Port wie bei OpenSSH scp. `-p` erhaelt Modus, Aenderungs- und
   Zugriffszeit, in beide Richtungen und auch rekursiv.
@@ -91,7 +91,7 @@ mehrzeilige Ausgabe, Remote-Exitcode, test -f wahr und falsch, stdin-Pipe,
 unbekannter Host ohne Freigabe (Exit 255), Upload, Inhalt, rekursiver Upload,
 Download, Inhalt, rekursiver Download.
 
-Ergebnis: 15 Pruefungen, 0 Fehler, mit acmesh (Linux) und mit acmesh.exe
+Ergebnis: 15 Pruefungen, 0 Fehler, mit akmesh (Linux) und mit akmesh.exe
 (Windows). Der Windows-Lauf funktioniert, weil das Skript in das Arbeitsverzeichnis
 wechselt und den Schluessel relativ angibt; ein Windows-Binary kann einen
 Linux-Pfad wie /tmp/... nicht oeffnen, einen relativen Namen im gemeinsamen
@@ -99,6 +99,6 @@ Verzeichnis schon.
 
 ## Groesse
 
-acmesh 11.350.140 Bytes (10,82 MiB), acmesh.exe 11.378.688 Bytes (10,85 MiB).
+akmesh 11.350.140 Bytes (10,82 MiB), akmesh.exe 11.378.688 Bytes (10,85 MiB).
 Gegenueber der u-root-ssh sind das 20.480 Bytes weniger, obwohl scp neu
 dazugekommen ist: x/crypto war durch die alte ssh schon im Binary.

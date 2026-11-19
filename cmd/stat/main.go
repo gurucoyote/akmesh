@@ -1,4 +1,4 @@
-// Command stat is the stat tool, reachable as its own command inside the acmesh
+// Command stat is the stat tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/stat and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/stat"
+	"akmesh/internal/stat"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

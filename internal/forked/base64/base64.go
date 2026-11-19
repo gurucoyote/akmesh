@@ -198,7 +198,7 @@ func parse(args []string) (p params, rest []string, err error) {
 	return p, rest, nil
 }
 
-// Run implements base64 for the acmesh dispatcher.
+// Run implements base64 for the akmesh dispatcher.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	p, rest, err := parse(args)
 	if err != nil {

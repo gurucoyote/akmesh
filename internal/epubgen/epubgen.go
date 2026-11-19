@@ -279,7 +279,7 @@ func packageOPF(opts Options, chapters []chapter) string {
 	return `<?xml version="1.0" encoding="UTF-8"?>` + "\n" +
 		`<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">` + "\n" +
 		`<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">` +
-		`<dc:identifier id="bookid">urn:uuid:acmesh-` + bookID(opts.Title) + `</dc:identifier>` +
+		`<dc:identifier id="bookid">urn:uuid:akmesh-` + bookID(opts.Title) + `</dc:identifier>` +
 		`<dc:title>` + esc(opts.Title) + `</dc:title>` +
 		`<dc:language>` + esc(opts.Language) + `</dc:language>` + author +
 		`<meta property="dcterms:modified">` + modified + `</meta>` +

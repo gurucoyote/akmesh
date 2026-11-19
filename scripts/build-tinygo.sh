@@ -3,7 +3,7 @@
 #
 # Two things stand in the way and both are handled here:
 #   - makebb drives "go build" itself, so the source is generated first
-#     (ACMESH_GEN_DIR) and compiled with tinygo afterwards;
+#     (AKMESH_GEN_DIR) and compiled with tinygo afterwards;
 #   - our module and its dependencies declare go 1.27, TinyGo ships Go 1.25.7,
 #     so the generated go.mod and vendor/modules.txt are lowered to the Go
 #     version TinyGo actually carries. Nothing in the repository changes.
@@ -32,7 +32,7 @@ echo "go inside tinygo: $GOVER"
 
 rm -rf "$GEN"
 echo "--- generating the multicall source for profile $PROFILE"
-ACMESH_GEN_DIR="$GEN" sh "$ROOT/scripts/build-bb.sh" "$PLATFORM" "$PROFILE"
+AKMESH_GEN_DIR="$GEN" sh "$ROOT/scripts/build-bb.sh" "$PLATFORM" "$PROFILE"
 
 # Lower the version requirements to what TinyGo carries.
 SHORT=${GOVER#go}
@@ -62,8 +62,8 @@ export GOFLAGS=
 export GOWORK=off
 export GOTOOLCHAIN=local
 case "$PLATFORM" in
-windows) export GOOS=windows GOARCH=amd64; OUT="$ROOT/acmesh-$PROFILE-tinygo.exe" ;;
-*) export GOOS=linux GOARCH=amd64; OUT="$ROOT/acmesh-$PROFILE-tinygo" ;;
+windows) export GOOS=windows GOARCH=amd64; OUT="$ROOT/akmesh-$PROFILE-tinygo.exe" ;;
+*) export GOOS=linux GOARCH=amd64; OUT="$ROOT/akmesh-$PROFILE-tinygo" ;;
 esac
 
 "$TINYGO" build -no-debug -panic=trap -o "$OUT" .

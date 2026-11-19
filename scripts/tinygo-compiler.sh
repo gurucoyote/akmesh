@@ -1,5 +1,5 @@
 #!/bin/sh
-# Stands in for go when makebb builds acmesh: drops the flags TinyGo does not
+# Stands in for go when makebb builds akmesh: drops the flags TinyGo does not
 # know and adds -no-debug. makebb is called with -compiler pointing here.
 set -u
 

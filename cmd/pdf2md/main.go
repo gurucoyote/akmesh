@@ -1,12 +1,12 @@
 // Command pdf2md prints the text of a PDF, reachable as its own name inside the
-// acmesh binary.
+// akmesh binary.
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/pdfmd"
-	"acmesh/internal/policy"
+	"akmesh/internal/pdfmd"
+	"akmesh/internal/policy"
 )
 
 func main() {

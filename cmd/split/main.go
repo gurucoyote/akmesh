@@ -1,4 +1,4 @@
-// Command split is the split tool, reachable as its own command inside the acmesh
+// Command split is the split tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/split and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/split"
+	"akmesh/internal/split"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

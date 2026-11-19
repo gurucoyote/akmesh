@@ -1,4 +1,4 @@
-// Command scp is the scp tool, reachable as its own command inside the acmesh
+// Command scp is the scp tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/net and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/net"
+	"akmesh/internal/net"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

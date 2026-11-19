@@ -289,7 +289,7 @@ func (c *cmd) run(args ...string) int {
 	return code
 }
 
-// Run implements xargs for the acmesh dispatcher.
+// Run implements xargs for the akmesh dispatcher.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	rest, p, err := parse(args)
 	if err != nil {

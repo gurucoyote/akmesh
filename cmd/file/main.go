@@ -1,4 +1,4 @@
-// Command file is the file tool, reachable as its own command inside the acmesh
+// Command file is the file tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/file and not internal/tools: the table in
@@ -8,8 +8,8 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/file"
-	"acmesh/internal/policy"
+	"akmesh/internal/file"
+	"akmesh/internal/policy"
 )
 
 func main() {

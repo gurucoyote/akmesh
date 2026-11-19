@@ -1,4 +1,4 @@
-// Command diff is the diff tool, reachable as its own command inside the acmesh
+// Command diff is the diff tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/diffpatch and not internal/tools (acmesh-mq1).
@@ -7,8 +7,8 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/diffpatch"
-	"acmesh/internal/policy"
+	"akmesh/internal/diffpatch"
+	"akmesh/internal/policy"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module acmesh
+module akmesh
 
 go 1.27
 

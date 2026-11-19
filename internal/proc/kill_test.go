@@ -65,7 +65,7 @@ func TestKillAcceptsTheCommonSpellings(t *testing.T) {
 // TestKillallWithoutMatchSaysSo: no process by that name is a report, not a
 // crash.
 func TestKillallWithoutMatchSaysSo(t *testing.T) {
-	_, errText, code := runProc(t, "killall", []string{"acmesh-no-such-process-xyz"})
+	_, errText, code := runProc(t, "killall", []string{"akmesh-no-such-process-xyz"})
 	if code == 0 {
 		t.Fatalf("exit: want nonzero when nothing matched, got 0")
 	}

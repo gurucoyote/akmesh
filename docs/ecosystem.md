@@ -96,7 +96,7 @@ Kein reifer Vi in Go. Kandidaten:
 5. strace bleibt Linux-only, lsof waere Eigenbau.
 6. Die Frage, die jetzt ansteht: zwei Quellen (u-root plus bashy) oder eine.
    bashy ist groesser, dafuer vollstaendiger und an denselben Interpreter
-   gedacht (mvdan/sh, ExecHandler) - genau die Naht, die acmesh braucht.
+   gedacht (mvdan/sh, ExecHandler) - genau die Naht, die akmesh braucht.
 
 ## strace, im Lauf geprueft (17.11.2026)
 
@@ -171,9 +171,9 @@ ptrace per seccomp standardmaessig blocken.
 
 Gemessen mit dem eigenen Binary als Sonde in debian:stable-slim, dreimal:
 
-    podman run --rm -v acmesh:/acmesh:ro ... /acmesh strace /acmesh echo hallo
-    podman run --rm --cap-add SYS_PTRACE ... /acmesh strace /acmesh echo hallo
-    podman run --rm --security-opt seccomp=unconfined ... /acmesh strace ...
+    podman run --rm -v akmesh:/akmesh:ro ... /akmesh strace /akmesh echo hallo
+    podman run --rm --cap-add SYS_PTRACE ... /akmesh strace /akmesh echo hallo
+    podman run --rm --security-opt seccomp=unconfined ... /akmesh strace ...
 
 Ergebnis: alle drei Laeufe verfolgen die Syscalls des Kindes. Der Standardfall
 ohne jede Zusatzoption reicht, weil ein Prozess seine eigenen Kinder verfolgen
@@ -287,7 +287,7 @@ Der Windows-Bau von vannevar ist zurzeit rot:
 
 Das ist die Ctrl-Z-Behandlung, die ein eigenes File mit Build-Tag braucht.
 
-Fuer acmesh heisst das: vannevar ist der einzige Kandidat, der ohne fremdes
+Fuer akmesh heisst das: vannevar ist der einzige Kandidat, der ohne fremdes
 Programm laeuft, braucht fuer Windows aber erst eine Korrektur.
 
 Korrektur zu einer frueheren Formulierung: ein vi ohne Betrachter gibt es nicht.
@@ -340,7 +340,7 @@ in unserem eigenen Code nachbauen - bei uns sind das chmod.go:82, chmod.go:96
 und cp_cp.go:86.
 
 Testbarkeit ist der eigentliche Preis: von WSL aus auf einem UNC-Pfad ist
-chmod wirkungslos. Gemessen: 'acmesh.exe chmod 444 f.txt' und danach
+chmod wirkungslos. Gemessen: 'akmesh.exe chmod 444 f.txt' und danach
 'chmod 755' liessen die Datei bei 644. Ein echter Nachweis braucht eine Datei
 auf einem Windows-Laufwerk und eine Gegenprobe, die die ACL liest.
 

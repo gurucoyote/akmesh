@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"acmesh/internal/forked/head"
+	"akmesh/internal/forked/head"
 )
 
 // runHead is the glue between the command table and the forked u-root command.

@@ -1,4 +1,4 @@
-// Command basename is the basename tool, reachable as its own command inside the acmesh
+// Command basename is the basename tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/basename and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/basename"
+	"akmesh/internal/basename"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

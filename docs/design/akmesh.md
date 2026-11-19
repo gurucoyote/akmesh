@@ -1,4 +1,4 @@
-# acmesh: Shell und Userland in einem Binary
+# akmesh: Shell und Userland in einem Binary
 
 Status: Skizze, erste Fassung lauffaehig (Windows-Binary mit 48 Befehlen).
 Dieses Dokument haelt Bauform und Entscheidungen; die Zahlen stehen in
@@ -11,8 +11,9 @@ geben. Gebraucht wird eine Shell plus Werkzeuge, die (a) in einem Stueck
 ausgeliefert werden, (b) auf Linux und Windows laufen und (c) an einer Stelle
 kontrollierbar sind: welche Pfade, welche Befehle, welche Prozesse.
 
-Der Name acmesh ist der Punkt: ein Geflecht kleiner Werkzeuge, keine grosse
-Shell.
+Der Name wird Ak Mesh gesprochen: ein Geflecht kleiner Werkzeuge, keine grosse
+Shell. Wer eine Anspielung hoert, darf sie behalten; das Projekt erklaert sie
+nicht.
 
 ## Bauform
 
@@ -22,7 +23,7 @@ Drei Schichten, jede mit einer klaren Aufgabe:
    Formatter. Die Haekel (OpenHandler, StatHandler, ReadDirHandler2,
    ExecHandler, CallHandler) sind der Ort, an dem die Regeln stehen.
 2. Werkzeuge: u-root (BSD-3), mit gobusybox in dasselbe Binary gebaut.
-   Verteilung ueber `os.Args[1]`, also `acmesh.exe ls pfad`.
+   Verteilung ueber `os.Args[1]`, also `akmesh.exe ls pfad`.
 3. Eigene Befehle und die Policy-Schicht: dort, wo u-root fuer das Ziel nicht
    baut und dort, wo eine Regel durchgesetzt werden muss, die kein
    Fremdprogramm einhaelt.
@@ -42,7 +43,7 @@ dazu: Landlock unter Linux, Job Objects unter Windows, fuer jedes Kind.
   bauen fuer Windows ohne Aenderung.
 - gobusybox statt vieler Einzeldateien: 8,9 MB fuer 48 Befehle plus Shell
   gegen rund 3 MB je Einzel-EXE.
-- Unterbefehl-Form (`acmesh.exe ls`), nicht Symlink: Symlinks brauchen unter
+- Unterbefehl-Form (`akmesh.exe ls`), nicht Symlink: Symlinks brauchen unter
   Windows Rechte.
 - Die neun Befehle, die fuer Windows nicht bauen, werden per Build-Tag
   ausgeschlossen, nicht gepatcht. Sechs davon bauen wir selbst.
@@ -79,7 +80,7 @@ Arbeitsverzeichnis auf, prueft sie gegen die erlaubten Wurzeln und verweigert
 sonst mit einer Meldung. Ein Befehl, der eine Datei selbst oeffnet, ohne diesen
 Wrapper, ist ein Defekt.
 
-Offen: ob acmesh als Shell fuer ein Harness die Policy mitbringt oder nur die
+Offen: ob akmesh als Shell fuer ein Harness die Policy mitbringt oder nur die
 Haken liefert, an denen das Harness seine Policy einhaengt. Erste Fassung:
 beides, die Policy ist optional und abschaltbar.
 
@@ -151,4 +152,4 @@ einem Ticket:
 
 Rotprobe: ein Probe-Modul mit `fumiama/go-docx` in /tmp/agplprobe faellt mit
 zwei Meldungen durch ("is on the forbidden list", "is AGPL, which we cannot
-ship"), exit 1. Im acmesh selbst laufen acht Module durch, exit 0.
+ship"), exit 1. Im akmesh selbst laufen acht Module durch, exit 0.

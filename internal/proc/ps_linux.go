@@ -3,7 +3,7 @@
 package proc
 
 import (
-	"acmesh/internal/shared"
+	"akmesh/internal/shared"
 
 	"os"
 	"path/filepath"

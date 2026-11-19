@@ -4,7 +4,7 @@
 # so the battery can run anywhere.
 set -u
 
-BIN=${1:-./acmesh}
+BIN=${1:-./akmesh}
 case "$BIN" in
 /*) ;;
 *) BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN") ;;

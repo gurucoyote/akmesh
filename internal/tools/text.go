@@ -3,11 +3,11 @@ package tools
 import (
 	"os"
 
-	"acmesh/internal/basename"
-	"acmesh/internal/cut"
-	"acmesh/internal/dirname"
-	"acmesh/internal/nl"
-	"acmesh/internal/tac"
+	"akmesh/internal/basename"
+	"akmesh/internal/cut"
+	"akmesh/internal/dirname"
+	"akmesh/internal/nl"
+	"akmesh/internal/tac"
 )
 
 // The small text commands live in their own packages since acmesh-mq1; these

@@ -1,12 +1,12 @@
 // Command httpd serves a directory over HTTP or HTTPS, reachable as its own
-// name inside the acmesh binary.
+// name inside the akmesh binary.
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/httpd"
-	"acmesh/internal/policy"
+	"akmesh/internal/httpd"
+	"akmesh/internal/policy"
 )
 
 func main() {

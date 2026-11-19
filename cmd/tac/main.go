@@ -1,4 +1,4 @@
-// Command tac is the tac tool, reachable as its own command inside the acmesh
+// Command tac is the tac tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/tac and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/tac"
+	"akmesh/internal/tac"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

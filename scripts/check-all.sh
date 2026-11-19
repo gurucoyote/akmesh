@@ -22,13 +22,13 @@ echo "== build linux"
 GOTOOLCHAIN=auto ./scripts/build-bb.sh linux
 
 echo "== battery linux"
-./scripts/test-acmesh.sh ./acmesh
+./scripts/test-akmesh.sh ./akmesh
 
 echo "== build windows"
 GOTOOLCHAIN=auto ./scripts/build-bb.sh windows
 
 echo "== battery windows"
-./scripts/test-acmesh.sh ./acmesh.exe
+./scripts/test-akmesh.sh ./akmesh.exe
 
 echo "== build ext (lean profile)"
 GOTOOLCHAIN=auto ./scripts/build-bb.sh linux ext

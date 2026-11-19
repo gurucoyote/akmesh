@@ -3,10 +3,10 @@ package tools
 import (
 	"os"
 
-	"acmesh/internal/split"
-	"acmesh/internal/stat"
-	"acmesh/internal/sync"
-	"acmesh/internal/truncate"
+	"akmesh/internal/split"
+	"akmesh/internal/stat"
+	"akmesh/internal/sync"
+	"akmesh/internal/truncate"
 )
 
 // stat, truncate, split and sync live in their own packages since acmesh-mq1;

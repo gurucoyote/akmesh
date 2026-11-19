@@ -245,7 +245,7 @@ func runSSH(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			printSSHHelp(stdout)
 			return 0
 		case a == "-V":
-			fmt.Fprintln(stdout, "ssh (acmesh, golang.org/x/crypto/ssh)")
+			fmt.Fprintln(stdout, "ssh (akmesh, golang.org/x/crypto/ssh)")
 			return 0
 		case a == "-p":
 			v, ok := next("-p")

@@ -15,7 +15,7 @@ Querkompilieren jedes Kandidaten, einer nach dem anderen:
 
 ## Ein Binary (gobusybox)
 
-    GOTOOLCHAIN=auto GOOS=windows GOARCH=amd64 makebb -o acmesh.exe ./cmds/core/...
+    GOTOOLCHAIN=auto GOOS=windows GOARCH=amd64 makebb -o akmesh.exe ./cmds/core/...
 
 - Bauzeit 18 s, Groesse 8,9 MB (9.314.304 Bytes) fuer 48 Befehle plus gosh.
 - Vergleich: 16 Einzeldateien waren zusammen rund 45 MB.
@@ -23,11 +23,11 @@ Querkompilieren jedes Kandidaten, einer nach dem anderen:
 
 ## Laeuft unter Windows (A, ausgefuehrt aus WSL per Interop)
 
-- `acmesh.exe ls C:/Windows` -> Liste mit Windows-Pfaden (C:\Windows\AppReadiness ...).
-- `acmesh.exe grep -c Microsoft C:/Windows/System32/drivers/etc/hosts` -> 2.
-- `acmesh.exe gosh -c 'echo hallo; echo $((6*7))'` -> hallo, 42.
-- `acmesh.exe` ohne Argument -> Liste der enthaltenen Befehle.
-- `acmesh.exe tar` -> Optionshilfe mit -c und -create.
+- `akmesh.exe ls C:/Windows` -> Liste mit Windows-Pfaden (C:\Windows\AppReadiness ...).
+- `akmesh.exe grep -c Microsoft C:/Windows/System32/drivers/etc/hosts` -> 2.
+- `akmesh.exe gosh -c 'echo hallo; echo $((6*7))'` -> hallo, 42.
+- `akmesh.exe` ohne Argument -> Liste der enthaltenen Befehle.
+- `akmesh.exe tar` -> Optionshilfe mit -c und -create.
 
 ## Kompatibilitaet des Interpreters (mvdan/sh 3.11.0)
 
@@ -81,7 +81,7 @@ du aus dem zweiten Plan.
 
 ## Ein Binary statt zwei (17.11.2026, gebaut und geprueft)
 
-    ./scripts/build-bb.sh windows -> acmesh.exe 10.503.680 Bytes (10,0 MiB)
+    ./scripts/build-bb.sh windows -> akmesh.exe 10.503.680 Bytes (10,0 MiB)
     ./scripts/build-bb.sh linux   -> bb     10.596.476 Bytes (10,1 MiB)
 
 Enthalten: 48 u-root-Befehle, gosh, ssh auf beiden Zielen, strace und
@@ -96,7 +96,7 @@ beiden Modulen hebt die Grenze auf. Danach kollidierte md5sum mit u-root; der
 Build filtert jetzt automatisch: wo u-root den Namen fuer das Ziel baut, gilt
 u-root, sonst unser Paket.
 
-Pruefung: scripts/test-ext.sh gegen acmesh.exe und gegen bb, je 19 Faelle, beide
+Pruefung: scripts/test-ext.sh gegen akmesh.exe und gegen bb, je 19 Faelle, beide
 0 Fehler. ssh antwortet mit seiner Usage, strace mit der seinen, ps und free
 liefern Daten.
 
@@ -106,7 +106,7 @@ Das go.work liegt in .build/ und wird vom Build erzeugt; es ist nicht im Repo.
 
 ## Umbenannt (17.11.2026)
 
-Das Binary heisst jetzt acmesh beziehungsweise acmesh.exe, gebaut von
+Das Binary heisst jetzt akmesh beziehungsweise akmesh.exe, gebaut von
 scripts/build-bb.sh (Skriptname bleibt). Frueher hiess es bb; in den aelteren
 Abschnitten dieses Dokuments und in docs/groesse.md steht noch bb, weil das die
 Groessen von damals sind. Inhaltlich ist es dasselbe Binary.
@@ -115,33 +115,33 @@ Groessen von damals sind. Inhaltlich ist es dasselbe Binary.
 
 Das eigene ext-Binary ist entfernt, cmd/ext gibt es nicht mehr. Jeder eigene
 Befehl ist nur noch ein cmd/<name>-Paket, das build-bb.sh in dasselbe Binary
-baut. Die Testbatterie heisst deshalb scripts/test-acmesh.sh. In den aelteren
+baut. Die Testbatterie heisst deshalb scripts/test-akmesh.sh. In den aelteren
 Abschnitten steht noch scripts/test-ext.sh und die Groesse von ext: das waren
 Messungen am damaligen zweiten Binary, sie bleiben als Verlauf stehen.
 
-## ext entfernt, Meldungen auf acmesh (18.11.2026)
+## ext entfernt, Meldungen auf akmesh (18.11.2026)
 
 cmd/ext und der zweite Verteiler (tools.Main, usage, Names, List) sind weg.
 Jeder eigene Befehl ist nur noch ein cmd/<name>-Paket. Skripte: build-ext.sh
-geloescht, test-ext.sh heisst test-acmesh.sh.
+geloescht, test-ext.sh heisst test-akmesh.sh.
 
-    ./scripts/build-bb.sh linux   -> acmesh     11.358.332 Bytes (10,83 MiB)
-    ./scripts/test-acmesh.sh ./acmesh -> 76 checks, 0 failures
+    ./scripts/build-bb.sh linux   -> akmesh     11.358.332 Bytes (10,83 MiB)
+    ./scripts/test-akmesh.sh ./akmesh -> 76 checks, 0 failures
     go test ./internal/...        -> ok policy, ok tools
 
-Meldungstext: "acmesh: unknown command" nennt jetzt den aufgerufenen Namen
+Meldungstext: "akmesh: unknown command" nennt jetzt den aufgerufenen Namen
 (programName aus os.Args[0]).
 
-Gepatcht am 18.11.2026: `./acmesh gibtsnicht` antwortet mit
-"command is not present in acmesh". Der Text steckt per //go:embed in makebb,
+Gepatcht am 18.11.2026: `./akmesh gibtsnicht` antwortet mit
+"command is not present in akmesh". Der Text steckt per //go:embed in makebb,
 deshalb ersetzt build-bb.sh ihn in den gobusybox-Quellen und baut makebb neu,
 wenn es noch den alten Text enthaelt. Der Bau prueft danach sein eigenes
 Binary und bricht ab, wenn der alte Text noch drin ist.
 
-    ./scripts/build-bb.sh linux   -> acmesh     11.341.948 Bytes (10,82 MiB)
-    ./scripts/build-bb.sh windows -> acmesh.exe 11.367.936 Bytes (10,84 MiB)
-    ./scripts/test-acmesh.sh ./acmesh     -> 79 checks, 0 failures
-    ./scripts/test-acmesh.sh ./acmesh.exe -> 65 checks, 0 failures
+    ./scripts/build-bb.sh linux   -> akmesh     11.341.948 Bytes (10,82 MiB)
+    ./scripts/build-bb.sh windows -> akmesh.exe 11.367.936 Bytes (10,84 MiB)
+    ./scripts/test-akmesh.sh ./akmesh     -> 79 checks, 0 failures
+    ./scripts/test-akmesh.sh ./akmesh.exe -> 65 checks, 0 failures
 
 (Beide Groessen mit go1.27.0 gebaut, siehe den Toolchain-Befund im naechsten
 Abschnitt.)
@@ -155,12 +155,12 @@ makebb genau dann neu, wenn der alte Text noch eingebettet ist.
 
 Frischer Pfad geprueft: makebb geloescht, Modul-Cache auf den alten Text
 zurueckgesetzt, ./scripts/build-bb.sh linux laeuft durch und das Binary meldet
-"not present in acmesh".
+"not present in akmesh".
 
-    ./scripts/build-bb.sh linux   -> acmesh     11.358.332 Bytes (10,83 MiB)
-    ./scripts/build-bb.sh windows -> acmesh.exe 11.383.296 Bytes (10,84 MiB)
-    ./scripts/test-acmesh.sh ./acmesh     -> 79 checks, 0 failures
-    ./scripts/test-acmesh.sh ./acmesh.exe -> 65 checks, 0 failures
+    ./scripts/build-bb.sh linux   -> akmesh     11.358.332 Bytes (10,83 MiB)
+    ./scripts/build-bb.sh windows -> akmesh.exe 11.383.296 Bytes (10,84 MiB)
+    ./scripts/test-akmesh.sh ./akmesh     -> 79 checks, 0 failures
+    ./scripts/test-akmesh.sh ./akmesh.exe -> 65 checks, 0 failures
 
 Wichtiger als makebb: auch der Go-Toolchain ist nicht gepinnt. GOTOOLCHAIN=auto
 hat waehrend dieser Arbeit von go1.27.0 auf go1.27.4 gewechselt, und derselbe
@@ -169,18 +169,18 @@ der Bau erst, wenn auch die Toolchain feststeht.
 
 ## file, iconv, env (17.11.2026, gebaut und geprueft)
 
-    ./scripts/build-bb.sh windows -> acmesh.exe 10.546.688 Bytes (10,06 MiB)
-    ./scripts/build-bb.sh linux   -> acmesh     10.641.532 Bytes (10,15 MiB)
+    ./scripts/build-bb.sh windows -> akmesh.exe 10.546.688 Bytes (10,06 MiB)
+    ./scripts/build-bb.sh linux   -> akmesh     10.641.532 Bytes (10,15 MiB)
 
 Die drei Befehle kosten zusammen rund 43 KB gegenueber dem Stand ohne sie
 (10.503.680 beziehungsweise 10.596.476 Bytes).
 
 Belegt am gebauten Binary:
-- acmesh.exe file acmesh.exe -> "PE32+ executable (console) x86-64, for MS Windows"
-- acmesh file acmesh -> "ELF 64-bit LSB executable, x86-64"
-- acmesh.exe iconv -f CP1252 -t UTF-8 auf "Gr\xfc\xdfe \x80" -> "Gruesse Euro"
+- akmesh.exe file akmesh.exe -> "PE32+ executable (console) x86-64, for MS Windows"
+- akmesh file akmesh -> "ELF 64-bit LSB executable, x86-64"
+- akmesh.exe iconv -f CP1252 -t UTF-8 auf "Gr\xfc\xdfe \x80" -> "Gruesse Euro"
   mit richtigen Umlauten und Euro-Zeichen
-- acmesh.exe env A=1 acmesh.exe env zeigt A=1 im Kindprozess
+- akmesh.exe env A=1 akmesh.exe env zeigt A=1 im Kindprozess
 - iconv -l nennt acht Zeichensaetze: UTF-8, ASCII, ISO-8859-1, ISO-8859-15,
   WINDOWS-1252, UTF-16LE, UTF-16BE, UTF-16
 
@@ -195,8 +195,8 @@ eine kurze Signaturliste statt einer Magic-Datenbank.
 
 ## ps, kill, killall (18.11.2026, gebaut und geprueft)
 
-    ./scripts/build-bb.sh linux   -> acmesh     10.616.956 Bytes (10,13 MiB)
-    ./scripts/build-bb.sh windows -> acmesh.exe 10.592.256 Bytes (10,10 MiB)
+    ./scripts/build-bb.sh linux   -> akmesh     10.616.956 Bytes (10,13 MiB)
+    ./scripts/build-bb.sh windows -> akmesh.exe 10.592.256 Bytes (10,10 MiB)
 
 Zuwachs gegenueber dem Stand ohne die drei: rund 55 beziehungsweise 46 KB.
 
@@ -222,7 +222,7 @@ Geprueft am gebauten Binary:
 Unter Windows belegt: ps -eo pid,ppid,user,cmd zeigt "BUSYS\Spernau" als
 Benutzer, explorer.exe mit CPU-Zeit 16:57 und Laufzeit 7-14:12:38.
 
-Pruefungen: scripts/test-ext.sh 34 Faelle je Ziel, acmesh, acmesh.exe und ext
+Pruefungen: scripts/test-ext.sh 34 Faelle je Ziel, akmesh, akmesh.exe und ext
 alle 0 Fehler. Go-Tests: Aufrufe -e/-f/-ef/aux/-x/-p, Feldlisten, Ablehnung
 unbekannter Schalter, Spaltenkoepfe, Zeitformate, Namensvergleich fuer killall
 (Gross-/Kleinschreibung, .exe), Spaltenausrichtung.
@@ -238,8 +238,8 @@ Bewusste Grenzen:
 
 ## free, df, du (18.11.2026, gebaut und geprueft)
 
-    ./scripts/build-bb.sh linux   -> acmesh     10.604.668 Bytes (10,11 MiB)
-    ./scripts/build-bb.sh windows -> acmesh.exe 10.616.320 Bytes (10,12 MiB)
+    ./scripts/build-bb.sh linux   -> akmesh     10.604.668 Bytes (10,11 MiB)
+    ./scripts/build-bb.sh windows -> akmesh.exe 10.616.320 Bytes (10,12 MiB)
 
 Zuwachs gegenueber dem Stand ohne die drei: praktisch nichts, weil die
 Windows-Aufrufe in der Standardbibliothek liegen und x/sys schon drin war.
@@ -273,7 +273,7 @@ Bewusste Grenzen:
   Exit 1, damit niemand eine leere Tabelle fuer eine leere Platte haelt.
 - du folgt symbolischen Verweisen nicht und zaehlt harte Verweise einmal.
 
-Pruefungen: scripts/test-ext.sh jetzt 44 Faelle je Ziel, acmesh, acmesh.exe und
+Pruefungen: scripts/test-ext.sh jetzt 44 Faelle je Ziel, akmesh, akmesh.exe und
 ext alle 0 Fehler. Go-Tests: Groessenformat, Einheitenschalter, du auf einem
 gebauten Baum (Summe, -a, -c, nicht kleiner als eine Datei), Ablehnung
 unbekannter Schalter, Kopfzeilen von free und df samt gleicher Feldzahl je
@@ -281,11 +281,11 @@ Zeile.
 
 ## curl und wget (18.11.2026, gebaut und geprueft)
 
-    ./scripts/build-bb.sh linux   -> acmesh     10.657.916 Bytes (10,16 MiB)
-    ./scripts/build-bb.sh windows -> acmesh.exe 10.669.568 Bytes (10,18 MiB)
+    ./scripts/build-bb.sh linux   -> akmesh     10.657.916 Bytes (10,16 MiB)
+    ./scripts/build-bb.sh windows -> akmesh.exe 10.669.568 Bytes (10,18 MiB)
     ./scripts/build-ext.sh linux  -> ext         7.442.695 Bytes (7,10 MiB)
 
-Im acmesh kosten curl und wget rund 53 KB, weil net/http und TLS durch ssh
+Im akmesh kosten curl und wget rund 53 KB, weil net/http und TLS durch ssh
 schon drin waren. Das eigene ext-Binary waechst dagegen um 3,9 MB, weil es
 vorher kein net/http enthielt. Das ist der Beleg fuer die Regel aus
 docs/groesse.md: die Zutat zaehlt, nicht der Befehl.
@@ -310,7 +310,7 @@ Exit-Codes wie curl: 6 Namensaufloesung, 7 Verbindung, 22 HTTP-Fehler mit -f,
 28 Zeit, 35 TLS, 47 zu viele Redirects. Nur http und https; file:// und ftp://
 sind ein Fehler, kein stiller Fallback.
 
-Pruefungen: scripts/test-ext.sh 50 Faelle je Ziel, acmesh, acmesh.exe und ext
+Pruefungen: scripts/test-ext.sh 50 Faelle je Ziel, akmesh, akmesh.exe und ext
 alle 0 Fehler.
 
 Grenzen: kein -w (Formatsprache), keine Fortschrittsanzeige, kein HTTP/2
@@ -319,8 +319,8 @@ wget ohne rekursives Spiegeln und ohne -N.
 
 ## jq im Binary (18.11.2026)
 
-    ./scripts/build-bb.sh linux   -> acmesh     11.481.212 Bytes (10,95 MiB)
-    ./scripts/build-bb.sh windows -> acmesh.exe 11.510.272 Bytes (10,98 MiB)
+    ./scripts/build-bb.sh linux   -> akmesh     11.481.212 Bytes (10,95 MiB)
+    ./scripts/build-bb.sh windows -> akmesh.exe 11.510.272 Bytes (10,98 MiB)
     ./scripts/build-ext.sh linux  -> ext         9.097.479 Bytes (8,68 MiB)
 
 Zuwachs gegenueber dem Stand ohne jq: 823.296 Bytes (804 KB) Linux,
@@ -330,14 +330,14 @@ Schalterverarbeitung um die gojq-Aufrufe herum.
 
 Belegt am gebauten Binary:
 - jq -r '.items[] | "\(.n)=\(.v)"' auf einer Datei gibt "a=1" und "b=2".
-- ./acmesh curl -fsSL -A acmesh https://api.github.com/repos/golang/go | \
-  ./acmesh jq -r '"\(.full_name) stars=\(.stargazers_count)"' ->
+- ./akmesh curl -fsSL -A akmesh https://api.github.com/repos/golang/go | \
+  ./akmesh jq -r '"\(.full_name) stars=\(.stargazers_count)"' ->
   "golang/go stars=140183".
-- Windows: dieselbe URL durch acmesh.exe jq -c '.license.key' -> "bsd-3-clause".
+- Windows: dieselbe URL durch akmesh.exe jq -c '.license.key' -> "bsd-3-clause".
 - HTML statt JSON ergibt "jq: invalid JSON: invalid character '<' ..." und
   Exit 2, also eine Meldung, mit der man etwas anfangen kann.
 
-Pruefungen: scripts/test-ext.sh 58 Faelle je Ziel, acmesh, acmesh.exe und ext
+Pruefungen: scripts/test-ext.sh 58 Faelle je Ziel, akmesh, akmesh.exe und ext
 alle 0 Fehler. Go-Tests: Felder, verschachtelte Pfade, .a[], -c, -r, -rc, -s,
 mehrere Dokumente im Strom, -n, select, map, length, --arg, --argjson,
 --slurpfile, -e mit 0/1/4, -R und -R -s, kaputter Filter (Exit 3), kaputtes
@@ -349,8 +349,8 @@ gojq-Ausgabe gelegt, damit die Maskierung von gojq erhalten bleibt.
 
 ## Policy und eigene Shell (18.11.2026)
 
-    ./scripts/build-bb.sh linux   -> acmesh     11.370.620 Bytes (10,84 MiB)
-    ./scripts/build-bb.sh windows -> acmesh.exe 11.399.168 Bytes (10,87 MiB)
+    ./scripts/build-bb.sh linux   -> akmesh     11.370.620 Bytes (10,84 MiB)
+    ./scripts/build-bb.sh windows -> akmesh.exe 11.399.168 Bytes (10,87 MiB)
     ./scripts/build-ext.sh linux  -> ext         9.810.183 Bytes (9,36 MiB)
 
 Die Policy-Schicht und die eigene Shell kosten zusammen nichts, sie sparen
@@ -361,7 +361,7 @@ die Ergänzungen der u-root-Shell fallen weg, die Landlock-Aufrufe sind ein paar
 hundert Zeilen mit x/sys.
 
 Belegt (Linux, WSL-Kernel 6.18, Landlock ABI 7):
-- acmesh policy meldet Exit 0, die Policy-Datei und die Pfade.
+- akmesh policy meldet Exit 0, die Policy-Datei und die Pfade.
 - Lesen in /work erlaubt, Lesen von /etc/hostname verweigert.
 - Schreiben ausserhalb verweigert, die Datei entsteht nicht; innen erlaubt.
 - curl mit leerer Netzliste: "policy ... does not allow network access to
@@ -376,22 +376,22 @@ Port und Wildcard, fehlende Policy, kaputte Datei).
 
 ## Eigene ssh und scp (18.11.2026)
 
-    ./scripts/build-bb.sh linux   -> acmesh     11.350.140 Bytes (10,82 MiB)
-    ./scripts/build-bb.sh windows -> acmesh.exe 11.378.688 Bytes (10,85 MiB)
+    ./scripts/build-bb.sh linux   -> akmesh     11.350.140 Bytes (10,82 MiB)
+    ./scripts/build-bb.sh windows -> akmesh.exe 11.378.688 Bytes (10,85 MiB)
 
 Gegenueber dem Stand mit u-root-ssh sind das je 20.480 Bytes weniger, obwohl
 scp neu dazugekommen ist. Der Grund: x/crypto war durch die alte ssh schon im
 Binary, unsere Front ist duenner als die u-root-Shell um dieselbe Bibliothek.
 
 Belegt durch scripts/test-ssh.sh gegen einen echten sshd (15 Pruefungen, 0
-Fehler, auf acmesh und acmesh.exe): Ausgabe, Mehrzeiligkeit, Remote-Exitcode 7,
+Fehler, auf akmesh und akmesh.exe): Ausgabe, Mehrzeiligkeit, Remote-Exitcode 7,
 test -f wahr und falsch, stdin-Pipe, unbekannter Host ohne Freigabe Exit 255,
 Upload, rekursiver Upload, Download, rekursiver Download, jeweils mit Inhalt.
 
 ## scp -p (18.11.2026)
 
-    ./scripts/build-bb.sh linux   -> acmesh     11.354.236 Bytes (10,83 MiB)
-    ./scripts/build-bb.sh windows -> acmesh.exe 11.382.272 Bytes (10,86 MiB)
+    ./scripts/build-bb.sh linux   -> akmesh     11.354.236 Bytes (10,83 MiB)
+    ./scripts/build-bb.sh windows -> akmesh.exe 11.382.272 Bytes (10,86 MiB)
 
 Zuwachs gegenueber scp ohne -p: 4.096 Bytes je Ziel. Umsetzung: T-Records des
 scp-Protokolls in beide Richtungen, rund 60 Zeilen samt einer kleinen
@@ -410,8 +410,8 @@ Pruefungen: scripts/test-ssh.sh jetzt 18 Faelle je Ziel, beide 0 Fehler.
 
 ## Profile und TinyGo (18.11.2026)
 
-    ./scripts/build-bb.sh linux full  -> acmesh     11.354.236 Bytes (10,83 MiB)
-    ./scripts/build-bb.sh linux fs    -> acmesh-fs   9.777.276 Bytes (9,32 MiB)
+    ./scripts/build-bb.sh linux full  -> akmesh     11.354.236 Bytes (10,83 MiB)
+    ./scripts/build-bb.sh linux fs    -> akmesh-fs   9.777.276 Bytes (9,32 MiB)
 
 fs ist 1.576.960 Bytes kleiner. In seinem Abhaengigkeitsgraphen kommen net/http,
 crypto/tls und golang.org/x/crypto/ssh nicht mehr vor (go list -deps: je 0), und
@@ -451,8 +451,8 @@ Behoben in scripts/build-bb.sh (Liste wird zu einer Zeile pro Name, Mitgliedstes
 ueber eine wieder zusammengesetzte Zeile) und scripts/profiles/fs.txt (netcat
 statt nc). Gemessen mit Go:
 
-    acmesh-fs vor der Korrektur     9.777.276 Bytes (9,32 MiB)
-    acmesh-fs nach der Korrektur    6.959.228 Bytes (6,64 MiB)
+    akmesh-fs vor der Korrektur     9.777.276 Bytes (9,32 MiB)
+    akmesh-fs nach der Korrektur    6.959.228 Bytes (6,64 MiB)
 
 2.817.048 Bytes, die vorher als Netzcode mitgelaufen sind. Die Aussage, das
 fs-Binary enthalte kein net/http und kein TLS, galt nur fuer unseren eigenen
@@ -530,16 +530,16 @@ LC_COLLATE wird mit Exit 2 abgewiesen statt still byteweise zu sortieren.
 
     go test ./internal/sort ./internal/shuf   -> ok, 16 GNU-Faelle plus
                                                  Eigenschaftstests fuer -R und shuf
-    ./scripts/test-acmesh.sh ./acmesh         -> 88 checks, 0 failures
-    ./scripts/test-acmesh.sh ./acmesh.exe     -> 74 checks, 0 failures
+    ./scripts/test-akmesh.sh ./akmesh         -> 88 checks, 0 failures
+    ./scripts/test-akmesh.sh ./akmesh.exe     -> 74 checks, 0 failures
 
 Groesse (vorher 11.358.332 / 11.383.296):
 
-    acmesh      11.395.196   +36.864
-    acmesh.exe  11.425.792   +42.496
+    akmesh      11.395.196   +36.864
+    akmesh.exe  11.425.792   +42.496
 
 -R verhaelt sich wie GNU: Hash je Schluessel, gleiche Schluessel bleiben
-zusammen. Gemessen: printf 'b\na\nb\n' | ./acmesh sort -R -> b, b, a.
+zusammen. Gemessen: printf 'b\na\nb\n' | ./akmesh sort -R -> b, b, a.
 Wer wirklich durchmischen will, nimmt shuf (eigener Befehl).
 
 ## Testabdeckung je Befehl (18.11.2026)
@@ -552,7 +552,7 @@ Zaehlung gegen die Befehlstabelle (34 Namen), nicht gegen Dateien:
                                        timeout truncate uname sort shuf ...
     keine Pruefung irgendwo        4   stat sync hostname policy
 
-Die Batterie (scripts/test-acmesh.sh, 88 Pruefungen auf Linux) ist eine echte
+Die Batterie (scripts/test-akmesh.sh, 88 Pruefungen auf Linux) ist eine echte
 Ebene: sie laeuft gegen das gebaute Binary. Sie ist aber Smoke - sie belegt
 "Antwort kommt", nicht "Antwort ist richtig". Bei stat z.B. prueft sie nichts,
 obwohl Agenten `stat -c '%a %n'` parsen.
@@ -600,10 +600,10 @@ pwd -P loest Symlinks auf, -L bleibt logisch (Vorgabe). Unter Windows druckt
 das Binary einen UNC-Pfad; die Batterie vergleicht deshalb nur die letzte
 Pfadkomponente.
 
-    ./scripts/test-acmesh.sh ./acmesh     -> 95 checks, 0 failures
-    ./scripts/test-acmesh.sh ./acmesh.exe -> 81 checks, 0 failures
+    ./scripts/test-akmesh.sh ./akmesh     -> 95 checks, 0 failures
+    ./scripts/test-akmesh.sh ./akmesh.exe -> 81 checks, 0 failures
 
-Groesse: acmesh 11.403.388 (+8.192), acmesh.exe 11.431.936 (+6.144).
+Groesse: akmesh 11.403.388 (+8.192), akmesh.exe 11.431.936 (+6.144).
 
 ## Stille Fehlschlaege von u-root-Befehlen (18.11.2026)
 
@@ -632,8 +632,8 @@ unbekannten Schalter mit Exit 1 statt GNU's 2. Die Meldung ist eindeutig
 ("flag provided but not defined: ..." plus Usage), der Agent erkennt den Fehler,
 deshalb bleibt es bei der Notiz.
 
-    ./scripts/test-acmesh.sh ./acmesh     -> 101 checks, 0 failures
-    ./scripts/test-acmesh.sh ./acmesh.exe -> 86 checks, 0 failures
+    ./scripts/test-akmesh.sh ./akmesh     -> 101 checks, 0 failures
+    ./scripts/test-akmesh.sh ./akmesh.exe -> 86 checks, 0 failures
 
 Eine Pruefung ist plattformabhaengig: unter Windows gibt es kein x-Bit, dort
 zaehlt nur der Exit-Code von chmod +x.
@@ -650,7 +650,7 @@ statt "lief ohne Absturz", alle vier mit Rotsprobe:
              Linux 0 / Windows 1 (dort gibt es kein ganze-System-Sync)
     hostname = os.Hostname(), mit Operand Exit 2 ("setting the name is not
              supported" statt still ignorieren)
-    policy   ohne ACMESH_POLICY Exit 1 und "no policy ...", --check auf eine
+    policy   ohne AKMESH_POLICY Exit 1 und "no policy ...", --check auf eine
              lesbare Datei "allowed: " Exit 0, auf eine fehlende "denied: "
              Exit 1, --help Exit 0, unbekanntes Argument Exit 2
 
@@ -668,8 +668,8 @@ Windows nicht.
 ## coreutils-Schalter in internal/tools (18.11.2026, acmesh-nl9)
 
 Gegen GNU coreutils im Container (docker.io/library/debian:stable-slim) mit
-denselben Dateien und Aufrufen verglichen. Linux-Binary ./acmesh, Windows
-./acmesh.exe aus scripts/build-bb.sh, jeweils 11 MiB.
+denselben Dateien und Aufrufen verglichen. Linux-Binary ./akmesh, Windows
+./akmesh.exe aus scripts/build-bb.sh, jeweils 11 MiB.
 
     stat -c %a %A %s %F %i %U:%G %h %b   identisch
     stat -t                              identisch in allen 16 Feldern, %f und
@@ -896,7 +896,7 @@ Rundlauf diff gegen patch, wie die Abnahme es verlangt:
     diff -u a.txt b.txt > p.diff      Exit 1, sobald es einen Unterschied gibt (wie GNU)
     patch a2.txt p.diff               Exit 0
     cmp a2.txt b.txt                  gleich
-    gleiches auf Windows mit acmesh.exe: ebenfalls gleich
+    gleiches auf Windows mit akmesh.exe: ebenfalls gleich
 
 Batterie: 165 Pruefungen Linux, 145 Windows, 0 Fehler; diff-header, patch-apply
 und patch-result decken den Rundlauf dauerhaft ab, file-*, iconv-* und env-*
@@ -1050,7 +1050,7 @@ Das ist die Regel des Projekts, nicht ein Schoenheitsfehler: ein Befehl, der
 ohne Policy laeuft, ist der Fehler, den es nicht geben darf.
 
 Behoben mit policy.Enter(), das jeder der 55 cmd/main.go als erste Zeile ruft;
-es wendet ACMESH_POLICY einmal pro Prozess an und beendet den Prozess bei
+es wendet AKMESH_POLICY einmal pro Prozess an und beendet den Prozess bei
 kaputter Policy, wie vorher tools.Run. tools.Run ruft jetzt denselben Eintritt,
 statt eine zweite Sperre zu halten. Batterie danach wieder 169/0 Linux und
 149/0 Windows.
@@ -1076,7 +1076,7 @@ Wrapper zu den Paketen; jede Implementierung ist draussen. Einzig cmd/sh zieht
 die Tabelle bewusst mit, weil die Shell ihre eingebauten Befehle daraus nimmt.
 
 Nachgemessen, welche cmd-Pakete die Tabelle noch ziehen (go list -deps ./cmd/X,
-Zaehlung der Zeilen mit acmesh/internal/tools): echo, true, jq, file, iconv,
+Zaehlung der Zeilen mit akmesh/internal/tools): echo, true, jq, file, iconv,
 env, sed, awk, diff, patch und policy stehen bei 0. Vorher stand jeder bei 1.
 
 Proben mit dem neuen Stand:
@@ -1105,8 +1105,8 @@ sha256sum, file, jq, find.
 
     ./scripts/build-bb.sh linux ext     acmesh-ext     6963324 Bytes (6,6 MiB)
     ./scripts/build-bb.sh windows ext   acmesh-ext.exe 6982144 Bytes (6,7 MiB)
-    ./scripts/build-bb.sh linux         acmesh        11821180 Bytes
-    ./scripts/build-bb.sh windows       acmesh.exe    11854848 Bytes
+    ./scripts/build-bb.sh linux         akmesh        11821180 Bytes
+    ./scripts/build-bb.sh windows       akmesh.exe    11854848 Bytes
 
 Der kleine Bau ist damit 4,9 MB kleiner als der volle, bei 11,8 MB vorher gab es
 also gar keinen kleinen Bau.
@@ -1114,7 +1114,7 @@ also gar keinen kleinen Bau.
 Geprueft auf dem Ziel: acmesh-ext auf Linux (ps -ef, uname -s, free -m, awk,
 sed -n, sha256sum, ls) und acmesh-ext.exe auf Windows (uname -s, ps, awk,
 sha256sum, diff). Ein nicht enthaltener Befehl sagt "command is not present in
-acmesh: curl" und endet mit Exit 1 - nicht mit 0 und nicht mit 127, das ist die
+akmesh: curl" und endet mit Exit 1 - nicht mit 0 und nicht mit 127, das ist die
 Antwort des Verteilers von gobusybox.
 
 Groessenbudget im Bau: Warnung ueber 12.000.000 Bytes, harter Fehlschlag ueber
@@ -1127,8 +1127,8 @@ Batterie 169/0 Linux und 149/0 Windows.
 
 Der Bau laeuft auf beiden Zielen aus demselben Skript, die Zahlen sind von heute:
 
-    ./scripts/build-bb.sh linux     acmesh      11825276 Bytes
-    ./scripts/build-bb.sh windows   acmesh.exe  11854848 Bytes
+    ./scripts/build-bb.sh linux     akmesh      11825276 Bytes
+    ./scripts/build-bb.sh windows   akmesh.exe  11854848 Bytes
     ./scripts/build-bb.sh linux ext acmesh-ext   6963324 Bytes
     ./scripts/build-bb.sh windows ext acmesh-ext.exe 6982144 Bytes
 
@@ -1150,14 +1150,14 @@ Ein Befehl, der ein Programm unter ptrace startet und die Dateien ausgibt, die
 es geoeffnet oder gestartet hat. Zweck: die Kopierliste fuer eine
 distroless-Huelle, ohne eine Spur als Text zu lesen.
 
-    ./acmesh tracedeps /tmp/k.sh        (k.sh: #!/bin/sh; cat /etc/hostname)
+    ./akmesh tracedeps /tmp/k.sh        (k.sh: #!/bin/sh; cat /etc/hostname)
     /bin/cat
     /etc/hostname
     /tmp/k.sh
 
 Mit -probes kommen die Pfade dazu, die nur geprueft wurden (PATH-Suche):
 
-    ./acmesh tracedeps -probes /tmp/k.sh
+    ./akmesh tracedeps -probes /tmp/k.sh
     /bin/cat
     /etc/hostname
     /sbin/cat
@@ -1196,16 +1196,16 @@ Was beim Bau zu lernen war, jeder Punkt hat einen Lauf gekostet:
 Ein Befehl, der ein Verzeichnis ueber HTTP oder HTTPS ausliefert, mit den
 Optionen von busybox httpd.
 
-    ./acmesh httpd -f -p 127.0.0.1:8099 -h /tmp/www
+    ./akmesh httpd -f -p 127.0.0.1:8099 -h /tmp/www
     curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8099/           -> 200
     curl -si http://127.0.0.1:8099/a.css | grep -i content-type              -> text/css; charset=utf-8
     curl -s -r 0-3 http://127.0.0.1:8099/index.html                          -> <h1>
     curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8099/nix          -> 404
-    ./acmesh httpd -p 8098                                                    -> "started in the background, pid N", 200 danach
-    ./acmesh httpd -f -p 127.0.0.1:8443 -S c.pem -K k.pem                     -> https 200, Klartext auf demselben Port 400
-    ./acmesh httpd -M x.mjs                                                   -> text/javascript; charset=utf-8
-    ./acmesh httpd -d 'a%20b'                                                 -> a b
-    ./acmesh httpd -e '<a>'                                                   -> &lt;a&gt;
+    ./akmesh httpd -p 8098                                                    -> "started in the background, pid N", 200 danach
+    ./akmesh httpd -f -p 127.0.0.1:8443 -S c.pem -K k.pem                     -> https 200, Klartext auf demselben Port 400
+    ./akmesh httpd -M x.mjs                                                   -> text/javascript; charset=utf-8
+    ./akmesh httpd -d 'a%20b'                                                 -> a b
+    ./akmesh httpd -e '<a>'                                                   -> &lt;a&gt;
 
 Groesze, gemessen mit measure-size.sh probe:
 
@@ -1232,7 +1232,7 @@ Zwei Fallen, die beim Bau Zeit gekostet haben:
 
 ## html2md (18.11.2026)
 
-    ./acmesh html2md /root/rekr/content/music/demo.html
+    ./akmesh html2md /root/rekr/content/music/demo.html
     ### Atmende Seelen
     play: [AtmendeSeelen.mp3](AtmendeSeelen.mp3) (03:57 min, 128kbit/sec)
 
@@ -1249,9 +1249,9 @@ Groesze: 348160 Bytes (siehe oben). Batterie: Linux 178, Windows 156, 0 Fehler.
 Ein .docx nach Markdown. Der Leser ist selbst geschrieben: archive/zip und
 encoding/xml aus der Standardbibliothek, kein fremdes Paket.
 
-    ./acmesh docx2md "/root/earthartsky.de/AntwortMaxi.docx" > maxi.md
-    ./acmesh docx2md document.docx            # mehrere Dateien nacheinander
-    ./acmesh docx2md < document.docx          # von der Standardeingabe
+    ./akmesh docx2md "/root/earthartsky.de/AntwortMaxi.docx" > maxi.md
+    ./akmesh docx2md document.docx            # mehrere Dateien nacheinander
+    ./akmesh docx2md < document.docx          # von der Standardeingabe
 
 Was die Teile tragen, an denen es scheitert, wenn man nur den Text liest:
 
@@ -1277,17 +1277,17 @@ Groesze, mit measure-size.sh probe:
 
     probe (base64)           2609276 Bytes
     probe (base64 docx2md)   3043452 Bytes   also 434176 fuer docx2md
-    acmesh                   12472444 Bytes, acmesh.exe 12504064 Bytes
+    akmesh                   12472444 Bytes, akmesh.exe 12504064 Bytes
 
 Batterie: Linux 181 Pruefungen, Windows 159, beide 0 Fehler.
 
 Eine Falle, die eine Stunde gekostet hat und nicht im Bau lag: die .exe wird
-unter WSL ueber /init gestartet, und ein laufender acmesh.exe-Prozess haelt das
-Abbild seines Pfades fest. Nach dem Bau lieferte ./acmesh.exe deshalb weiter den
+unter WSL ueber /init gestartet, und ein laufender akmesh.exe-Prozess haelt das
+Abbild seines Pfades fest. Nach dem Bau lieferte ./akmesh.exe deshalb weiter den
 alten Stand (der Befehl fehlte, obwohl die Datei byte-identisch mit dem guten
 Bau war: md5 gleich, eine Kopie unter anderem Namen lief richtig). Erst nach
 kill der beiden alten httpd-Prozesse war der neue Befehl da. Wer nach einem Bau
-"der Befehl fehlt" sieht, prueft zuerst laufende acmesh.exe: pgrep -af acmesh.exe.
+"der Befehl fehlt" sieht, prueft zuerst laufende akmesh.exe: pgrep -af akmesh.exe.
 
 ## httpd Hintergrundbetrieb (21.11.2026, acmesh-rds)
 
@@ -1300,20 +1300,20 @@ exec.Command(os.Args[0]) sucht diesen Namen dann im PATH statt das laufende
 Binary zu starten.
 
 Reparatur: das Kind wird mit os.Executable() als Programm und dem Befehlsnamen
-als erstem Argument gestartet, also acmesh httpd -f ...; ein eigenstaendig
+als erstem Argument gestartet, also akmesh httpd -f ...; ein eigenstaendig
 gebautes cmd/httpd braucht den Namen nicht und bekommt ihn nicht
 (detachArgv in internal/httpd/httpd.go).
 
 Beweis am gebauten Binary:
 
-    $ ./acmesh httpd -p 127.0.0.1:18081 -h /tmp/www2
+    $ ./akmesh httpd -p 127.0.0.1:18081 -h /tmp/www2
     httpd: started in the background, pid 3999217          exit 0
     $ curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18081/     -> 200
     $ kill 3999217                                            -> Port zu, 000
 
 Derselbe Weg in der eigenen Shell und als eigenstaendiges Binary:
 
-    $ ./acmesh sh -c '/root/acmesh/acmesh httpd -p 127.0.0.1:18082 -h /tmp/www2'
+    $ ./akmesh sh -c '/root/akmesh/akmesh httpd -p 127.0.0.1:18082 -h /tmp/www2'
     httpd: started in the background, pid ... / curl -> 200
     $ /tmp/hd2 -p 127.0.0.1:18083                            -> pid ..., curl 200
 
@@ -1331,8 +1331,8 @@ Beide lesen selbst, kein fremdes Paket: rtf2md ein Tokenizer ueber die Gruppen
 und Steuerwoerter, pdf2md archive/zip-los mit compress/zlib und den Operatoren
 des Inhaltsstroms.
 
-    ./acmesh rtf2md story.rtf
-    ./acmesh pdf2md bericht.pdf
+    ./akmesh rtf2md story.rtf
+    ./akmesh pdf2md bericht.pdf
 
 rtf2md nimmt: \par und Backslash am Zeilenende als Absatz, \line als harten
 Umbruch, \tab, \b/\i als Auszeichnung, \'hh als Byte der Codepage, \uN als
@@ -1367,15 +1367,15 @@ Groesze, mit measure-size.sh probe:
     probe (base64)           2609276 Bytes
     probe (base64 rtf2md)    2707580 Bytes   also 98304 fuer rtf2md
     probe (base64 pdf2md)    2744444 Bytes   also 135168 fuer pdf2md
-    acmesh 12537980, acmesh.exe 12569600 Bytes
+    akmesh 12537980, akmesh.exe 12569600 Bytes
 
 Tests: rtf2md elf, pdf2md zwoelf, inklusive Rotproben (NumFmt-Bedingung,
 Schriftgroeszen-Ueberschrift).
 Batterie: Linux 188 Pruefungen 0 Fehler, Windows 166 0 Fehler.
 
 Eine zweite WSL-Falle, gemessen 18.11.2026: der Pfadcache. Nach einem Bau
-lieferte /root/acmesh/acmesh.exe weiter den alten Stand (die neuen Befehle
-fehlten), obwohl md5 von acmesh.exe und einer Kopie gleich waren und die Kopie
+lieferte /root/akmesh/akmesh.exe weiter den alten Stand (die neuen Befehle
+fehlten), obwohl md5 von akmesh.exe und einer Kopie gleich waren und die Kopie
 unter /tmp/a2.exe richtig lief. Umbenennen und touch halfen nicht, eine Kopie
 unter neuem Namen im selben Verzeichnis schon. Die Batterie laeuft deshalb auf
 einer Kopie mit frischem Pfad, und wer von Hand prueft, kopiert die .exe vorher
@@ -1415,8 +1415,8 @@ Noch nicht gelesen: Formular-XObjects (/Subtype /Form) mit eigenem
 Inhaltsstrom. In den Anmeldeformularen steht ein Teil der Felder dort, deshalb
 fehlen Zeilen wie "Kursgebuehr:" in der Tabelle. Das ist ein eigenes Ticket.
 Batterie: Linux 189 Pruefungen 0 Fehler, Windows 167 0 Fehler.
-Groesze: pdf2md 2769020 Bytes gegen base64 2609276, acmesh 12562556,
-acmesh.exe 12595712.
+Groesze: pdf2md 2769020 Bytes gegen base64 2609276, akmesh 12562556,
+akmesh.exe 12595712.
 
 ## Formular-XObjects (19.11.2026, acmesh-39w)
 
@@ -1438,12 +1438,12 @@ Wert steht dort in einem anderen Lauf als das Label und die Spaltenkanten
 liegen weiter auseinander als die Gruppentoleranz von 3 pt.
 
 Batterie: Linux 190 Pruefungen 0 Fehler, Windows 168 0 Fehler, neuer Fall
-pdf2md-form-xobject (Feldtext aus einem Form-XObject). Groesze: acmesh
-12562556, acmesh.exe 12597248, pdf2md 2769020 Bytes.
+pdf2md-form-xobject (Feldtext aus einem Form-XObject). Groesze: akmesh
+12562556, akmesh.exe 12597248, pdf2md 2769020 Bytes.
 
-Der Pfadcache traf wieder zu: nach dem Bau listete ./acmesh.exe pdf2md nicht
+Der Pfadcache traf wieder zu: nach dem Bau listete ./akmesh.exe pdf2md nicht
 auf, eine Kopie (/tmp/acmesh-check.exe) gab "Feldtext" aus, und "strings
-acmesh.exe | grep -c pdf2md" fand den Namen zehnmal - die Datei war also neu,
+akmesh.exe | grep -c pdf2md" fand den Namen zehnmal - die Datei war also neu,
 nur das Abbild unter dem Pfad nicht. Auch rm und Neubau halfen nicht. Wer unter
 WSL von Hand prueft, kopiert die .exe vorher unter einen neuen Namen; die
 Batterie macht das von sich aus.
@@ -1489,7 +1489,7 @@ Gegenprobe, Byte fuer Byte gegen pandoc:
     md-beispiel.md (Ueberschriften, Listen, Zitat, Code, Tabelle, hr)  identisch
     md-b2.md (lange Absaetze, verschachtelte Listen, harter Umbruch,
               Definitionsliste, Sonderzeichen)                       identisch
-    /root/AGENTS.md, acmesh/README.md, roderik/AGENTS.md             identisch
+    /root/AGENTS.md, akmesh/README.md, roderik/AGENTS.md             identisch
     zwei Tabellenproben (2 und 3 Spalten)                            identisch
 
 Batterie: Linux 194 Pruefungen 0 Fehler, Windows 172 0 Fehler, neue Faelle
@@ -1497,7 +1497,7 @@ md2txt-l-heading, md2txt-l-inline, md2txt-l-table, md2txt-l-wrap.
 
 Groesze: probe (base64 md2txt-l) 2650236 gegen base64 2609276, also 40960 Bytes -
 der kleinste der Dokumentbefehle, weil er nur Standardbibliothek und einen
-eigenen kleinen Parser braucht. acmesh 12591228, acmesh.exe 12624896.
+eigenen kleinen Parser braucht. akmesh 12591228, akmesh.exe 12624896.
 
 ## Was goldmark kostet (19.11.2026, acmesh-54s.1)
 
@@ -1518,13 +1518,13 @@ Einordnung:
 - goldmark selbst kostet rund 1,5 MB und bringt den HTML-Renderer mit; ein
   Klartext-Ausgang ueber den AST ist ein Spaziergang von rund 60 Zeilen, kein
   Paket. Damit waere auch md2html ohne Zusatz gedeckt.
-- goldmark-pdf ist der Brocken: 13,6 MB, mehr als das ganze acmesh heute
+- goldmark-pdf ist der Brocken: 13,6 MB, mehr als das ganze akmesh heute
   (12,6 MB). Ursache ist nicht der Code, sondern die mitgelieferten Schriften:
   im Probe-Binary finden sich 1581 Font-/TTF-Muster und 242 Treffer auf
   DejaVu/Liberation/Noto, go-text/typesetting und go-fpdf bringen sie mit.
 - go-epub kostet allein 4,8 MB, zusammen mit PDF aber nur 0,4 MB zusaetzlich,
   weil sich golang.org/x/net und anderes die beiden teilen.
-- Der docx-Schreiber kostet gemessen 416 KB fuer zip und xml - im acmesh-Binary
+- Der docx-Schreiber kostet gemessen 416 KB fuer zip und xml - im akmesh-Binary
   sind beide schon drin (docx2md liest so), also real rund null.
 - Ein Binary mit allen vieren waere rund 26 MB gegen 12,6 MB heute und damit
   ueber der harten Stopplinie von 16 MB in scripts/build-bb.sh. Entweder steigt
@@ -1548,7 +1548,7 @@ Rotprobe in /tmp/agplprobe (eigenes Modul mit fumiama/go-docx):
     check-licences: github.com/fumiama/go-docx is AGPL, which we cannot ship
     check-licences: FAILED                                     (exit 1)
 
-Damit ist acmesh heute frei von AGPL: weder go.mod noch go.sum nennen
+Damit ist akmesh heute frei von AGPL: weder go.mod noch go.sum nennen
 fumiama/go-docx, zikani03/goldmark-docx oder unioffice, und der docx-Probebau
 unter /root/.hermes/cache/scratch/goldprobe benutzt archive/zip und
 encoding/xml aus der Standardbibliothek, kein fremdes docx-Paket.
@@ -1567,7 +1567,7 @@ CGO_ENABLED=0, -ldflags="-s -w", Go 1.26.1, gleiche Probe (leeres Programm
     Fork ohne chroma                             9.097.378   +7,50 MB
     goldmark-pdf unveraendert                   12.218.530  +10,62 MB
 
-Gegen acmesh heute (12.591.228 Bytes roh) ergibt der magere Fork rund 19,0 MB,
+Gegen akmesh heute (12.591.228 Bytes roh) ergibt der magere Fork rund 19,0 MB,
 also ueber dem harten Stopp von 16.000.000 (scripts/build-bb.sh:276).
 
 Der Fork baut keine Syntaxfarben mehr, holt keine Schriften ueber HTTP und liest
@@ -1591,7 +1591,7 @@ hoeher liegen. In scripts/build-bb.sh steht deshalb:
 Begruendung aus den Messungen: goldmark mit GFM +1,12 MB, goldmark-pdf ohne
 chroma +7,50 MB (mit Google-Fonts-Anbindung; ohne beides +6,42 MB, dann muessen
 eigene TTF mitgeliefert werden), go-epub +2,54 MB, eigener docx-Schreiber
-+0,42 MB. Mit allen Zielen landet acmesh bei rund 23 MB, also 13 MB als Warner
++0,42 MB. Mit allen Zielen landet akmesh bei rund 23 MB, also 13 MB als Warner
 waere bei jedem Bau ein Fehlalarm. Der Stopp bei 30 MB laeszt Platz, eine
 Regression zu bemerken, statt sie mit der Warnlinie zu verwechseln.
 
@@ -1609,12 +1609,12 @@ check-all.sh vor dem Kompilieren aufrufen.
 
 Groesze:
 
-    acmesh vorher (ohne goldmark)                 12.591.228
-    acmesh mit md2pdf, Fork ohne chroma           15.077.500   also +2.486.272
-    acmesh.exe                                    15.152.640
+    akmesh vorher (ohne goldmark)                 12.591.228
+    akmesh mit md2pdf, Fork ohne chroma           15.077.500   also +2.486.272
+    akmesh.exe                                    15.152.640
 
 Der Zuwachs ist kleiner als die Rohmessung der Probe (7,50 MB fuer den Fork),
-weil HTTP, TLS und die uebrigen Netzpakete im acmesh ohnehin schon stecken.
+weil HTTP, TLS und die uebrigen Netzpakete im akmesh ohnehin schon stecken.
 
 Ein Befund, der wichtiger ist als die Zahl: ein Bau ohne den Patch scheitert
 jetzt. go mod tidy hat chroma aus dem Modulgraph genommen, weil der gepatchte
@@ -1696,12 +1696,12 @@ eine Zelle enthaelt Absaetze, keine Laeufe.
 
 Groesze:
 
-    acmesh vorher (ohne md2docx)      15.077.500
-    acmesh mit md2docx                15.130.748   also +53.248
+    akmesh vorher (ohne md2docx)      15.077.500
+    akmesh mit md2docx                15.130.748   also +53.248
 
 Belege, drei unabhaengige Leser:
 
-    acmesh docx2md (eigener Leser)
+    akmesh docx2md (eigener Leser)
       "# Titel", "**fetter**", "- eins", "| Anna | Bremen |" kommen zurueck
 
     notker (fremdes Programm, gleiches Format)
@@ -1753,8 +1753,8 @@ desselben Buches byte-gleich bleiben.
 
 Groesze:
 
-    acmesh vorher (ohne epub)    15.130.748
-    acmesh mit md2epub+epub2md   15.220.860      also +90.112
+    akmesh vorher (ohne epub)    15.130.748
+    akmesh mit md2epub+epub2md   15.220.860      also +90.112
 
 Belege:
 
@@ -1794,3 +1794,50 @@ Zwei Fehler, die der Rundlauf aufdeckte:
 Batterie: sieben neue Faelle (md2epub-is-zip, -mimetype, -mimetype-first,
 -roundtrip, epub2md-table, -chapter-count, -refuses-zip); Linux 214 Pruefungen
 0 Fehler.
+
+## Umbenennung acmesh -> akmesh (19.11.2026, akmesh-qfp)
+
+Gesprochen wird der Name Ak Mesh. Die Anspielung, die jemand hoeren kann, bleibt
+stehen; das Projekt erklaert sie nicht.
+
+Umfang der Umbenennung, gemessen am Baum:
+
+    850 Treffer in 175 Textdateien, 168 davon im ersten Durchgang geaendert
+    Modulpfad      module akmesh, damit alle Importe akmesh/internal/...
+    Binaernamen    akmesh, akmesh.exe, akmesh-fs, akmesh-ext, akmesh-fs-tinygo
+    Umgebungsvar.  AKMESH_POLICY (vorher ACMESH_POLICY)
+    Skript         scripts/test-acmesh.sh -> scripts/test-akmesh.sh
+    Dokument       docs/design/acmesh.md -> docs/design/akmesh.md
+    Verzeichnis    /root/acmesh -> /root/akmesh
+    Ticket-Prefix  akmesh (bd config set prefix)
+
+Nicht umbenannt: die bestehenden Ticket-IDs. Sie sind Historie; wer eine
+Fundstelle in einem Dokument liest, muss denselben Ticket wiederfinden. Neue
+Tickets heissen akmesh-xxx, alte bleiben acmesh-xxx - .beads/issues.jsonl ist von
+der Textersetzung ausgenommen.
+
+Zwei Stellen brauchten mehr als Suchen und Ersetzen:
+
+- scripts/build-bb.sh benennt in u-root den Verteilertext "busybox" um. Ein
+  bereits gepatchter Checkout traegt den alten Programmnamen, und die Pruefung
+  brach deshalb beim zweiten Bau ab ("u-root no longer says ..."). Die Funktion
+  akzeptiert jetzt Zielname und mehrere moegliche alte Wortlaute.
+- internal/forked/manifest.json haelt sha256-Summen der u-root-Quelldateien, die
+  scripts/patch-uroot.sh mit Kommentaren versieht. Der Kommentar enthaelt den
+  Programmnamen, also aendert sich die Summe von cmds/core/chmod/chmod.go
+  zwangslaeufig. Eine einzige Zeile wurde neu berechnet; alle anderen Summen
+  blieben gleich.
+
+Belege nach der Umbenennung:
+
+    build-bb.sh linux    akmesh 15.220.860 Bytes (unveraendert gegen vorher)
+    build-bb.sh windows  akmesh.exe 15.301.120 Bytes (unveraendert)
+    Batterie Linux       214 Pruefungen, 0 Fehler
+    Batterie Windows     192 Pruefungen, 0 Fehler
+    Groesse unveraendert, weil nur Namen wandern, kein Code dazukommt
+
+Fund beim Umbau, nicht von ihm verursacht: tests von internal/tools waren rot
+(siehe Ticket zum Registry-Test). Nachgewiesen mit einem git worktree auf
+5951d37: derselbe Fehlschlag vor der Umbenennung. Mein frueherer Nachweis
+zaehlte nur "ok"-Zeilen und verschluckte die FAIL-Zeile - Zaehlen ist kein
+Nachweis, wenn nur eine Sorte Treffer gezaehlt wird.

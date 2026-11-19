@@ -1,4 +1,4 @@
-// Command jq is the jq tool, reachable as its own command inside the acmesh
+// Command jq is the jq tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/jq and not internal/tools: the table in
@@ -8,8 +8,8 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/jq"
-	"acmesh/internal/policy"
+	"akmesh/internal/jq"
+	"akmesh/internal/policy"
 )
 
 func main() {

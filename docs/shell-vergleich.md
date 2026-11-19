@@ -15,7 +15,7 @@ stdout plus stderr gegen bash 5.x, ohne die EXIT-Zeilen unseres Laeufers.
 
     python3 /root/.hermes/cache/scratch/shellsrc/conform/cmp34.py
 
-- mvdan/sh 3.11.0 (unser heutiges acmesh): 30 von 34.
+- mvdan/sh 3.11.0 (unser heutiges akmesh): 30 von 34.
 - mvdan/sh 3.14.1 upstream: 30 von 34.
 - qiangli/sh (Klon HEAD a4141771): 31 von 34.
 
@@ -61,7 +61,7 @@ Beide halten dieselben fuenf Haken, an denen eine Dateiregel haengen kann:
 2. Policy-Bau: identisch. Beide geben uns die Haken, keiner gibt uns die
    Durchsetzung. Unsere Huelle passt auf beide.
 3. Windows: nur die Gabel macht Rechtebits und damit `-r/-w/-x` und chmod
-   ueberhaupt deutbar. Fuer acmesh, das unter Windows Regeln pruefen soll, ist
+   ueberhaupt deutbar. Fuer akmesh, das unter Windows Regeln pruefen soll, ist
    das ein gewichtiges Argument.
 4. Wechselkosten: null. Modulpfad ist gleich, ein `replace` entscheidet.
    Vorschlag: mit upstream 3.14.1 anfangen und die Gabel erst dann einziehen,
@@ -82,7 +82,7 @@ Eigenes Testprogramm mit winmode.Set und winmode.Get, windows/amd64:
 - Auf unserem WSL-Pfad (\\wsl.localhost\...): "Unzulaessige Funktion" - der
   9p-Share traegt keine Windows-ACLs.
 
-Folge fuer acmesh: Rechtebits und damit `[ -r ]`, `[ -w ]`, `[ -x ]` und chmod
+Folge fuer akmesh: Rechtebits und damit `[ -r ]`, `[ -w ]`, `[ -x ]` und chmod
 sind unter Windows nur auf echten Windows-Pfaden deutbar, nicht auf Dateien,
 die ueber den WSL-Share erreicht werden. Upstream mvdan/sh hat winmode nicht;
 wer diese Bits braucht, nimmt die Gabel per replace.

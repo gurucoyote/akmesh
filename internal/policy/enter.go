@@ -8,7 +8,7 @@ import (
 
 var enterOnce sync.Once
 
-// Enter applies the policy from ACMESH_POLICY before any command runs, once per
+// Enter applies the policy from AKMESH_POLICY before any command runs, once per
 // process. A broken policy ends the process instead of letting it run
 // unconfined: a typo in the policy file must never silently mean "no policy".
 //
@@ -17,7 +17,7 @@ var enterOnce sync.Once
 func Enter() {
 	enterOnce.Do(func() {
 		if err := InitFromEnv(); err != nil {
-			fmt.Fprintf(os.Stderr, "acmesh: %v\n", err)
+			fmt.Fprintf(os.Stderr, "akmesh: %v\n", err)
 			os.Exit(1)
 		}
 	})

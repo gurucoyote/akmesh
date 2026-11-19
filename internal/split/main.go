@@ -3,7 +3,7 @@
 package split
 
 import (
-	"acmesh/internal/shared"
+	"akmesh/internal/shared"
 
 	"bufio"
 	"bytes"

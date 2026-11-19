@@ -81,7 +81,7 @@ func TestHostMatching(t *testing.T) {
 	}
 }
 
-// TestNoPolicyIsUnrestricted checks the plain acmesh use case: no policy file,
+// TestNoPolicyIsUnrestricted checks the plain akmesh use case: no policy file,
 // no restrictions.
 func TestNoPolicyIsUnrestricted(t *testing.T) {
 	if Active() != nil {
@@ -100,7 +100,7 @@ func TestInitFromEnvFailsClosed(t *testing.T) {
 	if err := os.WriteFile(broken, []byte(`{"version":9}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("ACMESH_POLICY", broken)
+	t.Setenv("AKMESH_POLICY", broken)
 	if err := InitFromEnv(); err == nil {
 		t.Fatalf("broken policy accepted")
 	}
@@ -111,7 +111,7 @@ func TestInitFromEnvFailsClosed(t *testing.T) {
 		t.Fatalf("a policy is active although loading failed")
 	}
 	// Restore the unrestricted state for the other tests.
-	t.Setenv("ACMESH_POLICY", "")
+	t.Setenv("AKMESH_POLICY", "")
 	if err := InitFromEnv(); err != nil {
 		t.Fatalf("clearing the policy failed: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestSupportedReportsKernel(t *testing.T) {
 // TestWriteOnlyPolicyIsAccepted pins the documented "write implies read": a
 // policy may name only write paths, and Enforce hands that rule the read rights
 // as well. This test cannot call Enforce - it would confine the test process
-// for good - so the kernel side is proven live in scripts/test-acmesh.sh.
+// for good - so the kernel side is proven live in scripts/test-akmesh.sh.
 func TestWriteOnlyPolicyIsAccepted(t *testing.T) {
 	p, err := Parse([]byte(`{"version":1,"write":["/tmp/work"],"system_access":false}`), "test")
 	if err != nil {

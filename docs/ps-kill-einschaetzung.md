@@ -14,7 +14,7 @@ unter Windows laufen lassen.
    (PID 4) kommt "Zugriff verweigert", also der erwartete Fehlerpfad.
 3. Groesse. golang.org/x/sys/windows ist im Binary schon drin (ssh und andere
    u-root-Befehle nutzen es). Eine Probe, die die Prozess-APIs benutzt, macht
-   acmesh.exe um 1.536 Bytes groesser: 10.546.688 auf 10.548.224.
+   akmesh.exe um 1.536 Bytes groesser: 10.546.688 auf 10.548.224.
 4. Ein Fund am Rand: die erste Probe mit eigenen syscall-LazyDLL-Strukturen
    wurde von Windows beim Start abgelehnt ("Invalid argument", auch ueber
    cmd.exe: "Das angegebene Programm kann nicht ausgefuehrt werden"), die
@@ -72,7 +72,7 @@ Die Kommandozeile in ps ist ein eigener Zug und der einzige wirklich teure Teil.
 ## Nachtrag: was u-root unter Linux schon hat (geprueft 17.11.2026)
 
 u-root hat ps (cmds/core/ps/ps_linux.go, 532 Zeilen) und kill (897 Zeilen
-ueber mehrere Dateien). Beide sind im Linux-acmesh und laufen.
+ueber mehrere Dateien). Beide sind im Linux-akmesh und laufen.
 
 Gemessen am gebauten Binary:
 

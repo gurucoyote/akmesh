@@ -3,10 +3,10 @@ package tools
 import (
 	"os"
 
-	"acmesh/internal/hostname"
-	"acmesh/internal/proc"
-	"acmesh/internal/timeout"
-	"acmesh/internal/uname"
+	"akmesh/internal/hostname"
+	"akmesh/internal/proc"
+	"akmesh/internal/timeout"
+	"akmesh/internal/uname"
 )
 
 // uname, hostname, ps, kill, killall and timeout live in their own packages

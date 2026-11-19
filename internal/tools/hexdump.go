@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"acmesh/internal/forked/hexdump"
+	"akmesh/internal/forked/hexdump"
 )
 
 // runHexdump is the glue between the command table and the forked u-root

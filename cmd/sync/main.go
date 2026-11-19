@@ -1,4 +1,4 @@
-// Command sync is the sync tool, reachable as its own command inside the acmesh
+// Command sync is the sync tool, reachable as its own command inside the akmesh
 // binary.
 //
 // It imports only internal/sync and not internal/tools: the table in
@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/sync"
+	"akmesh/internal/sync"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

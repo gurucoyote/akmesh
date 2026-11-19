@@ -15,7 +15,7 @@ import (
 	"net/url"
 	"os"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 	"strconv"
 	"strings"
 	"time"
@@ -77,7 +77,7 @@ func runNet(opts netOptions, stdin *os.File, stdout, stderr *os.File) int {
 	}
 	if !strings.HasPrefix(opts.URL, "http://") && !strings.HasPrefix(opts.URL, "https://") {
 		// Only http and https. file:// would be a way around the file policies
-		// acmesh exists to enforce.
+		// akmesh exists to enforce.
 		fmt.Fprintf(stderr, "unsupported URL scheme in %q (only http and https)\n", opts.URL)
 		return 3
 	}

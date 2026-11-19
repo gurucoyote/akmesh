@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"acmesh/internal/sum"
+	"akmesh/internal/sum"
 )
 
 // runSum keeps the four checksum commands in the command table. The

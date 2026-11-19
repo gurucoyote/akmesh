@@ -1,4 +1,4 @@
-# Commands carried by the acmesh binary, one per line.
+# Commands carried by the akmesh binary, one per line.
 # Used by scripts/build-bb.sh. A name must exist as ./cmds/core/<name> in the
 # pinned u-root checkout, and it must build for the target platform.
 

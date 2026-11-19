@@ -119,5 +119,5 @@ Fork $NAME angelegt. Noch zu tun:
      landet nicht im Binary (gemessen: head -5 lief weiter in den u-root-Befehl).
   4. Lokale Aenderungen unter dem Provenienz-Hinweis auflisten.
   5. Test in internal/forked/$NAME, Zeile in docs/measurements.md, Hinweis in
-     docs/design/acmesh.md und in der Lizenzliste.
+     docs/design/akmesh.md und in der Lizenzliste.
 EOF

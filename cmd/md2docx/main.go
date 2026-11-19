@@ -4,8 +4,8 @@ package main
 import (
 	"os"
 
-	"acmesh/internal/docxgen"
-	"acmesh/internal/policy"
+	"akmesh/internal/docxgen"
+	"akmesh/internal/policy"
 )
 
 func main() {

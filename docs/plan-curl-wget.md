@@ -1,4 +1,4 @@
-# Plan: curl und wget in acmesh
+# Plan: curl und wget in akmesh
 
 Stand 17.11.2026. Beschlossen nach der Messung in docs/curl.md: kein Go-curl
 verhaelt sich wie curl, und unser wget (u-root) kennt nur -O.
@@ -63,7 +63,7 @@ Regeln, die geprueft werden:
    fehlgeschlagen, 22 HTTP-Fehler bei -f, 28 Zeitueberschreitung, 35 TLS-Fehler,
    47 zu viele Redirects.
 4. Nur http und https. Kein file://, kein ftp://: das waere ein Weg an der
-   Policy vorbei, gegen die acmesh gebaut wird.
+   Policy vorbei, gegen die akmesh gebaut wird.
 5. -o schreibt binaer, ohne Umkodierung. Auf Windows keine CRLF-Umschreibung.
 
 ## wget
@@ -105,7 +105,7 @@ Go-Tests gegen einen httptest-Server, nicht gegen das Netz: Redirect-Kette,
 -Kopfzeilen, POST-Formular, multipart, Basic Auth, Cookies ueber zwei Anfragen,
 Bereichsanfrage, -f mit 404, Zeitueberschreitung, -s mit Body, -sL.
 
-Dazu Faelle in scripts/test-acmesh.sh gegen eine lokale Datei-URL entfallen, weil
+Dazu Faelle in scripts/test-akmesh.sh gegen eine lokale Datei-URL entfallen, weil
 file:// verboten ist; stattdessen startet der Testlauf einen kleinen Server aus
 dem Go-Test und die Shell-Batterie prueft nur die Schalterparsing-Fehler und
 -h.

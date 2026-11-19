@@ -1,12 +1,12 @@
 // Command tracedeps lists the files a program needs, reachable as its own name
-// inside the acmesh binary.
+// inside the akmesh binary.
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/policy"
-	"acmesh/internal/tracedeps"
+	"akmesh/internal/policy"
+	"akmesh/internal/tracedeps"
 )
 
 func main() {

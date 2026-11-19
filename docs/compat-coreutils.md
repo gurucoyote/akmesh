@@ -1,7 +1,7 @@
 # Kernstellen gegen coreutils: was fehlt, was lohnt, was nicht
 
-Stand: 2026-11-18. Gemessen am Linux-Build `./acmesh` (commit 4e40dc2),
-aufgenommen mit `./acmesh <befehl> <schalter>` je Zeile. Windows wurde hier
+Stand: 2026-11-18. Gemessen am Linux-Build `./akmesh` (commit 4e40dc2),
+aufgenommen mit `./akmesh <befehl> <schalter>` je Zeile. Windows wurde hier
 nicht befragt; die Befehlsauswahl ist dort eine andere, die Schalter der
 u-root-Befehle aber dieselben.
 
@@ -112,12 +112,12 @@ Rategrammatik, die das Projekt vermeiden will.
 
 Gemessen, und der wichtigste Einzelbefund:
 
-    ./acmesh sort -h            druckt Usage, Exit 0, sortiert NICHTS
-    ./acmesh ls -Z              druckt Usage, Exit 0, listet NICHTS
-    ./acmesh ls -t              druckt Usage, Exit 0
-    ./acmesh chmod +x datei     keine Meldung, Exit 1, nichts geaendert
-    ./acmesh mkdir -p a/b       ok
-    ./acmesh true|echo|pwd      "command is not present in acmesh", Exit 1
+    ./akmesh sort -h            druckt Usage, Exit 0, sortiert NICHTS
+    ./akmesh ls -Z              druckt Usage, Exit 0, listet NICHTS
+    ./akmesh ls -t              druckt Usage, Exit 0
+    ./akmesh chmod +x datei     keine Meldung, Exit 1, nichts geaendert
+    ./akmesh mkdir -p a/b       ok
+    ./akmesh true|echo|pwd      "command is not present in akmesh", Exit 1
 
 `sort -h` ist besonders boshaft: Go-flag deutet `-h` als Hilfe. Der Agent
 bekommt Exit 0, keine Fehlermeldung im engeren Sinn, und eine unveraenderte
@@ -140,7 +140,7 @@ auch Befehle ab, die wir nicht neu schreiben wollen.
   Meldung "use tar".
 - xargs -P (parallel) und -a: Nebenlaeufigkeit ohne Nutzen im Harness.
 - more/man: interaktiv, im Harness sinnlos; man sollte wenigstens die
-  Usage des acmesh-Befehls ausgeben statt "No manual entry".
+  Usage des akmesh-Befehls ausgeben statt "No manual entry".
 - time: GNU -v/-f braucht rusage-Details; u-root liefert nur -p. Meldung
   statt Nachbau.
 - netcat: ncat-Schaltervielfalt (-broker, -chat, -ssl) - nicht nachbauen,
@@ -190,7 +190,7 @@ Quelle waehlen, in dieser Reihenfolge:
    Preis: sort haengt dort an pkg/locale, pkg/collate, pkg/ctype (zusammen
    rund 95 KB Quelltext ohne Tests) fuer die glibc-Locale-Schicht. Im
    Harness genuegt C-Locale, also Byte-Order; die Schicht wird beim
-   Uebernehmen gekuerzt und die Kuerzung in docs/design/acmesh.md begruendet.
+   Uebernehmen gekuerzt und die Kuerzung in docs/design/akmesh.md begruendet.
    shuf haengt nur an tool/ (Applet-Geruest), das durch eigene
    Argumentbehandlung ersetzt wird.
 3. u-root forken, wo keine der beiden Quellen passt (grep, chmod, tar, cp,

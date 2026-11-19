@@ -1,4 +1,4 @@
-# Agents Guide for acmesh
+# Agents Guide for akmesh
 
 A shell and userland in one Go binary, for harnesses that must not hand an
 agent the real system shell. Code, comments, identifiers and commit messages
@@ -13,13 +13,13 @@ are English; documents meant for Martin are German.
 - `internal/tools/`: our own commands in one package with one table. The table is
   what the multicall binary dispatches on and what the per-name entry points use.
 - `cmd/<name>/`: one tiny `main` per own command, so that the combined binary
-  reaches it under its plain name (`acmesh sed`). Adding a command means: implement
+  reaches it under its plain name (`akmesh sed`). Adding a command means: implement
   in `internal/tools`, register in the table, add `cmd/<name>`.
-- `scripts/test-acmesh.sh`: the live battery, run against the built binary for
-  either target (`./scripts/test-acmesh.sh ./acmesh.exe`).
+- `scripts/test-akmesh.sh`: the live battery, run against the built binary for
+  either target (`./scripts/test-akmesh.sh ./akmesh.exe`).
 - `scripts/build-bb.sh` writes `.build/go.work` (both modules) and passes the
   u-root packages plus our `cmd/<name>` packages to `makebb`.
-- `docs/design/acmesh.md`: architecture, decisions, licence notes.
+- `docs/design/akmesh.md`: architecture, decisions, licence notes.
 - `docs/measurements.md`: every number with the command that produced it.
 - `progress.txt`, `learnings.txt`: short German notes per finished step.
 
@@ -29,20 +29,20 @@ are English; documents meant for Martin are German.
 
 - Go 1.27 is required by the u-root module; `GOTOOLCHAIN=auto` downloads it.
   Do not pin u-root to an older commit to avoid that.
-- `GOCACHE=/root/acmesh/.cache` must be set: the default cache is read-only
+- `GOCACHE=/root/akmesh/.cache` must be set: the default cache is read-only
   here and produces misleading toolchain errors. The script sets it.
 - `makebb` takes GOOS/GOARCH from the environment, it has no `-goos` flag. It is
   pinned to v0.6.0 in the script and re-read from the installed tool with
   `go version -m`; a different version is replaced, not used.
 - The build renames gobusybox's two dispatcher messages from "busybox" to
-  "acmesh" in the pinned checkout and rebuilds `makebb` when it still embeds the
+  "akmesh" in the pinned checkout and rebuilds `makebb` when it still embeds the
   old text (go:embed). It fails instead of shipping the old wording.
-- Build artifacts (`acmesh`, `acmesh.exe`, `.cache/`, `.gopath/`) stay untracked.
+- Build artifacts (`akmesh`, `akmesh.exe`, `.cache/`, `.gopath/`) stay untracked.
 
 ## Policy first
 
 The binary exists so a harness does not hand the agent a real shell. When
-`ACMESH_POLICY` is set, the rule is applied to the process with Landlock before
+`AKMESH_POLICY` is set, the rule is applied to the process with Landlock before
 any command runs, and the kernel enforces it for every child. Do not add
 per-command path checks in Go: that would be the guessing this project exists to
 avoid. A broken policy must exit nonzero, never fall back to running unconfined.
@@ -62,10 +62,10 @@ reach for powershell or python, which is worse than a slightly larger binary.
 ## Testing
 
 - A build is not a proof. The binary is run on the target: on Linux directly,
-  on Windows from this WSL shell (`./acmesh.exe ls C:/Windows`), which needs no wine.
+  on Windows from this WSL shell (`./akmesh.exe ls C:/Windows`), which needs no wine.
 - Every behaviour claim in a report names the command that produced it.
 - A command that u-root ships with different flags is a finding, not a bug in
-  acmesh: `find` has no `-maxdepth`, `head` has no `-3`. Record it in
+  akmesh: `find` has no `-maxdepth`, `head` has no `-3`. Record it in
   `docs/measurements.md` instead of patching the upstream command.
 
 ## Adding our own commands
@@ -87,7 +87,7 @@ reach for powershell or python, which is worse than a slightly larger binary.
 
 ## Tickets: bd
 
-- The tracker lives in `.beads/` with the prefix `acmesh` (`acmesh-abc`).
+- The tracker lives in `.beads/` with the prefix `akmesh` (`akmesh-abc`).
 - Every bd call uses `--no-daemon`. After a change:
   `bd export -o .beads/issues.jsonl`, stage that file, commit it.
   If bd answers `Database out of sync with JSONL`, run
@@ -109,7 +109,7 @@ reach for powershell or python, which is worse than a slightly larger binary.
 ## Licence
 
 u-root and gobusybox are BSD-3-Clause, mvdan/sh is BSD-3-Clause. A distributed
-binary must carry their notices; `docs/design/acmesh.md` keeps the list.
+binary must carry their notices; `docs/design/akmesh.md` keeps the list.
 
 ## Session close
 

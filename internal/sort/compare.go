@@ -1,7 +1,7 @@
 package sortcmd
 
 // Ported from qiangli/coreutils cmds/sort (MIT License,
-// Copyright (c) 2026 Qiang Li). Changes for acmesh: the package name, the
+// Copyright (c) 2026 Qiang Li). Changes for akmesh: the package name, the
 // removal of the glibc locale layer (C/POSIX and byte order only), and the
 // split from that project's applet framework.
 

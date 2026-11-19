@@ -5,7 +5,7 @@ wasm-Ziele, beide offiziell und ohne Zusatzwerkzeug.
 
     GOOS=wasip1 GOARCH=wasm   laeuft ohne Browser in einer Laufzeitumgebung
                               (wazero, wasmtime); das ist das Ziel fuer ein
-                              Werkzeug wie acmesh
+                              Werkzeug wie akmesh
     GOOS=js     GOARCH=wasm   laeuft im Browser oder unter Node, braucht immer
                               die Datei wasm_exec.js aus GOROOT und einen
                               JavaScript-Host
@@ -15,7 +15,7 @@ von aussen bekommt: Kommandozeile, Umgebung, Standardeingabe und -ausgabe, und
 Verzeichnisse nur, wenn die Laufzeit sie freigibt (preopen). Es gibt keine
 Prozesse, keine Signale, kein cgo, keine Threads.
 
-## Was in acmesh fehlte
+## Was in akmesh fehlte
 
 Beide Ziele bauten auf Anhieb nicht, und zwar an drei Stellen, die nichts mit
 wasm selbst zu tun haben, sondern mit unseren Plattformdateien:
@@ -84,7 +84,7 @@ Systemaufrufe (stat, readdir, ioctl) und ob wasip1 sie abdeckt, ist offen.
 
 ## Fazit
 
-Go allein kann wasm, fuer acmesh auf zwei Wegen: wasip1 fuer eine
+Go allein kann wasm, fuer akmesh auf zwei Wegen: wasip1 fuer eine
 Laufzeitumgebung, js/wasm fuer den Browser. Der Preis ist Groesse (1,8-fach) und
 vor allem Startzeit (287 ms gegen 4,3 ms mit warmem Cache), und die
 Unix-Befehle brauchen Stubs, weil wasm keine Prozesse, keine Signale und kein

@@ -1,12 +1,12 @@
 // Command rtf2md turns an RTF document into Markdown, reachable as its own name
-// inside the acmesh binary.
+// inside the akmesh binary.
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/policy"
-	"acmesh/internal/rtfmd"
+	"akmesh/internal/policy"
+	"akmesh/internal/rtfmd"
 )
 
 func main() {

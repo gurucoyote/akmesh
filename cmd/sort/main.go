@@ -1,13 +1,13 @@
 // Command sort is the sort tool from internal/sort, reachable as its own
-// command inside the acmesh binary.
+// command inside the akmesh binary.
 package main
 
 import (
 	"os"
 
-	"acmesh/internal/tools"
+	"akmesh/internal/tools"
 
-	"acmesh/internal/policy"
+	"akmesh/internal/policy"
 )
 
 func main() {

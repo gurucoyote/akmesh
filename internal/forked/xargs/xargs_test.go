@@ -1,6 +1,8 @@
 package xargs
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -67,15 +69,32 @@ func TestExitStatus(t *testing.T) {
 	}
 }
 
-// TestParallelRunsEverything: -P runs in parallel but nothing may get lost.
+// TestParallelRunsEverything: -P runs in parallel but nothing may get lost and
+// nothing may appear twice. Forty items through four workers is the shape that
+// exposed the race: with the helper's plain strings.Builder the run lost a line
+// about once in twenty attempts and -race reported a data race in the Builder.
 func TestParallelRunsEverything(t *testing.T) {
-	out, _, code := runXargs(t, "1\n2\n3\n4\n", "-P", "4", "-n", "1", "echo")
+	const n = 40
+	var in strings.Builder
+	for i := 1; i <= n; i++ {
+		fmt.Fprintf(&in, "%d\n", i)
+	}
+	out, _, code := runXargs(t, in.String(), "-P", "4", "-n", "1", "echo")
 	if code != 0 {
 		t.Fatalf("exit %d", code)
 	}
-	for _, want := range []string{"1\n", "2\n", "3\n", "4\n"} {
-		if !strings.Contains(out, want) {
-			t.Fatalf("output %q lacks %q", out, want)
+	got := strings.Fields(out)
+	if len(got) != n {
+		t.Fatalf("%d items in, %d lines out: a parallel run lost or duplicated output: %q", n, len(got), out)
+	}
+	seen := map[string]int{}
+	for _, f := range got {
+		seen[f]++
+	}
+	for i := 1; i <= n; i++ {
+		key := strconv.Itoa(i)
+		if seen[key] != 1 {
+			t.Fatalf("item %s appeared %d times, want exactly once: %q", key, seen[key], out)
 		}
 	}
 }

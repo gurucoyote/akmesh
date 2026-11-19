@@ -60,6 +60,20 @@ type cmd struct {
 	params
 }
 
+// lockedWriter serialises the parallel children's writes into one stream. A
+// mutex per Write keeps each chunk whole; the lock is shared by stdout and
+// stderr so a message never lands inside another one.
+type lockedWriter struct {
+	mu *sync.Mutex
+	w  io.Writer
+}
+
+func (l *lockedWriter) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.w.Write(p)
+}
+
 func command(stdin io.Reader, stdout, stderr io.Writer, p params) *cmd {
 	return &cmd{
 		stdin:  stdin,
@@ -240,6 +254,17 @@ func (c *cmd) run(args ...string) int {
 	}
 
 	code := 0
+	// With -P, several children write to the same stdout at the same time. The
+	// akmesh binary passes os.Stdout (safe), but Run is part of a library a
+	// harness calls with any io.Writer, and a plain bytes.Buffer or
+	// strings.Builder loses output when two goroutines append at once
+	// (measured: one lost line in 21 runs, and a reported data race). One lock
+	// around both streams keeps every write whole and the writer safe.
+	if c.parallel > 1 {
+		var wmu sync.Mutex
+		c.stdout = &lockedWriter{mu: &wmu, w: c.stdout}
+		c.stderr = &lockedWriter{mu: &wmu, w: c.stderr}
+	}
 	var mu sync.Mutex
 	record := func(err error) {
 		if err == nil {

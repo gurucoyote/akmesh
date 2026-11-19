@@ -2019,8 +2019,29 @@ Nachher:
 
 Wirkung, am selben Tag gemessen an amazon.de (Produktsuche Kaffeemaschine):
 
-    akmesh Vorgabe vorher   503 in vier von vier Runden, 2904 Bytes
+    akmesh Vorgabe vorher   503 in vier von vier Runden
     akmesh Vorgabe nachher  200 mit echter Seite, 908 und 916 KB in zwei Runden
+
+KORREKTUR, 14:07 Uhr: dieser Zusammenhang haelt nicht. Um 14:07 bekommt
+derselbe Client mit -A 'Go-http-client/2.0' ebenfalls 200, mit und ohne
+Accept-Kopf, zweimal hintereinander. Die 503er von 13:29 waren auch keine
+Bot-Sperre: beide Antworten, die von curl und die von akmesh, tragen dieselbe
+ETag "6ae98b03-8f4", dieselbe content-length 2292 und "X-Cache: Error from
+cloudfront" - es war eine CloudFront-Fehlerantwort, kein Regelwerk gegen
+unseren Client. Der Unterschied 2904 gegen 2292 Bytes ist nur unser -i-Praefix
+"< " je Kopfzeile.
+
+Was bleibt, ist etwas anderes: der User-Agent waehlt die Seitenvariante.
+Gemessen, je zwei Runden, alles 200:
+
+    curl/8.23.0                      595 KB   "Suchergebnis Auf Amazon.de Fuer: ..."
+    akmesh/0.1 (curl compatible)     918 KB   "Amazon.de : kaffeemaschine"
+    Go-http-client/2.0               903-1020 KB
+    golang                           1,5-1,7 MB
+
+Der eigene Agent bleibt trotzdem richtig, weil Go sonst den Werkzeugnamen
+mitschickt und curl seine Kennung auch setzt - aber als Zugangsmittel ist er
+nicht belegt.
 
 Bekannte Grenze, im Ticket acmesh-ijz festgehalten: net/http schreibt Kopfzeilen
 alphabetisch sortiert, curl in der Reihenfolge, in der sie gesetzt wurden. Die

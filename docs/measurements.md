@@ -2556,3 +2556,32 @@ Mutationsprobe von Hand, drei Mutanten, alle getötet: Klassenprädikat im
 Komplement ignoriert, Klasse wieder auf unicode.IsLower, -s ohne Wirkung.
 
 Batterie: 221 Prüfungen, 0 Fehler Linux; 199 Prüfungen, 0 Fehler Windows.
+
+## 2026-11-19 check-all mit -race (acmesh-vyc)
+
+scripts/check-all.sh faehrt jetzt vor dem einfachen Lauf auch
+`go test -race -count=1 ./internal/...`. Gemessen:
+
+    go test -race -count=1 ./internal/...   13,96 s   48 Pakete ok
+    go test        -count=1 ./internal/...    5,19 s
+
+Ein voller check-all-Lauf mit dem neuen Schritt, beiden Zielen, beiden Batterien,
+Hilfe-Gate und beiden Builds:
+
+    ./scripts/check-all.sh   183,34 s   exit 0
+    battery linux            221 Pruefungen, 0 Fehler
+    battery windows          199 Pruefungen, 0 Fehler
+    help-audit               every command answers --help except the documented u-root gap
+
+Ohne den neuen Schritt waere der Lauf 169,4 s lang (Differenz, nicht separat
+gemessen). Der Schritt kostet also rund 14 Sekunden von gut drei Minuten.
+
+Der erste -race-Lauf fand sofort etwas: TestUnknownLongOptionNamesTheWholeToken in
+internal/tools war seit dem base64-Umbau rot, weil er die Anfuerungszeichen der
+alten Meldung festschrieb (`"` statt GNU-`'`). Der Test prueft jetzt den Token
+selbst und beide Verbote der alten Kurzform. Lehre: nach einem Umbau, der eine
+Meldung aendert, `go test ./...` laufen lassen, nicht nur das Paket.
+
+check-all bleibt einzeln: ein paralleler Go-Lauf laesst WSL die .exe mit
+"accept4 failed 110" nicht starten, und die Windows-Batterie meldet dann Fehler,
+die es nicht gibt (Kommentar im Skript).

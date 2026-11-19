@@ -3073,3 +3073,6 @@ eines, das fehlt.
 Batterie: curl-parallel-count, curl-parallel-status, curl-parallel-unknownflags
 (Exit 2 bei --repeat 0) und ca-sni-two-leaves. 211 Pruefungen Linux, 189 Windows,
 beide 0 Fehler.
+
+Abschlusslauf nach den parallelen Anfragen (acmesh-730), 19.11.2026: siehe
+naechster Abschnitt, Zahlen dort; Batterie 211/0 Linux und 189/0 Windows.

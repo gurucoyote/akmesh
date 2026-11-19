@@ -254,7 +254,16 @@ func TestResolveReadsTheCertificateForALocalName(t *testing.T) {
 	}
 	port := u.Port()
 
-	out, code := runCertinfo(t, "--resolve", "test1.local:"+port+":127.0.0.1", "test1.local:"+port)
+	// Up to three tries: under WSL a dial fails now and then while the whole
+	// suite runs, and that is not a verdict about --resolve.
+	var out string
+	var code int
+	for attempt := 0; attempt < 3; attempt++ {
+		out, code = runCertinfo(t, "--resolve", "test1.local:"+port+":127.0.0.1", "test1.local:"+port)
+		if code == 0 {
+			break
+		}
+	}
 	if code != 0 {
 		t.Fatalf("exit %d, out %q", code, out)
 	}

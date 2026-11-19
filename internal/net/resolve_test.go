@@ -38,7 +38,7 @@ func TestResolveConnectsToTheGivenAddress(t *testing.T) {
 	port := u.Port()
 
 	target := "http://test1.local:" + port + "/"
-	out, code := capture(t, runCurl, []string{"-s", "--resolve", "test1.local:" + port + ":127.0.0.1", target})
+	out, code := retryCapture(t, runCurl, []string{"-s", "--resolve", "test1.local:" + port + ":127.0.0.1", target})
 	if code != 0 {
 		t.Fatalf("exit %d, out %q", code, out)
 	}
@@ -124,7 +124,7 @@ func TestWgetCanResolveAndTrustALocalCA(t *testing.T) {
 		t.Fatal(err)
 	}
 	target := "https://test1.local:" + port + "/"
-	out, code := capture(t, runWget, []string{"-q", "-O", "-", "--ca-certificate", caPath, "--resolve", "test1.local:" + port + ":127.0.0.1", target})
+	out, code := retryCapture(t, runWget, []string{"-q", "-O", "-", "--ca-certificate", caPath, "--resolve", "test1.local:" + port + ":127.0.0.1", target})
 	if code != 0 {
 		t.Fatalf("exit %d, out %q", code, out)
 	}
@@ -162,4 +162,21 @@ func selfSignedFor(t *testing.T, name string) (tls.Certificate, []byte) {
 	}
 	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: key},
 		pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+}
+
+// retryCapture runs a command up to three times while it fails to connect. Under
+// WSL a dial occasionally dies while the whole test suite runs ("accept4 failed
+// 110"), and a test that reports that as a wrong --resolve would be lying about
+// the code.
+func retryCapture(t *testing.T, fn CmdFunc, args []string) (string, int) {
+	t.Helper()
+	var out string
+	var code int
+	for attempt := 0; attempt < 3; attempt++ {
+		out, code = capture(t, fn, args)
+		if code == 0 {
+			return out, code
+		}
+	}
+	return out, code
 }

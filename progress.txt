@@ -203,3 +203,9 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
             SNI-Namen (test1.local, test2.local), curl kann --resolve und --cacert.
             Gemessen: curl 200 ohne -k, fremder Name Exit 35, ohne Wurzel Exit 60.
             Batterie 207/0 Linux und 185/0 Windows.
+2026-11-19  Parallele Anfragen (acmesh-730): curl -Z, --parallel-max, --repeat,
+            --no-keepalive mit Zusammenfassung (Anzahl, Fehler, req/s, Status).
+            Gemessen: 2000 Anfragen, 0 Fehler, 6007 req/s bei 50 parallel, bis
+            1000 parallel sauber. certinfo kann --resolve, wget bekam
+            --ca-certificate, --resolve, --referer, --method, --user/--password.
+            Batterie 211/0 Linux und 189/0 Windows.

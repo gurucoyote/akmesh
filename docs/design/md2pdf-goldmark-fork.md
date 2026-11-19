@@ -123,3 +123,36 @@ Die drei Forks liegen unter /root/.hermes/cache/scratch/pdfprobe:
 
 Der Scratch-Ordner ist Zwischenlager, kein Projektstand. Wer md2pdf baut, kopiert
 fork3 in den Baum und zieht den Copyright-Hinweis mit.
+
+## Kopf- und Fusszeile (2026-11-19)
+
+Vorbild ist go-pdfkit/html2pdf, das die Randkaesten der CSS Paged Media nutzt:
+Titel oben, Seitenzahl unten, und die Gesamtzahl aus einem Zaehler, der erst am
+Ende feststeht. Uebernommen ist die Idee, nicht der Code; html2pdf bringt eine
+ganze Layout-Engine und eine JS-Laufzeit mit (34,9 MB Binary gegen 13,3 MB hier).
+
+Was jetzt drin ist:
+
+- Fusszeile auf jeder Seite, mittig, "Seite N von M". M kommt aus dem {nb}-Alias
+  von gofpdf; der wird beim Schreiben der letzten Seite aufgeloest, deshalb steht
+  im Code ein Platzhalter und nicht die Zahl.
+- Kopfzeile mit dem ersten H1 des Dokuments, links, ueber einer Haarlinie. Auf
+  Seite 1 bleibt sie weg, weil dort die Ueberschrift selbst steht.
+- Das H1 wird zugleich zum PDF-Titel im Metadatum. Beim Lesen des Titels werden
+  HTML-Entities aufgeloest, sonst stuende "&amp;" im Fenstertitel.
+- Beide Zeilen nutzen Helvetica, einen der vierzehn Schriften, die jeder Leser
+  hat. Sie kosten also keine Bytes im Ergebnis.
+
+Zwei Eigenheiten des Renderers, die den Einbau bestimmt haben:
+
+- goldmark-pdf setzt nach einem Seitenumbruch die Schreibposition nicht zurueck.
+  Der Text lief deshalb oben aus der Seite heraus und die Kopfzeile lag mitten
+  darin. Die Kopfzeilen-Funktion setzt am Ende SetY(42), seither beginnt der Text
+  jeder Folgeseite unter der Linie.
+- Mit EscapeHTML an wurde jedes & als &amp; in den Text geschrieben; mit
+  EscapeHTML aus verschwinden spitze Klammern samt Inhalt. Wir fahren jetzt ohne
+  Escaping, weil in einem PDF kein HTML-Kontext existiert. Was das kostet: rohe
+  HTML-Tags im Markdown verschwinden, statt als Text zu erscheinen.
+
+Gemessen: 13,35 MB Binary (vorher 13,34), Seitenzahl und Titel ueber pdftotext auf
+jeder Seite geprueft, vier neue Tests in internal/pdfgen/footer_test.go.

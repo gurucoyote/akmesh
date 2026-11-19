@@ -123,3 +123,12 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-19  md2pdf gebaut (goldmark-pdf-Fork ohne chroma, Patch-Skript im Bau), acmesh 15077500 Bytes, Rundlauf mit pdf2md gruen, Linux-Batterie 199/0; acmesh-y9r und acmesh-54s.2 in Arbeit.
 2026-11-19  Luecke geschlossen: Label-Wert-Paare werden Tabellenzeilen (zwei Regeln plus Zeilengruppierung nach Grundlinie), vier Go-Tests mit drei Rotproben, Batterie 201/0, an echten Formularen keine Wortzahl-Aenderung.
 2026-11-19  md2docx gebaut (eigener Schreiber, zip+xml, goldmark-AST), drei unabhaengige Leser als Beleg (docx2md, notker check/read, Word COM), Groesze +53248, Linux 207/0; acmesh-54s.3.
+
+## 2026-11-19 md2pdf: header and footer, after go-pdfkit/html2pdf
+- Footer "Seite N von M" on every page via gofpdf's {nb} alias, header with the
+  first H1 above a hairline from page 2 on, and the H1 as PDF title.
+- The renderer does not reset the writing position after a page break, so the
+  body ran over the header band; the header function ends with SetY(42).
+- EscapeHTML(false): a PDF has no HTML context, an escaped & reached the reader
+  as "&amp;". Cost: raw HTML tags in Markdown vanish instead of showing as text.
+- Binary 13.35 MB (was 13.34), four new tests, all green.

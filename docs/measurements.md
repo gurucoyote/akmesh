@@ -3020,3 +3020,16 @@ Batteriepruefungen dazu: ca-sni-test1, ca-sni-test2, ca-sni-foreign (Exit 35) un
 ca-sni-notice (die Logzeile ist da). Der Block installiert nichts ins
 Systemverzeichnis: curl bekommt die Wurzel mit --cacert, damit die Batterie
 nichts ausserhalb ihres Verzeichnisses anfasst.
+
+Abschlusslauf nach der lokalen CA (acmesh-816), 19.11.2026:
+
+    ./scripts/check-all.sh   278,15 s   exit 0
+    battery linux            207 Pruefungen, 0 Fehler
+    battery windows          185 Pruefungen, 0 Fehler
+    help-audit               every command answers --help except the documented u-root gap
+    go test -race            ohne Befund
+
+Windows brauchte bei ca-sni-notice eine Warteschleife: die Logzeile schreibt der
+Server in eigener Goroutine, und einmal nachgesehen war sie noch nicht da. Der
+Lauf dauerte laenger als die 190 s vorher, weil der CA-Block auf beiden Zielen
+auf Handshakes wartet.

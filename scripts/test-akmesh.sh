@@ -674,7 +674,17 @@ check ca-sni-test2 "sni-ok" "$(run curl -s -m 5 --cacert "$CA_DIR/local-cert.pem
 # name got its own leaf: hostname verification fails on a foreign certificate.
 # A name outside the CA's constraints is refused in the handshake, not signed.
 checkcode ca-sni-foreign 35 "$(run curl -s -m 5 --cacert "$CA_DIR/local-cert.pem" --resolve "example.com:$CA_PORT:127.0.0.1" "https://example.com:$CA_PORT/" >/dev/null 2>&1; echo $?)"
-check ca-sni-notice "1" "$(grep -c 'not covered by the CA' "$CA_DIR/srv.log")"
+# The server logs the refusal on its own goroutine, so give it a moment: on
+# Windows the line was not there yet when it was looked for once.
+notice=0
+nt=0
+while [ $nt -lt 20 ]; do
+  notice=$(grep -c 'not covered by the CA' "$CA_DIR/srv.log" 2>/dev/null)
+  [ "$notice" = "0" ] || break
+  sleep 0.5
+  nt=$((nt+1))
+done
+check ca-sni-notice "1" "$notice"
 kill $CA_PID 2>/dev/null
 pkill -f "httpd -f -p 127.0.0.1:$CA_PORT" 2>/dev/null
 rm -rf "$CA_DIR"

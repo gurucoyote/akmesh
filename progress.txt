@@ -198,3 +198,8 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
             Symlinks, GNU-Groessen in -h, -R mit Koepfen, -QF mit Indikator. Auf
             Windows kommen die Rechte aus winmode. 14 Tests, Batterie 201/0 Linux
             und 179/0 Windows.
+2026-11-19  Lokale CA (acmesh-816): mkcert -ca-domains mit Namensbeschraenkung,
+            -install/-uninstall fuer den Trust Store, httpd --tls-ca signiert pro
+            SNI-Namen (test1.local, test2.local), curl kann --resolve und --cacert.
+            Gemessen: curl 200 ohne -k, fremder Name Exit 35, ohne Wurzel Exit 60.
+            Batterie 207/0 Linux und 185/0 Windows.

@@ -221,6 +221,10 @@ var Texts = map[string]Entry{
 			"  -out BASE         writes BASE-cert.pem and BASE-key.pem, default the first name\n" +
 			"  -ca BASE          sign with BASE-cert.pem and BASE-key.pem, creating them\n" +
 			"                    on first use; without -ca the leaf signs itself\n" +
+			"  -install          put BASE-cert.pem into the system trust store (root rights\n" +
+			"                    on Linux, the user's root store on Windows); a CA that\n" +
+			"                    does not exist yet is created and installed in one go\n" +
+			"  -uninstall        take it out again\n" +
 			"  -ca-domains SUF   new CA may only sign names ending in these comma separated\n" +
 			"                    suffixes (.local,.test) and no IP address at all; a\n" +
 			"                    trusted local root that can vouch for nothing else\n" +

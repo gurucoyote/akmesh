@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 
 	"akmesh/internal/policy"
 	"strconv"
@@ -66,6 +67,7 @@ type netOptions struct {
 	Verbose   bool
 	Compress  bool
 	Resume    bool
+	WriteOut  string
 }
 
 // runNet performs the request and writes the result. The returned value is the
@@ -184,13 +186,18 @@ func runNet(opts netOptions, stdin *os.File, stdout, stderr *os.File) int {
 	}
 	defer resp.Body.Close()
 
-	if opts.Verbose || opts.Include {
-		fmt.Fprintf(stderrOr(stdout, opts.Include), "< %s\n", resp.Status)
+	if opts.Verbose {
+		fmt.Fprintf(stderr, "< %s\n", resp.Status)
 		for name, values := range resp.Header {
 			for _, v := range values {
-				fmt.Fprintf(stderrOr(stdout, opts.Include), "< %s: %s\n", name, v)
+				fmt.Fprintf(stderr, "< %s: %s\n", name, v)
 			}
 		}
+	}
+	if opts.Include {
+		// -i must look like curl's own output: a status line the way curl
+		// writes it, then the header lines without any prefix (acmesh-ly7).
+		writeResponseHead(stdout, resp)
 	}
 
 	if opts.Fail && resp.StatusCode >= 400 {
@@ -220,20 +227,27 @@ func runNet(opts netOptions, stdin *os.File, stdout, stderr *os.File) int {
 	if opts.Verbose {
 		fmt.Fprintf(stderr, "< %d bytes in %s\n", written, time.Since(start).Round(time.Millisecond))
 	}
+	if opts.WriteOut != "" {
+		// -w writes to stdout even when -o sent the body to a file, and -s does
+		// not mute it (acmesh-ly7).
+		vars := writeOutVars{
+			code: resp.StatusCode,
+			size: written,
+			took: time.Since(start),
+			url:  requestURL,
+			kind: resp.Header.Get("Content-Type"),
+		}
+		if resp.Request != nil && resp.Request.URL != nil {
+			vars.url = resp.Request.URL.String()
+		}
+		fmt.Fprint(stdout, expandWriteOut(opts.WriteOut, vars, stderr))
+	}
 	if opts.JarFile != "" {
 		if err := writeCookieFile(opts.JarFile, client, opts.URL); err != nil {
 			fmt.Fprintf(stderr, "cookie jar: %v\n", err)
 		}
 	}
 	return exitOK
-}
-
-// stderrOr returns stdout when headers should go into the body stream (-i).
-func stderrOr(stdout *os.File, include bool) io.Writer {
-	if include {
-		return stdout
-	}
-	return io.Discard
 }
 
 func buildBody(opts netOptions) ([]byte, string, error) {
@@ -506,4 +520,104 @@ func parseSeconds(s string) (time.Duration, error) {
 		return 0, fmt.Errorf("bad duration %q", s)
 	}
 	return time.Duration(f * float64(time.Second)), nil
+}
+
+// writeResponseHead prints what -i shows: a status line and the headers, with no
+// prefix. curl writes "< HTTP/2 200" for -v and "HTTP/2 200" for -i; agents
+// parse that line, so the shape matters (acmesh-ly7). Header names are printed
+// lowercase as HTTP/2 sends them, sorted, because net/http hands them over in a
+// map and curl's received order is not recoverable from it.
+func writeResponseHead(w io.Writer, resp *http.Response) {
+	if resp.ProtoMajor == 2 {
+		// curl writes "HTTP/2 200 " with a trailing space, because HTTP/2 has no
+		// reason phrase; matching it keeps a byte-by-byte diff clean.
+		fmt.Fprintf(w, "HTTP/2 %d \n", resp.StatusCode)
+	} else {
+		fmt.Fprintf(w, "%s %s\n", resp.Proto, resp.Status)
+	}
+	names := make([]string, 0, len(resp.Header))
+	for name := range resp.Header {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		for _, v := range resp.Header[name] {
+			fmt.Fprintf(w, "%s: %s\n", strings.ToLower(name), v)
+		}
+	}
+	fmt.Fprint(w, "\n")
+}
+
+// writeOutVars are the values -w can print.
+type writeOutVars struct {
+	code int
+	size int64
+	took time.Duration
+	url  string
+	kind string
+}
+
+// expandWriteOut turns a -w format into text: \n, 	, \r and \\ escapes, and
+// the %{name} variables curl knows. An unknown variable is reported the way curl
+// reports it and left in the text, so a typo never silently prints nothing.
+func expandWriteOut(format string, v writeOutVars, stderr *os.File) string {
+	var b strings.Builder
+	for i := 0; i < len(format); i++ {
+		switch format[i] {
+		case '\\':
+			if i+1 >= len(format) {
+				b.WriteByte('\\')
+				continue
+			}
+			i++
+			switch format[i] {
+			case 'n':
+				b.WriteByte('\n')
+			case 't':
+				b.WriteByte('	')
+			case 'r':
+				b.WriteByte('\r')
+			case '\\':
+				b.WriteByte('\\')
+			default:
+				b.WriteByte('\\')
+				b.WriteByte(format[i])
+			}
+		case '%':
+			if i+1 < len(format) && format[i+1] == '{' {
+				if end := strings.IndexByte(format[i+2:], '}'); end >= 0 {
+					name := format[i+2 : i+2+end]
+					if value, ok := writeOutValue(name, v); ok {
+						b.WriteString(value)
+						i += 2 + end
+						continue
+					}
+					fmt.Fprintf(stderr, "curl: unknown --write-out variable: '%s'\n", name)
+					b.WriteString(format[i : i+3+end])
+					i += 2 + end
+					continue
+				}
+			}
+			b.WriteByte('%')
+		default:
+			b.WriteByte(format[i])
+		}
+	}
+	return b.String()
+}
+
+func writeOutValue(name string, v writeOutVars) (string, bool) {
+	switch name {
+	case "http_code", "response_code":
+		return strconv.Itoa(v.code), true
+	case "size_download":
+		return strconv.FormatInt(v.size, 10), true
+	case "time_total":
+		return strconv.FormatFloat(v.took.Seconds(), 'f', 6, 64), true
+	case "url_effective":
+		return v.url, true
+	case "content_type":
+		return v.kind, true
+	}
+	return "", false
 }

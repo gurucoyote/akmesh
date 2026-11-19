@@ -368,6 +368,15 @@ if command -v curl >/dev/null 2>&1; then
   check httpd-file "1" "$(curl -s -m 5 http://127.0.0.1:$HTTPD_PORT/index.html 2>/dev/null | grep -c hd)"
   check httpd-404 "404" "$(curl -s -m 5 -o /dev/null -w '%{http_code}' http://127.0.0.1:$HTTPD_PORT/nix 2>/dev/null)"
 fi
+
+# -w and -i have to look like curl's, because agents parse them (acmesh-ly7).
+# Checked against curl 8 in a Debian container during the same session.
+U="http://127.0.0.1:$HTTPD_PORT/index.html"
+check curl-writeout-code "200" "$(run curl -s -o /dev/null -w '%{http_code}' "$U" | tr -d '\r')"
+check curl-writeout-size "11" "$(run curl -s -o /dev/null -w '%{size_download}' "$U" | tr -d '\r')"
+check curl-include-status "HTTP/1.1 200 OK" "$(run curl -s -i "$U" | tr -d '\r' | head -1)"
+check curl-include-no-prefix "0" "$(run curl -s -i "$U" | tr -d '\r' | grep -c '^< ')"
+check curl-include-has-type "1" "$(run curl -s -i "$U" | tr -d '\r' | grep -c '^content-type:')"
 kill $HTTPD_PID 2>/dev/null
 # The .exe is wrapped by /init, so the shell's $! is not the server: match the
 # port as well, or the next run finds a server on a closed directory.

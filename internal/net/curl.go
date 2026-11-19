@@ -103,6 +103,12 @@ func runCurl(args []string, stdin *os.File, stdout, stderr *os.File) int {
 				opts.Head = true
 			case "include":
 				opts.Include = true
+			case "write-out":
+				v, ok := takeValue()
+				if !ok {
+					return curlUsage(stderr, "--write-out needs a value")
+				}
+				opts.WriteOut = v
 			case "silent":
 				opts.Silent = true
 			case "show-error":
@@ -265,7 +271,7 @@ func applyCurlShort(ch byte, value string, opts *netOptions, stderr *os.File) in
 		}
 		opts.MaxTime = d
 	case 'w':
-		return curlUsage(stderr, "-w (write-out) is not supported")
+		opts.WriteOut = value
 	}
 	return 0
 }

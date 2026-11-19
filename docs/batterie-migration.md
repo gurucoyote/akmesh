@@ -152,3 +152,14 @@ Wird beim Schließen der Kindtickets ergänzt; jedes Entfernen nennt den Go-Test
 die Prüfung ersetzt.
 
     vorher   244 Prüfungen Linux, 222 Windows
+
+Stand 19.11.2026:
+
+    nach find      240 Prüfungen Linux, 218 Windows
+
+| Ticket | Befehl | entfernte Prüfungen | ersetzt durch |
+|---|---|---|---|
+| acmesh-qz2 | find | find-optional-path, find-dot-prefix, find-maxdepth, find-missing | TestStartPathIsOptional, TestMaxDepthReportsTheBoundaryDirectory, TestErrorsAreNotSuccess |
+
+find-exec bleibt: die Prüfung lässt den gebauten Befehl selbst als -exec-Programm
+laufen, das ist der Fall "anderes Ziel", den ein Go-Test nicht abdeckt.

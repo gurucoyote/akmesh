@@ -2335,3 +2335,44 @@ Rotproben: `internal/tools/help_test.go` meldet 42 Fehlschläge, sobald der
 gemeinsame Einstieg `--help` nicht mehr beantwortet; die Meldung bei unbekannter
 Langoption fällt ohne die Reparatur auf `unknown option "--"` zurück (beide
 Proben gefahren, Ausgabe gesehen).
+
+## 2026-11-19 find: Batterie-Prüfungen in Go-Tests (acmesh-qz2)
+
+Vorher: sechs Testfunktionen in internal/forked/find, Abdeckung 70,5 Prozent, fünf
+Batterie-Prüfungen (find-optional-path, find-dot-prefix, find-maxdepth, find-exec,
+find-missing). Nachher: 15 Testfunktionen, Abdeckung 84,8 Prozent, vier der fünf
+Prüfungen entfernt.
+
+    GOTOOLCHAIN=auto go test ./internal/forked/find/ -cover
+    ok  akmesh/internal/forked/find  0.105s  coverage: 84.8% of statements
+
+Neu geprüft, jede mit Blick auf GNU: -name mit Glob, -path, -regex, -mode, -print0,
+-type d, Symlink gemeldet aber nicht verfolgt, Fehler beim Durchlaufen (Startpfad
+unter einer Datei) mit Exit 1, und zehn Parser-Fehler mit Exit 2 und Usage-Zeile.
+
+Fund beim Schreiben von TestPathMatchesTheWholePath: `find . -path './sub/*'` fand
+nichts, GNU fand ./sub/x.txt. Ursache: die Matcher bekamen den Pfad ohne den "./"-
+Präfix, den erst die Ausgabe hinzufügt. Repariert in find_find.go (die Matcher sehen
+den Pfad wie er gedruckt wird); Rotprobe: ohne die Zeile fällt der Test.
+
+Mutationsprobe von Hand, weil gremlins unter der aktuellen Last (load 25 bis 28)
+nach 25 Minuten noch keinen Mutanten gemeldet hatte und abgebrochen wurde:
+
+    depth >= f.maxDepth -> depth >           TestMaxDepthReportsTheBoundaryDirectory rot
+    depth < f.minDepth  -> depth <=          TestMindepth rot
+    "d": os.ModeDir     -> "d": 0            erst ÜBERLEBT, nach dem Anziehen rot
+    "./"+name -> name                        TestStartPathIsOptional rot
+
+Der überlebende Mutant war ein Fehler im Test, nicht im Code: TestTypeDirectory
+prüfte nur die Anzahl der Treffer, und -type d mit Datei-Bits findet ebenfalls drei
+Einträge. Jetzt sind die drei Namen festgeschrieben.
+
+Batterie danach:
+
+    ./scripts/test-akmesh.sh ./akmesh      -> 240 Prüfungen, 0 Fehler
+    ./scripts/test-akmesh.sh ./akmesh.exe  -> 218 Prüfungen, 0 Fehler
+    (vorher 244 und 222; je vier find-Prüfungen entfernt)
+
+Auf Windows lief die Batterie zweimal: der erste Lauf meldete httpd-detach-serves
+rot, der zweite grün. Das ist der bekannte Fall aus acmesh-ert (httpd-Port), nicht
+die find-Migration.

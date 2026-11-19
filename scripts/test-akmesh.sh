@@ -236,15 +236,18 @@ checkcode patch-apply 0 "$(run patch < p.diff >/dev/null 2>&1; echo $?)"
 check patch-result "eins ZWEI drei vier fuenf" "$(tr '\n' ' ' < a.txt | tr -d '\r' | sed 's/ $//')"
 rm -f p.diff a.txt b.txt
 
-# find and grep are forked u-root commands: the agent spellings are the point
+# find and grep are forked u-root commands: the agent spellings are the point.
+# The behaviour checks live in Go since acmesh-qz2 (internal/forked/find):
+#   optional start path, "./" prefix   -> TestStartPathIsOptional
+#   -maxdepth, -mindepth               -> TestMaxDepthReportsTheBoundaryDirectory, TestMindepth
+#   -name, -path, -regex, -type, -mode -> TestNameTakesAGlob, TestPathMatchesTheWholePath,
+#                                         TestRegexMatchesTheWholePath, TestTypeDirectorySelectsDirectories
+#   -not, -print, -print0              -> TestNotAndType, TestExplicitPrintIsTheDefault, TestPrint0EndsEveryNameWithNUL
+#   symlink not followed               -> TestSymlinkIsListedButNotFollowed
+#   parse errors, walk error           -> TestPredicateErrorsAreUsageErrors, TestWalkErrorIsNotSuccess
+# What stays: -exec spawning the built binary itself, which is the per-target case.
 mkdir -p fdir/sub && printf 'x\n' > fdir/a.txt && printf 'y\n' > fdir/sub/b.txt
-check find-optional-path "1" "$(cd fdir && run find -name 'a.txt' | wc -l | tr -d ' ')"
-check find-dot-prefix "./a.txt" "$(cd fdir && run find . -maxdepth 1 -name 'a.txt' | tr -d '\r')"
-check find-maxdepth "0" "$(cd fdir && run find . -maxdepth 1 -name 'b.txt' | wc -l | tr -d ' ')"
-# -exec runs a real program, so the executable has to exist on the target too: the
-# binary itself is the one command both platforms have.
 check find-exec "a.txt" "$(cd fdir && run find . -maxdepth 1 -name 'a.txt' -exec "$BIN" echo {} \; | tr -d '\r' | sed 's|^\./||')"
-checkcode find-missing 1 "$(run find /nicht/vorhanden >/dev/null 2>&1; echo $?)"
 printf 'alpha\nBravo\ncharlie\ndelta alpha\n' > g.txt
 check grep-extended "2" "$(run grep -E 'a.ph' g.txt | wc -l | tr -d ' ')"
 check grep-ignore-case "Bravo" "$(run grep -i bravo g.txt | tr -d '\r')"

@@ -177,7 +177,11 @@ func RunFind(ctx context.Context, f *Finder, opt ...Set) <-chan *File {
 				return next()
 			}
 			for _, m := range f.matchers {
-				ok, merr := m(n, de)
+				// The matchers see the path as it is printed, with the "./"
+				// prefix GNU keeps for a start path of ".". -path and -regex
+				// would otherwise miss every expression an agent writes for
+				// `find .`, because the walk name has no prefix (acmesh-qz2).
+				ok, merr := m(display(f.root, n), de)
 				if merr != nil {
 					f.debug("%s: err on matching: %v", n, merr)
 					return next()

@@ -145,3 +145,10 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
             Gate scripts/help-audit.sh --check in check-all.sh; 89 von 98 Befehlen
             mit usage und Exit 0, acht u-root-Befehle als Liste dokumentiert.
             Batterie 244/0 Linux, 222/0 Windows (akmesh-vr1, -py8, -0bq, -4qw).
+2026-11-19  Batterie-Migration gestartet. Regel und Einordnung jeder Prüfung in
+            docs/batterie-migration.md (akmesh-byw); 24 Prüfungen gehen jetzt als
+            Go-Test, 87 später, 25 beides, 84 bleiben Batterie.
+            find migriert (akmesh-qz2): Abdeckung 70,5 -> 84,8 Prozent, 15 Tests,
+            vier Batterie-Prüfungen entfernt, find-exec bleibt. Dabei gefixt:
+            find . -path './sub/*' fand nichts (Matcher sahen den Pfad ohne "./").
+            Batterie 240/0 Linux, 218/0 Windows.

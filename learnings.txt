@@ -22,3 +22,12 @@
 2026-11-19  Nach einer Umbenennung des Binaries .gitignore mitziehen: /ext und /ext.exe
             galten weiter, akmesh-ext wurde nicht ignoriert und landete im Commit.
             Prüfung: git ls-files gegen die Artefaktnamen in der AGENTS.md.
+2026-11-19  gremlins ist unter Last (load 25+) auf dieser Maschine unbrauchbar: nach
+            25 Minuten kein einziger Mutant, nur "Gathering coverage". Ersatz: vier
+            gezielte Mutationen von Hand (Vergleich umdrehen, Bit aendern) mit
+            go test -run auf die betroffene Funktion. Dauert eine Minute und belegt
+            dasselbe.
+2026-11-19  Ein Mutant hat einen zu schwachen Test gefunden, nicht einen Codefehler:
+            TestTypeDirectory -type d prueft nur die ANZAHL der Treffer, und mit
+            Datei-Bits statt Verzeichnis-Bits findet der Befehl ebenfalls drei
+            Eintraege. Bei Listen immer die Namen festschreiben, nicht die Zahl.

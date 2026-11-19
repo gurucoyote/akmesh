@@ -62,6 +62,21 @@ x.o
 a.b.c
 `,
 	"nul": "b\x00a\x00c\x00",
+	// "h" exists for -h alone: fixture "e" has no SI suffix, so its -h case was
+	// identical to -n and could not fail when the suffix order broke (acmesh-k7t).
+	// The order below is GNU coreutils 9.7's output for this input.
+	"h": `1K
+500
+2M
+3G
+1.5K
+-4
+10
+1k
+0
+1T
+1M500K
+`,
 }
 
 // runSort executes the package the way the binary does: stdin, stdout and
@@ -222,6 +237,18 @@ x.tar.gz
 1e3
 3.5
 10
+`},
+		{name: "-h with SI suffixes", args: []string{"-h"}, fixture: fixtures["h"], want: `-4
+0
+10
+500
+1K
+1k
+1.5K
+1M500K
+2M
+3G
+1T
 `},
 		{name: "-g", args: []string{"-g"}, fixture: fixtures["e"], want: `-5
 -0.5

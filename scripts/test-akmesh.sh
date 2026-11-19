@@ -217,6 +217,9 @@ check sort-default "a b c" "$(printf 'c\na\nb\n' | run sort | tr -d '\r' | tr '\
 check sort-numeric "1 2 10" "$(printf '10\n2\n1\n' | run sort -n | tr -d '\r' | tr '\n' ' ' | sed 's/ $//')"
 check sort-key "c 1|b 2|a 10" "$(printf 'b 2\na 10\nc 1\n' | run sort -t' ' -k2,2n | tr -d '\r' | tr '\n' '|' | sed 's/ $//;s/|$//')"
 check sort-version "v1.2.3 v1.9 v1.10" "$(printf 'v1.10\nv1.9\nv1.2.3\n' | run sort -V | tr -d '\r' | tr '\n' ' ' | sed 's/ $//')"
+# -h is the case the Go test could not fail on: without SI suffixes it equals -n
+# (acmesh-k7t). Order checked against GNU coreutils 9.7.
+check sort-human "500 1K 2M" "$(printf '2M\n1K\n500\n' | run sort -h | tr -d '\r' | tr '\n' ' ' | sed 's/ $//')"
 check sort-unique "1 2" "$(printf '2\n1\n2\n' | run sort -u | tr -d '\r' | tr '\n' ' ' | sed 's/ $//')"
 checkcode sort-disorder 1 "$(printf 'b\na\n' | run sort -c >/dev/null 2>&1; echo $?)"
 checkcode sort-unknown-flag 2 "$(run sort --bogus >/dev/null 2>&1; echo $?)"

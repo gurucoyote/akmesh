@@ -48,28 +48,14 @@ PY
 # commit, so a build after a patch-text change would patch a patched file.
 # Start from the committed text every time.
 if [ -d "$UROOT_DIR/.git" ]; then
-	git -C "$UROOT_DIR" checkout -- cmds/core/ls/ls.go cmds/core/chmod/chmod.go 2>/dev/null || true
+	git -C "$UROOT_DIR" checkout -- cmds/core/chmod/chmod.go 2>/dev/null || true
 fi
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
-# 1. ls: an unknown flag printed the usage and then listed the directory with
-#    exit 0. "-Z", "-t" and "-1" all landed here, and an agent reads exit 0 as
-#    success.
-cat > "$TMP/ls.old" <<'EOF'
-	f.Parse(unixflag.ArgsToGoArgs(args[1:]))
-	return c.list(f.Args())
-EOF
-cat > "$TMP/ls.new" <<'EOF'
-	// akmesh: an unknown flag used to print the usage and then list the
-	// directory anyway, with exit 0. Fail like GNU instead.
-	if err := f.Parse(unixflag.ArgsToGoArgs(args[1:])); err != nil {
-		os.Exit(2)
-	}
-	return c.list(f.Args())
-EOF
-patch_file "$UROOT_DIR/cmds/core/ls/ls.go" "$TMP/ls.old" "$TMP/ls.new"
+# 1. ls is no longer patched here: it is our own command now
+#    (internal/ls, acmesh-wx6), and the unknown-flag exit lives in its Run.
 
 # 2. chmod: the class letters were mandatory, so GNU's "+x" failed to parse;
 #    and the failure message never reached the user because main discarded the
@@ -104,4 +90,4 @@ cat > "$TMP/chmod-main.new" <<'EOF'
 EOF
 patch_file "$UROOT_DIR/cmds/core/chmod/chmod.go" "$TMP/chmod-main.old" "$TMP/chmod-main.new"
 
-echo "u-root commands patched: ls (exit 2 on a bad flag), chmod (+x, error message)"
+echo "u-root commands patched: chmod (+x, error message)"

@@ -193,3 +193,8 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
             ueber winmode), verify prueft Kette und Name mit Exit 0/1/2.
             Batterie um vier Pruefungen erweitert (mkcert, verify, httpd-TLS,
             certinfo): 200/0 Linux, 178/0 Windows. Vier Rotproben getoetet.
+2026-11-19  ls neu geschrieben (acmesh-wx6): acht fehlende Flags (-1 -t -r -i -n
+            -A -u -c), total-Kopf, Jahresangabe fuer alte Dateien, kleines l fuer
+            Symlinks, GNU-Groessen in -h, -R mit Koepfen, -QF mit Indikator. Auf
+            Windows kommen die Rechte aus winmode. 14 Tests, Batterie 201/0 Linux
+            und 179/0 Windows.

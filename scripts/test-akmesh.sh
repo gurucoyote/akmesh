@@ -86,8 +86,11 @@ check awk-sum "summe 5" "$(printf 'x 2\ny 3\n' | run awk '{s+=$2} END {print "su
 check awk-fs "y" "$(printf 'x:y\n' | run awk -F: '{print $2}' | tr -d '\r')"
 
 # silent success: a bad flag must never end with exit 0
+# ls is our own command since acmesh-wx6: an unknown flag is an error, and -t
+# sorts, which the old u-root command refused with exit 2.
 checkcode ls-unknown-flag 2 "$(run ls -Z >/dev/null 2>&1; echo $?)"
-checkcode ls-sort-time 2 "$(run ls -t >/dev/null 2>&1; echo $?)"
+check ls-sort-time "neu,alt" "$(lsd=$(mktemp -d); printf x > "$lsd/alt"; printf x > "$lsd/neu"; touch -d '2020-01-01' "$lsd/alt"; run ls -t "$lsd" | tr -d '\r' | tr '\n' ',' | sed 's/,$//')"
+check ls-long-has-year "ja" "$(lsd=$(mktemp -d); printf x > "$lsd/alt"; touch -d '2020-01-01' "$lsd/alt"; run ls -l "$lsd" | grep -q ' 2020 ' && echo ja)"
 touch xmode
 checkcode chmod-plusx 0 "$(run chmod +x xmode >/dev/null 2>&1; echo $?)"
 # Windows has no execute bit, so the mode itself is only checked where it exists.

@@ -29,7 +29,7 @@ fi
 # u-root commands that still answer --help with something other than help.
 # Listed so that a NEW command without help fails the gate instead of hiding
 # in a big number (acmesh-py8).
-KNOWN_NO_HELP=" ls mv rm mkdir gzip uptime printenv man "
+KNOWN_NO_HELP=" mv rm mkdir gzip uptime printenv man "
 # Commands whose help does not end with 0. GNU /bin/false reports its usage and
 # still exits 1 (measured 19.11.2026); everything else ends with 0.
 KNOWN_NONZERO=" false "

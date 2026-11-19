@@ -104,6 +104,14 @@ und geht durch dieselbe Policy-Huelle wie die eingebauten.
   dort das Einzige getan hat, was die Plattform kann; stat meldet dann den
   0666 der Plattform, also nichts Falsches.
 
+- ls ist seit 19.11.2026 unser eigener Befehl (internal/ls, acmesh-wx6), keine
+  gepatchte u-root-Kopie. Grund: das u-root-ls lehnte -1 -t -r -i -n -A -u -c ab
+  und zeigte bei Dateien aelter als sechs Monate statt des Jahres die Uhrzeit des
+  Laufs. Ein Fork haette pkg/ls und unixflag mitgebracht (374 Zeilen); neu
+  schreiben war kuerzer und erlaubt die GNU-Form an einer Stelle.
+  Nicht nachgebaut: GNU polstert die Spalten in -l auf eigene Mindestbreiten.
+  Die Felder sind identisch, ein awk-Skript sieht keinen Unterschied.
+
 ## Policy
 
 Ein Wrapper, durch den jeder Befehl laeuft: er loest relative Pfade gegen das

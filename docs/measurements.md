@@ -2839,3 +2839,43 @@ verify-wrong-host, certinfo-httpd-tls. Gegenprobe von aussen: curl mit
 --cacert testca-cert.pem gegen denselben TLS-Server gibt HTTP 200.
 
 Batterie danach: 200 Pruefungen Linux, 178 Windows, beide 0 Fehler.
+
+## 2026-11-19 ls neu geschrieben statt geforkt (acmesh-wx6)
+
+Gemessen vorher, GNU ls gegen das u-root-ls in einem Testverzeichnis. Acht Flags
+wurden abgelehnt (Exit 2, "flag provided but not defined"): -1, -t, -r, -i, -n,
+-A, -u, -c. Und die Ausgabe war an vier Stellen falsch: kein total-Kopf, das Jahr
+fehlte bei alten Dateien (2020 wurde zu "Jan 1 19:55", also die Uhrzeit des Laufs),
+Symlinks begannen mit grossem L statt l, -h schrieb "2.1 MB" statt "2.0M". Dazu
+-R ohne Kopf je Verzeichnis und -Q mit -F ohne Indikator.
+
+Entscheidung Martin: forken oder re-implementieren, Ziel ist, dem Agenten zu geben,
+was er erwartet. Gewaehlt: internal/ls mit der Standardbibliothek (docs/groesse.md
+Regel 4). Ein Fork haette pkg/ls (291 Zeilen) und unixflag (83) mitgebracht und
+die vier Fehler geerbt.
+
+Gegenprobe danach, dieselben Aufrufe, GNU gegen akmesh, 19.11.2026:
+    ohne Flag, -1, -a, -A, -r, -S, -d, -F, -Q, -i, -R, -t   Zeichen fuer Zeichen gleich
+    -l    die Felder sind gleich (awk-Vergleich ohne Unterschied), nur die
+          Spaltenbreiten sind enger: GNU polstert auf eigene Mindestbreiten.
+          Wie bei wc als Kosmetik vermerkt, die Werte sind identisch.
+    -lh   total 16K und 2.0M wie GNU.
+
+Windows gemessen (akmesh.exe, NTFS im Windows-Temp, Probe geloescht):
+    chmod 750 neu.txt ; ls -l  ->  -rwx-x--- mit den Rechten aus der DACL,
+                                   also der Modus, den acmesh-m6x aufzeichnet
+    ls -t                      ->  bei gleicher Sekunde entscheidet der Name,
+                                   wie GNU es auf groben Zeitstempeln tut
+
+Tests: 14 Testfunktionen in internal/ls, darunter die Datumsregel (alt mit Jahr,
+neu mit Uhrzeit), total-Kopf, -a gegen -A, -tr, -QF, -R mit "./sub:"-Kopf,
+unbekannte Option Exit 2. Die Sortierung vergleicht ganze Sekunden, weil zwei
+Dateien in derselben Sekunde sonst in Nanosekunden-Reihenfolge stehen und GNU das
+nicht tut.
+
+ls ist aus scripts/cmds.txt gestrichen und aus scripts/patch-uroot.sh entfernt;
+die Hilfe-Luecke in scripts/help-audit.sh schrumpft auf mv rm mkdir gzip uptime
+printenv man. Batterie: ls-sort-time prueft jetzt die echte Sortierung (vorher
+pinnte sie das Ablehnen), ls-long-has-year ist neu.
+
+Batterie danach: 201 Pruefungen Linux, 179 Windows, beide 0 Fehler.

@@ -345,16 +345,27 @@ mkdir -p "$HD_DIR" && printf '<h1>hd</h1>' > "$HD_DIR/index.html"
 # A port of this run: a fixed one collides with a server left over from an
 # earlier run, and then the check answers for the wrong directory.
 HTTPD_PORT=$((18100 + ($$ % 400)))
+# A port that somebody else already answers on was the cause of false failures
+# (acmesh-ert): step on until nothing answers, instead of hoping.
+rent=0
+while [ $rent -lt 20 ] && curl -s -m 1 -o /dev/null "http://127.0.0.1:$HTTPD_PORT/" 2>/dev/null; do
+  HTTPD_PORT=$((HTTPD_PORT + 7))
+  rent=$((rent + 1))
+done
 run httpd -f -p 127.0.0.1:$HTTPD_PORT -h "$HD_DIR" >/dev/null 2>&1 &
 HTTPD_PID=$!
 # The .exe starts slower through the WSL interop than the Linux binary: wait
 # for the port instead of guessing a second (acmesh-m5j).
 tries=0
 while [ $tries -lt 40 ]; do
-  curl -s -m 1 -o /dev/null "http://127.0.0.1:$HTTPD_PORT/index.html" 2>/dev/null && break
+  # Our own page, not just any answer: a foreign server would make this pass.
+  curl -s -m 1 "http://127.0.0.1:$HTTPD_PORT/index.html" 2>/dev/null | grep -q hd && break
   sleep 0.5
   tries=$((tries+1))
 done
+if [ $tries -ge 40 ]; then
+  printf 'httpd: port %d did not serve the test page in 20 s\n' "$HTTPD_PORT" >&2
+fi
 if command -v curl >/dev/null 2>&1; then
   check httpd-file "1" "$(curl -s -m 5 http://127.0.0.1:$HTTPD_PORT/index.html 2>/dev/null | grep -c hd)"
   check httpd-404 "404" "$(curl -s -m 5 -o /dev/null -w '%{http_code}' http://127.0.0.1:$HTTPD_PORT/nix 2>/dev/null)"
@@ -382,15 +393,24 @@ pkill -f "httpd -f -p 127.0.0.1:$HTTPD_PORT" 2>/dev/null
 # caller free; the page must be there afterwards (acmesh-rds). The pid comes from
 # the message, not from $!, because the child detaches itself.
 BG_PORT=$((HTTPD_PORT + 1))
+# Same rule as above: a port somebody else answers on is not ours (acmesh-ert).
+brt=0
+while [ $brt -lt 20 ] && curl -s -m 1 -o /dev/null "http://127.0.0.1:$BG_PORT/" 2>/dev/null; do
+  BG_PORT=$((BG_PORT + 7))
+  brt=$((brt + 1))
+done
 BG_OUT=$($BIN httpd -p 127.0.0.1:$BG_PORT -h "$HD_DIR" 2>&1)
 check httpd-detach-pid "1" "$(printf '%s' "$BG_OUT" | grep -c 'pid [0-9]')"
 BG_PID=$(printf '%s' "$BG_OUT" | grep -o 'pid [0-9]*' | cut -d' ' -f2)
 tries=0
 while [ $tries -lt 20 ]; do
-  curl -s -m 1 -o /dev/null "http://127.0.0.1:$BG_PORT/index.html" 2>/dev/null && break
+  curl -s -m 1 "http://127.0.0.1:$BG_PORT/index.html" 2>/dev/null | grep -q hd && break
   sleep 0.5
   tries=$((tries+1))
 done
+if [ $tries -ge 20 ]; then
+  printf 'httpd detach: port %d did not serve the test page in 10 s (pid %s)\n' "$BG_PORT" "$BG_PID" >&2
+fi
 check httpd-detach-serves "1" "$(curl -s -m 5 http://127.0.0.1:$BG_PORT/index.html 2>/dev/null | grep -c hd)"
 kill "$BG_PID" 2>/dev/null
 pkill -f "httpd -f -p 127.0.0.1:$BG_PORT" 2>/dev/null

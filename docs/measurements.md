@@ -2678,3 +2678,25 @@ cp -n wirkungslos.
 Batterie: 196 Pruefungen Linux, 174 Windows, beide 0 Fehler (vorher 214 und 192).
 Ein Linux-Lauf meldete httpd-file und drei curl-Pruefungen rot, der naechste war
 gruen - derselbe Aussetzer wie in acmesh-ert, jetzt auch auf Linux gesehen.
+
+## 2026-11-19 acmesh-ert: fremder Server auf dem Port war die Ursache
+
+Der Aussetzer in der Batterie (httpd-file, httpd-404, die curl-Pruefungen und
+zuletzt httpd-detach-serves) hatte eine nachweisbare Ursache: der Pruefport war
+belegt, und die Warteschleife brach bei JEDER Antwort ab, auch bei der eines
+fremden Servers. Der fremde Server antwortet dann mit seinem Inhalt, und alle
+folgenden Pruefungen fallen.
+
+Nachweis, mit einem fremden Server (python3 -m http.server) auf 18777 und dem
+Pruefport fest auf 18777 gesetzt:
+
+    ohne Waechter   httpd-file, curl-writeout-size, curl-include-status rot  (196 Pruefungen, 3 Fehler)
+    mit Waechter    196 Pruefungen, 0 Fehler
+
+Die Batterie sucht den Port jetzt: solange etwas auf 127.0.0.1:PORT antwortet,
+geht sie in Siebenerschritten weiter (maximal 20 Versuche), fuer den Vordergrund-
+und den abgesetzten Fall. Die Warteschleifen warten ausserdem auf UNSERE Seite
+(grep auf "hd") statt auf irgendeine Antwort, und nennen Port und PID, wenn nach
+20 Sekunden nichts kommt.
+
+Danach drei Windows-Laeufe hintereinander 174/0 und ein Linux-Lauf 196/0.

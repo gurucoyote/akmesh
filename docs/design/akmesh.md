@@ -112,6 +112,19 @@ und geht durch dieselbe Policy-Huelle wie die eingebauten.
   Nicht nachgebaut: GNU polstert die Spalten in -l auf eigene Mindestbreiten.
   Die Felder sind identisch, ein awk-Skript sieht keinen Unterschied.
 
+## Was sich absetzt, und was nicht
+
+Nur httpd laeuft im Hintergrund (Vorgabe), mit -f im Vordergrund: ein
+Entwicklungswerkzeug, das Dateien ausliefert, ein Testziel abgibt und TLS
+pruefen laesst. Ein abgesetzter Server muss beendbar bleiben, sonst haelt er
+seinen Port - die Batterie prueft das jetzt (httpd-detach-stopped,
+tls-httpd-stopped).
+
+sshd bauen wir bewusst nicht (Entscheidung 19.11.2026, acmesh-p3): ein
+SSH-Server in einem Harness-Binary ist ein Fernzugang, den kein Agent braucht,
+und er braechte Authentifizierung, Schluesselverwaltung und eine eigene
+Absicherung mit. Wir liefern die Client-Seite (ssh, scp).
+
 ## Policy
 
 Ein Wrapper, durch den jeder Befehl laeuft: er loest relative Pfade gegen das

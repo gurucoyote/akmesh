@@ -2760,3 +2760,11 @@ leere Zeile), bleibt die Spalte beim Executable-Namen: ps zeigt dann wie bisher.
 Dazu: killall verglich die Kommandozeile mit firstWord, das die Anfuehrungszeichen
 von Windows ("C:\...\cmd.exe" /c ...) mitnahm. Jetzt werden sie abgeschnitten,
 Test in TestMatchesName.
+
+Abschlusslauf nach acmesh-m6x und acmesh-94e.22:
+
+    ./scripts/check-all.sh   188,66 s   exit 0
+    battery linux            196 Pruefungen, 0 Fehler
+    battery windows          174 Pruefungen, 0 Fehler
+    help-audit               every command answers --help except the documented u-root gap
+    go test -race            ohne Befund

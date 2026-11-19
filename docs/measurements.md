@@ -2094,3 +2094,40 @@ der Rotprobe erkannt), unbekanntes Profil Exit ungleich 0, echter
 TLS-Handshake gegen httptest mit -k, und die Proxy-Verweigerung. Die erste
 Fassung der Profilpruefung war zu schwach: sie pruefte nur, dass ein Name
 akzeptiert wird, nicht welches Profil dahinter steht.
+
+## 2026-11-19 echte Produktsuche bei amazon.de: wer bekommt Treffer
+
+Gezählt wurde der Marker, den Amazon an jeden Treffer haengt
+(data-component-type="s-search-result"), nicht die Seitenlaenge.
+URL: https://www.amazon.de/s?k=kaffeemaschine, 14:13 bis 14:16 Uhr.
+
+    Client                                     Status  Treffer  Preise  Bytes
+    echtes curl 8, Vorgabe                     503     0        0       2292
+    echtes curl 8, Chrome-Kopfzeilen           200     22       35      1,86 MB
+    akmesh, Vorgabe                            200     16       16      913 KB
+    akmesh, Chrome-UA                          200     22       35      1,80 MB
+    uTLS Chrome + Chrome-UA                    200     22       35      1,86 MB
+
+Die 503 ist keine Stoerung im Betrieb: der Rumpf ist Amazons eigene Seite
+"Tut uns Leid!" (ETag "6ae98b03-8f4", x-cache "Error from cloudfront"). Sie
+wird aber nicht zufaellig verteilt - curl bekommt sie fast immer, unser Client
+fast nie.
+
+Einzelkopfzeilen reichen nicht, um den Unterschied zu erklaeren. Sieben
+curl-Laeufe, je eine Kopfzeile variiert:
+
+    Vorgabe                              503   0 Treffer
+    nur Accept: text/html                503   0 Treffer
+    nur Accept-Language                  200   0 Treffer (leere Seite)
+    Chrome-UA allein                     503   0 Treffer
+    Chrome-UA + Accept text/html         503   0 Treffer
+    Chrome-UA + Accept */*               503   0 Treffer
+    Vorgabe-UA + Accept text/html        503   0 Treffer
+
+Erst das Buendel aus Browser-UA, text/html, Accept-Language, Sec-Fetch-* und
+Upgrade-Insecure-Requests brachte curl die volle Liste. Ein einzelner
+Ausloeser laesst sich damit nicht benennen; das ist die Grenze dieser Messung.
+
+Fuer die Praxis zaehlt: akmesh bekommt mit seiner Vorgabe eine echte
+Trefferliste (16 Treffer) und mit einer Browser-Kennung die volle Liste
+(22 Treffer, identisch zu curl mit Browser-Kopfzeilen und zu uTLS).

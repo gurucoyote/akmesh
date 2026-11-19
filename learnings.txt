@@ -31,3 +31,7 @@
             TestTypeDirectory -type d prueft nur die ANZAHL der Treffer, und mit
             Datei-Bits statt Verzeichnis-Bits findet der Befehl ebenfalls drei
             Eintraege. Bei Listen immer die Namen festschreiben, nicht die Zahl.
+2026-11-19  Die Batterie meldet httpd/curl-Fehler, wenn ein alter "acmesh httpd" aus
+            einem anderen Checkout 127.0.0.1:18080 haelt: der antwortet dann mit
+            seinem Wurzelverzeichnis (404). Vor dem Messen "ss -ltnp | grep 18080"
+            pruefen, nicht den Code verdaechtigen. Ticket: acmesh-ert.

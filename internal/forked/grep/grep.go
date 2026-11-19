@@ -25,6 +25,7 @@ package grep
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -32,6 +33,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	akusage "akmesh/internal/usage"
 )
 
 // params is what the command line asked for.
@@ -39,6 +42,7 @@ type params struct {
 	patterns        []string
 	invert          bool
 	recursive       bool
+	followAll       bool // -R: follow every symlink, -r only the start path
 	caseInsensitive bool
 	fixed           bool
 	noShowMatch     bool // -l
@@ -55,6 +59,26 @@ type params struct {
 func usage(w io.Writer) {
 	fmt.Fprintln(w, "usage: grep [-E] [-F] [-i] [-v] [-c] [-n] [-l] [-q] [-h] [-r] [-R]")
 	fmt.Fprintln(w, "            [-w] [-o] [-A NUM] [-B NUM] [-C NUM] [-e PATTERN] PATTERN [FILE...]")
+}
+
+// unknownOption carries the option as the user wrote it, so the message can
+// name the whole token instead of a guessed prefix.
+type unknownOption struct{ opt string }
+
+func (e unknownOption) Error() string { return "unrecognized option '" + e.opt + "'" }
+
+// errText turns a *os.PathError into the wording GNU prints: the bare reason,
+// first letter capitalised, without the Go "stat " or "open " prefix.
+func errText(err error) string {
+	var pe *os.PathError
+	if errors.As(err, &pe) {
+		err = pe.Err
+	}
+	s := err.Error()
+	if s != "" {
+		s = strings.ToUpper(s[:1]) + s[1:]
+	}
+	return s
 }
 
 // parse reads the argument list the way GNU does: combined short options, long
@@ -162,7 +186,7 @@ func parse(args []string) (*params, error) {
 				// Go's regexp is extended already; accepted for the same reason
 				// as sed -E: command lines carry it.
 			default:
-				return nil, fmt.Errorf("unknown option %q", a)
+				return nil, unknownOption{a}
 			}
 		case strings.HasPrefix(a, "-") && len(a) > 1:
 			// Combined short flags, "-rn" like "-r -n".
@@ -175,6 +199,9 @@ func parse(args []string) (*params, error) {
 					p.invert = true
 				case 'r', 'R':
 					p.recursive = true
+					if rest[j] == 'R' {
+						p.followAll = true
+					}
 				case 'l':
 					p.noShowMatch = true
 				case 'c':
@@ -398,6 +425,10 @@ func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 		if err := pr.scan(stdin); err != nil {
 			fmt.Fprintf(stderr, "grep: %v\n", err)
 		}
+		if p.noShowMatch && !p.count && pr.hits > 0 {
+			// -l names the input, and GNU calls stdin "(standard input)".
+			pr.out.WriteString("(standard input)\n")
+		}
 		pr.out.Flush()
 		if p.count {
 			fmt.Fprintf(stdout, "%d\n", pr.hits)
@@ -417,6 +448,10 @@ func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 		if err := pr.scan(f); err != nil {
 			return err
 		}
+		if p.noShowMatch && !p.count && pr.hits > 0 {
+			// -l prints the name once, as soon as one line matched.
+			pr.out.WriteString(name + "\n")
+		}
 		pr.out.Flush()
 		if p.count {
 			if show {
@@ -432,13 +467,13 @@ func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 	for _, path := range p.files {
 		info, err := os.Stat(path)
 		if err != nil {
-			fmt.Fprintf(stderr, "grep: %v\n", err)
+			fmt.Fprintf(stderr, "grep: %s: %s\n", path, errText(err))
 			code = 2
 			continue
 		}
 		if !info.IsDir() {
 			if err := walkOne(path); err != nil {
-				fmt.Fprintf(stderr, "grep: %v\n", err)
+				fmt.Fprintf(stderr, "grep: %s: %s\n", path, errText(err))
 				code = 2
 			}
 			continue
@@ -448,25 +483,64 @@ func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 			code = 2
 			continue
 		}
-		err = filepath.Walk(path, func(name string, fi os.FileInfo, err error) error {
-			if path == "." && fi != nil && name != "." {
-				name = "./" + name
+		// walkPath walks one subtree. root is what the filesystem is asked for,
+		// shown is what the output names, so a followed symlink keeps its own
+		// name instead of leaking the target path. seen holds the resolved
+		// directories, because -R follows links and would otherwise loop.
+		seen := map[string]bool{}
+		var walkPath func(root, shown string) error
+		walkPath = func(root, shown string) error {
+			if real, rerr := filepath.EvalSymlinks(root); rerr == nil {
+				abs, aerr := filepath.Abs(real)
+				if aerr == nil {
+					if seen[abs] {
+						return nil
+					}
+					seen[abs] = true
+				}
 			}
-			if err != nil {
-				fmt.Fprintf(stderr, "grep: %v\n", err)
+			return filepath.Walk(root, func(name string, fi os.FileInfo, werr error) error {
+				display := shown
+				if name != root {
+					rel := strings.TrimPrefix(strings.TrimPrefix(name, root), string(os.PathSeparator))
+					display = shown + "/" + rel
+				}
+				if werr != nil {
+					fmt.Fprintf(stderr, "grep: %s: %s\n", display, errText(werr))
+					code = 2
+					return nil
+				}
+				if fi.IsDir() {
+					return nil
+				}
+				if fi.Mode()&os.ModeSymlink != 0 {
+					// -r leaves a link alone and never reads through it; -R
+					// follows it, a directory as a subtree, a file as a file.
+					if !p.followAll {
+						return nil
+					}
+					target, terr := os.Stat(name)
+					if terr != nil {
+						fmt.Fprintf(stderr, "grep: %s: %s\n", display, errText(terr))
+						code = 2
+						return nil
+					}
+					if target.IsDir() {
+						if real, rerr := filepath.EvalSymlinks(name); rerr == nil {
+							return walkPath(real, display)
+						}
+						return nil
+					}
+				}
+				if err := walkOne(display); err != nil {
+					fmt.Fprintf(stderr, "grep: %s: %s\n", display, errText(err))
+					code = 2
+				}
 				return nil
-			}
-			if fi.IsDir() {
-				return nil
-			}
-			if err := walkOne(name); err != nil {
-				fmt.Fprintf(stderr, "grep: %v\n", err)
-				code = 2
-			}
-			return nil
-		})
-		if err != nil {
-			fmt.Fprintf(stderr, "grep: %v\n", err)
+			})
+		}
+		if err := walkPath(path, path); err != nil {
+			fmt.Fprintf(stderr, "grep: %s: %s\n", path, errText(err))
 			code = 2
 		}
 	}
@@ -477,6 +551,10 @@ func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	p, err := parse(args)
 	if err != nil {
+		var uo unknownOption
+		if errors.As(err, &uo) {
+			return akusage.BadOption("grep", uo.opt, stderr, 2)
+		}
 		fmt.Fprintf(stderr, "grep: %v\n", err)
 		usage(stderr)
 		return 2

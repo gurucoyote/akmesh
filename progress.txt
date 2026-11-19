@@ -152,3 +152,8 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
             vier Batterie-Prüfungen entfernt, find-exec bleibt. Dabei gefixt:
             find . -path './sub/*' fand nichts (Matcher sahen den Pfad ohne "./").
             Batterie 240/0 Linux, 218/0 Windows.
+2026-11-19  grep migriert (acmesh-4aj): Abdeckung 60,6 -> 83,2 Prozent, 24 Tests,
+            alle sieben Batterie-Prüfungen entfernt. Drei GNU-Abweichungen dabei
+            repariert: -l druckte nichts, -r brach an Symlink-Verzeichnissen ab
+            (GNU folgt nur bei -R), Fehlertexte wie "stat x: no such file".
+            Batterie 233/0 Linux, 211/0 Windows.

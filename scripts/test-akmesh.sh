@@ -248,14 +248,14 @@ rm -f p.diff a.txt b.txt
 # What stays: -exec spawning the built binary itself, which is the per-target case.
 mkdir -p fdir/sub && printf 'x\n' > fdir/a.txt && printf 'y\n' > fdir/sub/b.txt
 check find-exec "a.txt" "$(cd fdir && run find . -maxdepth 1 -name 'a.txt' -exec "$BIN" echo {} \; | tr -d '\r' | sed 's|^\./||')"
-printf 'alpha\nBravo\ncharlie\ndelta alpha\n' > g.txt
-check grep-extended "2" "$(run grep -E 'a.ph' g.txt | wc -l | tr -d ' ')"
-check grep-ignore-case "Bravo" "$(run grep -i bravo g.txt | tr -d '\r')"
-check grep-word "2" "$(run grep -w alpha g.txt | wc -l | tr -d ' ')"
-check grep-context "4" "$(run grep -A 1 alpha g.txt | wc -l | tr -d ' ')"
-check grep-only-match "alp" "$(run grep -o alp g.txt | head -1 | tr -d '\r')"
-checkcode grep-no-match 1 "$(run grep zenix g.txt >/dev/null 2>&1; echo $?)"
-check grep-recursive "ja" "$(run grep -r alpha . 2>/dev/null | grep -q 'g\.txt' && echo ja)"
+# grep behaviour lives in Go since acmesh-4aj (internal/forked/grep):
+#   -E, -w, -i            -> TestExtendedRegexpAndWordMatch, TestIgnoreCaseIsAbsolute
+#   -A/-B/-C mit "--"     -> TestContextGroupsAreSeparatedByDashes, TestAdjacentWindowsAreOneGroup
+#   -n mit Kontext        -> TestContextAndNumbersUseTheDashSeparator
+#   -o, -q, -v, -c        -> TestOnlyMatchAndNumbers, TestQuietPrintsNothingAndKeepsTheStatus, TestInvertSelectsTheRest
+#   0/1/2                 -> TestExitStatus, TestMissingFileIsTwoWithGNUsWording, TestBrokenPatternIsTwo
+#   -r gegen -R (Symlink) -> TestDashRAndDashRDifferOnSymlinks
+#   -l, -h, -F, Langformen-> TestFilesWithMatchesNamesOnly, TestFilesWithMatchesOnAStreamAndOnAMiss, TestFixedStringsAreNotPatterns, TestLongOptionNamesMatchTheirShortSpelling
 rm -rf fdir g.txt
 
 # head is a forked u-root command: the short form and -q are the reason

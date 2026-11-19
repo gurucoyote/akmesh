@@ -109,3 +109,292 @@ func TestCountPerFile(t *testing.T) {
 		t.Fatalf("grep -c = %q, want one count per file", out)
 	}
 }
+
+// GNU grep 3.11 in the container produced every expected value below; the
+// fixtures are "alpha 1 2 3 beta" (gap.txt) and the tree with a symlinked
+// directory (real/deep -> ../linkdir).
+
+// TestContextGroupsAreSeparatedByDashes: two matches with a gap between their
+// windows are two groups, and GNU puts a bare "--" between them.
+func TestContextGroupsAreSeparatedByDashes(t *testing.T) {
+	input := "alpha\n1\n2\n3\nbeta\n"
+	out, _, code := runGrep(t, []string{"-A", "1", "-e", "alpha", "-e", "beta"}, input)
+	if code != 0 || out != "alpha\n1\n--\nbeta\n" {
+		t.Fatalf("grep -A 1 = %d, %q, want alpha,1,--,beta", code, out)
+	}
+	out, _, _ = runGrep(t, []string{"-C", "1", "-e", "alpha", "-e", "beta"}, input)
+	if want := "alpha\n1\n--\n3\nbeta\n"; out != want {
+		t.Fatalf("grep -C 1 = %q, want %q", out, want)
+	}
+	out, _, _ = runGrep(t, []string{"-B", "1", "beta"}, input)
+	if want := "3\nbeta\n"; out != want {
+		t.Fatalf("grep -B 1 = %q, want %q", out, want)
+	}
+}
+
+// TestAdjacentWindowsAreOneGroup: two windows that share an edge are one group,
+// so no "--" appears. GNU grep 3.11 prints a, x, b for "a x b" with -A1.
+func TestAdjacentWindowsAreOneGroup(t *testing.T) {
+	out, _, _ := runGrep(t, []string{"-A", "1", "-e", "a", "-e", "b"}, "a\nx\nb\n")
+	if out != "a\nx\nb\n" {
+		t.Fatalf("got %q, want the three lines without a separator", out)
+	}
+}
+
+// TestContextAndNumbersUseTheDashSeparator: with -n a match reads "5:beta", a
+// context line "4-3". Getting this wrong breaks every awk on grep -A output.
+func TestContextAndNumbersUseTheDashSeparator(t *testing.T) {
+	input := "alpha\n1\n2\n3\nbeta\n"
+	out, _, _ := runGrep(t, []string{"-n", "-C", "1", "-e", "alpha", "-e", "beta"}, input)
+	want := "1:alpha\n2-1\n--\n4-3\n5:beta\n"
+	if out != want {
+		t.Fatalf("got %q, want %q", out, want)
+	}
+}
+
+// TestQuietPrintsNothingAndKeepsTheStatus: -q is the cheap yes/no an agent uses
+// in an if; the output must stay empty, the status must speak.
+func TestQuietPrintsNothingAndKeepsTheStatus(t *testing.T) {
+	out, errOut, code := runGrep(t, []string{"-q", "alpha"}, "alpha\n")
+	if code != 0 || out != "" || errOut != "" {
+		t.Fatalf("grep -q hit = %d, stdout %q, stderr %q", code, out, errOut)
+	}
+	if _, _, code := runGrep(t, []string{"-q", "zenix"}, "alpha\n"); code != 1 {
+		t.Fatalf("grep -q miss = %d, want 1", code)
+	}
+}
+
+// TestInvertSelectsTheRest: -v keeps the lines without a match, -cv counts them.
+func TestInvertSelectsTheRest(t *testing.T) {
+	input := "one\nalpha\nmid\nbeta\ngamma\n"
+	out, _, code := runGrep(t, []string{"-v", "alpha"}, input)
+	if code != 0 || out != "one\nmid\nbeta\ngamma\n" {
+		t.Fatalf("grep -v = %d, %q", code, out)
+	}
+	out, _, _ = runGrep(t, []string{"-cv", "alpha"}, input)
+	if out != "4\n" {
+		t.Fatalf("grep -cv = %q, want 4", out)
+	}
+}
+
+// TestMissingFileIsTwoWithGNUsWording: the second cheapest signal an agent reads
+// is the status, the first is the message. "stat x: no such file" is not grep.
+func TestMissingFileIsTwoWithGNUsWording(t *testing.T) {
+	_, errOut, code := runGrep(t, []string{"alpha", "/nicht/vorhanden"}, "")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	if want := "grep: /nicht/vorhanden: No such file or directory\n"; errOut != want {
+		t.Fatalf("stderr %q, want %q", errOut, want)
+	}
+}
+
+// TestUnknownOptionIsTwoWithGNUsWording: the message names the whole token and
+// points at --help, exit 2 as GNU does.
+func TestUnknownOptionIsTwoWithGNUsWording(t *testing.T) {
+	_, errOut, code := runGrep(t, []string{"--bogus", "alpha"}, "alpha\n")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	if !strings.HasPrefix(errOut, "grep: unrecognized option '--bogus'\n") {
+		t.Fatalf("stderr %q does not name the option", errOut)
+	}
+	if !strings.Contains(errOut, "Try 'grep --help'") {
+		t.Fatalf("stderr %q does not point at --help", errOut)
+	}
+}
+
+// TestDirectoryWithoutRecursiveIsTwo: GNU refuses to read a directory and says so.
+func TestDirectoryWithoutRecursiveIsTwo(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("alpha\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, errOut, code := runGrep(t, []string{"alpha", dir}, "")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	if !strings.HasSuffix(errOut, "Is a directory\n") {
+		t.Fatalf("stderr %q does not say Is a directory", errOut)
+	}
+}
+
+// TestDashRAndDashRDifferOnSymlinks: GNU -r never reads through a link, -R does.
+// This is the difference an agent relies on when it does not want to walk into
+// a mounted tree twice.
+func TestDashRAndDashRDifferOnSymlinks(t *testing.T) {
+	base := t.TempDir()
+	real := filepath.Join(base, "linkdir")
+	if err := os.MkdirAll(real, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(real, "inner.txt"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	top := filepath.Join(base, "top")
+	if err := os.MkdirAll(filepath.Join(top, "real"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(top, "plain.txt"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join("..", "..", "linkdir"), filepath.Join(top, "real", "deep")); err != nil {
+		t.Skipf("no symlinks here: %v", err)
+	}
+
+	// -r reads the plain file and stops at the link, so the target directory
+	// contributes only when it is named on the command line itself.
+	out, errOut, code := runGrep(t, []string{"-r", "x", top, real}, "")
+	if code != 0 {
+		t.Fatalf("grep -r = %d, stderr %q", code, errOut)
+	}
+	if got := strings.Count(out, "inner.txt:x"); got != 1 {
+		t.Fatalf("grep -r found inner.txt %d times, want 1 (no walk through the link): %q", got, out)
+	}
+
+	// -R follows the link, so the same target is reached twice.
+	out, _, code = runGrep(t, []string{"-R", "x", top, real}, "")
+	if code != 0 {
+		t.Fatalf("grep -R = %d", code)
+	}
+	if got := strings.Count(out, "inner.txt:x"); got != 2 {
+		t.Fatalf("grep -R found inner.txt %d times, want 2 (link followed): %q", got, out)
+	}
+	if !strings.Contains(out, "deep/inner.txt:x") {
+		t.Fatalf("grep -R = %q does not name the path through the link", out)
+	}
+}
+
+// TestLongOptionNamesMatchTheirShortSpelling: an agent writes --only-matching as
+// often as -o, so both spellings have to end in the same output.
+func TestLongOptionNamesMatchTheirShortSpelling(t *testing.T) {
+	input := "alpha\nBeta\nalpha beta\n"
+	pairs := [][2]string{
+		{"-i", "--ignore-case"},
+		{"-v", "--invert-match"},
+		{"-n", "--line-number"},
+		{"-o", "--only-matching"},
+		{"-w", "--word-regexp"},
+		{"-c", "--count"},
+		{"-q", "--quiet"},
+		{"-h", "--no-filename"},
+		{"-E", "--extended-regexp"},
+		{"-F", "--fixed-strings"},
+	}
+	for _, pair := range pairs {
+		shortOut, shortErr, shortCode := runGrep(t, []string{pair[0], "a.ph"}, input)
+		longOut, longErr, longCode := runGrep(t, []string{pair[1], "a.ph"}, input)
+		if shortCode != longCode || shortOut != longOut || shortErr != longErr {
+			t.Errorf("%s = %d/%q against %s = %d/%q", pair[0], shortCode, shortOut, pair[1], longCode, longOut)
+		}
+	}
+}
+
+// TestIgnoreCaseIsAbsolute: -i keeps the line as written, only the comparison
+// ignores case. Checked against GNU grep 3.11 ("grep -i bravo" on "Bravo").
+func TestIgnoreCaseIsAbsolute(t *testing.T) {
+	out, _, code := runGrep(t, []string{"-i", "bravo"}, "Bravo\nzenix\n")
+	if code != 0 || out != "Bravo\n" {
+		t.Fatalf("grep -i = %d, %q", code, out)
+	}
+}
+
+// TestFilesWithMatchesNamesOnly: -l is what an agent greps for when it wants the
+// file, not the line.
+func TestFilesWithMatchesNamesOnly(t *testing.T) {
+	dir := t.TempDir()
+	hit := filepath.Join(dir, "hit.txt")
+	miss := filepath.Join(dir, "miss.txt")
+	if err := os.WriteFile(hit, []byte("alpha\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(miss, []byte("beta\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, _, code := runGrep(t, []string{"-l", "alpha", hit, miss}, "")
+	if code != 0 || out != hit+"\n" {
+		t.Fatalf("grep -l = %d, %q, want only %q", code, out, hit)
+	}
+	// -h drops the name on a normal match, so the line is the whole output.
+	out, _, _ = runGrep(t, []string{"-h", "alpha", hit, miss}, "")
+	if out != "alpha\n" {
+		t.Fatalf("grep -h = %q, want the bare line", out)
+	}
+}
+
+// TestFixedStringsAreNotPatterns: -F takes the text literally, so the dot of a
+// version number does not match any character.
+func TestFixedStringsAreNotPatterns(t *testing.T) {
+	out, _, code := runGrep(t, []string{"-F", "1.2"}, "1.2\n1x2\n")
+	if code != 0 || out != "1.2\n" {
+		t.Fatalf("grep -F = %d, %q, want only the literal line", code, out)
+	}
+}
+
+// TestValueOptionsInTheirEqualsForm: --context=1 and --regexp=x are the spellings
+// that come out of config files and scripts.
+func TestValueOptionsInTheirEqualsForm(t *testing.T) {
+	input := "alpha\n1\n2\n"
+	out, _, code := runGrep(t, []string{"--after-context=1", "--regexp=alpha"}, input)
+	if code != 0 || out != "alpha\n1\n" {
+		t.Fatalf("--after-context=1 --regexp=alpha = %d, %q", code, out)
+	}
+	out, _, _ = runGrep(t, []string{"--context=1", "alpha"}, input)
+	if want := "alpha\n1\n"; out != want {
+		t.Fatalf("--context=1 = %q, want %q", out, want)
+	}
+	out, _, _ = runGrep(t, []string{"-e", "alpha", "-e", "2"}, "alpha\n2\n")
+	if out != "alpha\n2\n" {
+		t.Fatalf("-e twice = %q", out)
+	}
+}
+
+// TestBadContextLengthIsTwo: "-A x" must not silently mean zero lines.
+func TestBadContextLengthIsTwo(t *testing.T) {
+	for _, args := range [][]string{
+		{"-A", "x", "alpha"},
+		{"-C", "-1", "alpha"},
+		{"--context=abc", "alpha"},
+	} {
+		_, errOut, code := runGrep(t, args, "alpha\n")
+		if code != 2 {
+			t.Errorf("%v: exit %d, want 2 (stderr %q)", args, code, errOut)
+			continue
+		}
+		if !strings.Contains(errOut, "invalid context length") {
+			t.Errorf("%v: stderr %q does not name the reason", args, errOut)
+		}
+	}
+}
+
+// TestMissingOptionValueIsTwo: "-e" at the end has nothing to take.
+func TestMissingOptionValueIsTwo(t *testing.T) {
+	_, errOut, code := runGrep(t, []string{"-e"}, "alpha\n")
+	if code != 2 || !strings.Contains(errOut, "needs a value") {
+		t.Fatalf("grep -e = %d, %q", code, errOut)
+	}
+}
+
+// TestBrokenPatternIsTwo: a bad expression is a usage error, not "no match".
+func TestBrokenPatternIsTwo(t *testing.T) {
+	_, errOut, code := runGrep(t, []string{"["}, "alpha\n")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	if !strings.HasPrefix(errOut, "grep: ") {
+		t.Fatalf("stderr %q has no message", errOut)
+	}
+}
+
+// TestFilesWithMatchesOnAStreamAndOnAMiss: -l names stdin "(standard input)"
+// and says 1 when nothing matched, as GNU does.
+func TestFilesWithMatchesOnAStreamAndOnAMiss(t *testing.T) {
+	out, _, code := runGrep(t, []string{"-l", "alpha"}, "alpha\n")
+	if code != 0 || out != "(standard input)\n" {
+		t.Fatalf("grep -l on stdin = %d, %q", code, out)
+	}
+	out, _, code = runGrep(t, []string{"-l", "zenix"}, "alpha\n")
+	if code != 1 || out != "" {
+		t.Fatalf("grep -l miss = %d, %q, want 1 and no output", code, out)
+	}
+}

@@ -156,9 +156,11 @@ die Prüfung ersetzt.
 Stand 19.11.2026:
 
     nach find      240 Prüfungen Linux, 218 Windows
+    nach grep      233 Prüfungen Linux, 211 Windows
 
 | Ticket | Befehl | entfernte Prüfungen | ersetzt durch |
 |---|---|---|---|
+| acmesh-4aj | grep | grep-extended, grep-ignore-case, grep-word, grep-context, grep-only-match, grep-no-match, grep-recursive | TestExtendedRegexpAndWordMatch, TestIgnoreCaseIsAbsolute, TestContextGroupsAreSeparatedByDashes, TestOnlyMatchAndNumbers, TestExitStatus, TestRecursiveNamesTheFile |
 | acmesh-qz2 | find | find-optional-path, find-dot-prefix, find-maxdepth, find-missing | TestStartPathIsOptional, TestMaxDepthReportsTheBoundaryDirectory, TestErrorsAreNotSuccess |
 
 find-exec bleibt: die Prüfung lässt den gebauten Befehl selbst als -exec-Programm

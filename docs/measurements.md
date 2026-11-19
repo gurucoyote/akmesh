@@ -2376,3 +2376,51 @@ Batterie danach:
 Auf Windows lief die Batterie zweimal: der erste Lauf meldete httpd-detach-serves
 rot, der zweite grün. Das ist der bekannte Fall aus acmesh-ert (httpd-Port), nicht
 die find-Migration.
+
+## 2026-11-19 grep: Batterie-Prüfungen in Go-Tests (acmesh-4aj)
+
+Vorher: sechs Testfunktionen, Abdeckung 60,6 Prozent, sieben Batterie-Prüfungen.
+Nachher: 24 Testfunktionen, Abdeckung 83,2 Prozent, alle sieben entfernt.
+
+Drei Abweichungen von GNU grep 3.11, alle beim Schreiben der Tests gefunden und
+hier repariert:
+
+    grep -l PAT FILE          druckte gar nichts (GNU: den Dateinamen; bei stdin
+                              "(standard input)") - der Name wurde nie ausgegeben
+    grep -r PAT .             brach an einem Symlink auf ein Verzeichnis mit
+                              "is a directory" ab, Exit 2; GNU folgt bei -r nicht
+                              und schweigt, bei -R folgt es
+    grep alpha /fehlt         "grep: stat /fehlt: no such file or directory"
+                              statt "grep: /fehlt: No such file or directory"
+
+Unbekannte Option meldet jetzt `grep: unrecognized option '--bogus'` plus den
+Hinweis auf --help (Exit 2); GNU druckt zusätzlich die Usage-Zeile, das ist die
+bewusste, projektweite Form von usage.BadOption.
+
+Jede Erwartung im Test wurde vorher mit GNU grep 3.11 im Container erzeugt
+(docker.io/library/rust:1-slim-bookworm):
+`grep -A1 -e alpha -e beta` -> alpha, 1, --, beta; `grep -B1 beta` -> 3, beta;
+`grep -n -C1` -> "1:alpha", "2-1", "--", "4-3", "5:beta"; nahtlose Fenster ohne
+"--"; `grep -l` bei stdin -> "(standard input)".
+
+Mutationsprobe von Hand (gremlins unter Last erneut nicht zum Ende gekommen):
+
+    p.quiet   true -> false            TestQuietPrintsNothingAndKeepsTheStatus rot
+    p.wordMatch true -> false          TestExtendedRegexpAndWordMatch rot
+    pr.groups > 0 -> > 1               TestContextGroups... rot
+    first > pr.last+1 -> first > pr.last  erst ÜBERLEBT, nach TestAdjacentWindows rot
+    errText(err) -> err.Error()        TestMissingFileIsTwoWithGNUsWording rot
+    if !p.followAll -> if true/false   TestDashRAndDashRDifferOnSymlinks rot (beide)
+    -l-Ausgabe entfernt                TestFilesWithMatches rot
+
+Der überlebende Mutant deckte eine fehlende Prüfung auf: zwei Kontextfenster, die
+sich berühren, sind eine Gruppe und bekommen kein "--". Test ergänzt, Mutant tot.
+
+Batterie:
+
+    ./scripts/test-akmesh.sh ./akmesh  -> 233 Prüfungen, 0 Fehler
+
+Der erste Lauf meldete vier httpd/curl-Prüfungen rot: ein alter `acmesh httpd`
+aus /root/acmesh hielt 127.0.0.1:18080 und beantwortete die Prüfungen mit
+/tmp/www2 als Wurzel (404 auf die Testdatei). Nach dem Beenden des Restprozesses
+grün. Das ist der Fall aus acmesh-ert, in Zahlen: PID 3999173, Port 18080.

@@ -1964,3 +1964,40 @@ Reife (GitHub-API, mit akmesh curl gelesen, 19.11.2026):
 - Letztes Release v1.8.2 vom 13.01.2026 (Sicherheitsupdate); auf master liegt
   seither ein Fix ("keep a private key for every classical key share"), der
   noch nicht als Release erschienen ist.
+
+## 2026-11-19 amazon.de: welcher Client wird abgewiesen
+
+Gleiche Anfrage, vier Clients, vier Runden, URL
+https://www.amazon.de/s?k=kaffeemaschine, Status aus der Antwort gelesen.
+
+    Runde            1     2     3     4
+    curl 8 Vorgabe   503   503   503   503
+    curl 8 Chrome-UA 503   503   503   503
+    akmesh Vorgabe   503   503   503   503
+    akmesh Chrome-UA 200   200   200   200
+    uTLS Chrome+GoUA 503   503   503   503
+    uTLS Chrome+ChUA 200   200   -     -
+
+Die Erwartung war umgekehrt: nicht unser Client wird abgewiesen, sondern das
+echte curl. Die 503 kommt von CloudFront mit 2292 Bytes, unsere eigene 503 hat
+2904 Bytes, also antworten zwei verschiedene Regeln.
+
+Isolation in zwei weiteren Runden, jede Zeile zweimal gleich:
+
+    akmesh  Go-UA                    503   2904 B
+    akmesh  Chrome-UA                200   1,87 MB
+    akmesh  Chrome-UA + Accept */*   200   1,85 MB
+    akmesh  curl-UA                  200   586 KB
+    akmesh  kein UA + Accept */*     200   913 KB
+    curl8   Chrome-UA, Accept weg    200   1,86 MB
+    curl8   Go-UA, Accept weg        200   923 KB
+
+Damit ist der entscheidende Hebel der User-Agent: die Zeichenkette
+"Go-http-client" wird abgewiesen, jede andere nicht. Der Accept-Kopf
+entscheidet beim echten curl mit: mit dem Vorgabe-Accept ist es 503, ohne
+ist es 200.
+
+Und der Befund, der die Reihenfolge der Stufen bestimmt: uTLS mit exaktem
+Chrome-JA4 und Go-UA bekommt 503, mit Chrome-UA 200 - also genau wie der
+gewoehnliche Go-Client. Die TLS-Ebene allein aendert bei Amazon nichts. Der
+Inhalt haengt dagegen am UA: mit curl-UA 586 KB, mit Chrome-UA 1,87 MB.

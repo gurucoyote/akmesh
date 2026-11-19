@@ -1841,3 +1841,54 @@ Fund beim Umbau, nicht von ihm verursacht: tests von internal/tools waren rot
 5951d37: derselbe Fehlschlag vor der Umbenennung. Mein frueherer Nachweis
 zaehlte nur "ok"-Zeilen und verschluckte die FAIL-Zeile - Zaehlen ist kein
 Nachweis, wenn nur eine Sorte Treffer gezaehlt wird.
+
+## 2026-11-19 Mutationsprobe mit gremlins
+
+Werkzeug: github.com/go-gremlins/gremlins, mit Go 1.27 gebaut.
+Falle: ohne `--timeout-coefficient 50` meldet gremlins jeden Mutanten als
+TIMED OUT, obwohl `go test ./internal/sum` in 6 ms durchläuft. Der Koeffizient
+wird aus dem Erstlauf abgeleitet und ist bei sehr schnellen Suiten zu klein.
+Jeder Lauf hier also:
+
+    gremlins unleash --workers 2 --timeout-coefficient 50 ./internal/<paket>
+
+Ergebnisse vor der Arbeit (getötet / überlebt, Wirkungsgrad):
+
+    shuf        61 / 0    100,00 %
+    sort       440 / 0    100,00 %   (114 nicht abgedeckt)
+    basename    11 / 1     91,67 %
+    shared      10 / 1     90,91 %
+    wc          22 / 4     84,62 %
+    diffpatch   93 / 19    83,04 %
+    tac          9 / 2     81,82 %
+    grep        65 / 20    76,47 %
+    head        37 / 14    72,55 %
+    nl          15 / 6     71,43 %
+    dirname      5 / 2     71,43 %
+    cut         12 / 5     70,59 %
+    sum         27 / 13    67,50 %
+    tr          34 / 21    61,82 %
+    stat         0 / 0      0,00 %   (113 nicht abgedeckt, Tests lagen in internal/tools)
+    truncate     0 / 0      0,00 %   (31 nicht abgedeckt)
+    uname        0 / 0      0,00 %   (7 nicht abgedeckt)
+    forked/xargs  Abbruch: TestParallelRunsEverything rot (Data Race im Testhelfer)
+
+Nach der Arbeit:
+
+    sum         34 / 8     80,95 %
+    stat        29 / 31    48,33 %
+    truncate    17 / 8     68,00 %
+
+Beobachtung zum Werkzeug: gremlins erzeugt nicht jede Falschung. Das von Hand
+gedrehte Vorzeichen in humanCompare (sort -h) erzeugt es nicht, deshalb meldet
+sort 100 Prozent, obwohl dieser Zweig ungeprueft war.
+
+Batterie unmittelbar nach einem parallelen gremlins-Lauf (check-all zusammen mit
+zwei gremlins-Workern): Windows-Batterie 193 Pruefungen, 7 Fehler, alle mit
+"WSL ... UtilAcceptVsock:281: accept4 failed 110"; dieselbe Batterie allein
+gestartet: 193 Pruefungen, 0 Fehler. Heisst: check-all nicht parallel zu
+weiteren Go-Laeufen starten, und ein Fehlschlag dort erst allein nachpruefen,
+bevor er als Regression gilt.
+
+    Batterie Linux      215 Pruefungen, 0 Fehler (vorher 214, +1 sort-human)
+    Batterie Windows    193 Pruefungen, 0 Fehler (vorher 192, +1 sort-human)

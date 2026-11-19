@@ -1533,3 +1533,22 @@ Einordnung:
 - Ohne PDF: goldmark + HTML + EPUB + eigener docx-Schreiber waere rund 12,6 + 1,5
   + 4,8 (epub, dann ohne pdf) = rund 18,9 MB - auch schon ueber der Linie.
   Nur goldmark und HTML: rund 14,2 MB, das geht noch.
+
+## Lizenz-Gate (19.11.2026)
+
+`./scripts/check-licences.sh` prueft die Module, die wirklich kompiliert werden
+(`go list -deps`), ueber ihre Lizenzdatei im Modulcache:
+
+    ./scripts/check-licences.sh
+    check-licences: 8 modules checked, all licences usable     (exit 0)
+
+Rotprobe in /tmp/agplprobe (eigenes Modul mit fumiama/go-docx):
+
+    check-licences: github.com/fumiama/go-docx is on the forbidden list
+    check-licences: github.com/fumiama/go-docx is AGPL, which we cannot ship
+    check-licences: FAILED                                     (exit 1)
+
+Damit ist acmesh heute frei von AGPL: weder go.mod noch go.sum nennen
+fumiama/go-docx, zikani03/goldmark-docx oder unioffice, und der docx-Probebau
+unter /root/.hermes/cache/scratch/goldprobe benutzt archive/zip und
+encoding/xml aus der Standardbibliothek, kein fremdes docx-Paket.

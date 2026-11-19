@@ -9,6 +9,9 @@
 set -e
 cd "$(dirname "$0")/.."
 
+echo "== check-licences"
+./scripts/check-licences.sh
+
 echo "== go test ./..."
 GOTOOLCHAIN=auto GOCACHE="${GOCACHE:-$PWD/.cache}" go test ./...
 

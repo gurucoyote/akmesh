@@ -130,3 +130,25 @@ internal/forked kopierten Befehle (der Copyright-Kopf bleibt dort stehen). Ein
 ausgeliefertes Binary
 muss die Hinweise mitfuehren; dazu gehoert ein NOTICE-Dokument im Repo, bevor
 das erste Binary das Haus verlaesst.
+
+### Was nicht hineingeht (Gate seit 19.11.2026)
+
+"Wir liefern ein Binary" heiszt: die Lizenz des Binaries ist die Summe seiner
+Abhaengigkeiten. Deshalb ist die Lizenzpruefung Teil des Bau-Gates
+(`./scripts/check-licences.sh`, aufgerufen von `check-all.sh`) und keine Notiz in
+einem Ticket:
+
+- Ein Modul mit der GNU Affero General Public License faellt durch, weil AGPL
+  ein Binary, das ueber ein Netz dient, zur Offenlegung zwingt.
+- Ein Modul ohne jede Lizenzdatei faellt ebenfalls durch: Schweigen ist keine
+  Erlaubnis.
+- Eine kurze Verbotsliste faengt die bekannten Faelle auch dann, wenn im Cache
+  kein Lizenztext liegt: `fumiama/go-docx` (AGPL-3.0) und
+  `zikani03/goldmark-docx` (gar keine Lizenz) - beide waren fuer md2docx im
+  Gespraech und sind damit dauerhaft ausgeschlossen.
+- Geprueft werden nur die Module, die wirklich in das Binary kompiliert werden
+  (`go list -deps`), nicht Testhelfer, die nie hineingeraten.
+
+Rotprobe: ein Probe-Modul mit `fumiama/go-docx` in /tmp/agplprobe faellt mit
+zwei Meldungen durch ("is on the forbidden list", "is AGPL, which we cannot
+ship"), exit 1. Im acmesh selbst laufen acht Module durch, exit 0.

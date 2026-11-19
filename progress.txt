@@ -169,3 +169,8 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
             kennt -f-2, druckt Zeilen ohne Trenner ganz und rechnet -b auf Bytes.
             base64 verliert den letzten Block ohne Auffuellung nicht mehr.
             Batterie 224/0 Linux, 202/0 Windows.
+2026-11-19  tr migriert (acmesh-49y): 67,9 -> 80,5 Prozent, drei Batterie-Pruefungen
+            entfernt. Repariert: tr -cd '[:digit:]' loeschte alles (Klasse wurde
+            als Zeichenkette gelesen), Klassen und Gross-/Kleinschreibung jetzt
+            ASCII wie GNU. Offen als Ticket: byte- statt zeichenweise Arbeit und
+            die Form [c*3]. Batterie 221/0 Linux, 199/0 Windows.

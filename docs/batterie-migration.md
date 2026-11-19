@@ -159,9 +159,11 @@ Stand 19.11.2026:
     nach grep      233 Prüfungen Linux, 211 Windows
     nach head/wc   228 Prüfungen Linux, 206 Windows
     nach cut/base64 224 Prüfungen Linux, 202 Windows
+    nach tr        221 Prüfungen Linux, 199 Windows
 
 | Ticket | Befehl | entfernte Prüfungen | ersetzt durch |
 |---|---|---|---|
+| acmesh-49y | tr | tr-range, tr-complement, tr-squeeze | TestRanges, TestDeleteAndComplement, TestSqueeze |
 | acmesh-pfm | cut, base64 | cut-fields, cut-chars, base64-wrap0, base64-default-wrap | TestFieldsAndCharacters, TestSelectionComesOutSorted, TestOverlappingRangesAreOne, TestBytesAndOutputDelimiter, TestWrapWidth, TestWrapWidths, TestDecodeWithoutPaddingKeepsTheLastBlock, TestDecodeRejectsGarbage |
 | acmesh-795 | head, wc | head-short, head-quiet, head-missing, wc-chars, wc-bytes | TestShortFormAndQuiet, TestNegativeCountKeepsEverythingButTheEnd, TestNegativeBytesKeepTheHead, TestZeroPrintsNothing, TestHeadersFollowTheLastOption, TestErrorsAreNotSuccess, TestUmlautsAreCharactersNotBytes, TestLinesWordsBytes, TestTotalLineForSeveralFiles |
 | acmesh-4aj | grep | grep-extended, grep-ignore-case, grep-word, grep-context, grep-only-match, grep-no-match, grep-recursive | TestExtendedRegexpAndWordMatch, TestIgnoreCaseIsAbsolute, TestContextGroupsAreSeparatedByDashes, TestOnlyMatchAndNumbers, TestExitStatus, TestRecursiveNamesTheFile |

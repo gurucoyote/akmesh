@@ -175,9 +175,12 @@ printf 'abc\n' > wct.txt
 #   Summenzeile               -> TestTotalLineForSeveralFiles
 #   --files0-from             -> TestFiles0From, TestFiles0FromWithoutAValueAndAMissingList
 #   fehlende Datei            -> TestMissingFileIsNamedAndOne
-check tr-range "ABC" "$(printf 'abc' | run tr a-z A-Z | tr -d '\r')"
-check tr-complement "1234" "$(printf 'ab12cd34' | run tr -cd 0-9 | tr -d '\r')"
-check tr-squeeze "a b" "$(printf 'a   b' | run tr -s ' ' | tr -d '\r')"
+# tr behaviour lives in Go since acmesh-49y (internal/forked/tr):
+#   a-z A-Z, Bereiche        -> TestRanges, TestUnequalSetsRepeatTheLast
+#   -cd, -C                  -> TestComplement, TestDeleteAndComplement, TestComplementWithAClassTranslates
+#   -s                       -> TestSqueeze, TestSqueezeWithTwoSets, TestSqueezeAloneAndClassErrors
+#   Klassen                  -> TestClassesAreASCII (ASCII wie GNU, nicht Unicode)
+#   Escapes, Operandenfehler -> TestEscapesInSets, TestOperandErrorsFollowGNU
 printf 'x' > tstamp.txt
 checkcode touch-stamp 0 "$(run touch -t 202001020304 tstamp.txt >/dev/null 2>&1; echo $?)"
 case "$BIN" in

@@ -96,10 +96,10 @@ func squeezeSet(args []string, p params) func(rune) bool {
 		}
 		// [:upper:] and [:lower:] stand for their whole class.
 		if set == string(UPPER) {
-			return unicode.IsUpper(r)
+			return sets[UPPER](r)
 		}
 		if set == string(LOWER) {
-			return unicode.IsLower(r)
+			return sets[LOWER](r)
 		}
 		return false
 	}
@@ -132,19 +132,26 @@ const (
 	UPPER Set = "[:upper:]"
 )
 
+// The classes are the ASCII ones, as GNU has them in the C and C.UTF-8
+// locales: "tr [:lower:] [:upper:]" leaves Ä as it is, because ä is not in the
+// class there. Using unicode.IsUpper would also upper-case it and drift from
+// the tool an agent knows (acmesh-49y).
+func asciiRange(r rune, lo, hi rune) bool { return r >= lo && r <= hi }
+
 var sets = map[Set]func(r rune) bool{
 	ALNUM: func(r rune) bool {
-		return unicode.IsLetter(r) || unicode.IsDigit(r)
+		return asciiRange(r, '0', '9') || asciiRange(r, 'A', 'Z') || asciiRange(r, 'a', 'z')
 	},
-
-	ALPHA: unicode.IsLetter,
-	DIGIT: unicode.IsDigit,
-	GRAPH: unicode.IsGraphic,
-	CNTRL: unicode.IsControl,
-	PUNCT: unicode.IsPunct,
-	SPACE: unicode.IsSpace,
-	LOWER: unicode.IsLower,
-	UPPER: unicode.IsUpper,
+	ALPHA: func(r rune) bool { return asciiRange(r, 'A', 'Z') || asciiRange(r, 'a', 'z') },
+	DIGIT: func(r rune) bool { return asciiRange(r, '0', '9') },
+	GRAPH: func(r rune) bool { return r >= 0x21 && r <= 0x7e },
+	CNTRL: func(r rune) bool { return r < 0x20 || r == 0x7f },
+	PUNCT: func(r rune) bool {
+		return r >= 0x21 && r <= 0x7e && !(asciiRange(r, '0', '9') || asciiRange(r, 'A', 'Z') || asciiRange(r, 'a', 'z'))
+	},
+	SPACE: func(r rune) bool { return r == ' ' || (r >= '\t' && r <= '\r') },
+	LOWER: func(r rune) bool { return asciiRange(r, 'a', 'z') },
+	UPPER: func(r rune) bool { return asciiRange(r, 'A', 'Z') },
 }
 
 type transformer struct {
@@ -166,7 +173,11 @@ func setToRune(s Set, outRune rune) *transformer {
 func lowerToUpper() *transformer {
 	return &transformer{
 		transform: func(r rune) rune {
-			return unicode.ToUpper(r)
+			// ASCII only, as GNU in the C and C.UTF-8 locales.
+			if r >= 'a' && r <= 'z' {
+				return r - 'a' + 'A'
+			}
+			return r
 		},
 	}
 }
@@ -174,7 +185,10 @@ func lowerToUpper() *transformer {
 func upperToLower() *transformer {
 	return &transformer{
 		transform: func(r rune) rune {
-			return unicode.ToLower(r)
+			if r >= 'A' && r <= 'Z' {
+				return r - 'A' + 'a'
+			}
+			return r
 		},
 	}
 }
@@ -244,7 +258,7 @@ func parse(args []string, p params) (*transformer, error) {
 
 	switch {
 	case narg == 0:
-		return nil, fmt.Errorf("missing operand")
+		return nil, fmt.Errorf("missing operand\nTry 'tr --help' for more information.")
 	case narg == 1 && del:
 		// -d alone needs one SET; -ds needs two, as GNU says.
 		if p.squeeze {
@@ -253,7 +267,7 @@ func parse(args []string, p params) (*transformer, error) {
 	case narg == 1 && !del && !p.squeeze:
 		return nil, fmt.Errorf("missing operand after '%s'\nTwo strings must be given when translating.\nTry 'tr --help' for more information.", args[0])
 	case narg > 1 && del:
-		return nil, fmt.Errorf("extra operand '%s'", args[0])
+		return nil, fmt.Errorf("extra operand '%s'\nTry 'tr --help' for more information.", args[0])
 	case narg > 2:
 		return nil, fmt.Errorf("extra operand '%s'", args[1])
 	case narg == 1 && !del && p.squeeze:
@@ -313,11 +327,26 @@ func parse(args []string, p params) (*transformer, error) {
 	for _, r := range arg1 {
 		inside[r] = true
 	}
+	// A class as SET1 is not the literal text "[:digit:]": membership has to
+	// come from the class test, or -cd '[:digit:]' would keep nothing and
+	// delete the digits too (acmesh-49y).
+	classSet, isClass := sets[set1]
+	inSet := func(r rune) bool {
+		if isClass {
+			return classSet(r)
+		}
+		return inside[r]
+	}
 	sorted := append([]rune(nil), arg1...)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
 	return &transformer{transform: func(r rune) rune {
-		if inside[r] {
+		if inSet(r) {
 			return r
+		}
+		if isClass {
+			// Without a list of members there is no index into SET2; GNU
+			// repeats the last character, which is all a class caller wants.
+			return arg2[len(arg2)-1]
 		}
 		// SET2 is extended by repeating its last character, so everything
 		// beyond the second character maps to it - GNU's long-standing rule.

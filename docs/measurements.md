@@ -2523,3 +2523,36 @@ wird vom Test-Timeout gefangen). Zwei Mutanten ueberlebten und sind gleichwertig
 Batterie: 224 Prüfungen, 0 Fehler Linux; 202 Prüfungen, 0 Fehler Windows. Der
 erste Windows-Lauf meldete vier Fehler und war im naechsten Lauf gruen - der
 bekannte Lastfall aus acmesh-ert.
+
+## 2026-11-19 tr: Batterie-Prüfungen in Go-Tests (acmesh-49y)
+
+Vorher: fünf Testfunktionen, 67,9 Prozent Abdeckung, drei Batterie-Prüfungen.
+Nachher: 13 Testfunktionen, 80,5 Prozent, alle drei entfernt.
+
+    go test ./internal/forked/tr/ -cover  ->  80.5%
+
+Zwei Abweichungen von GNU tr 9.4 (LC_ALL=C.UTF-8), beide repariert:
+
+    tr -cd '[:digit:]'   löschte ALLES. Im Komplement-Pfad wurde SET1 als
+                         Zeichenkette "[:digit:]" gelesen statt als Klasse, also
+                         fiel jedes Zeichen heraus. Jetzt entscheidet die
+                         Klassenprädikate, ob ein Zeichen bleibt.
+    tr '[:lower:]' '[:upper:]'  machte aus "äöü" ein "ÄÖÜ". GNU lässt Nicht-ASCII
+                         unberührt, weil die Klasse in der C-Locale a-z ist.
+                         Klassen und die Gross-/Kleinschreibung sind jetzt
+                         ASCII-basiert (0-9, A-Z, a-z, ASCII-Satzzeichen).
+
+Dazu: "tr" ohne Argumente und "tr -d a b" drucken jetzt den Hinweis auf --help,
+und die Klassenprädikate sind reine ASCII-Bereiche statt unicode.Is*.
+
+Offen und dokumentiert, nicht gebaut: tr arbeitet hier auf Zeichen, GNU auf Bytes.
+Bei "tr 'äöü' aou" gibt akmesh "aou", GNU in C.UTF-8 "uouuuu" (es verschiebt
+einzelne Bytes). Fuer -c/-C zaehlt akmesh ein Zeichen als eine Einheit, GNU jedes
+Byte, deshalb sind die Ausgaben bei mehrbytigen Zeichen verschieden lang. Ein
+byte-genauer Umbau waere ein Neuschreiben des u-root-Forks; als Ticket
+acmesh-508 festgehalten. Ebenso fehlt die Wiederholungsform [c*3].
+
+Mutationsprobe von Hand, drei Mutanten, alle getötet: Klassenprädikat im
+Komplement ignoriert, Klasse wieder auf unicode.IsLower, -s ohne Wirkung.
+
+Batterie: 221 Prüfungen, 0 Fehler Linux; 199 Prüfungen, 0 Fehler Windows.

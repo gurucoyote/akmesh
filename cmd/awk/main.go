@@ -8,11 +8,12 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/sedawk"
 	"akmesh/internal/policy"
+	"akmesh/internal/sedawk"
+	"akmesh/internal/usage"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(sedawk.Run("awk", os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(usage.RunNamed("awk", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, sedawk.Run))
 }

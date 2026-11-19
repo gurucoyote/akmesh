@@ -9,9 +9,10 @@ import (
 
 	"akmesh/internal/diffpatch"
 	"akmesh/internal/policy"
+	"akmesh/internal/usage"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(diffpatch.Run("patch", os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(usage.RunNamed("patch", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, diffpatch.Run))
 }

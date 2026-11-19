@@ -164,6 +164,11 @@ func parse(args []string) (p params, rest []string, err error) {
 				return p, nil, fmt.Errorf("invalid wrap size: '%s'", value)
 			}
 			p.wrap = n
+		case strings.HasPrefix(a, "--"):
+			// A long option this parser does not know: name the whole token.
+			// Reading only its first letter used to print `unknown option "--"`,
+			// which told nobody what was wrong (acmesh-vr1).
+			return p, nil, fmt.Errorf("unknown option %q", a)
 		case strings.HasPrefix(a, "-") && len(a) > 1:
 			letters := a[1:]
 			for j := 0; j < len(letters); j++ {

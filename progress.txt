@@ -138,3 +138,10 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-19  P2-Tickets abgearbeitet: xargs -P mit einem Schreib-Lock (Data Race im Test, 50/50 grün unter -race), sort -h mit echter SI-Fixture gegen GNU 9.7, sum meldet die Liste wie GNU und hat 80,95 Prozent Wirkungsgrad, stat/truncate/uname-Tests in ihre Pakete (0 auf 47,6/67,2/66,7 Prozent Abdeckung); dabei truncate -c wie GNU umgesetzt. Batterie 215/193 grün.
 2026-11-19  curl: -w und -i-Statuszeile wie das Original (acmesh-ly7), Vorgabe-User-Agent "akmesh/0.1 (curl compatible)" plus Accept */* fuer curl und wget (acmesh-ijz). Vorher hat amazon.de die Go-Kennung mit 503 abgewiesen, nachher kommt die Seite (908 und 916 KB). Batterie 221/0 Linux, Groesze 15.233.148 Bytes.
 2026-11-19  curl --impersonate mit uTLS (chrom acmesh-agy): chrome, edge, firefox, safari, go; ALPN auf http/1.1 gekuerzt und ALPS entfernt, damit Handshake und Protokoll zusammenpassen. JA4 trifft die veroeffentlichten Browserwerte, Groesze +1,27 MB, Batterie 222/0 Linux.
+2026-11-19  Hilfe-Texte: alle eigenen Befehle beantworten --help vor dem Parser
+            (internal/usage, 41 Texte, gemeinsamer Einstieg in jedem cmd/<name>).
+            Fünf Befehle führten --help vorher aus, gefixt; unbekannte Langoption
+            heißt jetzt beim Namen; sum und uname melden wie GNU (Exit 1, Try-Zeile).
+            Gate scripts/help-audit.sh --check in check-all.sh; 89 von 98 Befehlen
+            mit usage und Exit 0, acht u-root-Befehle als Liste dokumentiert.
+            Batterie 244/0 Linux, 222/0 Windows (akmesh-vr1, -py8, -0bq, -4qw).

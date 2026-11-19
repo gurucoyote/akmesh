@@ -24,6 +24,9 @@ GOTOOLCHAIN=auto ./scripts/build-bb.sh linux
 echo "== battery linux"
 ./scripts/test-akmesh.sh ./akmesh
 
+echo "== help audit linux"
+./scripts/help-audit.sh --check ./akmesh
+
 echo "== build windows"
 GOTOOLCHAIN=auto ./scripts/build-bb.sh windows
 

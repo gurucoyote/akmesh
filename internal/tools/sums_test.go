@@ -59,9 +59,10 @@ func TestChecksumFiles(t *testing.T) {
 
 // TestChecksumRefusesUnsupported pins the refusal that keeps a caller from
 // believing a check happened when it did not. Since acmesh-t5k, -c does work
-// (see internal/sum), so only the unknown option is left here.
+// (see internal/sum), so only the unknown option is left here; since
+// acmesh-4qw its exit follows GNU (1, not 2).
 func TestChecksumRefusesUnsupported(t *testing.T) {
-	if _, code := captureIn(t, runSum("md5"), []string{"-Z"}, ""); code != 2 {
-		t.Fatalf("unknown option must be refused with 2, got %d", code)
+	if _, code := captureIn(t, runSum("md5"), []string{"-Z"}, ""); code != 1 {
+		t.Fatalf("unknown option must be refused with 1, got %d", code)
 	}
 }

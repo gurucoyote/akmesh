@@ -11,9 +11,10 @@ import (
 	"akmesh/internal/tac"
 
 	"akmesh/internal/policy"
+	"akmesh/internal/usage"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(tac.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(usage.Run("tac", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, tac.Run))
 }

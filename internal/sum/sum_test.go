@@ -226,16 +226,18 @@ func TestMixedListDoesNotClaimNoLines(t *testing.T) {
 	}
 }
 
-// TestUnknownOptionIsRefused: the message names the option and the exit is
-// non-zero. Known deviation, deliberately pinned: GNU says "unrecognized
-// option '--bogus'", adds a "Try --help" line and exits 1, while akmesh uses
-// its usual "unknown option" and exit 2 (see the ticket for the wording).
+// TestUnknownOptionIsRefused pins GNU's report (acmesh-4qw): the message, the
+// "Try --help" line, exit 1. Measured on coreutils 9.1:
+//
+//	sha256sum: unrecognized option '--bogus'
+//	Try 'sha256sum --help' for more information.
 func TestUnknownOptionIsRefused(t *testing.T) {
 	_, errOut, code := runSum(t, "sha256", "x\n", "--bogus")
-	if code != 2 {
-		t.Fatalf("exit %d, want 2", code)
+	if code != 1 {
+		t.Fatalf("exit %d, want 1", code)
 	}
-	if !strings.Contains(errOut, "unknown option") || !strings.Contains(errOut, "--bogus") {
-		t.Fatalf("stderr %q does not name the option", errOut)
+	want := "sha256sum: unrecognized option '--bogus'\nTry 'sha256sum --help' for more information.\n"
+	if errOut != want {
+		t.Fatalf("stderr %q, want %q", errOut, want)
 	}
 }

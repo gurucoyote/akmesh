@@ -9,9 +9,10 @@ import (
 
 	"akmesh/internal/policy"
 	"akmesh/internal/sedawk"
+	"akmesh/internal/usage"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(sedawk.Run("sed", os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(usage.RunNamed("sed", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, sedawk.Run))
 }

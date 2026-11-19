@@ -1,0 +1,454 @@
+// Package usage carries the short help of the commands that had none: one
+// table, one printer, so that 39 texts do not grow apart (acmesh-py8).
+//
+// The texts describe the flags the implementation really reads, not the flags
+// of GNU. Where GNU's own help is longer, ours stays short on purpose: an agent
+// needs the spelling, not the manual.
+//
+// Measured against Debian bookworm (coreutils 9.1, mawk, net-tools hostname) on
+// 19.11.2026; the numbers are in docs/measurements.md, section "Hilfe-Texte".
+package usage
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"strings"
+)
+
+// Entry is one command's help: the part after the name on the usage line and
+// the flags, one per line and already indented.
+type Entry struct {
+	Synopsis string
+	Flags    string
+}
+
+// exit pins the commands whose help does not end with 0: GNU false reports its
+// usage and still exits 1 (measured 19.11.2026).
+var exit = map[string]int{"false": 1}
+
+// ExitCode is the status --help leaves behind for name (0 unless pinned above).
+func ExitCode(name string) int { return exit[name] }
+
+// Texts is the help of every command that answers --help from here. A command
+// with its own help (curl, wget, jq, ps, policy, sh, ssh, scp, xargs, chmod,
+// file, sort, shuf, the markdown converters) is deliberately absent: its text
+// is longer than a table entry and already correct.
+var Texts = map[string]Entry{
+	"awk": {
+		"[-F SEP] [-v VAR=VALUE]... 'PROGRAM' [FILE...]",
+		"  -F SEP        field separator for input\n" +
+			"  -v VAR=VALUE  assign a variable before the program runs\n" +
+			"  -f FILE       read the program from FILE\n" +
+			"  -e PROGRAM    add a program text (repeatable)",
+	},
+	"base64": {
+		"[-d] [-i] [-w COLS] [FILE]",
+		"  -d                decode instead of encode\n" +
+			"  -i                ignore characters outside the alphabet when decoding\n" +
+			"  -w COLS           wrap output at COLS characters (default 76, 0 = one line)",
+	},
+	"basename": {
+		"NAME [SUFFIX]\n       basename [OPTION]... NAME...",
+		"  -a, --multiple        all arguments are names\n" +
+			"  -s, --suffix=SUFFIX   remove SUFFIX from each name\n" +
+			"  -z, --zero            end each line with NUL, not newline",
+	},
+	"cp": {
+		"[-rR] [-f] [-i] [-n] [-p] [-v] SOURCE... DEST",
+		"  -r, -R, --recursive   copy directories recursively\n" +
+			"  -f, --force           remove the destination if it cannot be opened\n" +
+			"  -i, --interactive     ask before overwriting\n" +
+			"  -n, --no-clobber      never overwrite an existing file\n" +
+			"  -p, --preserve        keep mode, ownership and times\n" +
+			"  -a, --archive         -r -p\n" +
+			"  -P, --no-dereference  never follow a symbolic link\n" +
+			"  -t DIR                copy all sources into DIR\n" +
+			"  -v, --verbose         name each file copied",
+	},
+	"cut": {
+		"(-b LIST | -c LIST | -f LIST) [-d CHAR] [-s] [--complement] [-o] [FILE...]",
+		"  -b, --bytes=LIST        select bytes\n" +
+			"  -c, --characters=LIST   select characters\n" +
+			"  -f, --fields=LIST       select fields, separated by -d\n" +
+			"  -d, --delimiter=CHAR    field delimiter (default TAB)\n" +
+			"  -s, --only-delimited    print no line without a delimiter\n" +
+			"      --complement        invert the selection\n" +
+			"  -o                      use -d between output fields too",
+	},
+	"df": {
+		"[-h] [-k|-m|-g|-b] [-i] [-T] [-P] [FILE...]",
+		"  -h, --human-readable  sizes with a unit suffix\n" +
+			"  -k, -m, -g, -b        unit: kilo, mega, giga, bytes\n" +
+			"  -i, --inodes          inode counts instead of blocks\n" +
+			"  -T, --print-type      print the file system type\n" +
+			"  -P, --portability     POSIX one-line format",
+	},
+	"diff": {
+		"[-u] [-q] [-r] [-N] [-i] [-w] [-b] [-L LABEL] FILE1 FILE2",
+		"  -u, --unified         unified diff (the form agents read)\n" +
+			"  -q, --brief           only say whether the files differ\n" +
+			"  -r, --recursive       compare directories\n" +
+			"  -N, --new-file        treat a missing file as empty\n" +
+			"  -i, --ignore-case     ignore case\n" +
+			"  -w, --ignore-all-space  ignore all white space\n" +
+			"  -b, --ignore-space-change  ignore changes in white space\n" +
+			"  -L LABEL, --label=LABEL    use LABEL instead of the file name",
+	},
+	"dirname": {
+		"NAME...",
+		"  -z, --zero   end each line with NUL, not newline",
+	},
+	"du": {
+		"[-h] [-s] [-k|-m|-g|-b] [-d DEPTH] [FILE...]",
+		"  -h, --human-readable  sizes with a unit suffix\n" +
+			"  -s, --summarize       only a total per argument\n" +
+			"  -k, -m, -g, -b        unit: kilo, mega, giga, bytes\n" +
+			"  -d, --max-depth=DEPTH limit the depth of the report",
+	},
+	"env": {
+		"[-i] [-0] [-u NAME]... [NAME=VALUE]... [COMMAND [ARG]...]",
+		"  -i, --ignore-environment  start with an empty environment\n" +
+			"  -0, --null                end each line with NUL, not newline\n" +
+			"  -u NAME, --unset=NAME     remove NAME from the environment",
+	},
+	"echo": {
+		"[SHORT-OPTION]... [STRING]...\n       echo LONG-OPTION",
+		"  -n    no trailing newline\n" +
+			"  -e    interpret backslash escapes\n" +
+			"  -E    do not interpret backslash escapes (the default)\n" +
+			"--help alone prints this text; with any other word it is echoed like\n" +
+			"every other argument (GNU, measured 19.11.2026).",
+	},
+	"false": {
+		"[ignored command line arguments]",
+		"Exit with a status code indicating failure (1). Arguments are ignored.",
+	},
+	"find": {
+		"[PATH...] [EXPRESSION]",
+		"  -name PATTERN   file name matches the shell pattern\n" +
+			"  -path PATTERN   full path matches the shell pattern\n" +
+			"  -regex PATTERN  full path matches the regular expression\n" +
+			"  -type TYPE      f file, d directory, l symbolic link\n" +
+			"  -maxdepth N     do not descend below N levels\n" +
+			"  -mindepth N     do not report above N levels\n" +
+			"  -not, !         negate the next test\n" +
+			"  -print          print the match (the default)\n" +
+			"  -print0         print the match, NUL-terminated\n" +
+			"  -exec CMD {} ;  run CMD on each match\n" +
+			"  -d              depth first",
+	},
+	"free": {
+		"[-h] [-k|-m|-g|-b] [-t] [-w]",
+		"  -h, --human-readable  sizes with a unit suffix\n" +
+			"  -k, -m, -g, -b        unit: kilo, mega, giga, bytes\n" +
+			"  -t, --total           add a total line\n" +
+			"  -w, --wide            wide output",
+	},
+	"grep": {
+		"[-E] [-F] [-i] [-v] [-w] [-c] [-l] [-n] [-q] [-o] [-r] [-A N] [-B N] [-C N] [-e PATTERN] [PATTERN] [FILE...]",
+		"  -E, --extended-regexp   PATTERN is an extended regular expression\n" +
+			"  -F, --fixed-strings     PATTERN is a literal string\n" +
+			"  -i, --ignore-case       ignore case\n" +
+			"  -v, --invert-match      select non-matching lines\n" +
+			"  -w, --word-regexp       match whole words only\n" +
+			"  -c, --count             print a count of matches per file\n" +
+			"  -l, --files-with-matches  only the names of matching files\n" +
+			"  -n, --line-number       prefix each line with its line number\n" +
+			"  -H, --no-filename       never print the file name\n" +
+			"  -q, --quiet             no output, only the exit status\n" +
+			"  -o, --only-matching     print only the matching part\n" +
+			"  -r, --recursive         search directories recursively\n" +
+			"  -A N, --after-context=N   print N lines after a match\n" +
+			"  -B N, --before-context=N  print N lines before a match\n" +
+			"  -C N, --context=N         print N lines around a match\n" +
+			"  -e PATTERN, --regexp=PATTERN  the pattern (repeatable)",
+	},
+	"head": {
+		"[-n N] [-c N] [-q] [-v] [FILE...]",
+		"  -n N, --lines=N   print the first N lines (default 10)\n" +
+			"  -c N, --bytes=N   print the first N bytes\n" +
+			"  -q, --quiet       never print a file name header\n" +
+			"  -v, --verbose     always print a file name header",
+	},
+	"hexdump": {
+		"[-C] [-n LENGTH] [FILE...]",
+		"  -C, --canonical   canonical hex and ASCII view\n" +
+			"  -n LENGTH         read at most LENGTH bytes",
+	},
+	"hostname": {
+		"",
+		"Print the host name. Setting the name is not supported.",
+	},
+	"iconv": {
+		"[-f FROM] [-t TO] [-c] [-l] [FILE]",
+		"  -f, --from-code=FROM  source encoding\n" +
+			"  -t, --to-code=TO      target encoding\n" +
+			"  -c                    drop characters that cannot be converted\n" +
+			"  -l, --list            list the known encodings",
+	},
+	"kill": {
+		"[-SIGNAL | -s SIGNAL] PID...\n       kill -l [SIGNAL]",
+		"  -l, --list        list the signal names\n" +
+			"  -s SIGNAL         the signal to send by name or number\n" +
+			"  A signal may also be written as -SIGNAL or -NUMBER.",
+	},
+	"killall": {
+		"[-SIGNAL | -s SIGNAL] [-i] [-q] NAME...",
+		"  -s SIGNAL     the signal to send by name or number\n" +
+			"  -i            ask before killing\n" +
+			"  -q, --quiet   print nothing on success",
+	},
+	"nl": {
+		"[-b STYLE] [-n FORMAT] [-w WIDTH] [-s SEP] [-d DELIM] [FILE]",
+		"  -b, --body-numbering=STYLE   a all lines, t text lines only, n none\n" +
+			"  -n, --number-format=FORMAT   ln left, rn right, rz right with zeros\n" +
+			"  -w, --number-width=WIDTH     width of the number\n" +
+			"  -s, --number-separator=SEP   text after the number (default TAB)\n" +
+			"  -d, --section-delimiter=DELIM  section delimiter (default \\:)",
+	},
+	"patch": {
+		"[-R] [-N] [-f] [-i FILE] [-p NUM] [--dry-run] [FILE]",
+		"  -R, --reverse     apply the patch backwards\n" +
+			"  -N, --forward     skip patches that already applied\n" +
+			"  -f, --force       apply even when the file looks wrong\n" +
+			"  -i FILE, --input=FILE  read the patch from FILE\n" +
+			"  -p NUM, --strip=NUM    drop NUM leading directories from file names\n" +
+			"      --dry-run     say what would happen without writing",
+	},
+	"pwd": {
+		"",
+		"Print the current working directory.",
+	},
+	"sed": {
+		"[-n] [-i] [-E] (-e SCRIPT | SCRIPT) [FILE...]",
+		"  -e, --expression=SCRIPT  add SCRIPT (repeatable)\n" +
+			"  -f, --file=FILE          read the script from FILE\n" +
+			"  -n, --quiet, --silent    print nothing unless asked with p\n" +
+			"  -i, --in-place           edit the files in place\n" +
+			"  -E, -r, --regexp-extended  extended regular expressions",
+	},
+	"split": {
+		"[-l N] [-b SIZE] [-n N] [-a N] [-d] [--additional-suffix=SUF] [FILE [PREFIX]]",
+		"  -l N, --lines=N         N lines per file (default 1000)\n" +
+			"  -b SIZE, --bytes=SIZE   SIZE bytes per file, with k/m/g suffix\n" +
+			"  -n N, --number=N        split into N files\n" +
+			"  -a N, --suffix-length=N suffix length (default 2)\n" +
+			"  -d, --numeric-suffixes  numeric instead of alphabetic suffixes\n" +
+			"      --additional-suffix=SUF  append SUF to each name",
+	},
+	"stat": {
+		"[-c FORMAT | --printf=FORMAT] [-t] [-f] [-L] FILE...",
+		"  -c FORMAT, --format=FORMAT  print FORMAT, then a newline\n" +
+			"      --printf=FORMAT         print FORMAT, interpret backslash escapes\n" +
+			"  -t, --terse               terse form\n" +
+			"  -f, --file-system         file system instead of file status\n" +
+			"  -L, --dereference         follow symbolic links",
+	},
+	"sync": {
+		"[FILE...]",
+		"Without FILE operands the whole file system is flushed; with operands only\n" +
+			"the named files are. Windows has no whole-system flush and says so.",
+	},
+	"tac": {
+		"[-s SEP] [-r] [FILE...]",
+		"  -s, --separator=SEP  record separator (default newline)\n" +
+			"  -r, --regex          the separator is a regular expression",
+	},
+	"tar": {
+		"-c|-t|-x [-z] [-v] [-f ARCHIVE] [-C DIR] [--strip-components=N] [--exclude=PATTERN] [FILE...]",
+		"  -c, --create            create an archive\n" +
+			"  -t, --list              list the contents\n" +
+			"  -x, --extract, --get    extract\n" +
+			"  -z, --gzip, --gunzip    gzip compression, detected on read\n" +
+			"  -f ARCHIVE, --file=ARCHIVE  the archive instead of stdin/stdout\n" +
+			"  -v, --verbose           name each file\n" +
+			"  -C DIR, --directory=DIR change to DIR first\n" +
+			"      --strip-components=N  drop N leading directories when extracting\n" +
+			"      --exclude=PATTERN     skip names matching PATTERN\n" +
+			"      --no-recursion        do not descend into directories",
+	},
+	"timeout": {
+		"[-s SIGNAL] DURATION COMMAND [ARG]...",
+		"  -s SIGNAL, --signal=SIGNAL  signal to send (default TERM)\n" +
+			"  DURATION takes s, m, h and d suffixes; 0 disables the limit.\n" +
+			"  Exit 124 when the limit was hit, 125 when timeout itself failed.",
+	},
+	"tr": {
+		"[-c] [-d] [-s] SET1 [SET2]",
+		"  -c, -C, --complement       use the complement of SET1\n" +
+			"  -d, --delete               delete characters in SET1\n" +
+			"  -s, --squeeze-repeats      squeeze repeated characters\n" +
+			"  Ranges like a-z, octal escapes and [:class:] are understood.",
+	},
+	"touch": {
+		"[-a] [-m] [-c] [-t STAMP] [-d STRING] [-r FILE] FILE...",
+		"  -a                 change only the access time\n" +
+			"  -m                 change only the modification time\n" +
+			"  -c, --no-create    do not create a missing file\n" +
+			"  -t STAMP           [[CC]YY]MMDDhhmm[.ss]\n" +
+			"  -d STRING          a date such as '2026-11-19 15:37', RFC3339 or 'now'\n" +
+			"  -r FILE, --reference=FILE  use the times of FILE",
+	},
+	"true": {
+		"[ignored command line arguments]",
+		"Exit with status 0. Arguments are ignored.",
+	},
+	"truncate": {
+		"[-c] -s SIZE FILE...",
+		"  -s SIZE, --size=SIZE  the new size, with k/m/g suffix and + - / % prefixes\n" +
+			"  -c, --no-create       do not create a missing file",
+	},
+	"uname": {
+		"[-a] [-s] [-n] [-r] [-v] [-m] [-p] [-i] [-o]",
+		"  -a, --all                everything below\n" +
+			"  -s, --kernel-name        kernel name (the default)\n" +
+			"  -n, --nodename           network node host name\n" +
+			"  -r, --kernel-release     kernel release\n" +
+			"  -v, --kernel-version     kernel version\n" +
+			"  -m, --machine            machine hardware name\n" +
+			"  -p, --processor          processor type\n" +
+			"  -i, --hardware-platform  hardware platform\n" +
+			"  -o, --operating-system   operating system",
+	},
+	"wc": {
+		"[-l] [-w] [-c] [-m] [-b] [--files0-from=FILE] [FILE...]",
+		"  -l, --lines       count lines\n" +
+			"  -w, --words       count words\n" +
+			"  -c, --bytes       count bytes\n" +
+			"  -m, --chars       count characters\n" +
+			"  -b                count broken UTF-8 codes\n" +
+			"      --files0-from=FILE  read NUL-separated file names from FILE\n" +
+			"  With no letter, lines, words and bytes are reported.",
+	},
+}
+
+// sums are four names on one implementation; they share one text.
+func init() {
+	for _, kind := range []string{"md5", "sha1", "sha256", "sha512"} {
+		name := kind + "sum"
+		Texts[name] = Entry{
+			"[-c] [-b|-t] [--quiet] [--status] [FILE...]",
+			"  -c, --check    check the sums in FILE (or stdin) against the files\n" +
+				"  -b, --binary   read in binary mode (the default here)\n" +
+				"  -t, --text     read in text mode\n" +
+				"      --quiet    print only failures when checking\n" +
+				"      --status   print nothing, only the exit status",
+		}
+	}
+}
+
+// dashH names the commands where -h means help as well. Measured: GNU hostname
+// answers -h with usage, mawk answers "awk: not an option: -h". Everything
+// else keeps -h for what its own parser does with it (grep -h is no-filename,
+// touch -h is a missing operand), which is what the originals do.
+var dashH = map[string]bool{"hostname": true}
+
+// Wanted reports whether this call asks for help. --help counts in any
+// position, as getopt would read it; -h only for the names in dashH.
+//
+// echo is the exception the measurement forces: GNU /usr/bin/echo prints usage
+// only when --help is the sole argument and echoes "--help foo" otherwise, so
+// its entry is only honoured for the one-argument call (see SoleHelp).
+func Wanted(name string, args []string) bool {
+	if _, ok := Texts[name]; !ok {
+		return false
+	}
+	for _, a := range args {
+		if a == "--help" {
+			if name == "echo" {
+				return len(args) == 1
+			}
+			return true
+		}
+		if a == "-h" && dashH[name] {
+			return true
+		}
+	}
+	return false
+}
+
+// Func is the shape every command's Run has. The dispatcher, the tests and the
+// per-command main packages all pass their implementation through this type.
+type Func func(args []string, stdin, stdout, stderr *os.File) int
+
+// Run is the one gate every command goes through: it answers --help when the
+// call asks for it and otherwise calls fn. Because the cmd/<name> mains call
+// it, a command cannot forget the rule, and a broken parser cannot swallow
+// "--help" as an operand (acmesh-py8). Before this, hostname read it as a new
+// host name and sync as a file to flush.
+func Run(name string, args []string, stdin, stdout, stderr *os.File, fn Func) int {
+	if Wanted(name, args) {
+		if code, ok := Help(name, stdout); ok {
+			return code
+		}
+	}
+	return fn(args, stdin, stdout, stderr)
+}
+
+// RunNamed is Run for the packages that serve several commands from one Run
+// (sedawk, disk, proc, corecmd, diffpatch, sum): they take the command name as
+// their first argument.
+func RunNamed(name string, args []string, stdin, stdout, stderr *os.File, fn func(string, []string, *os.File, *os.File, *os.File) int) int {
+	return Run(name, args, stdin, stdout, stderr, func(args []string, stdin, stdout, stderr *os.File) int {
+		return fn(name, args, stdin, stdout, stderr)
+	})
+}
+
+// RunIO is Run for the commands whose Run takes io.Reader and io.Writer (the
+// forks of u-root and the checksum family), so they need no adapter either.
+func RunIO(name string, args []string, stdin io.Reader, stdout, stderr io.Writer, fn func([]string, io.Reader, io.Writer, io.Writer) int) int {
+	if Wanted(name, args) {
+		if code, ok := Help(name, stdout); ok {
+			return code
+		}
+	}
+	return fn(args, stdin, stdout, stderr)
+}
+
+// RunNamedIO is RunNamed for the same io-based signature.
+func RunNamedIO(name string, args []string, stdin io.Reader, stdout, stderr io.Writer, fn func(string, []string, io.Reader, io.Writer, io.Writer) int) int {
+	return RunIO(name, args, stdin, stdout, stderr, func(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+		return fn(name, args, stdin, stdout, stderr)
+	})
+}
+
+// Help writes the help of name and reports the exit status and whether there
+// was a text. false keeps its 1, everything else ends with 0.
+func Help(name string, w io.Writer) (int, bool) {
+	e, ok := Texts[name]
+	if !ok {
+		return 0, false
+	}
+	if e.Synopsis == "" {
+		fmt.Fprintf(w, "Usage: %s\n", name)
+	} else {
+		fmt.Fprintf(w, "Usage: %s %s\n", name, e.Synopsis)
+	}
+	if e.Flags != "" {
+		fmt.Fprintf(w, "\n%s\n", strings.TrimRight(e.Flags, "\n"))
+	}
+	return exit[name], true
+}
+
+// Render writes the help of name and reports whether it had one.
+func Render(name string, w io.Writer) bool {
+	_, ok := Help(name, w)
+	return ok
+}
+
+// BadOption reports an unknown option the way coreutils does: the message, the
+// pointer to --help, and exit 1 (acmesh-4qw). Measured on coreutils 9.1:
+//
+//	$ sha256sum --bogus
+//	sha256sum: unrecognized option '--bogus'
+//	Try 'sha256sum --help' for more information.
+//	$ echo $?
+//	1
+//
+// timeout reports the same lines but exits 125; it passes that code in.
+func BadOption(prog, opt string, stderr io.Writer, code int) int {
+	fmt.Fprintf(stderr, "%s: unrecognized option '%s'\n", prog, opt)
+	fmt.Fprintf(stderr, "Try '%s --help' for more information.\n", prog)
+	return code
+}

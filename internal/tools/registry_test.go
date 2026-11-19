@@ -27,12 +27,18 @@ func TestCommandTableMatchesEntryPoints(t *testing.T) {
 				"the combined binary cannot reach it", name, name)
 			continue
 		}
-		// Three shapes are allowed since acmesh-mq1: the main calls the table
-		// (tools.Run("name")), it calls a package named after the command
-		// (cp.Run(...)), or it calls such a package with the bare algorithm
-		// name (sum.Run("sha256")). A copy-paste of another command's main is
-		// still caught, because then none of these appear.
+		// The shapes allowed since acmesh-mq1 and acmesh-py8: the main calls the
+		// table (tools.Run("name")), a package named after the command
+		// (cp.Run(...)), such a package with the bare algorithm name
+		// (sum.Run("sha256")), or the shared help gate with the command's own
+		// name (usage.Run("name", ..., cp.Run)). A copy-paste of another
+		// command's main is still caught: then the name in the gate is the
+		// other command's, and none of the shapes below match.
 		accepted := []string{
+			`usage.Run("` + name + `"`,
+			`usage.RunIO("` + name + `"`,
+			`usage.RunNamed("` + name + `"`,
+			`usage.RunNamedIO("` + name + `"`,
 			`Run("` + name + `"`,
 			name + `.Run(`,
 			`Run("` + strings.TrimSuffix(name, "sum") + `"`,

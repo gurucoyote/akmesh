@@ -12,9 +12,10 @@ import (
 	"akmesh/internal/forked/touch"
 
 	"akmesh/internal/policy"
+	"akmesh/internal/usage"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(touch.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(usage.RunIO("touch", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, touch.Run))
 }

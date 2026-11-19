@@ -2248,3 +2248,90 @@ Folge fuer acmesh: die Regel aus der ersten Fassung war falsch. Richtig ist
 
 Damit ist die Liste der Ausnahmen kleiner als gedacht, und -h bei df, du, free
 und sort bleibt human readable, wie es das Original will.
+
+## 2026-11-19 Hilfe-Texte: vorher und nachher (akmesh-vr1, akmesh-py8, akmesh-4qw)
+
+Gemessen mit `./scripts/help-audit.sh`, 98 Befehle, je `--help` und `-h`, stdin zu,
+Zeitlimit 5 s. Gezählt wird: usage-Text in der ersten Zeile und Exit-Code.
+
+Vorher (Binary vom 19.11.2026, 14:23):
+
+    50 Befehle: usage-Text, Exit 0
+     7 Befehle: usage-Text, Exit ungleich 0
+    41 Befehle: gar kein usage-Text
+
+Nachher (Binary vom 19.11.2026, 16:06):
+
+    89 Befehle: usage-Text, Exit 0
+     6 Befehle: usage-Text, Exit ungleich 0
+     3 Befehle: gar kein usage-Text
+
+Die sechs mit anderem Exit sind ls (2), mv (1), rm (1), mkdir (1), gzip (1) - alle
+aus u-root - und false, das wie GNU seinen Hilfetext mit 1 beendet. Ohne usage
+bleiben uptime, printenv und man, ebenfalls u-root.
+
+Umsetzung: eine Tabelle in `internal/usage` mit 41 kurzen Texten aus den echten
+Parsern und ein gemeinsamer Einstieg (`usage.Run`, `usage.RunIO`, je eine Variante
+für Pakete mit mehreren Befehlen), den jeder `cmd/<name>/main.go` benutzt. Vorher
+hing die Hilfe an der Befehlstabelle in `internal/tools`; die erreicht das Binary
+aber nicht, weil jeder Einstieg sein eigenes Paket aufruft (akmesh-mq1).
+
+`scripts/help-audit.sh --check` ist das Gate: es schlägt fehl, sobald ein Befehl
+ohne Hilfe dazukommt. Die acht u-root-Befehle stehen als benannte Liste darin, damit
+die Lücke sichtbar bleibt statt in einer großen Zahl zu verschwinden. `check-all.sh`
+ruft das Gate nach der Linux-Batterie. Rotprobe: ein Ersatz-Binary, das für wc nur
+"wc: unknown option" ausgibt, lässt das Gate mit Exit 1 und der Zeile
+"wc(keine usage) wc(exit=1)" abbrechen.
+
+## 2026-11-19 Gegenprobe der Originale, enger gefasst
+
+Im Debian-Container (rust:1-slim-bookworm, coreutils 9.1, mawk, net-tools hostname),
+ohne stdin:
+
+    base64 --help    -> Usage, Exit 0
+    wc --help        -> Usage, Exit 0
+    sync --help      -> Usage, Exit 0
+    touch -h         -> "touch: missing file operand", Exit 1
+    hostname --help  -> Usage, Exit 255
+    hostname -h      -> Usage, Exit 255
+    awk -h (mawk)    -> "awk: not an option: -h", Exit 2
+    true --help      -> Usage, Exit 0
+    false --help     -> Usage, Exit 1
+    /usr/bin/echo --help       -> Usage, Exit 0
+    /usr/bin/echo --help foo   -> "--help foo", Exit 0
+    sha256sum --bogus -> "sha256sum: unrecognized option '--bogus'",
+                         "Try 'sha256sum --help' for more information.", Exit 1
+    wc --bogus        -> dieselben zwei Zeilen, Exit 1
+
+Damit ist die Notiz "alle Originale enden mit 0" im Abschnitt darüber falsch:
+hostname endet mit 255, false mit 1. akmesh bleibt bei 0, außer bei false, das wie
+GNU 1 liefert (acmesh-py8 sagt für alles andere Exit 0 zu; die Abweichung zu
+hostname ist damit bewusst und steht hier).
+
+`-h` bleibt bei allem außer hostname, was der eigene Parser damit tut: mawk kennt
+`-h` nicht als Hilfe, die frühere Messung galt für gawk. touch -h ist bei GNU und
+bei uns dieselbe Meldung.
+
+`echo` folgt GNU: `--help` als einziges Argument druckt die Hilfe, mit einem
+weiteren Wort wird "--help" ausgegeben (acmesh-0bq, entschieden nach der Regel in
+AGENTS.md, dem Original zu folgen).
+
+## 2026-11-19 Größe und Prüfungen der Hilfe-Arbeit
+
+    akmesh    vorher 16.507.004 Bytes, nachher 16.535.676 Bytes  (+28.672)
+    akmesh.exe vorher 16.611.840 Bytes, nachher 16.636.928 Bytes (+25.088)
+    makebb    linux 2026-11-19 16:06, windows 2026-11-19 16:09
+    Batterie  ./scripts/test-akmesh.sh ./akmesh     -> 244 Prüfungen, 0 Fehler
+    Batterie  ./scripts/test-akmesh.sh ./akmesh.exe -> 222 Prüfungen, 0 Fehler
+              (vorher 222 auf Linux gemessen; die 22 neuen Prüfungen ergeben auf
+              Windows 222, also 200 vorher - gerechnet, nicht gemessen, weil das
+              alte Binary überschrieben ist)
+    Gate      ./scripts/help-audit.sh --check ./akmesh      -> Exit 0
+    Gate      ./scripts/help-audit.sh --check ./akmesh.exe  -> Exit 0
+              (Windows erlaubt zusätzlich tracedeps: der Befehl verweigert dort
+              die Arbeit selbst mit "tracing is built for linux/amd64 only")
+
+Rotproben: `internal/tools/help_test.go` meldet 42 Fehlschläge, sobald der
+gemeinsame Einstieg `--help` nicht mehr beantwortet; die Meldung bei unbekannter
+Langoption fällt ohne die Reparatur auf `unknown option "--"` zurück (beide
+Proben gefahren, Ausgabe gesehen).

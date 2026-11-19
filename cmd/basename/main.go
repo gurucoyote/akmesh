@@ -11,9 +11,10 @@ import (
 	"akmesh/internal/basename"
 
 	"akmesh/internal/policy"
+	"akmesh/internal/usage"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(basename.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(usage.Run("basename", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, basename.Run))
 }

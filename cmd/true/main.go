@@ -10,9 +10,10 @@ import (
 
 	"akmesh/internal/corecmd"
 	"akmesh/internal/policy"
+	"akmesh/internal/usage"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(corecmd.Run("true", os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(usage.RunNamed("true", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, corecmd.Run))
 }

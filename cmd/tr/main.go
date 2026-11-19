@@ -12,9 +12,10 @@ import (
 	"akmesh/internal/forked/tr"
 
 	"akmesh/internal/policy"
+	"akmesh/internal/usage"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(tr.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(usage.RunIO("tr", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, tr.Run))
 }

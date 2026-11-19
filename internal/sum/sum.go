@@ -18,7 +18,16 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	"akmesh/internal/usage"
 )
+
+// RunCommand is Run for a command name such as "sha256sum": the name carries
+// the algorithm, the file names start after it (used by cmd/sha256sum and the
+// other three).
+func RunCommand(name string, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	return Run(strings.TrimSuffix(name, "sum"), args, stdin, stdout, stderr)
+}
 
 // Run executes one checksum command. kind is "md5", "sha1", "sha256" or
 // "sha512"; the output format is "<hex>  <name>", with "-" for standard input.
@@ -36,8 +45,8 @@ func Run(kind string, args []string, stdin io.Reader, stdout, stderr io.Writer) 
 			quiet = true
 		default:
 			if len(a) > 0 && a[0] == '-' && a != "-" {
-				fmt.Fprintf(stderr, "%ssum: unknown option %q\n", kind, a)
-				return 2
+				// GNU: "unrecognized option '--bogus'", a Try line, exit 1 (acmesh-4qw).
+				return usage.BadOption(kind+"sum", a, stderr, 1)
 			}
 			files = append(files, a)
 		}

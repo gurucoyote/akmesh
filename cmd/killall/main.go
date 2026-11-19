@@ -11,9 +11,10 @@ import (
 	"akmesh/internal/proc"
 
 	"akmesh/internal/policy"
+	"akmesh/internal/usage"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(proc.Run("killall", os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(usage.RunNamed("killall", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, proc.Run))
 }

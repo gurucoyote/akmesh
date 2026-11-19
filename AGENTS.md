@@ -12,6 +12,10 @@ are English; documents meant for Martin are German.
   `#` comments allowed). Adding a command means adding it here.
 - `internal/tools/`: our own commands in one package with one table. The table is
   what the multicall binary dispatches on and what the per-name entry points use.
+- `internal/usage/`: the shared `--help` answer (one table of short texts, plus
+  `usage.Run`/`RunIO`, which every `cmd/<name>` main calls before its parser
+  runs). See docs/design/akmesh.md, "Hilfe-Texte"; the gate is
+  `scripts/help-audit.sh --check`.
 - `cmd/<name>/`: one tiny `main` per own command, so that the combined binary
   reaches it under its plain name (`akmesh sed`). Adding a command means: implement
   in `internal/tools`, register in the table, add `cmd/<name>`.

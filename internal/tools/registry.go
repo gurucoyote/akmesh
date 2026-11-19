@@ -19,11 +19,14 @@ import (
 	"akmesh/internal/policy"
 	"akmesh/internal/shuf"
 	"akmesh/internal/sort"
+	"akmesh/internal/usage"
 )
 
 // Func is the signature every command implements. It receives the arguments
 // after the command name plus the standard streams, and returns the exit code.
-type Func func(args []string, stdin *os.File, stdout, stderr *os.File) int
+// It is an alias so that a command's Run can be handed to the shared help gate
+// without a conversion.
+type Func = usage.Func
 
 // Commands maps a command name to its implementation.
 var Commands = map[string]Func{
@@ -91,6 +94,21 @@ func ensurePolicy() { policy.Enter() }
 // with, minus argv[0]. It is the entry point for the per-command main packages.
 func Run(name string) int {
 	ensurePolicy()
+	var args []string
+	if len(os.Args) > 1 {
+		args = os.Args[1:]
+	}
+	return RunArgs(name, args, os.Stdin, os.Stdout, os.Stderr)
+}
+
+// RunArgs executes one command the way the dispatcher does: the shared --help
+// answer first, then the command's own parser. Tests call it so that they
+// exercise the same path as the binary (acmesh-py8).
+//
+// The help is answered here and not inside each command, so a broken option
+// parser cannot swallow "--help" as an operand: before this, hostname read it
+// as a new host name and sync as a file to flush.
+func RunArgs(name string, args []string, stdin, stdout, stderr *os.File) int {
 	fn, ok := Commands[name]
 	if !ok {
 		// Only reachable through a table that disagrees with cmd/<name>; the
@@ -98,11 +116,7 @@ func Run(name string) int {
 		fmt.Fprintf(os.Stderr, "%s: unknown command %q\n", programName(), name)
 		return 2
 	}
-	var args []string
-	if len(os.Args) > 1 {
-		args = os.Args[1:]
-	}
-	return fn(args, os.Stdin, os.Stdout, os.Stderr)
+	return usage.Run(name, args, stdin, stdout, stderr, fn)
 }
 
 // programName is the name the program was invoked as, so a message never claims

@@ -8,6 +8,8 @@ import (
 	"os"
 	"runtime"
 	"strings"
+
+	"akmesh/internal/usage"
 )
 
 type unameFlags struct {
@@ -44,8 +46,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			case "--operating-system":
 				f.osname = true
 			default:
-				fmt.Fprintf(stderr, "uname: unrecognized option %q\nTry 'uname --help' for more information.\n", a)
-				return 2
+				return usage.BadOption("uname", a, stderr, 1)
 			}
 		case strings.HasPrefix(a, "-") && a != "-":
 			// Combined short options, "-sn" like "-s -n".

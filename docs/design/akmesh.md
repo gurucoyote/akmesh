@@ -124,6 +124,31 @@ flag-Paket und unixflag: ein Fork, der weniger Fremdcode mitzieht, ist der
 kleinere. Ein Dateiname aus pkg/ bekommt das Elternverzeichnis als Praefix
 (pkg/find/find.go -> find_find.go), sonst kollidiert er mit dem Befehl selbst.
 
+## Hilfe-Texte (--help)
+
+Seit 19.11.2026 gibt es einen gemeinsamen Hilfe-Einstieg: internal/usage hält
+eine Tabelle mit einem kurzen Text je Befehl (Synopsis plus die Schalter, die der
+eigene Parser wirklich liest) und beantwortet `--help`, bevor der Befehl seinen
+Parser startet. Jeder `cmd/<name>/main.go` ruft `usage.Run`, `usage.RunIO` oder die
+Namens-Variante davon und reicht seine eigene `Run`-Funktion durch.
+
+Der Grund für die Stelle: die Hilfe lag zuerst an der Befehlstabelle in
+internal/tools, und die erreicht das Binary nicht - jeder Einstieg ruft sein
+eigenes Paket direkt auf (akmesh-mq1). Beim Dispatcher statt im Befehl ist die
+Regel außerdem nicht umgehbar: fünf Befehle hatten `--help` vorher ausgeführt
+statt beantwortet (hostname setzte den Namen, sync öffnete eine Datei).
+
+Regeln: `--help` druckt eine Usage-Zeile und endet mit 0; Ausnahme ist `false`,
+das wie GNU 1 liefert. `-h` bleibt, was der eigene Parser damit tut, nur hostname
+beantwortet es als Hilfe wie das Original. Befehle mit eigenem, längerem Hilfe-Text
+(curl, wget, jq, ps, sh, ssh, scp, xargs, chmod, file, sort, shuf, die
+Markdown-Wandler) stehen nicht in der Tabelle und behalten ihren Text.
+
+Prüf-Gate: `scripts/help-audit.sh --check <binary>` in check-all.sh. Die acht
+u-root-Befehle ohne Hilfe (ls, mv, rm, mkdir, gzip, uptime, printenv, man) stehen
+dort als benannte Liste, damit ein neuer Befehl ohne Hilfe auffällt statt in einer
+großen Zahl zu verschwinden.
+
 ## Lizenz
 
 BSD-3-Clause fuer mvdan/sh, u-root und gobusybox, auch fuer die nach

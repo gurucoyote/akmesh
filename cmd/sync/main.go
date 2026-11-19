@@ -11,9 +11,10 @@ import (
 	"akmesh/internal/sync"
 
 	"akmesh/internal/policy"
+	"akmesh/internal/usage"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(sync.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(usage.Run("sync", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, sync.Run))
 }

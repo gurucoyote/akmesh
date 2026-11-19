@@ -245,6 +245,11 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			}
 			i++
 			files0 = args[i]
+		case strings.HasPrefix(a, "--"):
+			// An unknown long option: name the whole token, not its first
+			// letter, which used to print `unknown option "--"` (acmesh-vr1).
+			fmt.Fprintf(stderr, "wc: unknown option %q\n", a)
+			return 1
 		case strings.HasPrefix(a, "-") && len(a) > 1:
 			for j := 0; j < len(a[1:]); j++ {
 				switch a[1+j] {

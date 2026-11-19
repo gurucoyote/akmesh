@@ -569,5 +569,16 @@ case "$BIN" in
 	;;
 esac
 
+# --help before the parser (acmesh-py8): ten commands, of which five used to
+# execute the word (hostname set it as the name, sync opened it as a file) and
+# two read only its first letter. A command that answers with anything other
+# than a usage line, or with a non-zero exit, is a regression.
+for c in base64 wc touch hostname sync grep sed find cp tar; do
+	check "help-$c-usage" "ja" "$(run "$c" --help 2>&1 | grep -qi '^usage:' && echo ja)"
+	checkcode "help-$c-exit" 0 "$(run "$c" --help >/dev/null 2>&1; echo $?)"
+done
+check help-echo-usage "ja" "$(run echo --help 2>&1 | grep -qi '^usage:' && echo ja)"
+check echo-help-literal "--help foo" "$(run echo --help foo | tr -d '\r')"
+
 printf '%d checks, %d failures\n' "$checks" "$fails"
 [ "$fails" -eq 0 ]

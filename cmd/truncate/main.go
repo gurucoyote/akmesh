@@ -11,9 +11,10 @@ import (
 	"akmesh/internal/truncate"
 
 	"akmesh/internal/policy"
+	"akmesh/internal/usage"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(truncate.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(usage.Run("truncate", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, truncate.Run))
 }

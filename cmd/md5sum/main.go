@@ -11,9 +11,10 @@ import (
 	"akmesh/internal/sum"
 
 	"akmesh/internal/policy"
+	"akmesh/internal/usage"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(sum.Run("md5", os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(usage.RunNamedIO("md5sum", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, sum.RunCommand))
 }

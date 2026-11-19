@@ -12,9 +12,10 @@ import (
 	"akmesh/internal/forked/hexdump"
 
 	"akmesh/internal/policy"
+	"akmesh/internal/usage"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(hexdump.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(usage.RunIO("hexdump", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, hexdump.Run))
 }

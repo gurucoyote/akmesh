@@ -157,13 +157,15 @@ func TestCombinedShortFlags(t *testing.T) {
 	}
 }
 
-// TestUnknownOptionIsRefused: GNU's wording and exit 2.
+// TestUnknownOptionIsRefused: GNU's wording, its Try line and exit 1
+// (acmesh-4qw). Measured on coreutils 9.1.
 func TestUnknownOptionIsRefused(t *testing.T) {
 	_, errOut, code := capture(t, []string{"--bogus"})
-	if code != 2 {
-		t.Fatalf("uname --bogus exit %d, want 2", code)
+	if code != 1 {
+		t.Fatalf("uname --bogus exit %d, want 1", code)
 	}
-	if !strings.Contains(errOut, "unrecognized option") {
-		t.Fatalf("stderr %q does not say unrecognized option", errOut)
+	want := "uname: unrecognized option '--bogus'\nTry 'uname --help' for more information.\n"
+	if errOut != want {
+		t.Fatalf("stderr %q, want %q", errOut, want)
 	}
 }

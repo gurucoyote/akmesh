@@ -591,5 +591,29 @@ done
 check help-echo-usage "ja" "$(run echo --help 2>&1 | grep -qi '^usage:' && echo ja)"
 check echo-help-literal "--help foo" "$(run echo --help foo | tr -d '\r')"
 
+# The three certificate commands together, end to end (acmesh-pav, acmesh-vcl,
+# acmesh-0kh): mkcert signs a leaf with its own CA, httpd serves it with TLS and
+# certinfo reads the chain back. The Go tests cover each command's own behaviour
+# with httptest; what only the real binary can show is that the CA file mkcert
+# wrote is the one httpd hands out and certinfo reads.
+CERT_DIR=$(mktemp -d)
+tls_port=$((19200 + ($$ % 300)))
+tls_try=0
+while [ $tls_try -lt 20 ] && curl -sk -m 1 -o /dev/null "https://127.0.0.1:$tls_port/" 2>/dev/null; do
+	tls_port=$((tls_port + 7))
+	tls_try=$((tls_try + 1))
+done
+run mkcert -host localhost,127.0.0.1 -ca "$CERT_DIR/tca" -out "$CERT_DIR/tleaf" >/dev/null 2>&1
+checkcode mkcert-exit 0 "$?"
+check verify-ca-ok "OK" "$(run verify -ca "$CERT_DIR/tca-cert.pem" -host localhost "$CERT_DIR/tleaf-cert.pem" 2>&1 | cut -d: -f1)"
+checkcode verify-wrong-host 1 "$(run verify -ca "$CERT_DIR/tca-cert.pem" -host falsch.test "$CERT_DIR/tleaf-cert.pem" >/dev/null 2>&1; echo $?)"
+run httpd -f -p 127.0.0.1:$tls_port -h "$CERT_DIR" -S "$CERT_DIR/tleaf-cert.pem" -K "$CERT_DIR/tleaf-key.pem" >/dev/null 2>&1 &
+TLS_PID=$!
+sleep 1
+check certinfo-httpd-tls "localhost" "$(run certinfo 127.0.0.1:$tls_port 2>&1 | sed -n 's/^Subject: CN=\([^,]*\).*/\1/p' | head -1)"
+kill $TLS_PID 2>/dev/null
+wait $TLS_PID 2>/dev/null
+rm -rf "$CERT_DIR"
+
 printf '%d checks, %d failures\n' "$checks" "$fails"
 [ "$fails" -eq 0 ]

@@ -88,6 +88,22 @@ und geht durch dieselbe Policy-Huelle wie die eingebauten.
   Zugriff auf Fremdspeicher. Scheitert der Aufruf, bleibt die Spalte beim
   Executable-Namen.
 
+- Drei Zertifikatsbefehle, je eine Aufgabe (19.11.2026, acmesh-vcl/pav/0kh):
+  certinfo liest, mkcert stellt aus, verify prueft. Getrennt, weil ein Befehl, der
+  alles kann, im Fehlerfall nicht mehr sagt, welche der drei Fragen verneint
+  wurde. Alle drei nur mit der Standardbibliothek.
+- mkcert schreibt PEM im Klartext und sagt das in der Hilfe: kein PKCS#12, keine
+  Passphrase (die Standardbibliothek kann verschluesseltes PKCS#8 nicht
+  schreiben), kein HSM. Der Schutz des Schluessels ist 0600, unter Windows ueber
+  dieselbe DACL-Aufzeichnung wie chmod (winmode.SetQuiet).
+- verify prueft Kette und Name, nicht Widerruf: OCSP, CRL und Certificate
+  Transparency werden nicht gefragt, ein widerrufenes Zertifikat geht durch. Das
+  steht in der Hilfe und im Ticket, statt in einem Halbsatz.
+- Ein Dateisystem, das keine DACL traegt (WSL-Share, FAT), nimmt keinen Modus auf.
+  winmode.SetQuiet laesst diesen einen Fehler stillschweigend durch, weil os.Chmod
+  dort das Einzige getan hat, was die Plattform kann; stat meldet dann den
+  0666 der Plattform, also nichts Falsches.
+
 ## Policy
 
 Ein Wrapper, durch den jeder Befehl laeuft: er loest relative Pfade gegen das

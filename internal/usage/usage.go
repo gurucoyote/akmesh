@@ -171,6 +171,20 @@ var Texts = map[string]Entry{
 			"  -q, --quiet       never print a file name header\n" +
 			"  -v, --verbose     always print a file name header",
 	},
+	"certinfo": {
+		"[-j] FILE | HOST[:PORT]",
+		"  -j, --json  machine-readable output\n" +
+			"\n" +
+			"A file prints every certificate in it, in order; a host prints the chain\n" +
+			"the server sends, leaf first. The operand is a file when it exists, a host\n" +
+			"otherwise.\n" +
+			"\n" +
+			"Limits: this only reads. It does not check the chain and does not look at\n" +
+			"revocation (OCSP, CRL, Certificate Transparency); that is what verify is\n" +
+			"for, and even there revocation is not covered. A server is dialled with\n" +
+			"TLS as it comes, so certinfo also works against expired or self-signed\n" +
+			"hosts.",
+	},
 	"hexdump": {
 		"[-C] [-n LENGTH] [FILE...]",
 		"  -C, --canonical   canonical hex and ASCII view\n" +
@@ -198,6 +212,21 @@ var Texts = map[string]Entry{
 		"  -s SIGNAL     the signal to send by name or number\n" +
 			"  -i            ask before killing\n" +
 			"  -q, --quiet   print nothing on success",
+	},
+	"mkcert": {
+		"-host NAME[,NAME...] [-days N] [-key-type ecdsa|rsa|ed25519] [-out BASE] [-ca BASE]",
+		"  -host NAMES       names to certify, comma separated; an address becomes an IP SAN\n" +
+			"  -days N           how long the leaf is valid, default 365\n" +
+			"  -key-type KIND    ecdsa (P-256, default), rsa (2048) or ed25519\n" +
+			"  -out BASE         writes BASE-cert.pem and BASE-key.pem, default the first name\n" +
+			"  -ca BASE          sign with BASE-cert.pem and BASE-key.pem, creating them\n" +
+			"                    on first use; without -ca the leaf signs itself\n" +
+			"\n" +
+			"Limits, and they are real: PEM only, so PKCS#12 (.pfx/.p12) and JKS are\n" +
+			"refused with a message naming the format. No passphrase, because the\n" +
+			"standard library cannot write encrypted PKCS#8; the key lies in the clear\n" +
+			"guarded only by mode 0600. No HSM, no PKCS#11, no TPM: signing happens in\n" +
+			"memory. Good for test and intranet certificates, not for a real CA.",
 	},
 	"nl": {
 		"[-b STYLE] [-n FORMAT] [-w WIDTH] [-s SEP] [-d DELIM] [FILE]",
@@ -310,6 +339,19 @@ var Texts = map[string]Entry{
 			"  -p, --processor          processor type\n" +
 			"  -i, --hardware-platform  hardware platform\n" +
 			"  -o, --operating-system   operating system",
+	},
+	"verify": {
+		"[-ca CAFILE] [-host NAME] CERT [CHAIN...]",
+		"  -ca CAFILE   trust this CA instead of the system roots; repeatable\n" +
+			"  -host NAME   also check that NAME is in the certificate\n" +
+			"\n" +
+			"Every file after CERT is an intermediate. The exit code is 0 only when the\n" +
+			"chain is good; the reason is printed otherwise (expired, wrong host,\n" +
+			"unknown authority).\n" +
+			"\n" +
+			"Limits: a revoked certificate passes. OCSP, CRL and Certificate\n" +
+			"Transparency are not consulted, so verify answers 'chain and name are\n" +
+			"sound', not 'this certificate is still trusted today'.",
 	},
 	"wc": {
 		"[-l] [-w] [-c] [-m] [-b] [--files0-from=FILE] [FILE...]",

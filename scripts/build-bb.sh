@@ -174,7 +174,7 @@ export GOWORK="$WORKFILE"
 
 # Every name our own tools provide. Where u-root also builds the same name for
 # the target, u-root wins: it is already in the list and needs no extra bytes.
-OURS_ALL="awk basename head find grep chmod cp echo false curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall md5sum nl patch ps sed sha1sum sha256sum sha512sum shuf sort split stat sync tac timeout truncate uname wget sh policy ssh scp pwd true xargs tar hexdump base64 wc tr touch tracedeps html2md httpd docx2md rtf2md pdf2md md2txt-l md2pdf md2docx md2epub epub2md"
+OURS_ALL="awk basename certinfo head find grep chmod cp echo false curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall mkcert md5sum nl patch ps sed sha1sum sha256sum sha512sum shuf sort split stat sync tac timeout truncate uname verify wget sh policy ssh scp pwd true xargs tar hexdump base64 wc tr touch tracedeps html2md httpd docx2md rtf2md pdf2md md2txt-l md2pdf md2docx md2epub epub2md"
 
 PROFILE_FILE="$ROOT/scripts/profiles/$PROFILE.txt"
 if [ ! -f "$PROFILE_FILE" ]; then

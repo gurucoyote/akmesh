@@ -187,3 +187,9 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
             ntdll ProcessCommandLineInformation statt PEB, 120 Zeilen, 375
             Prozesse in 0,6 s. killall schneidet die Anfuehrungszeichen ab.
             Batterie 196/0 Linux, 174/0 Windows.
+2026-11-19  Drei Zertifikatsbefehle gebaut (acmesh-vcl, acmesh-pav, acmesh-0kh):
+            certinfo liest Datei oder Host (PEM und DER, --json), mkcert stellt
+            Blatt und eigene CA aus (ecdsa/rsa/ed25519, 0600 auch unter Windows
+            ueber winmode), verify prueft Kette und Name mit Exit 0/1/2.
+            Batterie um vier Pruefungen erweitert (mkcert, verify, httpd-TLS,
+            certinfo): 200/0 Linux, 178/0 Windows. Vier Rotproben getoetet.

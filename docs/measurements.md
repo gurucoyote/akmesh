@@ -2768,3 +2768,74 @@ Abschlusslauf nach acmesh-m6x und acmesh-94e.22:
     battery windows          174 Pruefungen, 0 Fehler
     help-audit               every command answers --help except the documented u-root gap
     go test -race            ohne Befund
+
+## 2026-11-19 drei Zertifikatsbefehle: certinfo, mkcert, verify (acmesh-vcl, acmesh-pav, acmesh-0kh)
+
+Alle drei nur mit der Standardbibliothek (crypto/x509, crypto/tls, encoding/pem),
+also nach docs/groesse.md Regel 4 fast gratis. Zusammen mit ihrer Verdrahtung
+kostet das Linux-Binary 16.662.652 B statt 16.543.868 B (+119 KB), Windows
+16.790.528 B statt 16.671.360 B (+119 KB).
+
+### certinfo DATEI | HOST[:PORT] (acmesh-vcl)
+
+Datei: alle PEM-Bloecke in Reihenfolge, DER (.cer aus Windows) als Rueckfall.
+Host: die Kette, die der Server schickt, Blatt zuerst, TLS ohne Pruefung, damit
+auch abgelaufene und selbstsignierte Hosts lesbar sind. --json/-j fuer
+Maschinenlesbarkeit.
+
+Gegenprobe mit openssl am selben Server, 19.11.2026:
+
+    openssl s_client -connect www.amazon.de:443  |  akmesh certinfo www.amazon.de
+    subject=CN=www.amazon.de                      Subject: CN=www.amazon.de
+    issuer=C=US, O=Amazon, CN=Amazon RSA 2048 M04 Issuer: CN=Amazon RSA 2048 M04,O=Amazon,C=US
+    notBefore=Oct 30 00:00:00 2026 GMT            Validity: 2026-10-30T00:00:00Z ...
+    serial=01D42E38...                            Serial: 1D42E38... (ohne Vorzeichen-Null)
+
+Coverage 87,7 %, sechs Testfunktionen, darunter ein httptest-TLS-Server.
+
+### mkcert -host ... [-ca BASE] (acmesh-pav)
+
+Sieben Testfunktionen, Coverage 79,1 %. Geprueft: Dateinamen, Rechte, SANs (DNS
+und IP getrennt), Gueltigkeit, alle drei Schluesselarten ueber x509.Verify gegen
+die im selben Lauf erzeugte CA, Wiederverwendung der CA, alle Fehlerfaelle mit
+Text und Exit 1.
+
+Live gemessen (Linux, 19.11.2026):
+
+    ./akmesh mkcert -host localhost,127.0.0.1 -ca testca -out leaf
+      wrote leaf-cert.pem / wrote leaf-key.pem / signed by testca-cert.pem
+    ls -l: leaf-key.pem -rw------- , testca-key.pem -rw-------, Zertifikate 644
+
+Unter Windows schrieb os.Chmod nur das Read-only-Bit, die Schluessel waren 666.
+Jetzt setzt writePEM den Modus ueber winmode.SetQuiet (dieselbe Regel wie chmod,
+acmesh-m6x). Gemessen auf echtem NTFS, Windows-Temp, Probe danach geloescht:
+
+    akmesh.exe stat -c %a  ->  600 ca-key.pem, 644 ca-cert.pem,
+                               600 leaf-key.pem, 644 leaf-cert.pem
+    icacls leaf-key.pem    ->  Eigentuemer (R,W,D,WDAC,WO), Gruppe und Jeder
+                               nur (Rc,S,RA), also Lesen der Rechte, nicht der Daten
+
+Rotproben, beide getoetet: SANs weggelassen (TestNamesFilesAndKeyMode sah "[]"),
+Schluessel 0644 (Mode-Test erwartet 600).
+
+### verify [-ca CA] [-host NAME] CERT [KETTE...] (acmesh-0kh)
+
+Exit 0 nur bei guter Kette, 1 bei fachlichem Fehlschlag, 2 bei Fehlbedienung.
+Sechs Testfunktionen. Gemessen Linux und Windows:
+
+    verify -ca testca-cert.pem -host localhost leaf-cert.pem  -> OK, 0
+    verify -ca testca-cert.pem -host falsch.test ...          -> "x509: certificate is valid for localhost, not falsch.test", 1
+    verify -host localhost leaf-cert.pem (Systemwurzeln)      -> "x509: certificate signed by unknown authority", 1
+
+Rotprobe: die Pruefung selbst entfernt, dann fallen Expired, WrongHost,
+UnknownAuthority und ChainFile.
+
+### Batterie: die drei zusammen
+
+Neuer Block am Ende der Batterie: mkcert erzeugt CA und Blatt, verify prueft
+gegen die CA, akmesh httpd liefert dasselbe Blatt ueber TLS, certinfo liest die
+Kette vom laufenden Server. Vier Pruefungen: mkcert-exit, verify-ca-ok,
+verify-wrong-host, certinfo-httpd-tls. Gegenprobe von aussen: curl mit
+--cacert testca-cert.pem gegen denselben TLS-Server gibt HTTP 200.
+
+Batterie danach: 200 Pruefungen Linux, 178 Windows, beide 0 Fehler.

@@ -120,7 +120,7 @@ pruefen laesst. Ein abgesetzter Server muss beendbar bleiben, sonst haelt er
 seinen Port - die Batterie prueft das jetzt (httpd-detach-stopped,
 tls-httpd-stopped).
 
-sshd bauen wir bewusst nicht (Entscheidung 19.11.2026, acmesh-p3): ein
+sshd bauen wir bewusst nicht (Entscheidung 19.11.2026, acmesh-7qk): ein
 SSH-Server in einem Harness-Binary ist ein Fernzugang, den kein Agent braucht,
 und er braechte Authentifizierung, Schluesselverwaltung und eine eigene
 Absicherung mit. Wir liefern die Client-Seite (ssh, scp).

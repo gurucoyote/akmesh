@@ -84,6 +84,7 @@ func checkFiles(kind string, lists []string, stdin io.Reader, stdout, stderr io.
 		}
 		scanner := bufio.NewScanner(r)
 		scanner.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
+		before := checked
 		for scanner.Scan() {
 			line := strings.TrimSpace(scanner.Text())
 			if line == "" {
@@ -121,6 +122,12 @@ func checkFiles(kind string, lists []string, stdin io.Reader, stdout, stderr io.
 			fmt.Fprintf(stderr, "%ssum: %v\n", kind, err)
 			return 2
 		}
+		// GNU names the list that had no usable line: "sha256sum: file: no
+		// properly formatted checksum lines found", and 'standard input' for
+		// stdin (quoted, because it carries a space).
+		if checked == before && !quiet {
+			fmt.Fprintf(stderr, "%ssum: %s: no properly formatted checksum lines found\n", kind, listName(list))
+		}
 	}
 	if failed > 0 && !quiet {
 		fmt.Fprintf(stderr, "%ssum: WARNING: %d computed checksum%s did NOT match\n",
@@ -137,11 +144,22 @@ func checkFiles(kind string, lists []string, stdin io.Reader, stdout, stderr io.
 	if failed > 0 || unreadable > 0 {
 		return 1
 	}
-	if checked == 0 && !quiet {
-		fmt.Fprintf(stderr, "%ssum: no properly formatted checksum lines found\n", kind)
+	if checked == 0 {
 		return 1
 	}
 	return 0
+}
+
+// listName renders the list the way GNU does in its messages: the file as
+// given, and 'standard input' (with quotes) when the list came from stdin.
+func listName(list string) string {
+	if list == "-" {
+		return "'standard input'"
+	}
+	if strings.ContainsAny(list, " 	'\"") {
+		return "'" + list + "'"
+	}
+	return list
 }
 
 // splitLine reads one line of a checksum list. GNU writes the name after two

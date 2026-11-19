@@ -5,7 +5,7 @@
 #
 # Prints one line per call: name, flag, exit code, size, lines and the first
 # line. A command that answers with "unknown option" or with an error instead
-# of a usage text is the finding this script exists to show (acmesh-hlp).
+# of a usage text is the finding this script exists to show (acmesh-py8).
 set -u
 
 BIN=${1:-./akmesh}

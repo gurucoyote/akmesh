@@ -68,6 +68,23 @@ type netOptions struct {
 	Compress  bool
 	Resume    bool
 	WriteOut  string
+	Front     string
+}
+
+// The default User-Agent names this tool and says what it behaves like. It does
+// not claim to be curl or wget: the version in a fake string is a lie a server
+// can check, and the measured 503 on amazon.de was triggered by the literal
+// "Go-http-client", not by the absence of a browser name (acmesh-ijz).
+const (
+	agentCurl = "akmesh/0.1 (curl compatible)"
+	agentWget = "akmesh/0.1 (wget compatible)"
+)
+
+func defaultUserAgent(front string) string {
+	if front == "wget" {
+		return agentWget
+	}
+	return agentCurl
 }
 
 // runNet performs the request and writes the result. The returned value is the
@@ -147,6 +164,15 @@ func runNet(opts netOptions, stdin *os.File, stdout, stderr *os.File) int {
 	}
 	if opts.UserAgent != "" {
 		req.Header.Set("User-Agent", opts.UserAgent)
+	} else if agent := defaultUserAgent(opts.Front); agent != "" {
+		// Without this Go announces "Go-http-client/2.0", and a measured
+		// request to amazon.de was answered with 503 for exactly that string
+		// while every other agent got the page (acmesh-ijz).
+		req.Header.Set("User-Agent", agent)
+	}
+	if req.Header.Get("Accept") == "" {
+		// curl and wget both send it; a missing Accept is its own signal.
+		req.Header.Set("Accept", "*/*")
 	}
 	if opts.Referer != "" {
 		req.Header.Set("Referer", opts.Referer)

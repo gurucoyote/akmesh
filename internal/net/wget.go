@@ -14,7 +14,7 @@ import (
 // deliberately absent, and saying so with a clear message is better than
 // pretending.
 func runWget(args []string, stdin *os.File, stdout, stderr *os.File) int {
-	opts := netOptions{Follow: true, MaxRedirs: 20, ShowError: true}
+	opts := netOptions{Follow: true, MaxRedirs: 20, ShowError: true, Front: "wget"}
 	spider := false
 	serverResponse := false
 	var urls []string

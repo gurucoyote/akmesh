@@ -2001,3 +2001,31 @@ Und der Befund, der die Reihenfolge der Stufen bestimmt: uTLS mit exaktem
 Chrome-JA4 und Go-UA bekommt 503, mit Chrome-UA 200 - also genau wie der
 gewoehnliche Go-Client. Die TLS-Ebene allein aendert bei Amazon nichts. Der
 Inhalt haengt dagegen am UA: mit curl-UA 586 KB, mit Chrome-UA 1,87 MB.
+
+## 2026-11-19 Stufe 1: eigener User-Agent statt Go
+
+Vorher (tls.peet.ws): user_agent "Go-http-client/2.0", dazu nur
+accept-encoding gzip, kein Accept.
+
+Echtes curl 8.23 im Container sendet: ':method, :scheme, :authority, :path',
+dann "user-agent: curl/8.23.0" und "accept: */*" - also genau zwei Kopfzeilen.
+
+Nachher:
+
+    ./akmesh curl -s https://tls.peet.ws/api/all
+    user_agent  akmesh/0.1 (curl compatible)
+    accept      */*
+    ja4         t13d1312h2_f57a46bbacb6_f50d94e863eb   (unveraendert, wie erwartet)
+
+Wirkung, am selben Tag gemessen an amazon.de (Produktsuche Kaffeemaschine):
+
+    akmesh Vorgabe vorher   503 in vier von vier Runden, 2904 Bytes
+    akmesh Vorgabe nachher  200 mit echter Seite, 908 und 916 KB in zwei Runden
+
+Bekannte Grenze, im Ticket acmesh-ijz festgehalten: net/http schreibt Kopfzeilen
+alphabetisch sortiert, curl in der Reihenfolge, in der sie gesetzt wurden. Die
+Statuszeile von -i ist jetzt zeichengleich ("HTTP/2 200 " mit Leerzeichen), die
+Kopfzeilenreihenfolge nicht.
+
+Groesse: 15.233.148 Bytes nach -w, -i und User-Agent (vorher 15.220.860).
+Batterie: 221 Pruefungen Linux, 0 Fehler.

@@ -36,6 +36,11 @@ func newTestServer(t *testing.T) *httptest.Server {
 			multipartValue(r),
 			cookieValue(r, "sitzung"))
 	})
+	// /ua answers with what the client announced, so a test can pin the default
+	// User-Agent and Accept (acmesh-ijz).
+	mux.HandleFunc("/ua", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "user-agent=%s|accept=%s", r.Header.Get("User-Agent"), r.Header.Get("Accept"))
+	})
 	mux.HandleFunc("/slow", func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(300 * time.Millisecond)
 		fmt.Fprint(w, "spaet")

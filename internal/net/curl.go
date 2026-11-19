@@ -20,7 +20,7 @@ var curlShortWithValue = map[byte]bool{
 // on purpose: -fsSL is what agents and humans write, and rejecting it would be
 // the difference between a working script and a mystery.
 func runCurl(args []string, stdin *os.File, stdout, stderr *os.File) int {
-	opts := netOptions{MaxRedirs: 50}
+	opts := netOptions{MaxRedirs: 50, Front: "curl"}
 	var urls []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]

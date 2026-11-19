@@ -119,3 +119,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-19  md2txt gebaut: Markdown nach reinem Text, byte-gleich mit pandoc -t plain (markdown-smart) an Beispielen und drei echten Dateien; acmesh-66u.
 2026-11-19  md2txt heiszt md2txt-l (leichtgewichtiger eigener Parser); goldmark-Kosten gemessen: html 1,5 MB, pdf 13,6 MB, epub 4,8 MB, docx-Schreiber 0,4 MB, alles zusammen 14,0 MB (acmesh-54s.1).
 2026-11-19  Lizenz-Gate scripts/check-licences.sh eingebaut (AGPL und lizenzlose Module fallen durch, Verbotsliste mit fumiama/go-docx und zikani03/goldmark-docx), Rotprobe belegt, in check-all.sh eingehaengt.
+2026-11-19  Groeszenlinie auf warn 25000000 / hart 30000000 angehoben (Entscheidung Martin: md2pdf ueber den schlanken goldmark-pdf-Fork); acmesh-54s.1 geschlossen.

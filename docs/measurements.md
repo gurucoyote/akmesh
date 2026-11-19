@@ -1552,3 +1552,50 @@ Damit ist acmesh heute frei von AGPL: weder go.mod noch go.sum nennen
 fumiama/go-docx, zikani03/goldmark-docx oder unioffice, und der docx-Probebau
 unter /root/.hermes/cache/scratch/goldprobe benutzt archive/zip und
 encoding/xml aus der Standardbibliothek, kein fremdes docx-Paket.
+
+## goldmark-pdf Fork (19.11.2026, acmesh-54s.2)
+
+Der schlankste brauchbare Fork von goldmark-pdf v0.4.2, gemessen mit
+CGO_ENABLED=0, -ldflags="-s -w", Go 1.26.1, gleiche Probe (leeres Programm
+1.597.602 Bytes):
+
+    goldmark, Parser ohne Wurzelpaket            2.093.218   +0,50 MB
+    goldmark + GFM (+ HTML-Renderer)             2.584.738   +0,99 MB
+    goldmark + GFM, wirklich rendern             2.719.906   +1,12 MB
+    go-epub allein                               4.141.218   +2,54 MB
+    Fork ohne chroma, Google-Schriften gestubbt  8.016.034   +6,42 MB
+    Fork ohne chroma                             9.097.378   +7,50 MB
+    goldmark-pdf unveraendert                   12.218.530  +10,62 MB
+
+Gegen acmesh heute (12.591.228 Bytes roh) ergibt der magere Fork rund 19,0 MB,
+also ueber dem harten Stopp von 16.000.000 (scripts/build-bb.sh:276).
+
+Der Fork baut keine Syntaxfarben mehr, holt keine Schriften ueber HTTP und liest
+stattdessen eine TrueType-Datei von der Platte (BuiltinFontPath). Geprueft an
+einem Dokument mit Ueberschriften, Tabelle, Zitat, Codeblock und Fussnote:
+53.008 Bytes PDF, Umlaute korrekt, Schrift eingebettet mit uni=ja.
+
+Aufbau, Aenderungen und Empfehlung: docs/design/md2pdf-goldmark-fork.md.
+Forks im Zwischenlager /root/.hermes/cache/scratch/pdfprobe (forkpdf, fork2,
+fork3).
+
+## Groeszenlinie neu gesetzt (19.11.2026, acmesh-54s.1)
+
+Entscheidung Martin: md2pdf kommt auf Basis des schlanken goldmark-pdf-Forks,
+und weil sich einzelne Features beim Bau ausschlieszen lassen, darf der Warner
+hoeher liegen. In scripts/build-bb.sh steht deshalb:
+
+    Warnlinie  25000000   (vorher 13000000)
+    harter Stopp 30000000 (vorher 16000000)
+
+Begruendung aus den Messungen: goldmark mit GFM +1,12 MB, goldmark-pdf ohne
+chroma +7,50 MB (mit Google-Fonts-Anbindung; ohne beides +6,42 MB, dann muessen
+eigene TTF mitgeliefert werden), go-epub +2,54 MB, eigener docx-Schreiber
++0,42 MB. Mit allen Zielen landet acmesh bei rund 23 MB, also 13 MB als Warner
+waere bei jedem Bau ein Fehlalarm. Der Stopp bei 30 MB laeszt Platz, eine
+Regression zu bemerken, statt sie mit der Warnlinie zu verwechseln.
+
+Warum der Fork noetig ist: goldmark-pdf v0.4.2 zieht chroma in vier Dateien fest
+herein (option.go, renderer_funcs.go samt lexers, style.go, writer.go), und der
+Import von chroma/v2/lexers registriert alle Lexer; build-Tags oder ein
+Linker-Schalter existieren nicht. Nur die Lexer wiegen allein 5230754 Bytes.

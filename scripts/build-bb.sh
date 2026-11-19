@@ -273,14 +273,17 @@ if [ -f "$STATE" ]; then
 	fi
 fi
 echo "$SIZE" > "$STATE"
-if [ "$SIZE" -gt 16000000 ]; then
-	echo "size: $OUT is $SIZE bytes, over the hard limit of 16000000 (acmesh-94e.15)" >&2
+# The warning line was 12 MB, then 13 MB for httpd. It is 25 MB since
+# 19.11.2026 (Martin): the document writers need goldmark with its renderers,
+# measured in acmesh-54s.1 as goldmark+GFM 1.1 MB, a chroma-free goldmark-pdf
+# fork 6.4 to 7.5 MB, go-epub 2.5 MB and a docx writer 0.4 MB. With all of them
+# the binary lands near 23 MB, so 13 MB would cry wolf on every build. The hard
+# stop moves with it to 30 MB: a limit of 25 on a binary that is expected to
+# reach 23 leaves no room to notice a regression.
+if [ "$SIZE" -gt 30000000 ]; then
+	echo "size: $OUT is $SIZE bytes, over the hard limit of 30000000 (acmesh-94e.15)" >&2
 	exit 1
 fi
-# The warning line was 12 MB. httpd brought the server side with it, measured
-# with measure-size.sh probe: base64 alone 2609276, base64+httpd 6799484, so
-# 4190208 bytes for a static file server with TLS. html2md costs 348160. Both
-# are wanted, so the line moved to 13 MB; the hard stop stays at 16 MB.
-if [ "$SIZE" -gt 13000000 ]; then
-	echo "size: $OUT is $SIZE bytes, over the warning line of 13000000 (acmesh-94e.15, acmesh-m5j)" >&2
+if [ "$SIZE" -gt 25000000 ]; then
+	echo "size: $OUT is $SIZE bytes, over the warning line of 25000000 (acmesh-94e.15, acmesh-m5j, acmesh-54s.1)" >&2
 fi

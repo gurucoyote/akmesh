@@ -14,6 +14,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -239,4 +240,54 @@ func TestTLSStateHasCertificates(t *testing.T) {
 	if len(conn.ConnectionState().PeerCertificates) == 0 {
 		t.Fatal("the TLS server sent no certificate")
 	}
+}
+
+// TestResolveReadsTheCertificateForALocalName: --resolve connects to the given
+// address but keeps the name, so test1.local can be read without /etc/hosts
+// (acmesh-730 follow-up).
+func TestResolveReadsTheCertificateForALocalName(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer server.Close()
+	u, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := u.Port()
+
+	out, code := runCertinfo(t, "--resolve", "test1.local:"+port+":127.0.0.1", "test1.local:"+port)
+	if code != 0 {
+		t.Fatalf("exit %d, out %q", code, out)
+	}
+	if !strings.Contains(out, "Subject:") {
+		t.Fatalf("no certificate read: %q", out)
+	}
+
+	// A malformed spec is refused, not guessed at.
+	for _, bad := range []string{"test1.local", "test1.local:443:", ":::"} {
+		if _, code := runCertinfo(t, "--resolve", bad, "test1.local:443"); code == 0 {
+			t.Fatalf("--resolve %q was accepted", bad)
+		}
+	}
+}
+
+// runCertinfo runs the command with its streams captured.
+func runCertinfo(t *testing.T, args ...string) (string, int) {
+	t.Helper()
+	dir := t.TempDir()
+	out, err := os.Create(filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer out.Close()
+	errFile, err := os.Create(filepath.Join(dir, "err"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer errFile.Close()
+	code := Run(args, nil, out, errFile)
+	data, err := os.ReadFile(filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data), code
 }

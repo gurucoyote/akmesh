@@ -172,8 +172,11 @@ var Texts = map[string]Entry{
 			"  -v, --verbose     always print a file name header",
 	},
 	"certinfo": {
-		"[-j] FILE | HOST[:PORT]",
+		"[-j] [--resolve HOST:PORT:ADDR] FILE | HOST[:PORT]",
 		"  -j, --json  machine-readable output\n" +
+			"  --resolve   connect to ADDR for that host and port, the name stays;\n" +
+			"              this is how a local name like test1.local is read without\n" +
+			"              an entry in /etc/hosts\n" +
 			"\n" +
 			"A file prints every certificate in it, in order; a host prints the chain\n" +
 			"the server sends, leaf first. The operand is a file when it exists, a host\n" +

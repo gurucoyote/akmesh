@@ -4,6 +4,7 @@ package net
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -62,6 +63,66 @@ func runWget(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			opts.DataRaw = v
 		case strings.HasPrefix(a, "--post-data="):
 			opts.DataRaw = strings.TrimPrefix(a, "--post-data=")
+		case a == "--ca-certificate":
+			v, ok := takeValue(a)
+			if !ok {
+				return 2
+			}
+			opts.CAFile = v
+		case strings.HasPrefix(a, "--ca-certificate="):
+			opts.CAFile = strings.TrimPrefix(a, "--ca-certificate=")
+		case a == "--resolve":
+			v, ok := takeValue(a)
+			if !ok {
+				return 2
+			}
+			host, port, target, err := splitResolve(v)
+			if err != nil {
+				fmt.Fprintf(stderr, "wget: %v\n", err)
+				return 2
+			}
+			if opts.Resolve == nil {
+				opts.Resolve = map[string]string{}
+			}
+			opts.Resolve[net.JoinHostPort(host, port)] = net.JoinHostPort(target, port)
+		case a == "--referer":
+			v, ok := takeValue(a)
+			if !ok {
+				return 2
+			}
+			opts.Referer = v
+		case strings.HasPrefix(a, "--referer="):
+			opts.Referer = strings.TrimPrefix(a, "--referer=")
+		case a == "--method":
+			v, ok := takeValue(a)
+			if !ok {
+				return 2
+			}
+			opts.Method = strings.ToUpper(v)
+		case strings.HasPrefix(a, "--method="):
+			opts.Method = strings.ToUpper(strings.TrimPrefix(a, "--method="))
+		case a == "--user":
+			v, ok := takeValue(a)
+			if !ok {
+				return 2
+			}
+			opts.User = v
+		case strings.HasPrefix(a, "--user="):
+			opts.User = strings.TrimPrefix(a, "--user=")
+		case a == "--password":
+			v, ok := takeValue(a)
+			if !ok {
+				return 2
+			}
+			// --user and --password are separate flags in wget; they are joined
+			// into the user:password form the engine speaks.
+			if strings.Contains(opts.User, ":") {
+				opts.User = strings.SplitN(opts.User, ":", 2)[0]
+			}
+			opts.User = opts.User + ":" + v
+		case strings.HasPrefix(a, "--password="):
+			pass := strings.TrimPrefix(a, "--password=")
+			opts.User = strings.SplitN(opts.User, ":", 2)[0] + ":" + pass
 		case a == "--no-check-certificate":
 			opts.Insecure = true
 		case a == "-U" || a == "--user-agent":
@@ -134,6 +195,8 @@ func runWget(args []string, stdin *os.File, stdout, stderr *os.File) int {
 func printWgetHelp(stdout *os.File) {
 	fmt.Fprint(stdout, `usage: wget [options] URL
 
+      --ca-certificate FILE  verify with these roots, not the system's
+      --resolve H:P:ADDR     dial ADDR for host H on port P, the name stays
   -O, --output-document FILE   write to FILE, - for stdout
   -q, --quiet                  no messages
       --no-verbose             same as -q

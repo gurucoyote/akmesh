@@ -3033,3 +3033,43 @@ Windows brauchte bei ca-sni-notice eine Warteschleife: die Logzeile schreibt der
 Server in eigener Goroutine, und einmal nachgesehen war sie noch nicht da. Der
 Lauf dauerte laenger als die 190 s vorher, weil der CA-Block auf beiden Zielen
 auf Handshakes wartet.
+
+## 2026-11-19 Parallele Anfragen: curl -Z, --parallel-max, --repeat (acmesh-730)
+
+curl kann jetzt mehrere Anfragen gleichzeitig fahren: -Z und --parallel wie GNU,
+--parallel-max N (Vorgabe 50 wie curl), --repeat N als unsere Ergaenzung fuer N
+Anfragen auf dieselbe URL, --no-keepalive fuer Connection: close. Am Ende steht
+eine Zeile auf stderr: Anzahl, Fehler, Dauer, Anfragen pro Sekunde, Statusverteilung.
+Ohne -Z aendert sich nichts.
+
+Gemessen, httpd mit einer Seite auf 127.0.0.1, ulimit -n 10240, je 2000 Anfragen:
+
+    --parallel-max 50      2000 requests, 0 failed, 0.33 s, 6007 req/s, 200: 2000
+    --parallel-max 200     2000 requests, 0 failed, 0.35 s, 5671 req/s, 200: 2000
+    --parallel-max 300     2000 requests, 0 failed, 0.48 s, 4194 req/s, 200: 2000
+    --parallel-max 500     2000 requests, 0 failed, 0.54 s / 0.99 s / 1.07 s in drei Laeufen
+    --parallel-max 1000    1000 requests, 0 failed, 0.74 s, 1359 req/s
+    --no-keepalive, 200    2000 requests, 221 failed, 0.50 s, 4032 req/s
+
+Die Grenze ist nicht scharf: ein Lauf mit 500 gleichzeitigen Anfragen direkt nach
+zwei anderen hatte 1905 von 2000 ohne Antwort, bei gleicher Einstellung danach
+null Fehler, und der Server antwortete weiter. Das ist die Annahme-Queue des
+Kernels und der Druck auf die kurzlebigen Ports, nicht der Handler. Ohne
+keep-alive kostet jede Anfrage eine Verbindung, deshalb dort die Fehler.
+
+Server: keine Aenderung noetig. net/http fahrt jede Verbindung in einer eigenen
+Goroutine, und der Handler nimmt kein globales Lock. Die Zahlen ueber Loopback
+messen Go und den Kernel, nicht das Netz.
+
+certinfo kann jetzt --resolve HOST:PORT:ADRESSE und liest damit zum Beispiel
+test2.local, ohne Eintrag in /etc/hosts. Batterie: ca-sni-two-leaves nutzt das
+jetzt statt eines Umwegs.
+
+wget: mit GNU als Vorbild ergaenzt um --ca-certificate FILE (der GNU-Name fuer
+curls --cacert), --resolve, --referer, --method, --user und --password. Kein -Z:
+wget kennt keine parallelen Anfragen, und ein erfundenes Flag waere schlimmer als
+eines, das fehlt.
+
+Batterie: curl-parallel-count, curl-parallel-status, curl-parallel-unknownflags
+(Exit 2 bei --repeat 0) und ca-sni-two-leaves. 211 Pruefungen Linux, 189 Windows,
+beide 0 Fehler.

@@ -295,7 +295,8 @@ if [ "$HAS_NET" = 1 ]; then
 # curl and wget: the checks that need no network. The transfer itself is covered
 # by the Go tests against a local server.
 check curl-help "1" "$(run curl -h | grep -c 'Only http and https' | tr -d '\r')"
-checkcode curl-unknown-flag 2 "$(run curl -Z http://example.com >/dev/null 2>&1; echo $?)"
+# -Z is a real flag since acmesh-730, so the unknown one is another letter.
+checkcode curl-unknown-flag 2 "$(run curl -Y http://example.com >/dev/null 2>&1; echo $?)"
 checkcode curl-file-scheme 3 "$(run curl -s file:///etc/passwd >/dev/null 2>&1; echo $?)"
 check wget-help "1" "$(run wget -h | grep -c 'Not supported' | tr -d '\r')"
 checkcode wget-recursive-refused 2 "$(run wget -r http://example.com >/dev/null 2>&1; echo $?)"
@@ -670,8 +671,9 @@ while [ $tries -lt 40 ]; do
 done
 check ca-sni-test1 "sni-ok" "$(run curl -s -m 5 --cacert "$CA_DIR/local-cert.pem" --resolve "test1.local:$CA_PORT:127.0.0.1" "https://test1.local:$CA_PORT/index.html" | tr -d '\r')"
 check ca-sni-test2 "sni-ok" "$(run curl -s -m 5 --cacert "$CA_DIR/local-cert.pem" --resolve "test2.local:$CA_PORT:127.0.0.1" "https://test2.local:$CA_PORT/index.html" | tr -d '\r')"
-# That curl verified test2.local against the root is the proof that the second
-# name got its own leaf: hostname verification fails on a foreign certificate.
+# Both names are served by one process, so each leaf has to be for its own name.
+# certinfo reaches the name with --resolve, without an /etc/hosts entry.
+check ca-sni-two-leaves "test2.local" "$(run certinfo --resolve "test2.local:$CA_PORT:127.0.0.1" "test2.local:$CA_PORT" 2>/dev/null | grep -m1 '^DNS:' | grep -o 'test2\.local' | head -1)"
 # A name outside the CA's constraints is refused in the handshake, not signed.
 checkcode ca-sni-foreign 35 "$(run curl -s -m 5 --cacert "$CA_DIR/local-cert.pem" --resolve "example.com:$CA_PORT:127.0.0.1" "https://example.com:$CA_PORT/" >/dev/null 2>&1; echo $?)"
 # The server logs the refusal on its own goroutine, so give it a moment: on
@@ -688,6 +690,32 @@ check ca-sni-notice "1" "$notice"
 kill $CA_PID 2>/dev/null
 pkill -f "httpd -f -p 127.0.0.1:$CA_PORT" 2>/dev/null
 rm -rf "$CA_DIR"
+
+# A flood against a server of our own: the count is what matters, and the
+# summary has to name it (acmesh-730).
+FL_DIR=$(mktemp -d "${TMPDIR:-/tmp}/flood.XXXXXX")
+printf 'flood\n' > "$FL_DIR/index.html"
+FL_PORT=$((CA_PORT + 1))
+frt=0
+while [ $frt -lt 20 ] && curl -s -m 1 -o /dev/null "http://127.0.0.1:$FL_PORT/" 2>/dev/null; do
+  FL_PORT=$((FL_PORT + 7))
+  frt=$((frt + 1))
+done
+"$BIN" httpd -f -p 127.0.0.1:$FL_PORT -h "$FL_DIR" >/dev/null 2>&1 &
+FL_PID=$!
+tries=0
+while [ $tries -lt 40 ]; do
+  curl -s -m 1 "http://127.0.0.1:$FL_PORT/index.html" 2>/dev/null | grep -q flood && break
+  sleep 0.5
+  tries=$((tries+1))
+done
+FLOOD=$(run curl -Z --repeat 300 --parallel-max 50 "http://127.0.0.1:$FL_PORT/index.html" 2>&1 | tr -d '\r')
+check curl-parallel-count "1" "$(printf '%s' "$FLOOD" | grep -c '300 requests, 0 failed')"
+check curl-parallel-status "1" "$(printf '%s' "$FLOOD" | grep -c '200: 300')"
+checkcode curl-parallel-unknownflags 2 "$(run curl -Z --repeat 0 "http://127.0.0.1:$FL_PORT/" >/dev/null 2>&1; echo $?)"
+kill $FL_PID 2>/dev/null
+pkill -f "httpd -f -p 127.0.0.1:$FL_PORT" 2>/dev/null
+rm -rf "$FL_DIR"
 rm -rf "$CERT_DIR"
 
 printf '%d checks, %d failures\n' "$checks" "$fails"

@@ -281,7 +281,8 @@ func TestWgetFront(t *testing.T) {
 }
 
 func TestCurlRejectsUnknownFlags(t *testing.T) {
-	if _, code := capture(t, runCurl, []string{"-Z", "http://example.com"}); code != 2 {
+	// -Z is -Z since acmesh-730, so the unknown flag has to be another one.
+	if _, code := capture(t, runCurl, []string{"-Y", "http://example.com"}); code != 2 {
 		t.Fatalf("unknown short flag = %d, want 2", code)
 	}
 	if _, code := capture(t, runCurl, []string{"--nope", "http://example.com"}); code != 2 {

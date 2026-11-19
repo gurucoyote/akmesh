@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -104,6 +105,32 @@ func runCurl(args []string, stdin *os.File, stdout, stderr *os.File) int {
 				opts.Head = true
 			case "include":
 				opts.Include = true
+			case "parallel":
+				opts.Parallel = true
+			case "parallel-max":
+				v, ok := takeValue()
+				if !ok {
+					return curlUsage(stderr, "--parallel-max needs a number")
+				}
+				n, err := strconv.Atoi(v)
+				if err != nil || n < 1 || n > 10000 {
+					return curlUsage(stderr, "--parallel-max needs a number between 1 and 10000")
+				}
+				opts.ParallelMax = n
+				opts.Parallel = true
+			case "repeat":
+				v, ok := takeValue()
+				if !ok {
+					return curlUsage(stderr, "--repeat needs a number")
+				}
+				n, err := strconv.Atoi(v)
+				if err != nil || n < 1 || n > 1000000 {
+					return curlUsage(stderr, "--repeat needs a number between 1 and 1000000")
+				}
+				opts.Repeat = n
+				opts.Parallel = true
+			case "no-keepalive":
+				opts.NoKeepalive = true
 			case "cacert":
 				v, ok := takeValue()
 				if !ok {
@@ -254,6 +281,20 @@ func runCurl(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			urls = append(urls, a)
 		}
 	}
+	if opts.Parallel {
+		// -Z with no URL is a mistake; -Z with --repeat is the flood of one page.
+		if len(urls) == 0 {
+			return curlUsage(stderr, "--parallel needs at least one URL")
+		}
+		targets := urls
+		if opts.Repeat > 0 {
+			targets = make([]string, 0, len(urls)*opts.Repeat)
+			for i := 0; i < opts.Repeat; i++ {
+				targets = append(targets, urls...)
+			}
+		}
+		return runParallel(opts, targets, stderr)
+	}
 	if len(urls) == 0 {
 		return curlUsage(stderr, "no URL given")
 	}
@@ -307,6 +348,8 @@ func applyCurlShort(ch byte, value string, opts *netOptions, stderr *os.File) in
 
 func applyCurlBool(ch byte, opts *netOptions, stderr *os.File) int {
 	switch ch {
+	case 'Z':
+		opts.Parallel = true
 	case 's':
 		opts.Silent = true
 	case 'S':

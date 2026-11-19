@@ -40,11 +40,34 @@ type cert struct {
 func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	asJSON := false
 	var subject string
+	// resolve maps "host:port" to the address to dial, so a local name can be
+	// read without an /etc/hosts entry (acmesh-730 follow-up).
+	resolve := map[string]string{}
 	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "-j", "--json":
+		switch {
+		case args[i] == "-j" || args[i] == "--json":
 			asJSON = true
-		case "--":
+		case args[i] == "--resolve":
+			if i+1 >= len(args) {
+				fmt.Fprintln(stderr, "certinfo: --resolve needs HOST:PORT:ADDRESS")
+				return 1
+			}
+			i++
+			parts := strings.Split(args[i], ":")
+			if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+				fmt.Fprintf(stderr, "certinfo: --resolve wants HOST:PORT:ADDRESS, got '%s'\n", args[i])
+				return 1
+			}
+			resolve[net.JoinHostPort(parts[0], parts[1])] = parts[2]
+		case strings.HasPrefix(args[i], "--resolve="):
+			v := strings.TrimPrefix(args[i], "--resolve=")
+			parts := strings.Split(v, ":")
+			if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+				fmt.Fprintf(stderr, "certinfo: --resolve wants HOST:PORT:ADDRESS, got '%s'\n", v)
+				return 1
+			}
+			resolve[net.JoinHostPort(parts[0], parts[1])] = parts[2]
+		case args[i] == "--":
 			if i+1 < len(args) {
 				subject = args[i+1]
 				i++
@@ -68,7 +91,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		return 1
 	}
 
-	certs, source, err := load(subject)
+	certs, source, err := load(subject, resolve)
 	if err != nil {
 		fmt.Fprintf(stderr, "certinfo: %v\n", err)
 		return 1
@@ -92,7 +115,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 // load decides by the operand: a path that exists is a file, everything else is
 // a host. A host that cannot be dialled says so with both readings, because
 // "connection refused" alone hides a mistyped file name.
-func load(subject string) ([]cert, string, error) {
+func load(subject string, resolve map[string]string) ([]cert, string, error) {
 	if _, err := os.Stat(subject); err == nil {
 		data, err := os.ReadFile(subject)
 		if err != nil {
@@ -112,8 +135,14 @@ func load(subject string) ([]cert, string, error) {
 		}
 		host, port = h, p
 	}
+	dial := net.JoinHostPort(host, port)
+	if target, ok := resolve[net.JoinHostPort(host, port)]; ok {
+		dial = net.JoinHostPort(target, port)
+	}
+	// The name stays the ServerName even when the address is rewritten: the
+	// point of --resolve is to read the certificate for that name.
 	conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 10 * time.Second}, "tcp",
-		net.JoinHostPort(host, port), &tls.Config{ServerName: host, InsecureSkipVerify: true})
+		dial, &tls.Config{ServerName: host, InsecureSkipVerify: true})
 	if err != nil {
 		return nil, "", fmt.Errorf("%s: no such file and not reachable as a host: %v", subject, err)
 	}

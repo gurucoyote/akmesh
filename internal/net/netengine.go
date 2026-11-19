@@ -78,7 +78,22 @@ type netOptions struct {
 	// CAFile is --cacert: the roots to verify the server's chain against,
 	// instead of the system's store.
 	CAFile string
+	// Parallel is -Z, ParallelMax is --parallel-max and Repeat is --repeat:
+	// the flood mode, where the bodies go nowhere and the summary matters
+	// (acmesh-730).
+	Parallel    bool
+	ParallelMax int
+	Repeat      int
+	// NoKeepalive sets Connection: close, so a flood measures new connections
+	// instead of reuse.
+	NoKeepalive bool
+	// StatusSink, when set, receives the HTTP status of the one request this
+	// options value describes. It exists for the parallel summary.
+	StatusSink *int
 }
+
+// defaultParallelMax is curl's own default for -Z.
+const defaultParallelMax = 50
 
 // The default User-Agent names this tool and says what it behaves like. It does
 // not claim to be curl or wget: the version in a fake string is a lie a server
@@ -205,6 +220,9 @@ func runNet(opts netOptions, stdin *os.File, stdout, stderr *os.File) int {
 	if opts.Compress {
 		req.Header.Set("Accept-Encoding", "gzip")
 	}
+	if opts.NoKeepalive {
+		req.Close = true
+	}
 	if opts.Verbose {
 		fmt.Fprintf(stderr, "> %s %s\n", method, requestURL)
 		for name, values := range req.Header {
@@ -220,6 +238,9 @@ func runNet(opts netOptions, stdin *os.File, stdout, stderr *os.File) int {
 		return reportNetError(err, opts, stderr, start)
 	}
 	defer resp.Body.Close()
+	if opts.StatusSink != nil {
+		*opts.StatusSink = resp.StatusCode
+	}
 
 	if opts.Verbose {
 		fmt.Fprintf(stderr, "< %s\n", resp.Status)
@@ -344,6 +365,9 @@ func buildBody(opts netOptions) ([]byte, string, error) {
 func buildClient(opts netOptions, stderr *os.File) (*http.Client, error) {
 	transport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
+	}
+	if opts.NoKeepalive {
+		transport.DisableKeepAlives = true
 	}
 	if opts.Proxy != "" {
 		proxyURL, err := url.Parse(opts.Proxy)

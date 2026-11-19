@@ -2029,3 +2029,5 @@ Kopfzeilenreihenfolge nicht.
 
 Groesse: 15.233.148 Bytes nach -w, -i und User-Agent (vorher 15.220.860).
 Batterie: 221 Pruefungen Linux, 0 Fehler.
+
+Windows nach -w, -i und User-Agent (19.11.2026): 199 Pruefungen, 0 Fehler; Groesze akmesh.exe nach dem Bau melden. Linux 221/0 im selben Stand.

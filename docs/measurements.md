@@ -2887,3 +2887,44 @@ Abschlusslauf nach dem ls-Umbau (acmesh-wx6), 19.11.2026:
     battery windows          179 Pruefungen, 0 Fehler
     help-audit               every command answers --help except the documented u-root gap
     go test -race            ohne Befund
+
+## 2026-11-19 Absetzen in den Hintergrund: welche Befehle, und stimmt es (acmesh-wx6 nachfolgend)
+
+Bestandsaufnahme, nicht geraten, sondern im Quelltext und am Binary geprueft:
+
+  httpd     setzt sich per Vorgabe ab; -f bleibt im Vordergrund.
+            internal/httpd/detach_unix.go legt eine eigene Session an (Setsid),
+            detach_windows.go ein DETACHED_PROCESS ohne eigenes Konsolenfenster.
+  sshd      gibt es bei uns NICHT. u-root hat cmds/core/sshd (nur Linux, nutzt
+            vsock, sftp, PTY), es steht in keinem Build-Listen-Eintrag, und
+            weder scripts/cmds.txt noch internal/tools kennen den Namen. Was wir
+            haben, ist der Client: ssh und scp.
+  alles     kein weiterer Befehl setzt sich ab: kein Setsid in unseren Paketen
+  andere    und keines in den u-root-Befehlen, die wir bauen. sh, timeout, xargs
+            und find -exec starten Kinder, aber im Vordergrund.
+
+Gemessen mit akmesh httpd ohne -f, Linux und Windows, 19.11.2026:
+
+  Ausgabe      "httpd: started in the background, pid N", Exit 0
+  Dauer        Linux 0 ms bis zur Rueckkehr an die Shell
+  Linux        PPID 7 (an init abgegeben), SID = eigene PID, also eigene Session
+  Linux        Seite danach abrufbar, SIGTERM beendet den Prozess
+  Windows      tasklist zeigt akmesh.exe mit der genannten PID, Seite abrufbar
+  Windows      Stop nur ueber unseren eigenen kill: "akmesh.exe kill 39448" gibt
+               0, danach 000 und tasklist leer. Die Shell von WSL kann eine
+               Windows-PID nicht erreichen - das ist der Unterschied, der in der
+               Batterie gefehlt hat.
+
+Gefunden und behoben: sieben verwaiste httpd aus frueheren Batterie-Laeufen
+(PPID 7, Ports 19255 bis 19451 belegt). Ursache war der TLS-Block der Batterie,
+der den Server ueber die Shell-Funktion run startete: $! war die Subshell, nicht
+der Server, und kill traf die falsche PID. Jetzt startet der Block das Binary
+direkt, beendet zusaetzlich per pkill auf den Port und prueft danach.
+
+Neue Pruefungen in der Batterie: httpd-detach-stopped und tls-httpd-stopped
+(warten bis zu 10 s auf 000, weil der .exe durch die Interop-Schicht einen Moment
+braucht), und der Stop des abgesetzten Servers laeuft ueber "$BIN" kill, weil
+die Shell-PID dort eine Windows-PID ist.
+
+Batterie danach: 203 Pruefungen Linux, 181 Windows, beide 0 Fehler, keine
+Restprozesse.

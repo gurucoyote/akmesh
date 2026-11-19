@@ -415,8 +415,25 @@ if [ $tries -ge 20 ]; then
   printf 'httpd detach: port %d did not serve the test page in 10 s (pid %s)\n' "$BG_PORT" "$BG_PID" >&2
 fi
 check httpd-detach-serves "1" "$(curl -s -m 5 http://127.0.0.1:$BG_PORT/index.html 2>/dev/null | grep -c hd)"
+# A detached server that cannot be stopped is worse than one that never starts:
+# it holds the port and the next run finds it. Kill it and prove it is gone.
+# Stop it with our own kill: the pid printed by the .exe is a Windows pid, and
+# the shell's kill does not reach that from WSL (measured: the server kept
+# answering). Our kill knows both worlds.
+"$BIN" kill "$BG_PID" 2>/dev/null
 kill "$BG_PID" 2>/dev/null
 pkill -f "httpd -f -p 127.0.0.1:$BG_PORT" 2>/dev/null
+# The .exe takes a moment to disappear through the interop layer, so poll
+# instead of looking once (measured: 200 right after kill, 000 a second later).
+stop_code=200
+stops=0
+while [ $stops -lt 20 ]; do
+  stop_code=$(curl -s -m 2 -o /dev/null -w '%{http_code}' "http://127.0.0.1:$BG_PORT/" 2>/dev/null)
+  [ "$stop_code" = "000" ] && break
+  sleep 0.5
+  stops=$((stops+1))
+done
+check httpd-detach-stopped "000" "$stop_code"
 rm -rf "$HD_DIR"
 
 # rtf2md: a paragraph, a bold word and a code page byte.
@@ -610,12 +627,25 @@ run mkcert -host localhost,127.0.0.1 -ca "$CERT_DIR/tca" -out "$CERT_DIR/tleaf" 
 checkcode mkcert-exit 0 "$?"
 check verify-ca-ok "OK" "$(run verify -ca "$CERT_DIR/tca-cert.pem" -host localhost "$CERT_DIR/tleaf-cert.pem" 2>&1 | cut -d: -f1)"
 checkcode verify-wrong-host 1 "$(run verify -ca "$CERT_DIR/tca-cert.pem" -host falsch.test "$CERT_DIR/tleaf-cert.pem" >/dev/null 2>&1; echo $?)"
-run httpd -f -p 127.0.0.1:$tls_port -h "$CERT_DIR" -S "$CERT_DIR/tleaf-cert.pem" -K "$CERT_DIR/tleaf-key.pem" >/dev/null 2>&1 &
+# Started directly, not through run(): with a shell function $! is the subshell,
+# and killing it left the server running and holding the port (measured: seven
+# orphans after four runs).
+"$BIN" httpd -f -p 127.0.0.1:$tls_port -h "$CERT_DIR" -S "$CERT_DIR/tleaf-cert.pem" -K "$CERT_DIR/tleaf-key.pem" >/dev/null 2>&1 &
 TLS_PID=$!
 sleep 1
 check certinfo-httpd-tls "localhost" "$(run certinfo 127.0.0.1:$tls_port 2>&1 | sed -n 's/^Subject: CN=\([^,]*\).*/\1/p' | head -1)"
 kill $TLS_PID 2>/dev/null
 wait $TLS_PID 2>/dev/null
+pkill -f "httpd -f -p 127.0.0.1:$tls_port" 2>/dev/null
+stop_code=200
+stops=0
+while [ $stops -lt 20 ]; do
+  stop_code=$(curl -sk -m 2 -o /dev/null -w '%{http_code}' "https://127.0.0.1:$tls_port/" 2>/dev/null)
+  [ "$stop_code" = "000" ] && break
+  sleep 0.5
+  stops=$((stops+1))
+done
+check tls-httpd-stopped "000" "$stop_code"
 rm -rf "$CERT_DIR"
 
 printf '%d checks, %d failures\n' "$checks" "$fails"

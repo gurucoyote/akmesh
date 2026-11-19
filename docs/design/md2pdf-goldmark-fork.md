@@ -1,6 +1,6 @@
 # md2pdf: goldmark-pdf als magerer Fork
 
-Status: Empfehlung, noch nicht beschlossen. Tickets: acmesh-54s.2 (md2pdf), Messungen acmesh-54s.1.
+Status: beschlossen von Martin am 19.11.2026 - md2pdf wird auf Basis dieses Forks gebaut. Tickets: acmesh-54s.2 (md2pdf), Messungen acmesh-54s.1. Die Aenderungen liegen als anwendbare Patches in `patches/` (siehe patches/README.md), damit sie nicht in einem Scratch-Verzeichnis verloren gehen.
 Stand der Messungen: 19.11.2026.
 
 ## Anlass

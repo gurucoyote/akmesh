@@ -1,0 +1,281 @@
+--- a/option.go
++++ b/option.go
+@@ -7,7 +7,6 @@
+ 	"io"
+ 	"net/http"
+ 
+-	"github.com/alecthomas/chroma/v2"
+ 	"github.com/go-swiss/fonts"
+ 	"github.com/yuin/goldmark/util"
+ )
+@@ -110,12 +109,6 @@
+ 	})
+ }
+ 
+-// Set the code block chroma theme
+-func WithCodeBlockTheme(theme *chroma.Style) Option {
+-	return OptionFunc(func(c *Config) {
+-		c.Styles.CodeBlockTheme = theme
+-	})
+-}
+ 
+ type withNodeRenderers struct {
+ 	value []util.PrioritizedValue
+--- a/renderer_funcs.go
++++ b/renderer_funcs.go
+@@ -3,15 +3,11 @@
+ import (
+ 	"bytes"
+ 	"fmt"
+-	"io"
+ 	"log"
+ 	"strings"
+ 
+-	"github.com/alecthomas/chroma/v2"
+-	"github.com/alecthomas/chroma/v2/lexers"
+ 	"github.com/yuin/goldmark/ast"
+ 	east "github.com/yuin/goldmark/extension/ast"
+-	textm "github.com/yuin/goldmark/text"
+ 	"github.com/yuin/goldmark/util"
+ )
+ 
+@@ -169,143 +165,27 @@
+ 
+ func (r *nodeRederFuncs) renderCodeBlock(w *Writer, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+ 	if !entering {
+-		w.LogDebug("Codeblock Leaving", "")
+ 		return ast.WalkContinue, nil
+ 	}
+ 
+-	mleft, _, mright, _ := w.Pdf.GetMargins()
+-
+-	n := node.(interface {
+-		Lines() *textm.Segments
+-	})
+-	w.LogDebug("Codeblock", "")
+-
+ 	var content string
+-	l := n.Lines().Len()
++	l := node.Lines().Len()
+ 	for i := 0; i < l; i++ {
+-		line := n.Lines().At(i)
++		line := node.Lines().At(i)
+ 		content += string(line.Value(source))
+ 	}
+ 	content = strings.ReplaceAll(content, "\t", "    ")
+ 
+-	bgStyle := w.Styles.CodeBlockTheme.Get(chroma.Text)
+-	fBgStyle := w.ChromaToStyle(bgStyle)
+-	SetStyle(w.Pdf, *fBgStyle)
+-	w.Pdf.BR(w.States.peek().textStyle.Size + w.States.peek().textStyle.Spacing) // start on next line!
+-
+-	lang := ""
+-
+-	withLang, hasLang := node.(*ast.FencedCodeBlock)
+-	if hasLang {
+-		lang = string(withLang.Language(source))
++	st := w.Styles.CodeBlock
++	SetStyle(w.Pdf, *st)
++	w.Pdf.BR(st.Size + st.Spacing)
++	for _, line := range strings.Split(content, "\n") {
++		height := st.Size + st.Spacing
++		w.Pdf.CellFormat(w.Pdf.MeasureTextWidth(line), height, line, "", 0, "L", true, 0, "")
++		w.Pdf.BR(height)
+ 	}
++	w.Pdf.BR(st.Size + st.Spacing)
+ 
+-	var lexer chroma.Lexer
+-	if lang == "" {
+-		lexer = lexers.Analyse(content)
+-	} else {
+-		lexer = lexers.Get(lang)
+-	}
+-	if lexer == nil {
+-		lexer = lexers.Fallback
+-	}
+-
+-	lexer = chroma.Coalesce(lexer)
+-
+-	iterator, err := lexer.Tokenise(nil, string(content))
+-	if err != nil {
+-		return ast.WalkStop, fmt.Errorf("could not tokenise fenced code block: %w", err)
+-	}
+-
+-	height := fBgStyle.Size + fBgStyle.Spacing
+-
+-	w.Pdf.SetMarginLeft(mleft + height)
+-	w.Pdf.SetMarginRight(mright + height)
+-
+-	pageWidth, _ := w.Pdf.GetPageSize()
+-
+-	addLeftPad := func() {
+-		prevX := w.Pdf.GetX()
+-		w.Pdf.SetX(mleft)
+-		w.Pdf.CellFormat((height), height, "", "TBL", 0, "L", true, 0, "")
+-		w.Pdf.SetX(prevX)
+-	}
+-	addRightPad := func() {
+-		X := w.Pdf.GetX()
+-		border := "TBR"
+-		if X == mleft+height {
+-			border = "1"
+-		}
+-		w.Pdf.CellFormat(pageWidth-X-(mright), height, "", border, 0, "L", true, 0, "")
+-		w.Pdf.BR(fBgStyle.Size + fBgStyle.Spacing)
+-	}
+-
+-	// Add a padding before the code block
+-	w.Pdf.SetX(mleft)
+-	w.Pdf.CellFormat(pageWidth-mleft-mright, height, "", "1", 0, "L", true, 0, "")
+-	w.Pdf.BR(fBgStyle.Size + fBgStyle.Spacing)
+-
+-	err = chroma.FormatterFunc(func(iow io.Writer, s *chroma.Style, iterator chroma.Iterator) error {
+-		for t := iterator(); t != chroma.EOF; t = iterator() {
+-			chSt := w.Styles.CodeBlockTheme.Get(t.Type)
+-			tokenStyle := w.ChromaToStyle(chSt)
+-			tokenHeight := tokenStyle.Size + tokenStyle.Spacing
+-
+-			SetStyle(w.Pdf, *tokenStyle)
+-
+-			tokenLines := strings.Split(t.Value, "\n")
+-			for k, v := range tokenLines {
+-				if k > 0 {
+-					addRightPad()
+-				}
+-
+-				if k != len(tokenLines)-1 || v == "" {
+-					addLeftPad()
+-				}
+-
+-				border := "TBR"
+-				if w.Pdf.GetX() == mleft+height {
+-					border = "1"
+-				}
+-
+-				if v != "" {
+-					allChunks := w.Pdf.SplitText(v, pageWidth-mright-tokenHeight-w.Pdf.GetX())
+-					txt := allChunks[0]
+-
+-					// Print the first chunk. Should be the only chunk if we do not
+-					// need to line break
+-					w.Pdf.CellFormat(
+-						w.Pdf.MeasureTextWidth(txt),
+-						tokenHeight, txt, border, 0, "L", true, 0, "")
+-
+-					// If there were more chunks, we join the rest and split them by the
+-					// page width
+-					if len(allChunks) > 0 {
+-						for _, vn := range w.Pdf.SplitText(strings.Join(allChunks[1:], ""), pageWidth) {
+-
+-							addRightPad()
+-							addLeftPad()
+-
+-							txt := vn
+-							w.Pdf.CellFormat(w.Pdf.MeasureTextWidth(txt), tokenHeight, txt, "1", 0, "L", true, 0, "")
+-						}
+-					}
+-				}
+-			}
+-		}
+-
+-		return nil
+-	}).Format(nil, w.Styles.CodeBlockTheme, iterator)
+-	if err != nil {
+-		return ast.WalkStop, fmt.Errorf("could not format fenced code block: %w", err)
+-	}
+-
+-	w.Pdf.SetX(mleft)
+-	w.Pdf.CellFormat(pageWidth-mright-mleft, height, "", "1", 0, "L", true, 0, "")
+-	w.Pdf.BR(fBgStyle.Size + fBgStyle.Spacing)
+-
+-	w.Pdf.SetMarginLeft(mleft)
+-	w.Pdf.SetMarginRight(mright)
+ 	return ast.WalkContinue, nil
+ }
+ 
+--- a/style.go
++++ b/style.go
+@@ -3,8 +3,6 @@
+ import (
+ 	"image/color"
+ 
+-	"github.com/alecthomas/chroma/v2"
+-	"github.com/alecthomas/chroma/v2/styles"
+ )
+ 
+ // Style is the struct to capture the styling features for text
+@@ -43,8 +41,8 @@
+ 
+ 	// code and preformatted text
+ 	CodeFont Font
+-	// Codeblock Chroma Theme
+-	CodeBlockTheme *chroma.Style
++	// plain code block, no syntax colours
++	CodeBlock *Style
+ 
+ 	// link text
+ 	LinkColor color.Color
+@@ -100,7 +98,10 @@
+ 	}
+ 
+ 	c.CodeFont = FontRobotoMono
+-	c.CodeBlockTheme = styles.Get("monokai")
++	c.CodeBlock = &Style{
++		Font: FontRobotoMono, Size: 10, Spacing: 2,
++		TextColor: color.RGBA{0, 0, 0, 0}, FillColor: color.RGBA{230, 230, 230, 0},
++	}
+ 
+ 	return c
+ }
+--- a/writer.go
++++ b/writer.go
+@@ -4,13 +4,11 @@
+ 	"bufio"
+ 	"bytes"
+ 	"fmt"
+-	"image/color"
+ 	"io"
+ 	"net/http"
+ 	"strconv"
+ 	"strings"
+ 
+-	"github.com/alecthomas/chroma/v2"
+ 	"github.com/yuin/goldmark/ast"
+ 	east "github.com/yuin/goldmark/extension/ast"
+ 	"github.com/yuin/goldmark/util"
+@@ -103,35 +101,6 @@
+ 	w.Text(currentStyle, bb.String())
+ }
+ 
+-// Converts a chroma.StyleEntry to a Style, based on the backtickStyle
+-func (w *Writer) ChromaToStyle(chSt chroma.StyleEntry) *Style {
+-	s := w.GetBacktickStyle()
+-	s.TextColor = color.RGBA{
+-		R: chSt.Colour.Red(),
+-		G: chSt.Colour.Green(),
+-		B: chSt.Colour.Blue(),
+-	}
+-	s.FillColor = color.RGBA{
+-		R: chSt.Background.Red(),
+-		G: chSt.Background.Green(),
+-		B: chSt.Background.Blue(),
+-	}
+-
+-	styleStr := strings.ToUpper(s.format)
+-	if chSt.Bold == chroma.Yes && !strings.Contains(styleStr, "B") {
+-		s.format += "B"
+-	}
+-
+-	if chSt.Italic == chroma.Yes && !strings.Contains(styleStr, "I") {
+-		s.format += "I"
+-	}
+-
+-	if chSt.Underline == chroma.Yes && !strings.Contains(styleStr, "U") {
+-		s.format += "U"
+-	}
+-
+-	return s
+-}
+ 
+ // Returns the current style with the font set to Styles.CodeFont
+ func (w *Writer) GetBacktickStyle() *Style {

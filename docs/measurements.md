@@ -2615,3 +2615,10 @@ Go-Code.
 Was noch als Go-Test ginge, aber keinen hat (zweite Runde, Ticket acmesh-qiz):
 cp 5, diff 1, patch 2, tar 10. Diese Befehle haben heute keinen einzigen Go-Test;
 die Batterie ist dort die einzige Deckung.
+
+Abschlusslauf der ganzen Reihe mit dem fertigen Stand:
+
+    ./scripts/check-all.sh   182,78 s   exit 0
+    battery linux            214 Pruefungen, 0 Fehler
+    battery windows          192 Pruefungen, 0 Fehler
+    go test -race            ohne Befund

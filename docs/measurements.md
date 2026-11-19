@@ -1924,3 +1924,43 @@ Vergleichswerkzeug: curl-impersonate (MIT) patcht curl gegen BoringSSL
 (Chrome) oder NSS (Firefox) und aendert die TLS-Erweiterungen und die
 HTTP/2-SETTINGS; es ist C mit eigener Bibliothek, also fuer ein Go-Binary nur
 als Vorbild brauchbar, nicht als Abhaengigkeit.
+
+## 2026-11-19 uTLS gemessen: Groesse, Fingerabdruck, Integration
+
+Probe: zwei kleine Programme in /root/.hermes/cache/scratch, gebaut mit
+CGO_ENABLED=0, -trimpath und -ldflags "-s -w".
+
+    plain (net/http, crypto/tls)            5.623.992 Bytes
+    + uTLS v1.8.2, ohne x/net/http2         7.028.920 Bytes   (+1.404.928)
+    + uTLS und x/net/http2                  7.749.794 Bytes   (+2.125.802)
+
+Was der Reflektor sieht (tls.peet.ws):
+
+    crypto/tls heute   ja4 t13d1312h2_f57a46bbacb6_ab7e3b40a677
+                       akamai 2:0;4:4194304;5:16384;6:10485760|1073741824|0|a,m,p,s
+    uTLS Chrome        ja4 t13d1516h2_8daaf6152771_d8a2da3f94cd   (veroeffentlichter Chrome-Kern)
+    uTLS Firefox       ja4 t13d1715h2_5b57614c22b0_5c2c66f702b0   (veroeffentlichter Firefox-Kern)
+    uTLS Go            ja4 t13d1311h2_f57a46bbacb6_e7c285222651   (nicht identisch mit nativem Go)
+
+Integrationsfalle, gemessen: mit http.Transport und nur DialTLSContext plus
+ForceAttemptHTTP2 stimmt der ClientHello (JA4 passt), die Anfrage geht aber als
+HTTP/1.1 raus - ALPN sagt h2, gesprochen wird es nicht. Erst mit einem
+ausdruecklichen http2.Transport aus x/net/http2 kommt h2 zustande. Der
+HTTP/2-Fingerabdruck bleibt dabei Go'scher Standard:
+
+    uTLS Chrome + x/net/http2   http_version h2
+                                akamai 2:0;4:4194304;5:16384;6:10485760|1073741824|0|a,m,p,s
+
+Chrome sendet 1:65536;2:0;4:6291456;6:262144|15663105|0|m,a,s,p. Die
+Pseudo-Header-Reihenfolge unseres Clients ist a,m,p,s (aus den gesendeten
+HEADERS-Frames von peet.ws), Chrome sendet m,a,s,p.
+
+Paketname: uTLS heisst als Paket "tls", also braucht der Import einen Alias,
+sonst kollidiert er mit crypto/tls.
+
+Reife (GitHub-API, mit akmesh curl gelesen, 19.11.2026):
+- 2.649 Sterne, 410 Forks, 70 offene Issues, nicht archiviert, Lizenz BSD-3-Clause.
+- Angelegt 2017, letzter Push 18.11.2026.
+- Letztes Release v1.8.2 vom 13.01.2026 (Sicherheitsupdate); auf master liegt
+  seither ein Fix ("keep a private key for every classical key share"), der
+  noch nicht als Release erschienen ist.

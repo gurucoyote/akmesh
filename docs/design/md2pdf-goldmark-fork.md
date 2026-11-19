@@ -52,16 +52,18 @@ Bezogen auf acmesh heute (12.591.228 Bytes roh, abgelesen an acmesh und an
 
 ```
 heute                                      12.591.228
-+ goldmark mit GFM und HTML                13.578.364   unter der 16-MB-Grenze
-+ Fall mit dem mageren Fork                19.009.660   ueber der Grenze
-+ mit dem unveraenderten goldmark-pdf      23.212.156   deutlich ueber der Grenze
++ goldmark mit GFM und HTML                13.578.364
++ Fall mit dem mageren Fork                19.009.660   6 MB unter der Warnlinie
++ mit dem unveraenderten goldmark-pdf      23.212.156   1,8 MB unter der Warnlinie
 ```
 
-Die Warnlinie steht bei 13 MB, der harte Stopp bei 16.000.000 Bytes
-(scripts/build-bb.sh:262 bis 283, Ticket acmesh-94e.15). Mit dem mageren Fork
-reisst md2pdf die harte Linie also um rund 3 MB. Das ist die Groeszenfrage, die
-acmesh-54s.1 entscheiden muss, nicht dieser Fork: entweder eigenes Binary, oder
-die Linie mit Begruendung anheben, oder kein PDF.
+Die Warnlinie steht bei 25 MB, der harte Stopp bei 30.000.000 Bytes; Martin hat
+sie am 19.11.2026 fuer die Dokumentenschreiber angehoben (Kommentar in
+scripts/build-bb.sh, Commit 95494fb, Ticket acmesh-54s.1). Damit ist die Groesze
+kein Ausschlusskriterium mehr: beide Wege passen unter die Linie, der magere Fork
+mit 19,0 MB und 6 MB Luft bis zur Warnung, das unveraenderte goldmark-pdf mit
+23,2 MB und 1,8 MB Luft. Das Argument fuer den Fork ist damit nicht mehr allein
+die Groesze, sondern dass er ohne Netz auskommt.
 
 Achtung beim Lesen alter Notizen: die Messungen der anderen Sitzung zu diesem
 Ticket sind in base64 notiert (Faktor 4/3), die acmesh-Groesze dort aber in rohen
@@ -99,8 +101,12 @@ Unveraendert gegenueber dem Original, weil nicht angefasst:
 ## Empfehlung
 
 md2pdf auf den Fork bauen, als eigenes Paket im acmesh-Baum, mit vier getrennten
-Schriftpfaden. Syntaxfarben weglassen; sie sind der teuerste Einzelposten und fuer
-Dokumente ohne Codeanteil ohne Wert.
+Schriftpfaden. Drei Gruende, in dieser Reihenfolge:
+
+1. Das Original holt seine Schrift zur Laufzeit ueber HTTP. Ein Busybox-Binary, das
+   ohne Netz kein PDF setzen kann, ist kein Busybox-Binary.
+2. 4,2 MB weniger, und mit 19,0 MB bleibt Luft bis zur Warnlinie.
+3. Syntaxfarben sind fuer unsere Dokumente der teuerste Einzelposten ohne Wert.
 
 Wenn Farben doch gebraucht werden, ist die Reihenfolge: erst ohne Farben ausliefern,
 dann chroma als eigenes Ticket nachziehen, mit der gemessenen Zuwachszahl.

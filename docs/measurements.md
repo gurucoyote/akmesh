@@ -2648,3 +2648,33 @@ Gebaut wurde die fehlende Form [c*n] in SET2, gegen GNU gemessen:
     tr a '[b*x]'      Fehler "invalid repeat count 'x' in [c*n] construct", Exit 1
 
 Abdeckung tr: 82,4 Prozent, zwei neue Testfunktionen.
+
+## 2026-11-19 cp, tar, diff und patch in Go (acmesh-qiz)
+
+Diese vier hatten keinen einzigen Go-Test; die Batterie war ihre einzige Deckung.
+Die Tests laufen jetzt durch den Dispatcher (RunArgs) mit echtem Arbeitsverzeichnis
+und stdin, also genau so, wie das Binary sie aufruft:
+internal/tools/files_test.go, Helfer runFileCommand.
+
+    go test ./internal/tools/ -run 'TestCp|TestTar|TestDiff'   -> alle gruen
+
+Abgedeckt, je mit der alten Pruefung:
+    cp -a, verschachtelt      TestCpArchiveCopiesTheTree     cp-archive, cp-archive-nested
+    cp -t                     TestCpTargetDirectory          cp-target-dir, cp-target-files
+    cp -n                     TestCpNoClobber                cp-no-clobber
+    tar -czf/-tzf/-tf         TestTarCreateAndList           tar-create-gzip, tar-list-gzip, tar-list-without-z
+    tar --exclude             TestTarExclude                 tar-exclude, tar-exclude-worked
+    tar -xzf -C --strip       TestTarExtractStripComponents  tar-extract-strip, tar-strip-file
+    tar -cf -C                TestTarCreateFromDirectory     tar-C-create, tar-C-listing
+    tar -cjf                  TestTarRefusesBzip2            tar-j-refused
+    diff und patch            TestDiffAndPatchRoundTrip      diff-header, patch-apply, patch-result
+
+In der Batterie bleibt cp-archive-mode: die Rechte nach "cp -a" gelten nur auf dem
+echten Ziel.
+
+Mutationsprobe von Hand, zwei Mutanten, beide getötet: tar --exclude ignoriert,
+cp -n wirkungslos.
+
+Batterie: 196 Pruefungen Linux, 174 Windows, beide 0 Fehler (vorher 214 und 192).
+Ein Linux-Lauf meldete httpd-file und drei curl-Pruefungen rot, der naechste war
+gruen - derselbe Aussetzer wie in acmesh-ert, jetzt auch auf Linux gesehen.

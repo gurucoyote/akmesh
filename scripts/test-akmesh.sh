@@ -114,38 +114,25 @@ case "$BIN" in
 	;;
 esac
 rm -rf cdir
-# cp: -a (mode and time), -t and -n are the reasons it got forked
+# cp und tar laufen in Go seit acmesh-qiz (internal/tools/files_test.go):
+#   -a, verschachtelt        -> TestCpArchiveCopiesTheTree
+#   -t                       -> TestCpTargetDirectory
+#   -n                       -> TestCpNoClobber
+#   -czf, -tzf, -tf          -> TestTarCreateAndList
+#   --exclude                -> TestTarExclude
+#   -xzf -C --strip-components -> TestTarExtractStripComponents
+#   -cf -C                   -> TestTarCreateFromDirectory
+#   -cjf abgelehnt           -> TestTarRefusesBzip2
+#   diff und patch           -> TestDiffAndPatchRoundTrip
+# Was bleibt: die Rechte nach "cp -a" gelten nur auf dem echten Ziel.
 mkdir -p cpsrc/sub && printf 'a\n' > cpsrc/a.txt && printf 'b\n' > cpsrc/sub/b.txt
 chmod 640 cpsrc/a.txt 2>/dev/null
-checkcode cp-archive 0 "$(run cp -a cpsrc cpdst >/dev/null 2>&1; echo $?)"
+run cp -a cpsrc cpdst >/dev/null 2>&1
 case "$BIN" in
 *.exe) ;;
 *) check cp-archive-mode "640" "$(run stat -c %a cpdst/a.txt 2>/dev/null | tr -d '\r')" ;;
 esac
-check cp-archive-nested "b" "$(run cat cpdst/sub/b.txt | tr -d '\r\n')"
-mkdir -p cptarget
-checkcode cp-target-dir 0 "$(run cp -t cptarget cpsrc/a.txt cpsrc/sub/b.txt >/dev/null 2>&1; echo $?)"
-check cp-target-files "2" "$(run ls cptarget | wc -l | tr -d ' ')"
-printf 'old\n' > cpdst/a.txt
-run cp -n cpsrc/sub/b.txt cpdst/a.txt >/dev/null 2>&1
-check cp-no-clobber "old" "$(run cat cpdst/a.txt | tr -d '\r\n')"
-rm -rf cpsrc cpdst cptarget
-
-# tar: -czf and -tzf are what every agent writes
-mkdir -p tdir/sub && printf 'x\n' > tdir/a.txt && printf 'y\n' > tdir/sub/b.txt && printf 'z\n' > tdir/skip.log
-checkcode tar-create-gzip 0 "$(run tar -czf t.tgz tdir >/dev/null 2>&1; echo $?)"
-# The separator differs per target, so the check looks for the file name only.
-check tar-list-gzip "ja" "$(run tar -tzf t.tgz 2>/dev/null | grep -q 'a\.txt' && echo ja)"
-check tar-list-without-z "ja" "$(run tar -tf t.tgz 2>/dev/null | grep -q 'a\.txt' && echo ja)"
-checkcode tar-exclude 0 "$(run tar -czf te.tgz --exclude='*.log' tdir >/dev/null 2>&1; echo $?)"
-check tar-exclude-worked "" "$(run tar -tzf te.tgz 2>/dev/null | grep 'skip.log')"
-mkdir -p tout
-checkcode tar-extract-strip 0 "$(run tar -xzf t.tgz -C tout --strip-components=1 >/dev/null 2>&1; echo $?)"
-check tar-strip-file "x" "$(run cat tout/a.txt 2>/dev/null | tr -d '\r\n')"
-checkcode tar-C-create 0 "$(run tar -cf t2.tar -C tdir a.txt >/dev/null 2>&1; echo $?)"
-check tar-C-listing "a.txt" "$(run tar -tf t2.tar 2>/dev/null | tr -d '\r')"
-checkcode tar-j-refused 2 "$(run tar -cjf t.tbz tdir >/dev/null 2>&1; echo $?)"
-rm -rf tdir tout t.tgz te.tgz t2.tar
+rm -rf cpsrc cpdst
 
 # sha256sum -c: the check form scripts use to verify a download
 printf 'hallo\n' > sumfile.txt
@@ -239,15 +226,8 @@ checkcode sort-unknown-flag 2 "$(run sort --bogus >/dev/null 2>&1; echo $?)"
 check shuf-count 2 "$(printf 'a\nb\nc\nd\n' | run shuf -n 2 | tr -d '\r' | sed '/^$/d' | wc -l | tr -d ' ')"
 check shuf-range "1 2 3" "$(run shuf -i 1-3 | tr -d '\r' | sort | tr '\n' ' ' | sed 's/ $//')"
 
-# diff and patch: the round trip is the point
-printf 'eins\nzwei\ndrei\nvier\n' > a.txt
-printf 'eins\nZWEI\ndrei\nvier\nfuenf\n' > b.txt
-run diff a.txt b.txt > p.diff
-check diff-header "--- a.txt" "$(head -1 p.diff | tr -d '\r')"
-# GNU form: the diff comes on stdin, a positional name would be the file to patch
-checkcode patch-apply 0 "$(run patch < p.diff >/dev/null 2>&1; echo $?)"
-check patch-result "eins ZWEI drei vier fuenf" "$(tr '\n' ' ' < a.txt | tr -d '\r' | sed 's/ $//')"
-rm -f p.diff a.txt b.txt
+# diff und patch: der Rundlauf ist TestDiffAndPatchRoundTrip (acmesh-qiz), samt
+# Kopfzeile, Anwenden ueber stdin und Inhalt danach.
 
 # find and grep are forked u-root commands: the agent spellings are the point.
 # The behaviour checks live in Go since acmesh-qz2 (internal/forked/find):

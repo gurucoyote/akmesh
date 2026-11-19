@@ -179,3 +179,7 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
             Neue Tests fuer split (-l 2), split-Grenze und stat -c %s/%n samt
             Fehlerfaellen. Rest (cp, diff, patch, tar) hat keinen Go-Test und
             bleibt vorerst Batterie.
+2026-11-19  cp, tar, diff und patch als Go-Tests (acmesh-qiz): 18 Batterie-Pruefungen
+            ersetzt, Batterie 196/0 Linux und 174/0 Windows. Tests laufen durch den
+            Dispatcher mit echtem cwd und stdin. Zwei Mutanten getoetet
+            (tar --exclude, cp -n).

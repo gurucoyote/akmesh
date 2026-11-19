@@ -161,9 +161,11 @@ Stand 19.11.2026:
     nach cut/base64 224 Prüfungen Linux, 202 Windows
     nach tr        221 Prüfungen Linux, 199 Windows
     nach j4f       214 Prüfungen Linux, 192 Windows
+    nach qiz       196 Prüfungen Linux, 174 Windows
 
 | Ticket | Befehl | entfernte Prüfungen | ersetzt durch |
 |---|---|---|---|
+| acmesh-qiz | cp, tar, diff, patch | cp-archive, cp-archive-nested, cp-target-dir, cp-target-files, cp-no-clobber, tar-create-gzip, tar-list-gzip, tar-list-without-z, tar-exclude, tar-exclude-worked, tar-extract-strip, tar-strip-file, tar-C-create, tar-C-listing, tar-j-refused, diff-header, patch-apply, patch-result | TestCpArchiveCopiesTheTree, TestCpTargetDirectory, TestCpNoClobber, TestTarCreateAndList, TestTarExclude, TestTarExtractStripComponents, TestTarCreateFromDirectory, TestTarRefusesBzip2, TestDiffAndPatchRoundTrip |
 | acmesh-j4f | truncate, split, stat | truncate, split-count, split-lines, stat-size, stat-name, stat-missing, stat-no-operand | TestShrinkAndGrow, TestLinesSplitIntoParts, TestTooManyPartsIsRefused, TestCountedFieldsAndOperandErrors |
 | acmesh-49y | tr | tr-range, tr-complement, tr-squeeze | TestRanges, TestDeleteAndComplement, TestSqueeze |
 | acmesh-pfm | cut, base64 | cut-fields, cut-chars, base64-wrap0, base64-default-wrap | TestFieldsAndCharacters, TestSelectionComesOutSorted, TestOverlappingRangesAreOne, TestBytesAndOutputDelimiter, TestWrapWidth, TestWrapWidths, TestDecodeWithoutPaddingKeepsTheLastBlock, TestDecodeRejectsGarbage |

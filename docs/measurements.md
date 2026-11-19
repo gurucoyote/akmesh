@@ -2190,3 +2190,32 @@ Die Datei ist seither identisch mit internal/htmlmd/htmlmd.go in rekr; beide
 Projekte halten sie gleich (diff leer).
 
 Tickets: acmesh-4uw.
+
+## 2026-11-19 usage und --help: Bestandsaufnahme
+
+Werkzeug: scripts/help-audit.sh BIN. Es prueft jeden Befehl aus OURS_ALL
+(build-bb.sh) und scripts/cmds.txt mit --help und -h, ohne stdin, mit 5 s
+Zeitlimit, und notiert Exit-Code, Groesze und erste Zeile.
+
+    Befehle geprueft        98
+    mit usage-Text          57
+    ohne usage-Text         41
+    Exit 0 bei --help       55
+
+Gut: curl, wget, jq, ps, policy, sh, ssh, scp, xargs, chmod, file, shuf,
+sort, kill, killall, httpd, tracedeps, gosh und die md2*-Konverter.
+
+Schlechte Faelle, weil sie die Anfrage falsch deuten statt sie abzulehnen:
+
+    hostname --help   "hostname: setting the name is not supported"
+    sync --help       "sync: open --help: no such file or directory"
+    touch -h          "touch: missing file operand"
+    base64 --help     "base64: unknown option \"--\""
+    wc --help         "wc: unknown option \"--\""
+
+Nebenbefund: du -h ist human-readable (richtig so), lief aber ueber den ganzen
+Baum und wurde vom Zeitlimit abgebrochen; sort -h und df -h, free -h ebenso
+richtig belegt. -h ist bei diesen Befehlen also kein Hilfeschalter und darf es
+auch nicht werden.
+
+Als acmesh-hlp aufgenommen.

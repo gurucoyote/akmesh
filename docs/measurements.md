@@ -2136,3 +2136,32 @@ Ausloeser laesst sich damit nicht benennen; das ist die Grenze dieser Messung.
 Fuer die Praxis zaehlt: akmesh bekommt mit seiner Vorgabe eine echte
 Trefferliste (16 Treffer) und mit einer Browser-Kennung die volle Liste
 (22 Treffer, identisch zu curl mit Browser-Kopfzeilen und zu uTLS).
+
+## 2026-11-19 Zertifikate mit der Standardbibliothek: Machbarkeit belegt
+
+Probe in /root/.hermes/cache/scratch/certprobe, nur stdlib (crypto/x509,
+crypto/ecdsa, crypto/ed25519, crypto/tls, encoding/pem), CGO aus, -s -w:
+
+    Groesze der Probe allein   4.583.608 Bytes  (crypto/tls ist komplett drin)
+
+Vier Schritte, alle ausgefuehrt:
+
+1. mkcert-Ersatz: selbstsignierte CA plus Blatt, ECDSA P-256, dazu ein
+   ed25519-Zertifikat. Ausgabe ca-cert.pem, ca-key.pem, leaf-cert.pem,
+   leaf-key.pem, ed-cert.pem.
+2. Auslesen: Subject CN=localhost, Issuer CN=akmesh test CA,O=akmesh,
+   Seriennummer 2, ECDSA-SHA256, SANs [localhost akmesh.test], IP 127.0.0.1.
+3. Pruefen: x509.Verify gegen die eigene CA mit DNSName localhost - "verifiziert".
+4. Echtes Serverzertifikat: tls.Dial zu www.amazon.de:443, Kette drei Glieder,
+   Blatt CN=www.amazon.de, Issuer CN=GeoTrust TLS RSA CA G1, OU=www.digicert.com,
+   O=DigiCert Inc, C=US, gueltig bis 2027-04-07, acht DNS-Namen; Zwischen-
+   zertifikat ausgestellt von DigiCert Global Root G2.
+
+Kosten im akmesh: crypto/tls ist durch curl und wget schon verlinkt, und
+crypto/x509 haengt zwingend daran (Zertifikatspruefung). Der Zuwachs durch
+einen dieser Befehle ist damit nur der eigene Code, nicht die Krypto.
+
+Grenzen: PEM ja, PKCS#12 und JKS nein; kein OCSP, keine CRL, keine
+Certificate Transparency; kein HSM.
+
+Tickets: acmesh-vcl (certinfo), acmesh-pav (mkcert), acmesh-0kh (verify).

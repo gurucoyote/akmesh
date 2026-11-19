@@ -1,5 +1,11 @@
 // Package htmlmd turns an HTML fragment into Markdown.
 //
+// The file exists twice, identical: as internal/htmlmd/htmlmd.go in akmesh and
+// in rekr. One implementation, two copies; a fix goes into both, and a diff
+// between the two files has to be empty. What each project adds around it lives
+// beside this file (rekr: page.go with the header and the blocked
+// constructs).
+//
 // It is meant for what a hull meets in practice: a saved page, a mail body, a
 // caption. The rules follow Turndown (the converter every JavaScript tool uses)
 // and JohannesKaufmann/html-to-markdown, so the output is what an agent expects
@@ -32,6 +38,7 @@ import (
 func Convert(fragment string) string {
 	p := &parser{src: fragment, lineStart: true}
 	p.run()
+	p.closeLinks()
 	return p.finish()
 }
 
@@ -50,10 +57,15 @@ type parser struct {
 	hrefs       []string
 	quoteDepth  int
 	lineStart   bool
+	cdata       string // "script" or "style" while inside one
 }
 
 func (p *parser) run() {
 	for p.pos < len(p.src) {
+		if p.cdata != "" {
+			p.skipCDATA()
+			continue
+		}
 		switch {
 		case strings.HasPrefix(p.src[p.pos:], "<!--"):
 			end := strings.Index(p.src[p.pos:], "-->")
@@ -84,6 +96,19 @@ func (p *parser) run() {
 	}
 }
 
+// skipCDATA advances past the content of script or style. A browser shows none
+// of it; written out as text it would put JavaScript and URLs on the page.
+// pos stops at the closing tag, which the normal loop then handles.
+func (p *parser) skipCDATA() {
+	lower := strings.ToLower(p.src[p.pos:])
+	if i := strings.Index(lower, "</"+p.cdata); i >= 0 {
+		p.pos += i
+	} else {
+		p.pos = len(p.src)
+	}
+	p.cdata = ""
+}
+
 // text writes text, escaping what Markdown would otherwise read as markup, and
 // leaves the content of pre alone.
 func (p *parser) text(s string) {
@@ -103,6 +128,17 @@ func (p *parser) text(s string) {
 	}
 	if p.quoteDepth > 0 && p.lineStart {
 		p.out.WriteString(p.prefix())
+	}
+	// Indentation in the source is layout, not text: four spaces or a tab at a
+	// line start would make a code block out of the line (CommonMark 4.4).
+	if p.lineStart {
+		s = strings.TrimLeft(s, " 	")
+	}
+	if s == "" {
+		return
+	}
+	if i := strings.Index(s, "\n"); i >= 0 {
+		s = trimLineIndents(s)
 	}
 	p.out.WriteString(escapeText(s))
 	if s != "" {
@@ -147,7 +183,7 @@ func escapeTextOpt(s string, startOfLine bool) string {
 		case c == '#' && lineStart:
 			b.WriteByte('\\')
 			b.WriteByte(c)
-		case (c == '-' || c == '+' || c == '=') && lineStart:
+		case (c == '-' || c == '+' || c == '=' || c == '>') && lineStart:
 			b.WriteByte('\\')
 			b.WriteByte(c)
 		case c == '.' && digitsOnLine && digitsBefore(b.String()):
@@ -264,12 +300,17 @@ func (p *parser) tag(name string, closing, selfClosing bool, attrs map[string]st
 	case "a":
 		if closing {
 			if href := p.popHref(); href != "" {
-				p.out.WriteString("](" + href + ")")
+				p.out.WriteString("](" + linkTarget(href) + ")")
 			}
 			return
 		}
 		// An anchor without href is text in a box: no brackets at all.
 		href := attrs["href"]
+		if href != "" && len(p.hrefs) > 0 {
+			// A link inside a link is invalid; the inner one starts after the
+			// outer one has ended.
+			p.closeLinks()
+		}
 		p.hrefs = append(p.hrefs, href)
 		if href != "" {
 			p.out.WriteString("[")
@@ -280,7 +321,7 @@ func (p *parser) tag(name string, closing, selfClosing bool, attrs map[string]st
 		if src == "" {
 			return
 		}
-		p.out.WriteString("![" + escapeText(alt) + "](" + src + ")")
+		p.out.WriteString("![" + escapeText(alt) + "](" + linkTarget(src) + ")")
 	case "strong", "b":
 		p.out.WriteString("**")
 	case "em", "i":
@@ -305,6 +346,13 @@ func (p *parser) tag(name string, closing, selfClosing bool, attrs map[string]st
 		}
 		p.out.WriteString(p.prefix() + marker)
 		p.lineStart = false
+	case "script", "style":
+		// A browser shows nothing of either, so neither the element nor its
+		// content belongs in the Markdown.
+		if !closing && !selfClosing {
+			p.cdata = name
+		}
+		return
 	case "span", "font", "small", "big", "u", "sup", "sub", "center", "body", "html", "head", "title":
 		// Structure without a Markdown counterpart: keep the text.
 	default:
@@ -318,6 +366,7 @@ func (p *parser) tag(name string, closing, selfClosing bool, attrs map[string]st
 
 // openBlock starts a block element.
 func (p *parser) openBlock(name string, attrs map[string]string) {
+	p.closeLinks()
 	switch name {
 	case "h1", "h2", "h3", "h4", "h5", "h6":
 		p.block()
@@ -351,6 +400,7 @@ func (p *parser) openBlock(name string, attrs map[string]string) {
 
 // closeBlock ends a block element.
 func (p *parser) closeBlock(name string) {
+	p.closeLinks()
 	switch name {
 	case "ul", "ol":
 		if p.listDepth > 0 {
@@ -403,9 +453,50 @@ func (p *parser) popHref() string {
 	if n := len(p.hrefs); n > 0 {
 		h := p.hrefs[n-1]
 		p.hrefs = p.hrefs[:n-1]
-		return strings.ReplaceAll(h, " ", "%20")
+		return h
 	}
 	return ""
+}
+
+// closeLinks ends every link that is still open. A page loses its </a> now and
+// then; without this the rest of the page would become link text.
+func (p *parser) closeLinks() {
+	for len(p.hrefs) > 0 {
+		target := p.popHref()
+		if target == "" {
+			continue
+		}
+		p.out.WriteString("](" + linkTarget(target) + ")")
+	}
+}
+
+// linkTarget makes a link or image target Markdown can read. A parenthesis in
+// the target would end it early and the whole link would show up as text, so
+// such a target goes in angle brackets, which allow it.
+func linkTarget(target string) string {
+	t := strings.ReplaceAll(target, " ", "%20")
+	if strings.ContainsAny(t, "()<>") || strings.ContainsAny(t, "\n\r") {
+		t = "<" + strings.ReplaceAll(strings.ReplaceAll(t, ">", "%3E"), "<", "%3C") + ">"
+	}
+	return t
+}
+
+// trimLineIndents removes the indentation of every line after the first. It is
+// layout from the source, not text: four spaces or a tab at a line start would
+// make a code block out of the line (CommonMark 4.4).
+func trimLineIndents(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	lineStart := false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if lineStart && (c == ' ' || c == '	') {
+			continue
+		}
+		b.WriteByte(c)
+		lineStart = c == '\n'
+	}
+	return b.String()
 }
 
 // finish tidies the result: no trailing spaces before a newline unless they are

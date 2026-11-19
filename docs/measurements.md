@@ -2165,3 +2165,28 @@ Grenzen: PEM ja, PKCS#12 und JKS nein; kein OCSP, keine CRL, keine
 Certificate Transparency; kein HSM.
 
 Tickets: acmesh-vcl (certinfo), acmesh-pav (mkcert), acmesh-0kh (verify).
+
+## html2md: Einrueckung und gemeinsame Datei (19.11.2026)
+
+Beim Umsetzen von 867 HTML-Seiten (traumwind.de, Kopie unter
+/root/.hermes/cache/scratch/corpus) hatte die Ausgabe von html2md auf 137
+Seiten mindestens eine Zeile, die mit Tabulator oder vier Leerzeichen beginnt -
+in Markdown ein Codeblock (CommonMark 4.4), der Inhalt landet woertlich in
+<pre><code>.
+
+Nach dem Entfernen der Einrueckung: noch 6 Seiten mit eingerueckten Zeilen, und
+zwar gewollt - drei davon in einem Codeblock (pre-Inhalt behaelt seine
+Einrueckung), drei sind verschachtelte Listen, deren Einrueckung die
+Listenstruktur ist. Fehlerfaelle: 0.
+
+    python3 - <<'EOF'
+    import glob, subprocess, re
+    for p in glob.glob("corpus/**/*.html", recursive=True):
+        out = subprocess.run(["./akmesh","html2md",p], capture_output=True).stdout
+        if re.search(rb"(?m)^(\t|    )\S", out): print(p)
+    EOF
+
+Die Datei ist seither identisch mit internal/htmlmd/htmlmd.go in rekr; beide
+Projekte halten sie gleich (diff leer).
+
+Tickets: acmesh-4uw.

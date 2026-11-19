@@ -5,6 +5,7 @@ import (
 	"encoding/pem"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -311,5 +312,96 @@ func TestCADomainsRefusals(t *testing.T) {
 	}
 	if !strings.Contains(stderr, "name constraints") {
 		t.Fatalf("message does not explain it: %q", stderr)
+	}
+}
+
+// TestInstallWritesTheRootIntoTheTrustStore: -install copies the CA where the
+// distribution looks for roots and refreshes the store. Measured with a stubbed
+// store, so the test does not need root and changes nothing outside its temp
+// directory (acmesh-816).
+func TestInstallWritesTheRootIntoTheTrustStore(t *testing.T) {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		t.Skip("the stub covers the unix path")
+	}
+	dir := t.TempDir()
+	caBase := filepath.Join(dir, "local")
+	if _, stderr, code := run(t, dir, "-host", "test1.local", "-ca", caBase, "-ca-domains", ".local"); code != 0 {
+		t.Fatalf("exit %d: %q", code, stderr)
+	}
+
+	prevDir, prevUpdate := trustDir, updateTrust
+	t.Cleanup(func() { trustDir, updateTrust = prevDir, prevUpdate })
+	trustDir = filepath.Join(dir, "share")
+	refreshed := 0
+	updateTrust = func() error { refreshed++; return nil }
+
+	if _, stderr, code := run(t, dir, "-install", "-ca", caBase); code != 0 {
+		t.Fatalf("install: exit %d, stderr %q", code, stderr)
+	}
+	if refreshed != 1 {
+		t.Fatalf("the trust store was refreshed %d times, want 1", refreshed)
+	}
+	installed := filepath.Join(trustDir, "akmesh-local.crt")
+	got, err := os.ReadFile(installed)
+	if err != nil {
+		t.Fatalf("the root was not installed: %v", err)
+	}
+	want, err := os.ReadFile(caBase + "-cert.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(want) {
+		t.Fatal("the installed file is not the CA certificate")
+	}
+
+	// Installing twice must not fail, and uninstalling must remove both the
+	// file and refresh the store again.
+	if _, stderr, code := run(t, dir, "-install", "-ca", caBase); code != 0 {
+		t.Fatalf("second install: exit %d, stderr %q", code, stderr)
+	}
+	if _, stderr, code := run(t, dir, "-uninstall", "-ca", caBase); code != 0 {
+		t.Fatalf("uninstall: exit %d, stderr %q", code, stderr)
+	}
+	if _, err := os.Stat(installed); !os.IsNotExist(err) {
+		t.Fatal("the root is still installed")
+	}
+	// Uninstalling something that is not there says so instead of failing.
+	if _, stderr, code := run(t, dir, "-uninstall", "-ca", caBase); code != 0 {
+		t.Fatalf("second uninstall: exit %d, stderr %q", code, stderr)
+	}
+}
+
+// TestInstallNeedsACA: -install without -ca is refused, and with a base that
+// does not exist yet the CA is created and installed - one command, the way a
+// fresh machine gets a root. Both run against a stubbed store: a test must never
+// write into the system's trust store (measured 19.11.2026: it did once, and the
+// mistake showed up as a stray /usr/local/share/ca-certificates/akmesh-nope.crt).
+func TestInstallNeedsACA(t *testing.T) {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		t.Skip("the stub covers the unix path")
+	}
+	dir := t.TempDir()
+	prevDir, prevUpdate := trustDir, updateTrust
+	t.Cleanup(func() { trustDir, updateTrust = prevDir, prevUpdate })
+	trustDir = filepath.Join(dir, "share")
+	updateTrust = func() error { return nil }
+
+	if _, _, code := run(t, dir, "-install"); code == 0 {
+		t.Fatal("-install without -ca was accepted")
+	}
+	fresh := filepath.Join(dir, "fresh")
+	if _, stderr, code := run(t, dir, "-install", "-ca", fresh, "-ca-domains", ".local"); code != 0 {
+		t.Fatalf("install of a fresh CA: exit %d, stderr %q", code, stderr)
+	}
+	if _, err := os.Stat(fresh + "-cert.pem"); err != nil {
+		t.Fatalf("the CA was not created: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(trustDir, "akmesh-fresh.crt")); err != nil {
+		t.Fatalf("the fresh CA was not installed: %v", err)
+	}
+	// The constraint survives the install: it is the certificate that carries it.
+	ca := readCert(t, fresh+"-cert.pem")
+	if len(ca.PermittedDNSDomains) != 1 || ca.PermittedDNSDomains[0] != ".local" {
+		t.Fatalf("the installed CA permits %v", ca.PermittedDNSDomains)
 	}
 }

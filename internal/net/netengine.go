@@ -5,6 +5,7 @@ package net
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -36,40 +37,43 @@ const (
 // netOptions is the shared request description. curl and wget both fill it, so
 // redirects, cookies, timeouts and error texts cannot drift apart.
 type netOptions struct {
-	Method    string
-	URL       string
-	Headers   []string
-	Data      []string
-	DataRaw   string
-	DataFile  string
-	Form      []string
-	User      string
-	UserAgent string
-	Referer   string
-	Head      bool
-	Include   bool
-	Silent    bool
-	ShowError bool
-	Fail      bool
-	Follow    bool
-	MaxRedirs int
-	Output    string
-	Remote    bool
-	Insecure  bool
-	Proxy     string
-	MaxTime   time.Duration
-	Connect   time.Duration
-	Cookies   []string
-	JarFile   string
-	Range     string
-	Upload    string
-	AsGet     bool
-	Verbose   bool
-	Compress  bool
-	Resume    bool
+	Method      string
+	URL         string
+	Headers     []string
+	Data        []string
+	DataRaw     string
+	DataFile    string
+	Form        []string
+	User        string
+	UserAgent   string
+	Referer     string
+	Head        bool
+	Include     bool
+	Silent      bool
+	ShowError   bool
+	Fail        bool
+	Follow      bool
+	MaxRedirs   int
+	Output      string
+	Remote      bool
+	Insecure    bool
+	Proxy       string
+	MaxTime     time.Duration
+	Connect     time.Duration
+	Cookies     []string
+	JarFile     string
+	Range       string
+	Upload      string
+	AsGet       bool
+	Verbose     bool
+	Compress    bool
+	Resume      bool
 	WriteOut    string
 	Front       string
 	Impersonate string
+	// Resolve maps "host:port" to the address to dial, so a name can be tested
+	// without an /etc/hosts entry (curl --resolve).
+	Resolve map[string]string
 }
 
 // The default User-Agent names this tool and says what it behaves like. It does
@@ -368,8 +372,16 @@ func buildClient(opts netOptions, stderr *os.File) (*http.Client, error) {
 	if opts.MaxTime > 0 {
 		client.Timeout = opts.MaxTime
 	}
-	if opts.Connect > 0 {
-		transport.DialContext = (&net.Dialer{Timeout: opts.Connect}).DialContext
+	if opts.Connect > 0 || len(opts.Resolve) > 0 {
+		dialer := &net.Dialer{Timeout: opts.Connect}
+		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			// --resolve rewrites where we connect, not what we ask for: the
+			// request still carries the name, so TLS SNI and Host stay right.
+			if target, ok := opts.Resolve[addr]; ok {
+				addr = target
+			}
+			return dialer.DialContext(ctx, network, addr)
+		}
 	}
 	if opts.Follow {
 		limit := opts.MaxRedirs

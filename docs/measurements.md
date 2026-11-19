@@ -2955,3 +2955,36 @@ gemacht.
 
 Rotprobe: mit entfernter PermittedDNSDomains-Zuweisung faellt der Test mit
 "CA permits [], want [.local]"; nach dem Zurueckspielen gruen.
+
+## 2026-11-19 Wurzel installieren und test1.local per HTTPS (acmesh-816, Schritt 2)
+
+    akmesh mkcert -host test1.local -ca ./local -ca-domains .local -out ./leaf
+    akmesh mkcert -install -ca ./local
+    akmesh httpd -f -p 127.0.0.1:18961 -h . -S leaf-cert.pem -K leaf-key.pem
+
+Gemessen am gebauten Binary, 19.11.2026, WSL Alpine:
+
+    akmesh mkcert -install -ca ./local
+        installed ./local-cert.pem as /usr/local/share/ca-certificates/akmesh-local.crt
+        and refreshed the trust store
+    curl --resolve test1.local:18955:127.0.0.1 https://test1.local:18955/index.html
+        local-tls-ok, Exit 0 - ohne --cacert, nur ueber das Systemvertrauen
+    akmesh curl --resolve test1.local:18961:127.0.0.1 https://test1.local:18961/index.html
+        eigenes-curl-ok, Exit 0
+    akmesh curl https://test1.local:18961/index.html          (ohne --resolve)
+        Exit 6, Name nicht aufloesbar - der Name bleibt im Request, nur das
+        Ziel wird umgebogen
+    akmesh mkcert -uninstall -ca ./local  ;  curl ...
+        Exit 60 (Zertifikat nicht vertrauenswuerdig) - die Wurzel war der Grund
+
+curl kann jetzt --resolve HOST:PORT:ADRESSE, in der Form von GNU. Die Adresse
+wird nur beim Verbinden eingesetzt, Host-Header und SNI behalten den Namen.
+Nicht unterstuetzt und mit Exit 2 abgelehnt: die Formen mit +, * und eine
+eigene Portangabe nach Komma.
+
+Ein Fehler beim Bauen, den der Test gefunden hat: -install mit einer noch nicht
+vorhandenen CA hat eine neue CA angelegt und ins echte Systemverzeichnis
+geschrieben; im Test stand ein /usr/local/share/ca-certificates/akmesh-nope.crt.
+Jetzt stubben beide Install-Tests das Verzeichnis, und das angelegte Zertifikat
+traegt die Namensbeschraenkung (-ca-domains wurde im Install-Zweig nicht
+weitergereicht).

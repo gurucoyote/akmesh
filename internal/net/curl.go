@@ -4,6 +4,7 @@ package net
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strings"
 )
@@ -103,6 +104,19 @@ func runCurl(args []string, stdin *os.File, stdout, stderr *os.File) int {
 				opts.Head = true
 			case "include":
 				opts.Include = true
+			case "resolve":
+				v, ok := takeValue()
+				if !ok {
+					return curlUsage(stderr, "--resolve needs HOST:PORT:ADDRESS")
+				}
+				host, port, target, err := splitResolve(v)
+				if err != nil {
+					return curlUsage(stderr, err.Error())
+				}
+				if opts.Resolve == nil {
+					opts.Resolve = map[string]string{}
+				}
+				opts.Resolve[net.JoinHostPort(host, port)] = net.JoinHostPort(target, port)
 			case "impersonate":
 				v, ok := takeValue()
 				if !ok {
@@ -324,6 +338,7 @@ func printCurlHelp(stdout *os.File) {
 
   -X, --request METHOD      method (GET, POST, PUT, ...)
   -H, --header "Name: v"    add a request header
+      --resolve H:P:ADDR    dial ADDR for host H on port P, the name stays
   -d, --data DATA           form encoded body, repeatable
       --data-raw DATA       body as typed
       --data-binary @FILE   body from a file
@@ -356,4 +371,25 @@ func printCurlHelp(stdout *os.File) {
 
 Short switches may be combined: -fsSL. Only http and https are supported.
 `)
+}
+
+// splitResolve parses curl's HOST:PORT:ADDRESS. The address may carry its own
+// port after a comma, but only the plain form is accepted here: a wrong guess
+// about a foreign syntax would connect somewhere unexpected.
+func splitResolve(v string) (host, port, addr string, err error) {
+	parts := strings.Split(v, ":")
+	if len(parts) != 3 {
+		return "", "", "", fmt.Errorf("--resolve wants HOST:PORT:ADDRESS, got %q", v)
+	}
+	host, port, addr = parts[0], parts[1], parts[2]
+	if host == "" || port == "" || addr == "" {
+		return "", "", "", fmt.Errorf("--resolve wants HOST:PORT:ADDRESS, got %q", v)
+	}
+	if strings.ContainsAny(addr, "+*,") {
+		// A comma would be curl's HOST:PORT:ADDRESS:PORT form.
+		// curl's "+" keeps the address for other requests; refusing is clearer
+		// than half-doing it.
+		return "", "", "", fmt.Errorf("--resolve does not support the '+', '*' or ',port' address forms")
+	}
+	return host, port, addr, nil
 }

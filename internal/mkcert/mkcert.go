@@ -42,6 +42,9 @@ type options struct {
 	// vouch for nothing else, which is what makes a trusted local root safe to
 	// keep on a machine (acmesh-816).
 	caDomains []string
+	// install puts the CA into the system trust store, uninstall takes it out.
+	install   bool
+	uninstall bool
 }
 
 func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
@@ -109,6 +112,10 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 				return 1
 			}
 			o.ca = v
+		case "-install", "--install":
+			o.install = true
+		case "-uninstall", "--uninstall":
+			o.uninstall = true
 		case "-ca-domains", "--ca-domains":
 			v, ok := value()
 			if !ok {
@@ -139,6 +146,31 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			fmt.Fprintf(stderr, "mkcert: unexpected operand '%s'\n", a)
 			return 1
 		}
+	}
+	if o.install || o.uninstall {
+		// Installing has nothing to certify; the CA is the subject.
+		if o.ca == "" {
+			fmt.Fprintln(stderr, "mkcert: -install needs -ca BASE")
+			return 1
+		}
+		if o.ca != "" && strings.HasSuffix(o.ca, ".pem") {
+			o.ca = strings.TrimSuffix(o.ca, ".pem")
+		}
+		op := installCA
+		if o.uninstall {
+			op = func(base, certPath string) error { return uninstallCA(base) }
+		}
+		// -ca-domains applies here too: the certificate that gets installed is
+		// the one that carries the constraint.
+		if _, _, err := loadOrCreateCA(o.ca, o.caDomains); err != nil {
+			fmt.Fprintf(stderr, "mkcert: %v\n", err)
+			return 1
+		}
+		if err := op(o.ca, o.ca+"-cert.pem"); err != nil {
+			fmt.Fprintf(stderr, "mkcert: %v\n", err)
+			return 2
+		}
+		return 0
 	}
 	if len(o.hosts) == 0 {
 		fmt.Fprintln(stderr, "mkcert: no name to certify, use -host NAME[,NAME...]")

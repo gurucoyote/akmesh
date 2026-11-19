@@ -2700,3 +2700,34 @@ und den abgesetzten Fall. Die Warteschleifen warten ausserdem auf UNSERE Seite
 20 Sekunden nichts kommt.
 
 Danach drei Windows-Laeufe hintereinander 174/0 und ein Linux-Lauf 196/0.
+
+## 2026-11-19 winmode: POSIX-Rechte unter Windows (acmesh-m6x)
+
+Bisher war chmod unter Windows ein stiller Erfolg ohne Wirkung: jeder Modus gab
+Exit 0, und stat/ls zeigten weiter 666 bzw. rw-rw-rw-.
+
+Uebernommen wurde das Paket winmode der Gabel qiangli/sh (Copyright Daniel
+Marti, BSD-3 wie mvdan/sh). Es ist eigenstaendig, 627 Zeilen Produktionscode
+(273 gemeinsam, 319 Windows, 35 andere Ziele) plus 407 Zeilen Tests, und braucht
+nur golang.org/x/sys/windows, das ohnehin im Projekt liegt. Kein 25,2-MB-Fork.
+
+Das Paket legt einen Modus als ACE-Folge in der DACL ab (deny NULL-SID als
+Marker, dann owner, group, Everyone) und liest ihn zurueck. Verkabelt:
+chmod schreibt ihn nach os.Chmod, stat wickelt jede FileInfo durch
+winmode.Apply, damit %a und %A den aufgezeichneten Modus zeigen.
+
+Gemessen mit akmesh.exe auf einem echten NTFS-Pfad (Windows-Temp), 19.11.2026:
+
+    frische Datei ohne chmod    stat -c %a -> 666        (kein Marker, wie Cygwin)
+    chmod 755                   stat -c %a -> 755, %A -> -rwxr-xr-x
+    chmod 600 / 640 / 700 / 444 600 / 640 / 700 / 444, %A entsprechend
+    chmod +x auf 666            -> -rwxrwxrwx (666 | 111), GNU-Regel
+    chmod 644                   -> 644
+
+Auf dem WSL-Dateisystem (\\wsl.localhost) scheitert das Setzen: chmod gibt
+"chmod: Unzulaessige Funktion." mit Exit 1 statt vorher still 0. Das ist bewusst:
+lieber ein ehrlicher Fehler als ein Erfolg ohne Wirkung (Entscheidung im Design).
+Wer auf einem Share chmod braucht, bekommt jetzt eine Meldung statt Lug und Trug.
+
+Offen: ls -l zeigt weiter rw-rw-rw-, weil ls ein u-root-Befehl ohne Fork ist
+(scripts/patch-uroot.sh). stat ist der Leser, den Skripte benutzen.

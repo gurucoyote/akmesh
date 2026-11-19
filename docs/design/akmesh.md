@@ -161,7 +161,10 @@ großen Zahl zu verschwinden.
 ## Lizenz
 
 BSD-3-Clause fuer mvdan/sh, u-root und gobusybox, auch fuer die nach
-internal/forked kopierten Befehle (der Copyright-Kopf bleibt dort stehen). Ein
+internal/forked kopierten Befehle (der Copyright-Kopf bleibt dort stehen).
+Ebenso BSD-3-Clause: internal/winmode, uebernommen aus der Gabel qiangli/sh
+(Copyright Daniel Marti), unveraendert bis auf das Paketverzeichnis - die
+Copyright-Kopfzeilen der fuenf Dateien bleiben stehen. Ein
 ausgeliefertes Binary
 muss die Hinweise mitfuehren; dazu gehoert ein NOTICE-Dokument im Repo, bevor
 das erste Binary das Haus verlaesst.
@@ -187,3 +190,12 @@ einem Ticket:
 Rotprobe: ein Probe-Modul mit `fumiama/go-docx` in /tmp/agplprobe faellt mit
 zwei Meldungen durch ("is on the forbidden list", "is AGPL, which we cannot
 ship"), exit 1. Im akmesh selbst laufen acht Module durch, exit 0.
+
+- Rechte unter Windows kommen aus internal/winmode (19.11.2026, acmesh-m6x).
+  os.Chmod kann dort nur das Read-only-Bit, ein chmod 755 war ein stiller Erfolg
+  ohne Wirkung. Das uebernommene Paket der Gabel qiangli/sh (Copyright Daniel
+  Marti, BSD-3) schreibt den Modus als ACE-Folge in die DACL und liest ihn
+  zurueck; chmod schreibt, stat liest ueber winmode.Apply. Auf Dateisystemen
+  ohne DACL (WSL-Share) scheitert das Setzen mit Exit 1, statt Erfolg zu luegen.
+  ls -l bleibt bei der Windows-eigenen Anzeige, weil ls ein u-root-Befehl ohne
+  Fork ist.

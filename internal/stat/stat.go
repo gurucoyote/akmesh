@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"akmesh/internal/winmode"
 )
 
 func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
@@ -114,6 +116,9 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			code = 1
 			continue
 		}
+		// On Windows os.Stat reports 0666 for every file; a mode that chmod
+		// recorded in the ACL is the truth there (acmesh-m6x).
+		info = winmode.Apply(name, info)
 		d := statFields{name: name, info: info, extra: statExtraOf(info)}
 		switch {
 		case formatSet:

@@ -91,8 +91,13 @@ func TestForkProvenance(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(string(data), "// Forked from u-root ") {
-				t.Errorf("%s carries no \"Forked from u-root\" note", file)
+			// A file is either a copy that names its origin, or our own
+			// addition that says so. Forcing "Forked from u-root" onto a file
+			// we wrote would be a false claim (acmesh-m6x).
+			text := string(data)
+			if !strings.Contains(text, "// Forked from u-root ") &&
+				!strings.Contains(text, "// Local addition, no upstream source: ") {
+				t.Errorf("%s neither names its origin nor says it is ours", file)
 			}
 			checked++
 		}

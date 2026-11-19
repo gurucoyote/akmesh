@@ -82,7 +82,7 @@ func changeMode(path string, mode os.FileMode, octval uint64, mask uint64) error
 		if err := os.Chmod(path, mode); err != nil {
 			return err
 		}
-		return nil
+		return recordMode(path, mode)
 	}
 
 	var info os.FileInfo
@@ -96,7 +96,7 @@ func changeMode(path string, mode os.FileMode, octval uint64, mask uint64) error
 	if err := os.Chmod(path, mode); err != nil {
 		return err
 	}
-	return nil
+	return recordMode(path, mode)
 }
 
 func calculateMode(modeString string) (mode os.FileMode, octval uint64, mask uint64, err error) {

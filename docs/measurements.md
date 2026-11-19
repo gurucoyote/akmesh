@@ -2002,6 +2002,9 @@ Chrome-JA4 und Go-UA bekommt 503, mit Chrome-UA 200 - also genau wie der
 gewoehnliche Go-Client. Die TLS-Ebene allein aendert bei Amazon nichts. Der
 Inhalt haengt dagegen am UA: mit curl-UA 586 KB, mit Chrome-UA 1,87 MB.
 
+Nachtrag 14:07 Uhr: die 503er dieses Abschnitts sind nicht reproduzierbar und
+waren eine CloudFront-Fehlerantwort, siehe Korrektur im Abschnitt "Stufe 1".
+
 ## 2026-11-19 Stufe 1: eigener User-Agent statt Go
 
 Vorher (tls.peet.ws): user_agent "Go-http-client/2.0", dazu nur

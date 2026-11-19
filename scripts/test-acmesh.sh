@@ -410,6 +410,17 @@ if command -v python3 >/dev/null 2>&1; then
   rm -f p-test.pdf pt-test.pdf pf-test.pdf
 fi
 
+# md2pdf: Markdown to PDF, written by the slimmed goldmark-pdf fork.
+printf '# Titel\n\nEin Absatz mit Umlauten: äöüß.\n' > m.pdf.md
+run md2pdf -o m-out.pdf m.pdf.md >/dev/null 2>&1
+check md2pdf-is-pdf "%PDF-1." "$(head -c 8 m-out.pdf | cut -c1-7)"
+check md2pdf-has-eof "1" "$(grep -c '%%EOF' m-out.pdf | tr -d ' ')"
+# The round trip is the real proof: our own reader must find the text again.
+check md2pdf-roundtrip "Titel" "$(run pdf2md m-out.pdf | tr -d '\r' | grep -o 'Titel' | head -1)"
+check md2pdf-umlaut "äöüß" "$(run pdf2md m-out.pdf | tr -d '\r' | grep -o 'äöüß' | head -1)"
+check md2pdf-unknown-option "2" "$(run md2pdf --frobnicate >/dev/null 2>&1; echo $?)"
+rm -f m.pdf.md m-out.pdf
+
 # md2txt-l: the plain text of Markdown (the lightweight variant, the way pandoc -t plain writes it.
 printf '# Titel\n\nEin **fetter** [Link](http://x/y).\n' > m-test.md
 check md2txt-l-heading "Titel" "$(run md2txt-l m-test.md | tr -d '\r' | head -1)"

@@ -1599,3 +1599,39 @@ Warum der Fork noetig ist: goldmark-pdf v0.4.2 zieht chroma in vier Dateien fest
 herein (option.go, renderer_funcs.go samt lexers, style.go, writer.go), und der
 Import von chroma/v2/lexers registriert alle Lexer; build-Tags oder ein
 Linker-Schalter existieren nicht. Nur die Lexer wiegen allein 5230754 Bytes.
+
+## md2pdf mit dem mageren goldmark-pdf-Fork (19.11.2026)
+
+Aufruf: `md2pdf [-o FILE] [FILE...]`, ohne FILE von stdin, ohne -o nach stdout.
+Renderer: goldmark-pdf v0.4.2, gepatcht (docs/design/patches/), angewandt auf den
+Modulcache durch scripts/apply-goldmark-pdf-fork.sh, das build-bb.sh und
+check-all.sh vor dem Kompilieren aufrufen.
+
+Groesze:
+
+    acmesh vorher (ohne goldmark)                 12.591.228
+    acmesh mit md2pdf, Fork ohne chroma           15.077.500   also +2.486.272
+    acmesh.exe                                    15.152.640
+
+Der Zuwachs ist kleiner als die Rohmessung der Probe (7,50 MB fuer den Fork),
+weil HTTP, TLS und die uebrigen Netzpakete im acmesh ohnehin schon stecken.
+
+Ein Befund, der wichtiger ist als die Zahl: ein Bau ohne den Patch scheitert
+jetzt. go mod tidy hat chroma aus dem Modulgraph genommen, weil der gepatchte
+Quelltext es nicht mehr importiert; ohne Patch meldet der Compiler
+
+    github.com/stephenafamo/goldmark-pdf@v0.4.2/option.go:10:2:
+    could not import github.com/alecthomas/chroma/v2 (no metadata)
+
+Der Fork ist damit nicht optional, sondern Bedingung des Baus - und wer den
+Modulcache neu holt, merkt es sofort und nicht erst an der Groesze.
+
+Rundlauf, der eigentliche Beleg:
+
+    printf '# Titel\n\nEin Absatz mit Umlauten: äöüß.\n' | md2pdf -o m-out.pdf m.pdf.md
+    pdf2md m-out.pdf   ->  "## Titel", "Ein Absatz mit Umlauten: äöüß."
+
+Batterie: Linux 199 Pruefungen, neue Faelle md2pdf-is-pdf, md2pdf-has-eof,
+md2pdf-roundtrip, md2pdf-umlaut, md2pdf-unknown-option.
+Go-Tests: sechs in internal/pdfgen, Rotprobe gemacht (ein Leck auf stdout bei -o
+wird von TestRunWritesFileAndKeepsStdoutClean gefangen).

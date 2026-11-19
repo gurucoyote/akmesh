@@ -9,6 +9,9 @@
 set -e
 cd "$(dirname "$0")/.."
 
+echo "== goldmark-pdf fork"
+./scripts/apply-goldmark-pdf-fork.sh
+
 echo "== check-licences"
 ./scripts/check-licences.sh
 

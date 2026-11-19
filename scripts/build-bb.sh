@@ -70,6 +70,10 @@ git -C "$UROOT_DIR" checkout -q "$UROOT_COMMIT"
 # module path and version are read back from the installed tool.
 MAKEBB_MODULE=github.com/u-root/gobusybox/src
 MAKEBB_VERSION=v0.6.0
+# The slimmed goldmark-pdf fork lives as a patch, not as a copy of the module:
+# apply it to the module cache before the compiler reads the module (acmesh-y9r).
+"$ROOT/scripts/apply-goldmark-pdf-fork.sh"
+
 MAKEBB="$GOPATH/bin/makebb"
 if [ ! -x "$MAKEBB" ]; then
 	MAKEBB="$GOPATH/bin/makebb.exe"
@@ -159,7 +163,7 @@ export GOWORK="$WORKFILE"
 
 # Every name our own tools provide. Where u-root also builds the same name for
 # the target, u-root wins: it is already in the list and needs no extra bytes.
-OURS_ALL="awk basename head find grep chmod cp echo false curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall md5sum nl patch ps sed sha1sum sha256sum sha512sum shuf sort split stat sync tac timeout truncate uname wget sh policy ssh scp pwd true xargs tar hexdump base64 wc tr touch tracedeps html2md httpd docx2md rtf2md pdf2md md2txt-l"
+OURS_ALL="awk basename head find grep chmod cp echo false curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall md5sum nl patch ps sed sha1sum sha256sum sha512sum shuf sort split stat sync tac timeout truncate uname wget sh policy ssh scp pwd true xargs tar hexdump base64 wc tr touch tracedeps html2md httpd docx2md rtf2md pdf2md md2txt-l md2pdf"
 
 PROFILE_FILE="$ROOT/scripts/profiles/$PROFILE.txt"
 if [ ! -f "$PROFILE_FILE" ]; then

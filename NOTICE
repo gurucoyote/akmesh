@@ -33,7 +33,26 @@ follows is the notice, not a replacement for the text.
    Licence: BSD-3-Clause (the Go authors)
    Used as: everything underneath.
 
-What a distributed binary has to carry: the three notices above with their
+5. Modules of the Go build (all MIT or BSD, verified by scripts/check-licences.sh)
+
+   github.com/benhoyt/goawk v1.31.0            MIT, Copyright (c) 2022 Ben Hoyt
+   github.com/bluekeyes/go-gitdiff v0.9.0      MIT, Copyright (c) 2019 Billy Keyes
+   github.com/go-swiss/fonts                   MIT, Copyright (c) 2022 Stephen Afam-Osemene
+   github.com/itchyny/gojq v0.12.20            MIT, Copyright (c) 2019-2026 itchyny
+   github.com/itchyny/timefmt-go v0.1.9        MIT, Copyright (c) 2020-2026 itchyny
+   github.com/jellydator/ttlcache/v3 v3.4.0    MIT, Copyright (c) 2022 Jellydator
+   github.com/phpdave11/gofpdf v1.4.3          MIT, Copyright (c) 2020 David Barnes
+   github.com/rwtodd/Go.Sed                    MIT
+   github.com/stephenafamo/goldmark-pdf v0.4.2 MIT, Copyright (c) 2020 Stephen Afam-Osemene
+   github.com/yuin/goldmark v1.8.7             MIT, Copyright (c) 2019 Yusuke Inuzuka
+   golang.org/x/crypto, x/sync, x/sys, x/term  BSD-3-Clause, Copyright 2009 The Go Authors
+   mvdan.cc/sh/v3 v3.14.1                      BSD-3-Clause, Copyright (c) 2016 Daniel Marti
+
+   goldmark-pdf is not used as published: chroma and the Google font download
+   are removed, the changes are in docs/design/patches/. The licence is MIT in
+   either form.
+
+What a distributed binary has to carry: the notices above with their
 copyright lines, and the licence texts. A build that ships acmesh without them
 is not distributable, which is why they live in the repository next to the code
 that uses them rather than in a tarball nobody reads.

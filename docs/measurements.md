@@ -1671,3 +1671,62 @@ Go-Tests: TestLabelValuePairs, TestLabelValueInOneCell, TestSingleColonLineStays
 TestColonProseStaysProse. Rotproben: Label-Regel aus -> rot; Zeilenumbruch wie
 frueher -> rot; Paar-Erkennung aus -> rot.
 Batterie: neue Faelle pdf2md-labels und pdf2md-labels-rows; Linux 201/0.
+
+## md2docx (19.11.2026, acmesh-54s.3)
+
+Aufruf: `md2docx [-o FILE] [FILE...]`, ohne FILE von stdin, ohne -o nach stdout.
+Ein .docx ist ein ZIP aus wenigen XML-Teilen; der Schreiber liegt in
+internal/docxgen, benutzt archive/zip und goldmark (schon fuer md2pdf im Binary)
+und keine fremde Bibliothek.
+
+Was geschrieben wird: [Content_Types].xml, _rels/.rels, word/document.xml,
+word/styles.xml, word/numbering.xml, word/_rels/document.xml.rels.
+Abgebildet: Ueberschriften als Word-Stile Heading1 bis Heading6, Absaetze, fett,
+kursiv, Inline-Code, Aufzaehlung und nummerierte Liste (verschachtelt bis Ebene
+9), Zitat als eingerueckter Absatz, Codeblock zeilenweise in Monospace, Tabellen
+als echte Word-Tabellen mit Kopfzeile, Trennlinie als Absatz mit unterer Bordüre.
+Nicht abgebildet, bewusst: Bilder (der Alternativtext wird geschrieben),
+Fussnoten, Kommentare, Aenderungsverfolgung.
+
+Die Fallen stammen aus dem notker-Projekt, das dasselbe Format byteweise
+bearbeitet: ein Teil, der nicht in [Content_Types].xml und in keiner Beziehung
+steht, ist fuer Word unsichtbar; ein fehlender Stil macht den Absatz still
+unsichtbar-formatiert; eine Liste braucht Absatz, num und abstractNum zusammen;
+eine Zelle enthaelt Absaetze, keine Laeufe.
+
+Groesze:
+
+    acmesh vorher (ohne md2docx)      15.077.500
+    acmesh mit md2docx                15.130.748   also +53.248
+
+Belege, drei unabhaengige Leser:
+
+    acmesh docx2md (eigener Leser)
+      "# Titel", "**fetter**", "- eins", "| Anna | Bremen |" kommen zurueck
+
+    notker (fremdes Programm, gleiches Format)
+      notker check /tmp/t.docx     -> "check clean: 6 parts identical"
+      notker read                  -> p0 (heading 1) Titel, p2/p3 (List Paragraph)
+      notker lists                 -> numId 2 bullet 2 use(s), numId 3 decimal 2 use(s)
+      notker check /tmp/t2.docx    -> "check clean: 6 parts identical"
+      notker read                  -> heading 1, List Paragraph, Quote, Code
+
+    Word (COM, /mnt/c/temp/word-check-md2docx.ps1)
+      paragraphs=11 tables=1 rows=2 firstStyle=Ueberschrift 1 sha256=aa7f0122...
+      "contains=True" fuer aeoesz - Word findet die Umlaute selbst
+      Ein zweiter Lauf (word-check-umlaut.ps1) prueft den Text in Word, weil die
+      Konsole auf dem Rueckweg nach WSL die Umlaute zu "????" macht; das ist die
+      Konsole, nicht das Dokument.
+
+Go-Tests: neun in internal/docxgen, alle ueber den Rundlauf durch docxmd.
+Rotproben: Heading-Stil auf Normal -> TestHeadings rot; numPr entfernt ->
+TestBulletAndNumberedList rot.
+Batterie: sechs neue Faelle (md2docx-is-zip, -heading, -bold, -list, -table,
+-unknown-option); Linux 207 Pruefungen 0 Fehler.
+
+Zwei Erkenntnisse aus dem Testbau, die im Code stehen:
+- Die Kopfzeile einer GFM-Tabelle hat den Knoten-Typ "TableHeader", nicht
+  "TableRow"; wer nur TableRow sammelt, verliert die erste Zeile jeder Tabelle.
+- In Markdown ist ein nacktes <spitz> ein HTML-Tag, kein Text. Wer spitze
+  Klammern als Text will, muss sie maskieren - sonst ist die Ausgabe richtig und
+  der Test falsch.

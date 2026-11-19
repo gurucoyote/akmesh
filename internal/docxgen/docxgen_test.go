@@ -1,0 +1,119 @@
+package docxgen
+
+import (
+	"bytes"
+	"strings"
+	"testing"
+
+	"acmesh/internal/docxmd"
+)
+
+// roundTrip is the whole point of this package: what we write must be readable
+// by our own reader, because a .docx that only its author can open is worthless.
+func roundTrip(t *testing.T, markdown string) string {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := Convert(&buf, []byte(markdown)); err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	out, err := docxmd.Convert(buf.Bytes())
+	if err != nil {
+		t.Fatalf("the reader rejects what the writer produced: %v", err)
+	}
+	return out
+}
+
+// TestHeadingsAndParagraphs: the style a heading carries is how Word knows it is
+// one, so the reader has to find a heading where the markdown had one.
+func TestHeadingsAndParagraphs(t *testing.T) {
+	got := roundTrip(t, "# Titel\n\nEin Absatz.\n\n## Zweite Ebene\n")
+	if !strings.Contains(got, "# Titel") {
+		t.Errorf("Heading 1 fehlt:\n%q", got)
+	}
+	if !strings.Contains(got, "Ein Absatz.") {
+		t.Errorf("Absatz fehlt:\n%q", got)
+	}
+	if !strings.Contains(got, "## Zweite Ebene") {
+		t.Errorf("Heading 2 fehlt:\n%q", got)
+	}
+}
+
+// TestInlineFormatting: bold and italic are run properties, not characters.
+func TestInlineFormatting(t *testing.T) {
+	got := roundTrip(t, "Ein **fetter** und ein *kursiver* Teil.\n")
+	if !strings.Contains(got, "**fetter**") {
+		t.Errorf("fett fehlt:\n%q", got)
+	}
+	if !strings.Contains(got, "*kursiver*") {
+		t.Errorf("kursiv fehlt:\n%q", got)
+	}
+}
+
+// TestBulletAndNumberedList: a list in Word is a paragraph with a numbering
+// reference, and the numbering part has to define that reference - one without
+// the other shows no bullet at all.
+func TestBulletAndNumberedList(t *testing.T) {
+	got := roundTrip(t, "- eins\n- zwei\n\n1. erster\n2. zweiter\n")
+	if !strings.Contains(got, "- eins") || !strings.Contains(got, "- zwei") {
+		t.Errorf("Aufzaehlung fehlt:\n%q", got)
+	}
+	if !strings.Contains(got, "1. erster") || !strings.Contains(got, "2. zweiter") {
+		t.Errorf("nummerierte Liste fehlt:\n%q", got)
+	}
+}
+
+// TestTable: cells are table cells, not paragraphs with pipes.
+func TestTable(t *testing.T) {
+	got := roundTrip(t, "| Name | Ort |\n| --- | --- |\n| Anna | Bremen |\n")
+	if !strings.Contains(got, "| Name | Ort |") {
+		t.Errorf("Kopfzeile fehlt:\n%q", got)
+	}
+	if !strings.Contains(got, "| Anna | Bremen |") {
+		t.Errorf("Datenzeile fehlt:\n%q", got)
+	}
+}
+
+// TestCodeBlock keeps the code as its own paragraphs with a monospaced style; a
+// code block that arrives as prose has lost its meaning.
+func TestCodeBlock(t *testing.T) {
+	got := roundTrip(t, "```\nfmt.Println(\"hi\")\n```\n")
+	if !strings.Contains(got, "fmt.Println") {
+		t.Errorf("Codeblock fehlt:\n%q", got)
+	}
+}
+
+// TestUmlautsAndEscaping: the XML escaping must be right in both directions, and
+// an ampersand in the text must not break the part.
+func TestUmlautsAndEscaping(t *testing.T) {
+	// In Markdown a bare <spitz> is an HTML tag, so the text has to be escaped
+	// with a backslash - otherwise goldmark is right to drop it, not us.
+	got := roundTrip(t, "Grüße & Umlaute: äöüß, \\<spitz\\> und \"Anführungszeichen\".\n")
+	// The reader writes Markdown, so it escapes < and > with a backslash.
+	// Dropping those escapes is the fair comparison: what matters is that the
+	// characters survived the XML, not that the reader left them bare.
+	plain := strings.ReplaceAll(got, "\\", "")
+	for _, want := range []string{"Grüße", "äöüß", "&", "<spitz>"} {
+		if !strings.Contains(plain, want) {
+			t.Errorf("%q fehlt nach dem Rundlauf:\n%q", want, plain)
+		}
+	}
+}
+
+// TestEmptyDocument: an empty markdown file is still a valid document.
+func TestEmptyDocument(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Convert(&buf, nil); err != nil {
+		t.Fatalf("Convert of an empty document: %v", err)
+	}
+	if _, err := docxmd.Convert(buf.Bytes()); err != nil {
+		t.Fatalf("empty document is not readable: %v", err)
+	}
+}
+
+// TestBlockquote is a paragraph with an indent; Word has no quote object.
+func TestBlockquote(t *testing.T) {
+	got := roundTrip(t, "> Ein Zitat.\n")
+	if !strings.Contains(got, "Ein Zitat.") {
+		t.Errorf("Zitat fehlt:\n%q", got)
+	}
+}

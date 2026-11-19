@@ -122,3 +122,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-19  Groeszenlinie auf warn 25000000 / hart 30000000 angehoben (Entscheidung Martin: md2pdf ueber den schlanken goldmark-pdf-Fork); acmesh-54s.1 geschlossen.
 2026-11-19  md2pdf gebaut (goldmark-pdf-Fork ohne chroma, Patch-Skript im Bau), acmesh 15077500 Bytes, Rundlauf mit pdf2md gruen, Linux-Batterie 199/0; acmesh-y9r und acmesh-54s.2 in Arbeit.
 2026-11-19  Luecke geschlossen: Label-Wert-Paare werden Tabellenzeilen (zwei Regeln plus Zeilengruppierung nach Grundlinie), vier Go-Tests mit drei Rotproben, Batterie 201/0, an echten Formularen keine Wortzahl-Aenderung.
+2026-11-19  md2docx gebaut (eigener Schreiber, zip+xml, goldmark-AST), drei unabhaengige Leser als Beleg (docx2md, notker check/read, Word COM), Groesze +53248, Linux 207/0; acmesh-54s.3.

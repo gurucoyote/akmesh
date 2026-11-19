@@ -413,6 +413,19 @@ if command -v python3 >/dev/null 2>&1; then
   rm -f p-test.pdf pt-test.pdf pf-test.pdf pl-test.pdf
 fi
 
+# md2docx: Markdown to a Word document, written by our own package.
+printf '# Titel\n\nEin **fetter** Satz mit Umlauten: \303\244\303\266\303\274\303\237.\n\n- eins\n- zwei\n\n| Name | Ort |\n| --- | --- |\n| Anna | Bremen |\n' > m.docx.md
+run md2docx -o m-out.docx m.docx.md >/dev/null 2>&1
+check md2docx-is-zip "PK" "$(head -c 2 m-out.docx)"
+# The round trip through our own reader: the document has to come back as the
+# Markdown it was written from.
+check md2docx-heading "# Titel" "$(run docx2md m-out.docx | tr -d '\r' | head -1)"
+check md2docx-bold "**fetter**" "$(run docx2md m-out.docx | tr -d '\r' | grep -o '\*\*fetter\*\*' | head -1)"
+check md2docx-list "- eins" "$(run docx2md m-out.docx | tr -d '\r' | grep -o -- '- eins' | head -1)"
+check md2docx-table "| Anna | Bremen |" "$(run docx2md m-out.docx | tr -d '\r' | grep -o '| Anna | Bremen |' | head -1)"
+check md2docx-unknown-option "2" "$(run md2docx --frobnicate >/dev/null 2>&1; echo $?)"
+rm -f m.docx.md m-out.docx
+
 # md2pdf: Markdown to PDF, written by the slimmed goldmark-pdf fork.
 printf '# Titel\n\nEin Absatz mit Umlauten: äöüß.\n' > m.pdf.md
 run md2pdf -o m-out.pdf m.pdf.md >/dev/null 2>&1

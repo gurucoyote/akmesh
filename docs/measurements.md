@@ -3088,3 +3088,38 @@ bricht waehrend des ganzen Suitelaufs gelegentlich ein Dial ab (dieselbe
 Erscheinung wie accept4 failed 110 beim .exe). Die Tests versuchen es jetzt bis
 zu dreimal, bevor sie einen Fehlschlag melden; das ist im Testkommentar
 begruendet, damit niemand es fuer einen stillen Retry haelt.
+
+## Schriften und Bilder aus der joshua-Uebernahme (19.11.2026)
+
+Schriften: `internal/webfonts` uebernommen (Lora fuer Text, Go Mono fuer Code,
+Lizenzpruefung aus der Namenstabelle), `internal/pdfgen/fonts.go` registriert sie
+als `FontTypeCustom`. Der goldmark-pdf-Patch holt kein Google-Fonts mehr:
+
+    md2pdf Binary ...... 13,51 MB vorher, 12,98 MB nachher
+    go list -deps ...... kein go-swiss/fonts, kein ttlcache mehr im Build
+                         (in go.mod bleiben sie als indirect, weil die go.mod
+                         des gepatchten Moduls sie noch nennt)
+    PDF-BaseFont ....... utf8lora, utf8loraB, utf8loraI, utf8loraBI, utf8go
+                         vorher utf8roboto* und Helvetica
+    ohne Netz .......... Rendern geht ohne Netz, die Bytes kommen aus dem Modul
+
+Fehler auf dem Weg, die jetzt Tests abdecken:
+
+    pdf.WithConfig nach WithPDF ...... wirft das PDF weg, gofpdf schreibt dann
+                                       mit leerer Glyphentabelle: "index out of
+                                       range [80] with length 0"
+    Styles.CodeBlock vergessen ....... fragt eine Google-Schrift, die es nicht gibt
+    UnicodeTranslator auf UTF-8-Font .. doppelte Kodierung: "Titel über Öl"
+                                       wurde zu "Titel 좥r ֬"
+
+Bilder im docx (md2docx): Betten jetzt ein statt nur [alt] zu schreiben.
+
+    Testseite mit bild.png (120x60) .. word/media/bild1.png, 191 Bytes
+    LibreOffice -> PDF ................ pdfimages: 120x60 rgb, 1 Bild
+    LibreOffice -> HTML ............... genau ein <img>
+    breites Bild (2000x1000) .......... cx=contentWidthEMU, cy genau die Haelfte
+    fehlende Datei, SVG ............... bleiben Ersatztext, kein Medien-Teil
+
+Zwei Fallen, mutationsgeprueft: ohne `xmlns:wp` am Dokument sagt LibreOffice
+"source file could not be loaded", und ein `w:drawing` in einem offenen `w:p`
+ist ein verschachtelter Absatz, den beide Programme nicht zeigen.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 )
 
 const usage = `usage: md2docx [-o FILE] [FILE...]
@@ -45,6 +46,9 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	}
 
 	var source []byte
+	// baseDir is where relative image paths are resolved: the folder of the
+	// first input file, or the working directory when reading standard input.
+	baseDir, _ := os.Getwd()
 	if len(files) == 0 {
 		data, err := io.ReadAll(stdin)
 		if err != nil {
@@ -53,7 +57,12 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		}
 		source = data
 	} else {
-		for _, name := range files {
+		for i, name := range files {
+			if i == 0 {
+				if abs, err := filepath.Abs(name); err == nil {
+					baseDir = filepath.Dir(abs)
+				}
+			}
 			data, err := os.ReadFile(name)
 			if err != nil {
 				fmt.Fprintf(stderr, "md2docx: %v\n", err)
@@ -66,7 +75,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 
 	if out == "" {
 		w := bufio.NewWriter(stdout)
-		if err := Convert(w, source); err != nil {
+		if err := ConvertWithBase(w, source, baseDir); err != nil {
 			fmt.Fprintf(stderr, "md2docx: %v\n", err)
 			return 1
 		}
@@ -83,7 +92,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		return 1
 	}
 	w := bufio.NewWriter(f)
-	if err := Convert(w, source); err != nil {
+	if err := ConvertWithBase(w, source, baseDir); err != nil {
 		f.Close()
 		fmt.Fprintf(stderr, "md2docx: %v\n", err)
 		return 1

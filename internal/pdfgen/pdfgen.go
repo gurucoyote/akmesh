@@ -17,6 +17,7 @@
 package pdfgen
 
 import (
+	"akmesh/internal/webfonts"
 	"bytes"
 	"context"
 	"fmt"
@@ -24,7 +25,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/go-swiss/fonts"
 	"github.com/phpdave11/gofpdf"
 	pdf "github.com/stephenafamo/goldmark-pdf"
 	"github.com/yuin/goldmark"
@@ -70,22 +70,34 @@ func Convert(w io.Writer, source []byte) error {
 	cfg := pdf.FpdfConfig{
 		Title:     title,
 		PaperSize: "A4",
-		FooterFunc: func(impl pdf.Fpdf, cache fonts.Cache) func() {
+		FooterFunc: func(impl pdf.Fpdf) func() {
 			// Room for the page line below the text column.
 			impl.Fpdf.SetAutoPageBreak(true, 42)
 			return footer(impl.Fpdf)
 		},
 	}
 	if title != "" {
-		cfg.HeaderFunc = func(impl pdf.Fpdf, cache fonts.Cache) func() {
+		cfg.HeaderFunc = func(impl pdf.Fpdf) func() {
 			return header(impl.Fpdf, title)
 		}
 	}
 
+	ctx := context.Background()
+	impl, styles, err := fontSetup(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	goldcfg := pdf.DefaultConfig()
+	goldcfg.Styles = styles
 	md := goldmark.New(
 		goldmark.WithExtensions(extension.GFM),
 		goldmark.WithRenderer(pdf.New(
-			pdf.WithFpdf(context.Background(), cfg),
+			// Order matters: WithConfig replaces the whole configuration,
+			// so it must come before WithPDF or it throws our PDF away and
+			// a default one is made - the render then selects a core font
+			// and gofpdf writes through an empty glyph table.
+			pdf.WithConfig(goldcfg),
+			pdf.WithPDF(impl),
 			// A PDF is not HTML: without this every & becomes &amp; in the page
 			// text, which the reader then reads out loud.
 			pdf.WithEscapeHTML(false),
@@ -96,12 +108,26 @@ func Convert(w io.Writer, source []byte) error {
 	if err := md.Convert(source, &buf); err != nil {
 		return err
 	}
-	_, err := w.Write(buf.Bytes())
+	if impl.Fpdf.Err() {
+		// gofpdf records the error and carries on; a document written after
+		// an error is broken, so it is reported as one.
+		return impl.Fpdf.Error()
+	}
+	_, err = w.Write(buf.Bytes())
 	return err
 }
 
-// header draws the title above a hairline. The font is one of the fourteen that
-// every PDF reader must have, so the header costs nothing in file size.
+// pageFamily is the face the running title and the page number are set in: the
+// same as the body, so the page has one look.
+func pageFamily() string {
+	book := webfonts.Book()
+	if len(book) == 0 {
+		return "Helvetica"
+	}
+	return book[0].Name
+}
+
+// header draws the title above a hairline.
 func header(f *gofpdf.Fpdf, title string) func() {
 	return func() {
 		// Not on the first page: its title is already the opening heading, and
@@ -109,7 +135,7 @@ func header(f *gofpdf.Fpdf, title string) func() {
 		if f.PageNo() == 1 {
 			return
 		}
-		f.SetFont("Helvetica", "", 8)
+		f.SetFont(pageFamily(), "", 8)
 		f.SetTextColor(120, 120, 120)
 		// The header sits in the band above the text column, and its width is
 		// the column width, so it lines up with the body.
@@ -120,10 +146,10 @@ func header(f *gofpdf.Fpdf, title string) func() {
 		// regardless of the top margin, so the title band is placed above that
 		// rather than below a margin it ignores.
 		f.SetXY(left, 10)
-		// A base fourteen font is written in its own encoding, so the UTF-8
-		// title has to be translated or the umlauts come out as two latin-1
-		// bytes each ("MÃ¤rchen").
-		f.CellFormat(width, 10, f.UnicodeTranslatorFromDescriptor("")(title), "", 0, "L", false, 0, "")
+		// The title goes in as UTF-8: the header is set in an embedded UTF-8
+		// font, and translating it first would encode it twice - "Titel über
+		// Öl" came out as "Titel 좥r ֬" when it was done (measured 2026-11-19).
+		f.CellFormat(width, 10, title, "", 0, "L", false, 0, "")
 		f.SetDrawColor(180, 180, 180)
 		f.SetLineWidth(0.3)
 		f.Line(left, 20, left+width, 20)
@@ -140,7 +166,7 @@ func header(f *gofpdf.Fpdf, title string) func() {
 func footer(f *gofpdf.Fpdf) func() {
 	f.AliasNbPages("{nb}")
 	return func() {
-		f.SetFont("Helvetica", "", 8)
+		f.SetFont(pageFamily(), "", 8)
 		f.SetTextColor(120, 120, 120)
 		left, _, right, _ := f.GetMargins()
 		pageW, _ := f.GetPageSize()

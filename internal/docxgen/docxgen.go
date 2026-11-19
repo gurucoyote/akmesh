@@ -34,20 +34,30 @@ import (
 
 // Convert writes the .docx of a Markdown document.
 func Convert(w io.Writer, markdown []byte) error {
+	return ConvertWithBase(w, markdown, "")
+}
+
+// ConvertWithBase is Convert with a directory to resolve relative image paths
+// against: the folder the Markdown file lives in.
+func ConvertWithBase(w io.Writer, markdown []byte, baseDir string) error {
 	md := goldmark.New(goldmark.WithExtensions(extension.GFM, extension.Strikethrough))
 	root := md.Parser().Parse(text.NewReader(markdown))
 
 	body := &strings.Builder{}
-	b := &builder{src: markdown, out: body}
+	b := &builder{src: markdown, out: body, baseDir: baseDir}
 	b.blocks(root)
 
+	var exts []string
+	for _, img := range b.images {
+		exts = append(exts, img.ext)
+	}
 	parts := []struct {
 		name string
 		body string
 	}{
-		{"[Content_Types].xml", contentTypes},
+		{"[Content_Types].xml", contentTypes(exts)},
 		{"_rels/.rels", packageRels},
-		{"word/_rels/document.xml.rels", documentRels(b.links)},
+		{"word/_rels/document.xml.rels", documentRels(b.links, b.images)},
 		{"word/document.xml", documentXML(body.String())},
 		{"word/styles.xml", stylesXML},
 		{"word/numbering.xml", numberingXML},
@@ -62,6 +72,17 @@ func Convert(w io.Writer, markdown []byte) error {
 			return err
 		}
 	}
+	// The pictures are bytes, not text: written after the XML parts, under
+	// word/, which is where the relationship points.
+	for _, img := range b.images {
+		f, err := zw.Create("word/" + img.name)
+		if err != nil {
+			return err
+		}
+		if _, err := f.Write(img.data); err != nil {
+			return err
+		}
+	}
 	return zw.Close()
 }
 
@@ -71,6 +92,12 @@ type builder struct {
 	out *strings.Builder
 	// listDepth tracks how deep the current list is nested.
 	listDepth int
+	// baseDir is where relative image paths are resolved: the folder of the
+	// Markdown file.
+	baseDir string
+	// images are the pictures that could be embedded, in the order they were
+	// written.
+	images []imagePart
 	// links holds one target per hyperlink, in the order they were written;
 	// the relationship id is linkBase plus its index.
 	links []string
@@ -79,6 +106,18 @@ type builder struct {
 // linkBase is the first relationship id used for hyperlinks: rId1 and rId2 are
 // the styles and the numbering part.
 const linkBase = 3
+
+// imagePart is one picture in the package: its name under word/, its bytes and
+// the format they are in.
+type imagePart struct {
+	name string
+	data []byte
+	ext  string
+}
+
+// imageBase is the first relationship id used for pictures: they follow the
+// hyperlinks, so the two lists cannot collide.
+func (b *builder) imageBase() int { return linkBase + len(b.links) }
 
 // link writes a clickable hyperlink: the runs of fn, wrapped in w:hyperlink with
 // a relationship to target. An empty target, or one that points inside the
@@ -333,9 +372,12 @@ func (b *builder) inline(n ast.Node) {
 			target := string(v.Destination)
 			b.link(target, func() { b.inline(c) })
 		case *ast.Image:
-			// No image part: the description stands in for the picture, the way
-			// a reader that cannot show images would report it.
-			b.run("["+altText(v, b.src)+"]", runProps{})
+			// The picture when it can be embedded, its description otherwise:
+			// a document without the image is still readable, one with a
+			// broken reference is not.
+			if !b.picture(string(v.Destination), altText(v, b.src)) {
+				b.run("["+altText(v, b.src)+"]", runProps{})
+			}
 
 		default:
 			b.inline(c)
@@ -451,21 +493,40 @@ func documentXML(body string) string {
 		// r: is what w:hyperlink needs for its r:id; without the declaration the
 		// part is invalid and the file is refused (measured with LibreOffice:
 		// "source file could not be loaded" as soon as one link was inside).
-		` xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+		` xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"` +
+		// wp: is what w:drawing needs; without it the part is invalid and
+		// LibreOffice refuses the file as soon as one picture is inside.
+		` xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">` +
 		`<w:body>` + body +
 		`<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>` +
 		`<w:pgMar w:top="1417" w:right="1417" w:bottom="1417" w:left="1417"/>` +
 		`</w:sectPr></w:body></w:document>`
 }
 
-const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+func contentTypes(imageExts []string) string {
+	// Every extension an image is stored under needs its content type, or Word
+	// calls the file damaged and says nothing about which part was wrong.
+	seen := map[string]bool{}
+	var extra strings.Builder
+	for _, e := range imageExts {
+		if seen[e] {
+			continue
+		}
+		seen[e] = true
+		extra.WriteString(`<Default Extension="` + e + `" ContentType="image/` + e + `"/>`)
+	}
+	return contentTypesHead + extra.String() + contentTypesTail
+}
+
+const contentTypesHead = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
 	`<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
 	`<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
 	`<Default Extension="xml" ContentType="application/xml"/>` +
 	`<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
 	`<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
-	`<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>` +
-	`</Types>`
+	`<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>`
+
+const contentTypesTail = `</Types>`
 
 const packageRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
 	`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
@@ -475,7 +536,7 @@ const packageRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
 // documentRels has to name the styles, the numbering part and every hyperlink:
 // a part that is in the package but in no relationship is invisible to Word, and
 // a w:hyperlink whose r:id is missing here is dead.
-func documentRels(links []string) string {
+func documentRels(links []string, images []imagePart) string {
 	var b strings.Builder
 	b.WriteString(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`)
 	b.WriteString(`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`)
@@ -485,6 +546,11 @@ func documentRels(links []string) string {
 		b.WriteString(`<Relationship Id="rId` + strconv.Itoa(linkBase+i) +
 			`" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="` +
 			escape(target) + `" TargetMode="External"/>`)
+	}
+	for i, img := range images {
+		b.WriteString(`<Relationship Id="rId` + strconv.Itoa(linkBase+len(links)+i) +
+			`" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="` +
+			img.name + `"/>`)
 	}
 	b.WriteString(`</Relationships>`)
 	return b.String()

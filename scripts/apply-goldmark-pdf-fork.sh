@@ -20,7 +20,7 @@ set -eu
 cd "$(dirname "$0")/.."
 
 MOD="github.com/stephenafamo/goldmark-pdf"
-PATCH="docs/design/patches/goldmark-pdf-0.4.2-no-chroma.patch"
+PATCH="docs/design/patches/goldmark-pdf-0.4.2-no-chroma-no-google-fonts.patch"
 MARK=".build/goldmark-pdf-fork.applied"
 
 export GOTOOLCHAIN=auto

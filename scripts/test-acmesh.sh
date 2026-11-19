@@ -413,6 +413,20 @@ if command -v python3 >/dev/null 2>&1; then
   rm -f p-test.pdf pt-test.pdf pf-test.pdf pl-test.pdf
 fi
 
+# md2epub / epub2md: the book and its reader, both in the binary.
+printf '# Erstes\n\nEin Absatz.\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n# Zweites\n\nEnde.\n' > b.md
+run md2epub -o b.epub --title "Probe" b.md >/dev/null 2>&1
+check md2epub-is-zip "PK" "$(head -c 2 b.epub)"
+# The first entry of an EPUB is the mimetype, stored, and a reader checks it
+# before anything else.
+check md2epub-mimetype "application/epub+zip" "$(unzip -p b.epub mimetype 2>/dev/null | tr -d '\r')"
+check md2epub-mimetype-first "mimetype" "$(unzip -l b.epub 2>/dev/null | sed -n '4p' | awk '{print $4}')"
+check md2epub-roundtrip "# Erstes" "$(run epub2md b.epub | tr -d '\r' | grep -m1 '^#' )"
+check epub2md-table "| A | B |" "$(run epub2md b.epub | tr -d '\r' | grep -o '| A | B |' | head -1)"
+check epub2md-chapter-count "2" "$(run epub2md b.epub | tr -d '\r' | grep -c '^# ')"
+check epub2md-refuses-zip "1" "$(printf 'kein epub' | run epub2md >/dev/null 2>&1; echo $?)"
+rm -f b.md b.epub
+
 # md2docx: Markdown to a Word document, written by our own package.
 printf '# Titel\n\nEin **fetter** Satz mit Umlauten: \303\244\303\266\303\274\303\237.\n\n- eins\n- zwei\n\n| Name | Ort |\n| --- | --- |\n| Anna | Bremen |\n' > m.docx.md
 run md2docx -o m-out.docx m.docx.md >/dev/null 2>&1

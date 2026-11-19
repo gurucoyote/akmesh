@@ -132,3 +132,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 - EscapeHTML(false): a PDF has no HTML context, an escaped & reached the reader
   as "&amp;". Cost: raw HTML tags in Markdown vanish instead of showing as text.
 - Binary 13.35 MB (was 13.34), four new tests, all green.
+2026-11-19  md2epub und epub2md gebaut (goldmark-HTML plus eigenes Zip, kein Fremdmodul), +90112 Bytes, Rundlauf gruen, Belege: Zip-/XML-Pruefung und pandoc als fremder Leser; Go-Tests 16 mit vier Rotproben, Batterie Linux 214/0.

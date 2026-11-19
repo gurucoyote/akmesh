@@ -1730,3 +1730,67 @@ Zwei Erkenntnisse aus dem Testbau, die im Code stehen:
 - In Markdown ist ein nacktes <spitz> ein HTML-Tag, kein Text. Wer spitze
   Klammern als Text will, muss sie maskieren - sonst ist die Ausgabe richtig und
   der Test falsch.
+
+## md2epub und epub2md (19.11.2026, acmesh-54s.4 und acmesh-70y)
+
+Beide Befehle ohne Fremdmodul: md2epub rendert mit goldmark nach HTML, schneidet
+an den Ueberschriften der Ebene 1 in Kapitel und schreibt die Teile mit
+archive/zip; epub2md liest die Teile und gibt die Kapitel durch htmlmd.
+
+Aufbau eines Buches, das der Schreiber erzeugt:
+
+    mimetype                     "application/epub+zip", ERSTER Eintrag, unkomprimiert
+    META-INF/container.xml       verweist auf das Paketdokument
+    OEBPS/package.opf            dc:title, dc:language, dc:identifier, manifest, spine
+    OEBPS/nav.xhtml              Inhaltsverzeichnis, properties="nav"
+    OEBPS/chapter1.xhtml ...     ein Kapitel je Ebene-1-Ueberschrift, sonst eins
+
+Was den Unterschied zwischen einem Zip und einem EPUB macht, steht im Code:
+mimetype zuerst und mit Methode Store; jedes Kapitel in der spine (die spine ist
+die Lesereihenfolge, Dateinamen sind es nicht); nav ist deklariert und kein
+Kapitel. Der Zeitstempel im Paketdokument ist fest (2026-01-01), damit zwei Bauten
+desselben Buches byte-gleich bleiben.
+
+Groesze:
+
+    acmesh vorher (ohne epub)    15.130.748
+    acmesh mit md2epub+epub2md   15.220.860      also +90.112
+
+Belege:
+
+    eigener Rundlauf  Markdown -> EPUB -> Markdown
+      "# Erstes", "| A | B |", Liste und Ueberschriften kommen zurueck
+
+    Zip- und XML-Pruefung (python zipfile + ElementTree)
+      erster Eintrag mimetype, Methode 0 (Store), Inhalt "application/epub+zip"
+      alle XML-Teile wohlgeformt, spine mit 2 Eintraegen, dc:title vorhanden
+
+    pandoc 3.6.4 als FREMDER Leser (wie notker bei docx)
+      pandoc -f epub -t markdown b.epub
+      -> "# Eins", "Ein Absatz mit **fett**.", "- punkt", Tabelle als echte
+         Tabelle mit Kopfzeile, "# Zwei" - das Buch ist fuer ein fremdes
+         Programm lesbar und die Struktur ist erhalten
+
+Nicht geprueft: epubcheck. Java fehlt auf diesem Rechner; Aussagen ueber die
+volle EPUB-3-Konformitaet sind damit nicht belegt, nur Struktur, Wohlgeformtheit
+und zwei unabhaengige Leser.
+
+Go-Tests: sieben in internal/epubgen, neun in internal/epubmd. Rotproben:
+mimetype komprimiert -> rot; Kapitel nicht getrennt -> rot; Kapitel nach
+Dateinamen sortiert -> rot; nav nicht uebersprungen -> rot (erst nachdem die
+Fixture nav wirklich in die spine stellte, denn vorher konnte der Test nicht
+scheitern).
+
+Zwei Fehler, die der Rundlauf aufdeckte:
+- Der Leser gab anfangs den Kopf des Kapitels mit aus: XML-Deklaration, Titel und
+  saemtliche CSS-Regeln landeten im Buch. Jetzt wird nur der Inhalt zwischen
+  <body> und </body> gelesen; der Test prueft seither auf "<?xml", "DOCTYPE" und
+  "font-family" im Text.
+- goldmark schreibt jede Tabellenzelle in eine eigene Quellzeile; der HTML-Leser
+  machte daraus eine Zelle je Zeile mit haengendem " | ". Im Tabellenbereich wird
+  der Whitespace zwischen den Tags jetzt entfernt - vor der Uebergabe an htmlmd,
+  damit sich das Verhalten von html2md fuer Seiten nicht aendert.
+
+Batterie: sieben neue Faelle (md2epub-is-zip, -mimetype, -mimetype-first,
+-roundtrip, epub2md-table, -chapter-count, -refuses-zip); Linux 214 Pruefungen
+0 Fehler.

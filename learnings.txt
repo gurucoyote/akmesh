@@ -9,3 +9,16 @@
             without it the error is "outside main module or its selected
             dependencies". Duplicate command names then become the next wall, so
             the build script filters: u-root wins where it builds the name.
+2026-11-19  Der Multicall erreicht die Befehlstabelle in internal/tools nicht: jeder
+            cmd/<name>/main.go ruft sein eigenes Paket. Eine gemeinsame Regel (hier
+            --help) muss deshalb an den Einstiegen hängen (usage.Run mit der eigenen
+            Run-Funktion), nicht an der Tabelle. Ein Test über RunArgs allein wäre grün
+            gewesen, während das Binary weiter falsch antwortet - erst der Audit am
+            gebauten Binary zeigt es.
+2026-11-19  Zwei parallele Läufe von help-audit.sh teilten sich /tmp/help-audit.txt und
+            schrieben einander die Ausgabe um: fremde Help-Texte erschienen bei falschen
+            Befehlen, ein Befehl sah wie ein Ausreißer aus. Jedes Prüfskript braucht eine
+            eigene Temp-Datei (mktemp -d), sonst ist das Ergebnis nicht reproduzierbar.
+2026-11-19  Nach einer Umbenennung des Binaries .gitignore mitziehen: /ext und /ext.exe
+            galten weiter, akmesh-ext wurde nicht ignoriert und landete im Commit.
+            Prüfung: git ls-files gegen die Artefaktnamen in der AGENTS.md.

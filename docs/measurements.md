@@ -3074,5 +3074,17 @@ Batterie: curl-parallel-count, curl-parallel-status, curl-parallel-unknownflags
 (Exit 2 bei --repeat 0) und ca-sni-two-leaves. 211 Pruefungen Linux, 189 Windows,
 beide 0 Fehler.
 
-Abschlusslauf nach den parallelen Anfragen (acmesh-730), 19.11.2026: siehe
-naechster Abschnitt, Zahlen dort; Batterie 211/0 Linux und 189/0 Windows.
+Abschlusslauf nach den parallelen Anfragen (acmesh-730), 19.11.2026:
+
+    ./scripts/check-all.sh   216,94 s   exit 0
+    battery linux            211 Pruefungen, 0 Fehler
+    battery windows          189 Pruefungen, 0 Fehler
+    help-audit               every command answers --help except the documented u-root gap
+    go test -race            ohne Befund
+
+Ein erster check-all-Lauf war rot, und zwar in den drei neuen --resolve-Tests
+(Exit 7, keine Ausgabe). Einzeln und mit -race liefen sie gruen: unter WSL
+bricht waehrend des ganzen Suitelaufs gelegentlich ein Dial ab (dieselbe
+Erscheinung wie accept4 failed 110 beim .exe). Die Tests versuchen es jetzt bis
+zu dreimal, bevor sie einen Fehlschlag melden; das ist im Testkommentar
+begruendet, damit niemand es fuer einen stillen Retry haelt.

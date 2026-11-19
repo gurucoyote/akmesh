@@ -1635,3 +1635,39 @@ Batterie: Linux 199 Pruefungen, neue Faelle md2pdf-is-pdf, md2pdf-has-eof,
 md2pdf-roundtrip, md2pdf-umlaut, md2pdf-unknown-option.
 Go-Tests: sechs in internal/pdfgen, Rotprobe gemacht (ein Leck auf stdout bei -o
 wird von TestRunWritesFileAndKeepsStdoutClean gefangen).
+
+## Label-Wert-Paare als Tabellenzeilen (19.11.2026, acmesh-gow)
+
+Die Restschuld war: ein Formular schreibt "Ort: Pumpkin Mart" in einen Lauf, ohne
+Zelluecke, und pdf2md liest es als Fliesstext. Zwei Regeln schliessen das:
+
+1. Zeilengruppe mit zwei Zellen, deren erste auf ":" endet: dann muss nur die
+   Label-Spalte ausgerichtet sein (3 pt), die Wertspalte darf wandern, weil ein
+   Wert so breit ist, wie er eben ist.
+2. Label und Wert in einer Zelle ("Komplexitaet: 6"): zwei oder mehr solche
+   Zeilen untereinander ergeben eine Tabelle mit zwei Spalten, eine einzelne
+   Zeile bleibt Prosa.
+
+Dazu ein Fix, ohne den beides nicht greift: viele Erzeuger setzen jede Zelle als
+eigenes Textobjekt auf derselben Grundlinie. Frueher begann bei jedem Textobjekt
+eine neue Zeile, Label und Wert landeten untereinander. Jetzt entscheidet die
+Grundlinie (Toleranz 0,3 x Schriftgroesse), nicht die Operation.
+
+Belege:
+
+    prüf-PDF mit sechs Paaren (scripts/make-test-pdf-labels.py)
+      vorher: sechs Zeilen Fliesstext, nachher:
+      | Ort: | Pumpkin Mart |
+      | Datum: | 31. Oktober |   ...   (6 Zeilen + Trennzeile = 7)
+
+    echte Dateien, vorher -> nachher (altes und neues Binary verglichen)
+      EAS_AnmeldeformularTarot25_Alina.pdf      11 -> 11 Tabellenzeilen, 518 -> 518 Woerter
+      EAS_AnmeldeformularTarot25_Celia.pdf       4 ->  4, 326 -> 326
+      H_Anmeldung_Paar.pdf                       3 ->  3, 272 -> 272
+      DecorativeGoreSeasonHandout_DE_v4.pdf      0 ->  3 (Formularzeilen im Text)
+      keine Regression: Wortzahlen unveraendert
+
+Go-Tests: TestLabelValuePairs, TestLabelValueInOneCell, TestSingleColonLineStaysProse,
+TestColonProseStaysProse. Rotproben: Label-Regel aus -> rot; Zeilenumbruch wie
+frueher -> rot; Paar-Erkennung aus -> rot.
+Batterie: neue Faelle pdf2md-labels und pdf2md-labels-rows; Linux 201/0.

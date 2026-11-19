@@ -742,6 +742,27 @@ type contentReader struct {
 	pendingRect *rect
 }
 
+// breakLine starts a new line only when the baseline really moves. Many writers
+// put every cell of a form row in its own text object: BT 72 700 Td (Label) Tj ET
+// BT 160 700 Td (Wert) Tj ET. Tearing those apart would leave the label on one
+// line and its value on the next, and no table could be recognised.
+func (r *contentReader) breakLine(y float64) {
+	if !r.lineHasText {
+		return
+	}
+	tol := 1.0
+	if r.size > 0 {
+		tol = 0.3 * r.size
+	}
+	lineY := r.ty
+	if len(r.pieces) > 0 {
+		lineY = r.pieces[0].y
+	}
+	if absf(y-lineY) > tol {
+		r.newLine()
+	}
+}
+
 func (r *contentReader) newLine() {
 	if r.lineHasText {
 		r.flushLine()
@@ -868,7 +889,8 @@ func (r *contentReader) run(content []byte, depth int) {
 				r.tx += t.nums[0]
 				r.ty += t.nums[1]
 				if t.nums[1] != 0 {
-					r.newLine()
+					_, py := r.m.apply(r.tx, r.ty)
+					r.breakLine(py)
 					r.lastStart, r.lastWidth = r.tx, 0
 				}
 			}
@@ -877,7 +899,8 @@ func (r *contentReader) run(content []byte, depth int) {
 		case "Tm":
 			if len(t.nums) >= 6 {
 				if t.nums[5] != r.ty && r.lineHasText {
-					r.newLine()
+					_, py := r.m.apply(t.nums[4], t.nums[5])
+					r.breakLine(py)
 				}
 				r.tx, r.ty = t.nums[4], t.nums[5]
 				r.lastStart, r.lastWidth = r.tx, 0
@@ -1200,25 +1223,98 @@ func cellsOf(l textLine) []string {
 	return append(cells, strings.TrimSpace(cur))
 }
 
+// tableCells returns the cells of a row, and splits the "Label: value" shape
+// that many writers put into a single run: "Komplexität: 6" has no cell gap, but
+// it is a cell pair and reads as one.
+func tableCells(l textLine) []string {
+	cells := cellsOf(l)
+	if len(cells) == 1 {
+		if label, value, ok := splitLabelValue(cells[0]); ok {
+			return []string{label, value}
+		}
+	}
+	return cells
+}
+
+// splitLabelValue splits "Label: value". The label has to be short, because a
+// sentence that happens to contain a colon is not a label.
+func splitLabelValue(cell string) (string, string, bool) {
+	for _, sep := range []string{": ", ":\t", "： "} {
+		if i := strings.Index(cell, sep); i > 0 {
+			label := strings.TrimSpace(cell[:i+1])
+			value := strings.TrimSpace(cell[i+len(sep):])
+			if value == "" || strings.Contains(label, "|") || strings.Contains(value, "|") {
+				return "", "", false
+			}
+			if len([]rune(label)) > 40 {
+				return "", "", false
+			}
+			return label, value, true
+		}
+	}
+	return "", "", false
+}
+
+// isLabelPairRow says whether a row is one "Label: value" pair inside a single
+// cell - the form shape without any cell gap.
+func isLabelPairRow(l textLine) bool {
+	cells := cellsOf(l)
+	if len(cells) != 1 {
+		return false
+	}
+	_, _, ok := splitLabelValue(cells[0])
+	return ok
+}
+
 // tableGroup returns the rows that form a table starting at i: at least two
 // rows, the same number of cells, and cell starts that line up within 3pt. One
 // row is not a table - a line of text with a wide gap is still a line.
+//
+// A label-value form is the exception: "Kursgebühr:" and its value, then
+// "Anmeldung:" and its value. The labels line up, the values cannot, because a
+// value is as wide as it happens to be - so for such a group only the label
+// column has to align, and the row shape has to stay "label, value".
 func tableGroup(lines []textLine, i int) []textLine {
-	if i >= len(lines) || len(lines[i].pieces) < 2 {
+	if i >= len(lines) {
+		return nil
+	}
+	// A form row whose label and value sit in one cell: at least two such rows in
+	// a row make a table, and there is nothing to align but the left edge.
+	if isLabelPairRow(lines[i]) {
+		var pairs []textLine
+		for j := i; j < len(lines) && isLabelPairRow(lines[j]); j++ {
+			pairs = append(pairs, lines[j])
+		}
+		if len(pairs) >= 2 {
+			return pairs
+		}
+		return nil
+	}
+	if len(lines[i].pieces) < 2 {
 		return nil
 	}
 	want := startsOf(lines[i])
-	if len(want) < 2 || !shortCells(cellsOf(lines[i])) {
+	if len(want) < 2 || !shortCells(tableCells(lines[i])) {
 		return nil
 	}
+	labelTable := isLabelRow(lines[i])
 	rows := []textLine{lines[i]}
+	// With a label table, the labels must not drift either: they are the column
+	// an eye reads down.
+	alignCols := len(want)
+	if labelTable {
+		alignCols = 1
+	}
 	for j := i + 1; j < len(lines); j++ {
 		got := startsOf(lines[j])
-		if len(got) != len(want) || !shortCells(cellsOf(lines[j])) {
+		if len(got) != len(want) || !shortCells(tableCells(lines[j])) {
+			break
+		}
+		if labelTable && !isLabelRow(lines[j]) {
 			break
 		}
 		aligned := true
-		for k := range got {
+		for k := 0; k < alignCols; k++ {
 			if absf(got[k]-want[k]) > 3 {
 				aligned = false
 				break
@@ -1233,6 +1329,21 @@ func tableGroup(lines []textLine, i int) []textLine {
 		return nil
 	}
 	return rows
+}
+
+// isLabelRow says whether a line is a "label: value" pair: exactly two cells and
+// the first one ends with a colon. A line that is only a colon and nothing else
+// counts, a prose line with a colon in the middle does not.
+func isLabelRow(l textLine) bool {
+	cells := cellsOf(l)
+	if len(cells) != 2 {
+		return false
+	}
+	label := cells[0]
+	if label == "" || cells[1] == "" {
+		return false
+	}
+	return strings.HasSuffix(label, ":") || strings.HasSuffix(label, "：")
 }
 
 func shortCells(cells []string) bool {
@@ -1257,7 +1368,7 @@ func renderTable(rows []textLine) string {
 	width := 0
 	table := make([][]string, 0, len(rows))
 	for _, r := range rows {
-		cells := cellsOf(r)
+		cells := tableCells(r)
 		if len(cells) > width {
 			width = len(cells)
 		}

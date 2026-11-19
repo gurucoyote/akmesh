@@ -404,10 +404,13 @@ if command -v python3 >/dev/null 2>&1; then
   check pdf2md-text "Hallo PDF" "$(run pdf2md p-test.pdf | tr -d '\r' | head -1)"
   python3 /root/acmesh/scripts/make-test-pdf-table.py pt-test.pdf
   check pdf2md-table "| Name: | Anna Beispiel |" "$(run pdf2md pt-test.pdf | tr -d '\r' | head -1)"
+  python3 /root/acmesh/scripts/make-test-pdf-labels.py pl-test.pdf
+  check pdf2md-labels "| Ort: | Pumpkin Mart |" "$(run pdf2md pl-test.pdf | tr -d '\r' | head -1)"
+  check pdf2md-labels-rows "7" "$(run pdf2md pl-test.pdf | tr -d '\r' | grep -c '|')"
   python3 /root/acmesh/scripts/make-test-pdf-form.py pf-test.pdf
   check pdf2md-form-xobject "Feldtext" "$(run pdf2md pf-test.pdf | tr -d '\r' | head -1)"
   check pdf2md-not-pdf "1" "$(printf 'kein pdf' | run pdf2md >/dev/null 2>&1; echo $?)"
-  rm -f p-test.pdf pt-test.pdf pf-test.pdf
+  rm -f p-test.pdf pt-test.pdf pf-test.pdf pl-test.pdf
 fi
 
 # md2pdf: Markdown to PDF, written by the slimmed goldmark-pdf fork.

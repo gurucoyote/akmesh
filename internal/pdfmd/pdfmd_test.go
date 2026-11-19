@@ -325,3 +325,92 @@ func TestTextFromFormXObject(t *testing.T) {
 		t.Errorf("Text aus dem Form-XObject fehlt:\n%q", got)
 	}
 }
+
+// TestLabelValuePairs: a form sets a label, then its value a good distance to
+// the right. The labels line up, the values do not, because a value is as wide as
+// it happens to be. With the old 3pt alignment on every column such a pair stayed
+// prose, which is the debt this test closes: the label column is what makes it a
+// table, the value column may wander.
+func TestLabelValuePairs(t *testing.T) {
+	// A form as it is actually written: one text object per cell, the label at
+	// x=72, the value somewhere to the right - and not at the same x in every
+	// row, because the label width differs. Both have to survive: the baseline
+	// keeps the cells on one row, and the label column is what makes it a table.
+	rows := [][2]string{
+		{"Kursgebuehr:", "630 EUR"},
+		{"Anmeldung:", "bis 1. Maerz"},
+		{"Ort:", "Bremen, Halle 4"},
+	}
+	var b strings.Builder
+	for i, r := range rows {
+		y := 700 - i*20
+		b.WriteString("BT /F1 10 Tf 72 " + itoa(y) + " Td (" + r[0] + ") Tj ET ")
+		b.WriteString("BT /F1 10 Tf " + itoa(170+i*7) + " " + itoa(y) + " Td (" + r[1] + ") Tj ET ")
+	}
+	got, err := Convert(pageWith("", b.String()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, label := range []string{"Kursgebuehr:", "Anmeldung:", "Ort:"} {
+		if !strings.Contains(got, "| "+label) {
+			t.Errorf("Label %q steht nicht als Tabellenzelle:\n%q", label, got)
+		}
+	}
+	if strings.Count(got, "|") < 6 {
+		t.Errorf("keine Tabelle aus den Label-Wert-Paaren:\n%q", got)
+	}
+	// The label and its value must share a row, not a line each.
+	if strings.Contains(got, "Kursgebuehr:\n") {
+		t.Errorf("Label und Wert stehen in getrennten Zeilen:\n%q", got)
+	}
+}
+
+// TestColonProseStaysProse is the guard: two lines that merely end in a colon
+// are not a table. Without this rule every two-line note would become one.
+func TestColonProseStaysProse(t *testing.T) {
+	content := "BT /F1 10 Tf 72 700 Td (Hinweis:) Tj ET " +
+		"BT /F1 10 Tf 72 680 Td (Bitte pünktlich erscheinen und den Ausweis mitbringen.) Tj ET " +
+		"BT /F1 10 Tf 72 660 Td (Fragen an das Büro.) Tj ET"
+	got, err := Convert(pageWith("", content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got, "|") {
+		t.Errorf("Fliesstext mit Doppelpunkt wurde zur Tabelle:\n%q", got)
+	}
+}
+
+// TestLabelValueInOneCell is the case that was left as debt: the writer puts
+// "Komplexität: 6" into a single run, with no cell gap at all, so the label and
+// its value are one cell. Two or more such lines in a row are a form, and a form
+// reads as a table - one line alone is still prose, or every note with a colon
+// would become one.
+func TestLabelValueInOneCell(t *testing.T) {
+	content := "BT /F1 10 Tf 72 700 Td (Komplexitaet: 6) Tj ET " +
+		"BT /F1 10 Tf 72 680 Td (Stimmung: unheimlich) Tj ET " +
+		"BT /F1 10 Tf 72 660 Td (Ort: Pumpkin Mart) Tj ET"
+	got, err := Convert(pageWith("", content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "| Komplexitaet: | 6 |") {
+		t.Errorf("Label und Wert wurden nicht getrennt:\n%q", got)
+	}
+	if !strings.Contains(got, "| Stimmung: | unheimlich |") {
+		t.Errorf("zweite Zeile nicht getrennt:\n%q", got)
+	}
+}
+
+// TestSingleColonLineStaysProse guards the rule above: one line with a colon is
+// a sentence, not a table.
+func TestSingleColonLineStaysProse(t *testing.T) {
+	content := "BT /F1 10 Tf 72 700 Td (Hinweis: bitte puenktlich kommen.) Tj ET " +
+		"BT /F1 10 Tf 72 675 Td (Ein ganz normaler Satz, der weiterlaeuft und nichts mit einem Formular zu tun hat.) Tj ET"
+	got, err := Convert(pageWith("", content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got, "|") {
+		t.Errorf("einzelne Zeile mit Doppelpunkt wurde zur Tabelle:\n%q", got)
+	}
+}

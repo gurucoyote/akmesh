@@ -4,12 +4,22 @@ package cut
 
 import (
 	"akmesh/internal/shared"
+	akusage "akmesh/internal/usage"
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
+
+// badUsage prints the message in GNU's shape and returns its exit status. cut
+// uses 1 for a bad command line, not 2.
+func badUsage(stderr *os.File, msg string) int {
+	fmt.Fprintf(stderr, "cut: %s\n", msg)
+	fmt.Fprintln(stderr, "Try 'cut --help' for more information.")
+	return 1
+}
 
 func inSpans(ranges []span, n int) bool {
 	for _, sp := range ranges {
@@ -69,8 +79,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			}
 			delim = v
 			if len([]rune(delim)) != 1 {
-				fmt.Fprintln(stderr, "cut: delimiter must be a single character")
-				return 2
+				return badUsage(stderr, "the delimiter must be a single character")
 			}
 		case "-f":
 			v, ok := getValue(&i, attached)
@@ -82,6 +91,10 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			v, ok := getValue(&i, attached)
 			if !ok {
 				return 2
+			}
+			if chars != "" {
+				// GNU refuses two kinds of list instead of letting the last win.
+				return badUsage(stderr, "only one list may be specified")
 			}
 			chars = v
 			bytesMode = args[i] == "-b" || a == "-b"
@@ -97,15 +110,13 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			onlyDelimited = true
 		default:
 			if strings.HasPrefix(args[i], "-") && args[i] != "-" {
-				fmt.Fprintf(stderr, "cut: unknown option %q\n", args[i])
-				return 2
+				return akusage.BadOption("cut", args[i], stderr, 1)
 			}
 			files = append(files, args[i])
 		}
 	}
 	if (fields == "") == (chars == "") {
-		fmt.Fprintln(stderr, "cut: give exactly one of -f or -c")
-		return 2
+		return badUsage(stderr, "you must specify a list of bytes, characters, or fields")
 	}
 	var ranges []span
 	var err error
@@ -142,7 +153,13 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		for _, line := range lines {
 			if fields != "" {
 				parts := strings.Split(line, delim)
-				if len(parts) == 1 && onlyDelimited {
+				if len(parts) == 1 {
+					if onlyDelimited {
+						continue
+					}
+					// A line without the delimiter is printed whole, as GNU
+					// does, instead of leaving an empty line behind.
+					fmt.Fprintln(w, line)
 					continue
 				}
 				var out []string
@@ -164,43 +181,33 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 				fmt.Fprintln(w, strings.Join(out, join))
 				continue
 			}
-			// -c counts characters, -b counts bytes. A whole line is one
-			// unit for the selection either way; only the unit differs.
-			var units []string
+			// -c counts characters, -b counts bytes. A byte slice keeps the
+			// bytes as they are: turning them into one-rune strings and back
+			// would re-encode each of them as UTF-8 (two bytes became four).
 			if bytesMode {
-				for _, b := range []byte(line) {
-					units = append(units, string(b))
-				}
-			} else {
-				for _, r := range line {
-					units = append(units, string(r))
-				}
-			}
-			if complement {
-				var sb strings.Builder
-				for n := 1; n <= len(units); n++ {
-					if !inSpans(ranges, n) {
-						sb.WriteString(units[n-1])
+				b := []byte(line)
+				out := make([]byte, 0, len(b))
+				for n := 1; n <= len(b); n++ {
+					if inSpans(ranges, n) != complement {
+						out = append(out, b[n-1])
 					}
 				}
-				fmt.Fprintln(w, sb.String())
+				w.Write(out)
+				w.WriteByte('\n')
 				continue
 			}
+			runes := []rune(line)
 			var chunks []string
-			for _, sp := range ranges {
-				var sb strings.Builder
-				for n := sp.from; n <= sp.to; n++ {
-					if n >= 1 && n <= len(units) {
-						sb.WriteString(units[n-1])
-					}
-				}
-				if outDelim != "" && sb.Len() > 0 {
-					chunks = append(chunks, sb.String())
-				} else {
-					chunks = append(chunks, sb.String())
+			for n := 1; n <= len(runes); n++ {
+				if inSpans(ranges, n) != complement {
+					chunks = append(chunks, string(runes[n-1]))
 				}
 			}
-			fmt.Fprintln(w, strings.Join(chunks, outDelim))
+			if complement || len(ranges) > 1 {
+				fmt.Fprintln(w, strings.Join(chunks, outDelim))
+				continue
+			}
+			fmt.Fprintln(w, strings.Join(chunks, ""))
 		}
 	}
 	return 0
@@ -214,24 +221,29 @@ type span struct {
 // parseList parses cut-style lists: "1", "1,3", "2-4", "5-".
 func parseList(list string) ([]span, error) {
 	var spans []span
+	const open = 1 << 30
 	for _, part := range strings.Split(list, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
 		}
-		if i := strings.Index(part, "-"); i > 0 || (i == 0 && len(part) > 1) {
-			from, err := strconv.Atoi(part[:i])
-			if err != nil {
-				return nil, fmt.Errorf("bad list %q", list)
-			}
-			to := 0
-			if part[i+1:] == "" {
-				to = 1 << 30
-			} else {
-				to, err = strconv.Atoi(part[i+1:])
-				if err != nil {
+		if i := strings.Index(part, "-"); i >= 0 {
+			// "-2" means one to two, GNU's open start.
+			from := 1
+			if i > 0 {
+				n, err := strconv.Atoi(part[:i])
+				if err != nil || n < 1 {
 					return nil, fmt.Errorf("bad list %q", list)
 				}
+				from = n
+			}
+			to := open
+			if part[i+1:] != "" {
+				n, err := strconv.Atoi(part[i+1:])
+				if err != nil || n < 1 {
+					return nil, fmt.Errorf("bad list %q", list)
+				}
+				to = n
 			}
 			if to < from {
 				return nil, fmt.Errorf("decreasing range %q", part)
@@ -248,7 +260,24 @@ func parseList(list string) ([]span, error) {
 	if len(spans) == 0 {
 		return nil, fmt.Errorf("empty list")
 	}
-	return spans, nil
+	// GNU prints the selection in increasing order and each field once, so
+	// "3,1" gives "a c" and "1-2,2-3" is the same as "1-3".
+	sort.Slice(spans, func(i, j int) bool {
+		if spans[i].from != spans[j].from {
+			return spans[i].from < spans[j].from
+		}
+		return spans[i].to < spans[j].to
+	})
+	merged := []span{spans[0]}
+	for _, sp := range spans[1:] {
+		last := &merged[len(merged)-1]
+		if sp.from <= last.to+1 {
+			if sp.to > last.to {
+				last.to = sp.to
+			}
+			continue
+		}
+		merged = append(merged, sp)
+	}
+	return merged, nil
 }
-
-// Helpers shared by several commands.

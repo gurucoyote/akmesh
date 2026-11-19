@@ -2473,3 +2473,53 @@ Mutationsprobe von Hand, sieben Mutanten, alle getötet:
 Batterie: 228 Prüfungen, 0 Fehler Linux; 206 Prüfungen, 0 Fehler Windows.
 Ein Lauf dazwischen meldete eine Prüfung rot und war im naechsten Lauf gruen -
 derselbe Lastfall wie bei acmesh-ert.
+
+## 2026-11-19 cut und base64: Batterie-Prüfungen in Go-Tests (acmesh-pfm)
+
+Vorher: cut 15,9 Prozent Abdeckung, base64 57,1 Prozent, je zwei Prüfungen in der
+Batterie. Nachher: cut 89,2 Prozent, base64 86,3 Prozent, alle vier Prüfungen
+entfernt.
+
+    go test ./internal/cut/ -cover             ->  89.2%
+    go test ./internal/forked/base64/ -cover   ->  86.3%
+
+cut, fünf Abweichungen von GNU cut 9.4, alle repariert:
+
+    cut -d: -f3,1      gab "c:a" aus; GNU sortiert die Auswahl aufsteigend ("a:c")
+    cut -f2,2          gab das Feld zweimal aus; GNU einmal
+    cut -f1-2,2-3      gab "a:b:b:c" aus; GNU "a:b:c"
+    cut -f-2           wurde abgelehnt; GNU liest "Feld 1 bis 2"
+    Zeile ohne Trenner blieb leer statt der ganzen Zeile (GNU druckt sie ganz,
+                       ausser mit -s)
+    cut -b1-2 auf "äbc" gab vier Bytes statt zwei: der Byte-Modus baute
+                       Ein-Zeichen-Strings und kodierte sie neu als UTF-8
+
+Fehlbedienung jetzt in GNU-Form mit Exit 1 statt 2:
+"cut: the delimiter must be a single character", "cut: only one list may be
+specified", "cut: you must specify a list of bytes, characters, or fields",
+"cut: unrecognized option '--bogus'" - jeweils mit "Try 'cut --help' ...".
+
+base64, drei Abweichungen:
+
+    -d auf "aGVsbG8"   verlor den letzten Block ("hel" statt "hello" und
+                       "decoding: unexpected EOF"). Der Fehler vom 18.11.: ein
+                       letzter Block ohne Auffuellung wurde verworfen. Jetzt wird
+                       er dekodiert und GNU-gleich "base64: invalid input" mit
+                       Exit 1 gemeldet.
+    -d auf "!!!!"      meldete "decoding: illegal base64 data at input byte 0"
+                       statt "base64: invalid input"
+    --bogus, zwei Dateien, fehlende Datei: GNU-Wortlaut mit --help-Hinweis,
+                       Exit 1; vorher eigene Sprueche
+    encodeUpstream()   war toter Code aus u-root (nirgends aufgerufen) und wurde
+                       entfernt
+
+Mutationsprobe von Hand, alle getötet: cut -s umgedreht, Bereiche nicht
+zusammengefasst, Zeile ohne Trenner leer, base64 kurzer Block ohne Meldung, zweites
+Argument erlaubt, Umbruchbreite (dieser Mutant laeuft in eine Endlosschleife und
+wird vom Test-Timeout gefangen). Zwei Mutanten ueberlebten und sind gleichwertig:
+"from := 1" auf 0 (Feld 0 wird ohnehin nie ausgegeben) und ein Umbau
+[]byte -> string -> []byte (byte-identisch).
+
+Batterie: 224 Prüfungen, 0 Fehler Linux; 202 Prüfungen, 0 Fehler Windows. Der
+erste Windows-Lauf meldete vier Fehler und war im naechsten Lauf gruen - der
+bekannte Lastfall aus acmesh-ert.

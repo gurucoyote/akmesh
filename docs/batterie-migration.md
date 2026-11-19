@@ -158,9 +158,11 @@ Stand 19.11.2026:
     nach find      240 Prüfungen Linux, 218 Windows
     nach grep      233 Prüfungen Linux, 211 Windows
     nach head/wc   228 Prüfungen Linux, 206 Windows
+    nach cut/base64 224 Prüfungen Linux, 202 Windows
 
 | Ticket | Befehl | entfernte Prüfungen | ersetzt durch |
 |---|---|---|---|
+| acmesh-pfm | cut, base64 | cut-fields, cut-chars, base64-wrap0, base64-default-wrap | TestFieldsAndCharacters, TestSelectionComesOutSorted, TestOverlappingRangesAreOne, TestBytesAndOutputDelimiter, TestWrapWidth, TestWrapWidths, TestDecodeWithoutPaddingKeepsTheLastBlock, TestDecodeRejectsGarbage |
 | acmesh-795 | head, wc | head-short, head-quiet, head-missing, wc-chars, wc-bytes | TestShortFormAndQuiet, TestNegativeCountKeepsEverythingButTheEnd, TestNegativeBytesKeepTheHead, TestZeroPrintsNothing, TestHeadersFollowTheLastOption, TestErrorsAreNotSuccess, TestUmlautsAreCharactersNotBytes, TestLinesWordsBytes, TestTotalLineForSeveralFiles |
 | acmesh-4aj | grep | grep-extended, grep-ignore-case, grep-word, grep-context, grep-only-match, grep-no-match, grep-recursive | TestExtendedRegexpAndWordMatch, TestIgnoreCaseIsAbsolute, TestContextGroupsAreSeparatedByDashes, TestOnlyMatchAndNumbers, TestExitStatus, TestRecursiveNamesTheFile |
 | acmesh-qz2 | find | find-optional-path, find-dot-prefix, find-maxdepth, find-missing | TestStartPathIsOptional, TestMaxDepthReportsTheBoundaryDirectory, TestErrorsAreNotSuccess |

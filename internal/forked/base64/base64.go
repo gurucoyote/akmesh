@@ -34,6 +34,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	akusage "akmesh/internal/usage"
 )
 
 type cmd struct {
@@ -52,10 +54,59 @@ type params struct {
 
 var errBadUsage = errors.New("usage: base64 [-d] [file]")
 
+// errInvalidInput is GNU's wording for data that is not base64 at all.
+var errInvalidInput = errors.New("invalid input")
+
+// unknownOption carries the option as the user wrote it, so the message can name
+// the whole token and point at --help.
+type unknownOption struct{ opt string }
+
+func (e unknownOption) Error() string { return "unrecognized option '" + e.opt + "'" }
+
 func decodeone(stdin io.Reader, stdout io.Writer) error {
-	r := base64.NewDecoder(base64.StdEncoding, stdin)
-	if _, err := io.Copy(stdout, r); err != nil {
-		return fmt.Errorf("decoding: %w", err)
+	data, err := io.ReadAll(stdin)
+	if err != nil {
+		return err
+	}
+	// Whitespace is part of the format: GNU accepts wrapped input.
+	clean := make([]byte, 0, len(data))
+	for _, b := range data {
+		switch b {
+		case '\n', '\r', ' ', '\t':
+		default:
+			clean = append(clean, b)
+		}
+	}
+	out := make([]byte, 0, len(clean)/4*3)
+	invalid := false
+	for len(clean) >= 4 {
+		var dst [3]byte
+		n, derr := base64.StdEncoding.Decode(dst[:], clean[:4])
+		if derr != nil {
+			invalid = true
+			break
+		}
+		out = append(out, dst[:n]...)
+		clean = clean[4:]
+	}
+	if !invalid && len(clean) > 0 {
+		// A last group of two or three characters has no padding. GNU decodes
+		// it and still reports invalid input, instead of throwing the tail
+		// away - the loss of that last block was the bug of 18.11.
+		var dst [3]byte
+		n, derr := base64.RawStdEncoding.Decode(dst[:], clean)
+		if derr != nil {
+			invalid = true
+		} else {
+			out = append(out, dst[:n]...)
+			invalid = true
+		}
+	}
+	if _, werr := stdout.Write(out); werr != nil {
+		return werr
+	}
+	if invalid {
+		return errInvalidInput
 	}
 	return nil
 }
@@ -114,28 +165,10 @@ func decodeIgnoring(stdin io.Reader, stdout io.Writer) error {
 	}
 	decoded, err := base64.StdEncoding.DecodeString(string(kept))
 	if err != nil {
-		return err
+		return errInvalidInput
 	}
 	_, err = stdout.Write(decoded)
 	return err
-}
-
-func encodeUpstream(stdin io.Reader, stdout io.Writer) error {
-	// WriteCloser is important here, from NewEncoder documentation:
-	// when finished writing, the caller must Close the returned encoder
-	// to flush any partially written blocks.
-	wc := base64.NewEncoder(base64.StdEncoding, stdout)
-	defer wc.Close()
-	if _, err := io.Copy(wc, stdin); err != nil {
-		return fmt.Errorf("error encoding: %w", err)
-	}
-	if err := wc.Close(); err != nil { // flush any remaining data
-		return fmt.Errorf("closing encoder: %w", err)
-	}
-	if _, err := fmt.Fprintln(stdout); err != nil {
-		return fmt.Errorf("error encoder writing trailing newline %w", err)
-	}
-	return nil
 }
 
 // parse reads -d, -w and -i, also glued together as -dw 0.
@@ -168,7 +201,7 @@ func parse(args []string) (p params, rest []string, err error) {
 			// A long option this parser does not know: name the whole token.
 			// Reading only its first letter used to print `unknown option "--"`,
 			// which told nobody what was wrong (acmesh-vr1).
-			return p, nil, fmt.Errorf("unknown option %q", a)
+			return p, nil, unknownOption{a}
 		case strings.HasPrefix(a, "-") && len(a) > 1:
 			letters := a[1:]
 			for j := 0; j < len(letters); j++ {
@@ -193,7 +226,7 @@ func parse(args []string) (p params, rest []string, err error) {
 					p.wrap = n
 					j = len(letters)
 				default:
-					return p, nil, fmt.Errorf("unknown option %q", "-"+string(letters[j]))
+					return p, nil, unknownOption{"-" + string(letters[j])}
 				}
 			}
 		default:
@@ -207,17 +240,33 @@ func parse(args []string) (p params, rest []string, err error) {
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	p, rest, err := parse(args)
 	if err != nil {
+		var uo unknownOption
+		if errors.As(err, &uo) {
+			return akusage.BadOption("base64", uo.opt, stderr, 1)
+		}
 		fmt.Fprintf(stderr, "base64: %v\n", err)
 		return 1
 	}
 	if len(rest) > 1 {
-		fmt.Fprintf(stderr, "base64: %v\n", errBadUsage)
+		// GNU names the operand it does not want instead of printing a usage.
+		fmt.Fprintf(stderr, "base64: extra operand '%s'\n", rest[1])
+		fmt.Fprintln(stderr, "Try 'base64 --help' for more information.")
 		return 1
 	}
 	if len(rest) == 1 && rest[0] != "-" {
 		f, err := os.Open(rest[0])
 		if err != nil {
-			fmt.Fprintf(stderr, "base64: %v\n", err)
+			var pe *os.PathError
+			if errors.As(err, &pe) {
+				// GNU capitalises the reason: "No such file or directory".
+				reason := pe.Err.Error()
+				if reason != "" {
+					reason = strings.ToUpper(reason[:1]) + reason[1:]
+				}
+				fmt.Fprintf(stderr, "base64: %s: %s\n", rest[0], reason)
+			} else {
+				fmt.Fprintf(stderr, "base64: %v\n", err)
+			}
 			return 1
 		}
 		defer f.Close()

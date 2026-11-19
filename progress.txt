@@ -163,3 +163,9 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
             und -q/-v (letzte Option gewinnt, wie GNU). wc-Spaltenbreite bleibt
             ohne Auffuellen, als Abweichung dokumentiert. Batterie 228/0 Linux,
             206/0 Windows.
+2026-11-19  cut und base64 migriert (acmesh-pfm): cut 15,9 -> 89,2 Prozent,
+            base64 57,1 -> 86,3 Prozent, vier Batterie-Pruefungen entfernt.
+            cut sortiert die Auswahl jetzt wie GNU, fasst Bereiche zusammen,
+            kennt -f-2, druckt Zeilen ohne Trenner ganz und rechnet -b auf Bytes.
+            base64 verliert den letzten Block ohne Auffuellung nicht mehr.
+            Batterie 224/0 Linux, 202/0 Windows.

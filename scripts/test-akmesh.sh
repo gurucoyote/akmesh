@@ -61,8 +61,13 @@ checkcode() {
 # text tools
 check basename "$(printf 'foo')" "$(run basename /usr/local/bin/foo.txt .txt | tr -d '\r')"
 check dirname "/usr/local/bin" "$(run dirname /usr/local/bin/foo.txt | tr -d '\r')"
-check cut-fields "b" "$(printf 'a:b:c\n' | run cut -d: -f2 | tr -d '\r')"
-check cut-chars "bcd" "$(printf 'abcdef\n' | run cut -c2-4 | tr -d '\r')"
+# cut behaviour lives in Go since acmesh-pfm (internal/cut):
+#   -d/-f, -c          -> TestFieldsAndCharacters
+#   Reihenfolge, Doppel-> TestSelectionComesOutSorted, TestOverlappingRangesAreOne
+#   -f-2, -f2-         -> TestOpenEndedRanges
+#   --complement, -s   -> TestComplementKeepsTheRest, TestOnlyDelimitedDropsTheRest
+#   -b mit Umlauten    -> TestBytesAndOutputDelimiter
+#   Fehlbedienung      -> TestRefusalsFollowGNU, TestFileArgumentAndBadList
 check tac "3 2 1" "$(printf '1\n2\n3\n' | run tac | tr -d '\r' | tr '\n' ' ' | sed 's/ $//')"
 check nl-numbered "     1	a" "$(printf 'a\n' | run nl | tr -d '\r')"
 
@@ -158,9 +163,11 @@ printf 'AB' > small.bin
 check hexdump-canonical "ja" "$(run hexdump -C small.bin | grep -q '41 42' && echo ja)"
 check hexdump-ascii "|AB|" "$(run hexdump -C small.bin | sed -n 's/.*\(|AB|\).*/\1/p' | tr -d '\r')"
 check hexdump-final-offset "00000002" "$(run hexdump -C small.bin | tail -1 | tr -d '\r')"
-check base64-wrap0 "1" "$(printf 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/dummy\n' | run base64 -w0 | wc -l | tr -d ' ')"
-awk 'BEGIN{for(i=0;i<100;i++)printf "a"}' > long.txt
-check base64-default-wrap "ja" "$(run base64 long.txt 2>/dev/null | head -1 | grep -qE '^.{76}$' && echo ja || echo nein)"
+# base64 behaviour lives in Go since acmesh-pfm (internal/forked/base64):
+#   -w0, -w4, --wrap=8      -> TestWrapWidth, TestWrapWidths, TestWrapArgumentErrors
+#   -d mit kaputter Eingabe -> TestDecodeRejectsGarbage, TestDecodeWithoutPaddingKeepsTheLastBlock
+#   -i                      -> TestIgnoreGarbage, TestIgnoreGarbageWithABadLength
+#   Datei, "--", Fehlbedienung -> TestFileAndDashArguments, TestRefusalsFollowGNU
 printf 'abc\n' > wct.txt
 # wc behaviour lives in Go since acmesh-795 (internal/forked/wc):
 #   -m gegen -c mit Umlauten -> TestUmlautsAreCharactersNotBytes

@@ -143,6 +143,18 @@ func TestMatchesName(t *testing.T) {
 			t.Fatalf("%q must not match %q", want, p.Comm)
 		}
 	}
+	// Windows puts the image path in quotes in the command line it reports, and
+	// killall has to see through them (acmesh-94e.22).
+	quoted := procInfo{Comm: "CMD.EXE", CmdLine: `"C:\Windows\system32\cmd.exe" /c dir`}
+	for _, want := range []string{"cmd", "CMD.EXE"} {
+		if !matchesName(quoted, []string{want}) {
+			t.Fatalf("%q should match a quoted Windows command line", want)
+		}
+	}
+	if got := firstWord(quoted.CmdLine); got != `C:\Windows\system32\cmd.exe` {
+		t.Fatalf("firstWord = %q, want the path without quotes", got)
+	}
+
 	// A process whose name has no .exe, as on Linux.
 	q := procInfo{Comm: "sleep", CmdLine: "sleep 300"}
 	if !matchesName(q, []string{"sleep"}) {

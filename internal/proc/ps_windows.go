@@ -10,10 +10,9 @@ import (
 )
 
 // listProcesses asks Toolhelp32 for the process table. The command line is not
-// part of that table: it lives in the target process's PEB, which would mean
-// reading foreign memory. That is deliberately not done here (see
-// docs/ps-kill-einschaetzung.md); the cmd column falls back to the executable
-// name.
+// part of that table; it comes from ntdll one process at a time
+// (cmdline_windows.go), and where that is refused the cmd column keeps the
+// executable name.
 func listProcesses() ([]procInfo, error) {
 	snap, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS, 0)
 	if err != nil {
@@ -64,6 +63,12 @@ func fillProcessDetail(info *procInfo, now time.Time) {
 		return
 	}
 	defer windows.CloseHandle(h)
+
+	// The command line is never fatal: a protected process answers with an
+	// error, and ps has shown such a row without it for a year.
+	if cmd, err := processCommandLine(info.PID); err == nil {
+		info.CmdLine = cmd
+	}
 
 	var creation, exit, kernel, user windows.Filetime
 	if err := windows.GetProcessTimes(h, &creation, &exit, &kernel, &user); err == nil {

@@ -82,6 +82,12 @@ dazu: Landlock unter Linux, Job Objects unter Windows, fuer jedes Kind.
 Jeder eigene Befehl bekommt zwei Dateien mit Build-Tag (`windows`, `!windows`)
 und geht durch dieselbe Policy-Huelle wie die eingebauten.
 
+- ps liest die Kommandozeile unter Windows ueber ntdll
+  (ProcessCommandLineInformation, Klasse 60) statt ueber den PEB (19.11.2026,
+  acmesh-94e.22): dafuer braucht es ein Recht, das ps ohnehin oeffnet, und keinen
+  Zugriff auf Fremdspeicher. Scheitert der Aufruf, bleibt die Spalte beim
+  Executable-Namen.
+
 ## Policy
 
 Ein Wrapper, durch den jeder Befehl laeuft: er loest relative Pfade gegen das

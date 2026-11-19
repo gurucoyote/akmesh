@@ -183,3 +183,7 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
             ersetzt, Batterie 196/0 Linux und 174/0 Windows. Tests laufen durch den
             Dispatcher mit echtem cwd und stdin. Zwei Mutanten getoetet
             (tar --exclude, cp -n).
+2026-11-19  ps liest die Kommandozeile unter Windows (acmesh-94e.22): ueber
+            ntdll ProcessCommandLineInformation statt PEB, 120 Zeilen, 375
+            Prozesse in 0,6 s. killall schneidet die Anfuehrungszeichen ab.
+            Batterie 196/0 Linux, 174/0 Windows.

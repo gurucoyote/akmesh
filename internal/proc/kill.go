@@ -210,6 +210,12 @@ func trimExe(s string) string {
 }
 
 func firstWord(s string) string {
+	// Windows reports the image path in quotes: `"C:\Windows\system32\cmd.exe" /c dir`.
+	if strings.HasPrefix(s, `"`) {
+		if end := strings.Index(s[1:], `"`); end >= 0 {
+			return s[1 : 1+end]
+		}
+	}
 	if idx := strings.IndexAny(s, " \t"); idx >= 0 {
 		return s[:idx]
 	}

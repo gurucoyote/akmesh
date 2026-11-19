@@ -2731,3 +2731,32 @@ Wer auf einem Share chmod braucht, bekommt jetzt eine Meldung statt Lug und Trug
 
 Offen: ls -l zeigt weiter rw-rw-rw-, weil ls ein u-root-Befehl ohne Fork ist
 (scripts/patch-uroot.sh). stat ist der Leser, den Skripte benutzen.
+
+## 2026-11-19 ps: Kommandozeile unter Windows (acmesh-94e.22)
+
+Die Kommandozeile steht nicht in der Toolhelp32-Tabelle, aus der ps seine Zeilen
+holt. Gelesen wird sie jetzt ueber ntdll: ProcessCommandLineInformation (Klasse 60)
+kopiert die Zeile in unseren eigenen Puffer. Das braucht nur
+PROCESS_QUERY_LIMITED_INFORMATION, also dasselbe Recht, das ps schon fuer die
+Zeiten oeffnet - kein Fremdspeicher, kein PEB, kein Absturzrisiko bei falschen
+Zeigern. 120 Zeilen statt der im Ticket geschaetzten 150 bis 250.
+
+Gemessen mit akmesh.exe, 19.11.2026:
+
+    ./akmesh.exe ps -ef
+      BUSYS\Spernau 37400 21128 ?  00:06 ?  00:00 cmd.exe /c "ping -n 40 127.0.0.1 >nul"
+      BUSYS\Spernau 36216 37400 ?  00:06 ?  00:00 ping  -n 40 127.0.0.1
+    tasklist /FI "IMAGENAME eq PING.EXE"  -> PING.EXE 36216, also dieselbe PID
+
+    ./akmesh.exe ps -eo pid,cmd    -> Kopf und Zeilen mit Argumenten, z.B.
+      TPOSD.EXE /UEFI\\.\pipe\{C6A9690C-...}OnScreenDisplay
+
+Laufzeit fuer 375 Prozesse: 0,62 s und 0,74 s in zwei Laeufen. Jeder Prozess
+kostet ein OpenProcess und zwei Aufrufe von NtQueryInformationProcess.
+
+Wo der Aufruf scheitert (geschuetzte Prozesse, aeltere Systeme ohne Klasse 60,
+leere Zeile), bleibt die Spalte beim Executable-Namen: ps zeigt dann wie bisher.
+
+Dazu: killall verglich die Kommandozeile mit firstWord, das die Anfuehrungszeichen
+von Windows ("C:\...\cmd.exe" /c ...) mitnahm. Jetzt werden sie abgeschnitten,
+Test in TestMatchesName.

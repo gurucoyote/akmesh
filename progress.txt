@@ -174,3 +174,8 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
             als Zeichenkette gelesen), Klassen und Gross-/Kleinschreibung jetzt
             ASCII wie GNU. Offen als Ticket: byte- statt zeichenweise Arbeit und
             die Form [c*3]. Batterie 221/0 Linux, 199/0 Windows.
+2026-11-19  Batterie nach der Migration (acmesh-j4f): 214/0 Linux, 192/0 Windows,
+            vorher 244/222. 30 Pruefungen ersetzt, jede mit Namen des Go-Tests.
+            Neue Tests fuer split (-l 2), split-Grenze und stat -c %s/%n samt
+            Fehlerfaellen. Rest (cp, diff, patch, tar) hat keinen Go-Test und
+            bleibt vorerst Batterie.

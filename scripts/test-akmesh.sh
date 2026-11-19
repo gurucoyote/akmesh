@@ -200,14 +200,13 @@ checkcode xargs-child-fails 123 "$(printf 'x\n' | run xargs "$BIN" false >/dev/n
 # stat, sync, hostname, policy: the four that had no test at all (acmesh-nyu)
 printf 'sechs\n' > statme.txt
 chmod 644 statme.txt
-check stat-size "6" "$(run stat -c '%s' statme.txt | tr -d '\r')"
-check stat-name "statme.txt" "$(run stat -c '%n' statme.txt | tr -d '\r' | sed 's|.*[/\\]||')"
+# stat -c %s, -c %n, fehlende Datei und kein Operand sind Go-Tests seit
+# acmesh-j4f (TestCountedFieldsAndOperandErrors). stat-mode bleibt: die Rechte
+# gelten nur auf dem echten Ziel.
 case "$BIN" in
 *.exe) ;;
 *) check stat-mode "644" "$(run stat -c '%a' statme.txt | tr -d '\r')" ;;
 esac
-checkcode stat-missing 1 "$(run stat /nicht/vorhanden >/dev/null 2>&1; echo $?)"
-checkcode stat-no-operand 2 "$(run stat >/dev/null 2>&1; echo $?)"
 checkcode sync-file 0 "$(run sync statme.txt >/dev/null 2>&1; echo $?)"
 checkcode sync-missing 1 "$(run sync /nicht/vorhanden >/dev/null 2>&1; echo $?)"
 check hostname-present "ja" "$(run hostname 2>/dev/null | grep -q . && echo ja)"
@@ -282,16 +281,9 @@ printf '1\n2\n3\n4\n5\n6\n7\n' > h.txt
 rm -f h.txt h1.txt h2.txt
 
 # files
-printf 'abcdefgh' > t.txt
-run truncate -s 4 t.txt
-check truncate "abcd" "$(cat t.txt | tr -d '\r')"
-rm -f t.txt
-printf '1\n2\n3\n4\n5\n' > big.txt
-rm -f part*
-run split -l 2 big.txt part
-check split-count "3" "$(ls part* 2>/dev/null | wc -l | tr -d ' ')"
-check split-lines "2 2 1" "$(wc -l partaa partab partac 2>/dev/null | head -3 | awk '{printf "%s ", $1}' | sed 's/ $//')"
-rm -f big.txt part*
+# truncate und split laufen ganz in Go seit acmesh-j4f: das Kuerzen ist
+# TestShrinkAndGrow, Anzahl und Groesse der Teile TestLinesSplitIntoParts, der
+# Verzicht auf einen dritten Buchstaben TestTooManyPartsIsRefused.
 
 # file, iconv, env
 printf 'hallo welt\n' > t.txt

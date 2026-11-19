@@ -160,9 +160,11 @@ Stand 19.11.2026:
     nach head/wc   228 Prüfungen Linux, 206 Windows
     nach cut/base64 224 Prüfungen Linux, 202 Windows
     nach tr        221 Prüfungen Linux, 199 Windows
+    nach j4f       214 Prüfungen Linux, 192 Windows
 
 | Ticket | Befehl | entfernte Prüfungen | ersetzt durch |
 |---|---|---|---|
+| acmesh-j4f | truncate, split, stat | truncate, split-count, split-lines, stat-size, stat-name, stat-missing, stat-no-operand | TestShrinkAndGrow, TestLinesSplitIntoParts, TestTooManyPartsIsRefused, TestCountedFieldsAndOperandErrors |
 | acmesh-49y | tr | tr-range, tr-complement, tr-squeeze | TestRanges, TestDeleteAndComplement, TestSqueeze |
 | acmesh-pfm | cut, base64 | cut-fields, cut-chars, base64-wrap0, base64-default-wrap | TestFieldsAndCharacters, TestSelectionComesOutSorted, TestOverlappingRangesAreOne, TestBytesAndOutputDelimiter, TestWrapWidth, TestWrapWidths, TestDecodeWithoutPaddingKeepsTheLastBlock, TestDecodeRejectsGarbage |
 | acmesh-795 | head, wc | head-short, head-quiet, head-missing, wc-chars, wc-bytes | TestShortFormAndQuiet, TestNegativeCountKeepsEverythingButTheEnd, TestNegativeBytesKeepTheHead, TestZeroPrintsNothing, TestHeadersFollowTheLastOption, TestErrorsAreNotSuccess, TestUmlautsAreCharactersNotBytes, TestLinesWordsBytes, TestTotalLineForSeveralFiles |

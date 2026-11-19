@@ -130,3 +130,29 @@ func TestFileSystemIsHonest(t *testing.T) {
 		t.Fatalf("stat -f on %s exited 0 with %q, want a reported error", runtime.GOOS, out)
 	}
 }
+
+// TestCountedFieldsAndOperandErrors: the two -c formats the battery used
+// (stat-size, stat-name) and the two refusals (stat-missing, stat-no-operand).
+// Checked against GNU stat: a missing file is 1, no operand at all is 2.
+func TestCountedFieldsAndOperandErrors(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "statme.txt")
+	if err := os.WriteFile(path, []byte("hallo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, _, code := capture(t, []string{"-c", "%s", path}, "")
+	if code != 0 || strings.TrimSpace(out) != "6" {
+		t.Fatalf("stat -c %%s = %d, %q, want 6", code, out)
+	}
+	out, _, code = capture(t, []string{"-c", "%n", path}, "")
+	if code != 0 || strings.TrimSpace(out) != path {
+		t.Fatalf("stat -c %%n = %d, %q, want the path", code, out)
+	}
+	if _, errOut, code := capture(t, []string{"-c", "%s", "/nicht/vorhanden"}, ""); code != 1 || errOut == "" {
+		t.Fatalf("stat on a missing file = %d, %q, want 1 and a message", code, errOut)
+	}
+	if _, errOut, code := capture(t, nil, ""); code != 2 || errOut == "" {
+		t.Fatalf("stat without an operand = %d, %q, want 2 and a message", code, errOut)
+	}
+}

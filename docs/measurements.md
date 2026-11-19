@@ -2585,3 +2585,33 @@ Meldung aendert, `go test ./...` laufen lassen, nicht nur das Paket.
 check-all bleibt einzeln: ein paralleler Go-Lauf laesst WSL die .exe mit
 "accept4 failed 110" nicht starten, und die Windows-Batterie meldet dann Fehler,
 die es nicht gibt (Kommentar im Skript).
+
+## 2026-11-19 Batterie nach der Migration (acmesh-j4f)
+
+Stand am Ende der Migration, gemessen mit dem gebauten Binary auf beiden Zielen:
+
+    ./scripts/test-akmesh.sh ./akmesh      214 Pruefungen, 0 Fehler
+    ./scripts/test-akmesh.sh ./akmesh.exe  192 Pruefungen, 0 Fehler
+
+Vor der Migration: 244 und 222. Entfernt sind 30 Pruefungen, jede mit dem Go-Test,
+der sie ersetzt (docs/batterie-migration.md, Spalte "ersetzt durch"):
+
+    7  find     5 -> Go
+    7  grep     7 -> Go
+    5  head/wc  3 und 2 -> Go
+    4  cut/base64 2 und 2 -> Go
+    3  tr       3 -> Go
+    1  truncate TestShrinkAndGrow
+    2  split    TestLinesSplitIntoParts, TestTooManyPartsIsRefused
+    4  stat     TestCountedFieldsAndOperandErrors (stat-mode bleibt: Rechte auf dem Ziel)
+
+Was bleibt und warum (Zahlen je Prefix in docs/batterie-migration.md):
+Windows-Verhalten und Rechte (stat-mode, chmod, cp -a, CRLF), Prozessverhalten
+(kill, killall, httpd --detach), Policy im Unterprozess (18), Netz (curl 10,
+ssh/scp), Groeszenbudget und Profile (fs, ext), dazu die Stichprobe von zehn
+Befehlen der Hilfe-Schleife, weil sie das gebaute Binary prueft und nicht den
+Go-Code.
+
+Was noch als Go-Test ginge, aber keinen hat (zweite Runde, Ticket acmesh-qiz):
+cp 5, diff 1, patch 2, tar 10. Diese Befehle haben heute keinen einzigen Go-Test;
+die Batterie ist dort die einzige Deckung.

@@ -55,6 +55,15 @@ dazu: Landlock unter Linux, Job Objects unter Windows, fuer jedes Kind.
   Schalter wird weiterhin NICHT so nachgeruestet - dafuer gilt der Fork
   (Abschnitt "Eigene Befehle").
 
+- tr arbeitet auf Zeichen, GNU auf Bytes (Entscheidung 19.11.2026, acmesh-508).
+  `tr 'äöü' aou` gibt hier "aou"; GNU mit LC_ALL=C.UTF-8 gibt "uouuuu", weil es
+  einzelne Bytes verschiebt. Bei -c und -C zaehlt akmesh ein Zeichen als eine
+  Einheit. Grund: niemand verlaesst sich auf "uouuuu", das ist eine Grenze von
+  GNU und kein Verhalten, auf das ein Agent baut, waehrend zerlegte Umlaute in
+  deutschen Texten ein Schaden sind. Die byte-genaue Form bleibt moeglich, waere
+  aber ein Neuschreiben des Forks. Die messbaren Unterschiede stehen in
+  `docs/measurements.md`. Die Form `[c*n]` in SET2 folgt GNU.
+
 ## Eigene Befehle (geplant)
 
 | Befehl | Windows-Umsetzung |

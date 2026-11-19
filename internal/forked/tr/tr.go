@@ -309,6 +309,10 @@ func parse(args []string, p params) (*transformer, error) {
 	if err != nil {
 		return nil, err
 	}
+	arg2, err = expandRepeats(arg2)
+	if err != nil {
+		return nil, err
+	}
 	arg2 = expandRanges(arg2)
 	if len(arg2) == 0 {
 		return nil, fmt.Errorf("SET2 must be non-empty")
@@ -360,6 +364,54 @@ func parse(args []string, p params) (*transformer, error) {
 
 // expandRanges turns "a-z" into the runes between a and z. Without it a range
 // is three literal characters, which is not what any caller means.
+// expandRepeats turns the [c*n] form of SET2 into n copies of c, as GNU does:
+// "tr a '[b*2]c'" maps a to b, not to c. An empty count means zero copies
+// ("[b*]c" leaves c alone), and a char before the star is required - "[-*3]"
+// and "[*3]" stay the literal text. A count that is not a number is refused with
+// GNU's sentence.
+func expandRepeats(in []rune) ([]rune, error) {
+	out := make([]rune, 0, len(in))
+	for i := 0; i < len(in); i++ {
+		if i+2 < len(in) && in[i] == '[' && in[i+2] == '*' {
+			end := i + 3
+			for end < len(in) && in[end] != ']' {
+				end++
+			}
+			if end < len(in) {
+				count, err := repeatCount(string(in[i+3 : end]))
+				if err != nil {
+					return nil, err
+				}
+				for n := 0; n < count; n++ {
+					out = append(out, in[i+1])
+				}
+				i = end
+				continue
+			}
+		}
+		out = append(out, in[i])
+	}
+	return out, nil
+}
+
+// repeatCount reads the n of [c*n]: empty means 0, digits are the count.
+func repeatCount(s string) (int, error) {
+	if s == "" {
+		return 0, nil
+	}
+	n := 0
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return 0, fmt.Errorf("invalid repeat count '%s' in [c*n] construct", s)
+		}
+		n = n*10 + int(r-'0')
+		if n > 1<<20 {
+			return 0, fmt.Errorf("invalid repeat count '%s' in [c*n] construct", s)
+		}
+	}
+	return n, nil
+}
+
 func expandRanges(in []rune) []rune {
 	out := make([]rune, 0, len(in))
 	for i := 0; i < len(in); i++ {

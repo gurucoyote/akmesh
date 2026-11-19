@@ -188,3 +188,36 @@ func TestComplementWithAClassTranslates(t *testing.T) {
 		t.Fatalf("tr -c [:digit:] x = %q", out)
 	}
 }
+
+// TestRepeatedCharactersInSET2: the [c*n] form, measured against GNU. "tr a
+// '[b*2]c'" maps a to b, because SET2 starts with two b; an empty count means
+// zero copies, so "[b*]c" maps a to c; without a character before the star the
+// brackets are literal.
+func TestRepeatedCharactersInSET2(t *testing.T) {
+	cases := []struct{ set1, set2, in, want string }{
+		{"a", "[b*3]", "aaa", "bbb"},
+		{"abc", "[x*2]y", "abc", "xxy"},
+		{"a", "[b*0]c", "aaa", "ccc"},
+		{"a", "[b*]c", "aaa", "ccc"},
+		{"a", "[b*2]c", "aaa", "bbb"},
+		{"ab", "[x*2]", "abab", "xxxx"},
+		{"a", "[*3]", "aaa", "[[["},
+		{"abc", "[a-c*2]", "abc", "[ab"},
+	}
+	for _, c := range cases {
+		if got := want(t, c.in, c.set1, c.set2); got != c.want {
+			t.Errorf("tr %s %s on %q = %q, want %q", c.set1, c.set2, c.in, got, c.want)
+		}
+	}
+}
+
+// TestBadRepeatCountIsRefused: GNU names the bad count and exits 1.
+func TestBadRepeatCountIsRefused(t *testing.T) {
+	_, errOut, code := runTr(t, "aaa", "a", "[b*x]")
+	if code != 1 {
+		t.Fatalf("tr a '[b*x]' = %d, want 1", code)
+	}
+	if !strings.Contains(errOut, "invalid repeat count 'x' in [c*n] construct") {
+		t.Fatalf("stderr %q does not name the repeat count", errOut)
+	}
+}

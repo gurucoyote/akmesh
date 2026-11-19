@@ -2622,3 +2622,29 @@ Abschlusslauf der ganzen Reihe mit dem fertigen Stand:
     battery linux            214 Pruefungen, 0 Fehler
     battery windows          192 Pruefungen, 0 Fehler
     go test -race            ohne Befund
+
+## 2026-11-19 tr: Entscheidung Zeichen statt Bytes und [c*n] (acmesh-508)
+
+Entschieden mit Martin: tr bleibt zeichenweise. Gemessen im Container, GNU tr 9.4
+mit LC_ALL=C.UTF-8:
+
+    printf 'äöü\n' | tr 'äöü' aou     GNU: uouuuu   akmesh: aou
+    printf 'abc'   | tr -C a x        GNU: axx      akmesh: axx
+
+Der erste Fall ist die bewusste Abweichung: GNU verschiebt einzelne Bytes und
+zerlegt damit den Umlaut, akmesh behandelt ihn als ein Zeichen. Die Begruendung
+steht in docs/design/akmesh.md unter "Entscheidungen".
+
+Gebaut wurde die fehlende Form [c*n] in SET2, gegen GNU gemessen:
+
+    tr a '[b*3]'      aaa -> bbb
+    tr abc '[x*2]y'   abc -> xxy
+    tr a '[b*0]c'     aaa -> ccc     (Zaehler 0 heisst null Kopien)
+    tr a '[b*]c'      aaa -> ccc     (leerer Zaehler ist 0)
+    tr a '[b*2]c'     aaa -> bbb
+    tr ab '[x*2]'     abab -> xxxx
+    tr a '[*3]'       aaa -> [[[     (kein Zeichen vor dem Stern: woertlich)
+    tr abc '[a-c*2]'  abc -> [ab     (Bereich im Konstrukt: woertlich)
+    tr a '[b*x]'      Fehler "invalid repeat count 'x' in [c*n] construct", Exit 1
+
+Abdeckung tr: 82,4 Prozent, zwei neue Testfunktionen.

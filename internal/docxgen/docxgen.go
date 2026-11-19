@@ -47,7 +47,7 @@ func Convert(w io.Writer, markdown []byte) error {
 	}{
 		{"[Content_Types].xml", contentTypes},
 		{"_rels/.rels", packageRels},
-		{"word/_rels/document.xml.rels", documentRels},
+		{"word/_rels/document.xml.rels", documentRels(b.links)},
 		{"word/document.xml", documentXML(body.String())},
 		{"word/styles.xml", stylesXML},
 		{"word/numbering.xml", numberingXML},
@@ -69,8 +69,30 @@ func Convert(w io.Writer, markdown []byte) error {
 type builder struct {
 	src []byte
 	out *strings.Builder
-	// listLevel tracks how deep the current list is nested.
+	// listDepth tracks how deep the current list is nested.
 	listDepth int
+	// links holds one target per hyperlink, in the order they were written;
+	// the relationship id is linkBase plus its index.
+	links []string
+}
+
+// linkBase is the first relationship id used for hyperlinks: rId1 and rId2 are
+// the styles and the numbering part.
+const linkBase = 3
+
+// link writes a clickable hyperlink: the runs of fn, wrapped in w:hyperlink with
+// a relationship to target. An empty target, or one that points inside the
+// document ("#abschnitt"), stays plain text - a relationship without a part
+// behind it is worse than none.
+func (b *builder) link(target string, fn func()) {
+	if target == "" || strings.HasPrefix(target, "#") {
+		fn()
+		return
+	}
+	b.links = append(b.links, target)
+	b.out.WriteString(`<w:hyperlink r:id="rId` + strconv.Itoa(linkBase+len(b.links)-1) + `">`)
+	fn()
+	b.out.WriteString("</w:hyperlink>")
 }
 
 // blocks writes the block children of a node.
@@ -299,11 +321,17 @@ func (b *builder) inline(n ast.Node) {
 			b.emphasis(v)
 		case *ast.CodeSpan:
 			b.spanCode(v)
-		case *ast.RawHTML, *ast.AutoLink:
-			// Autolinks carry a URL; the text a reader wants is the child text.
-			b.inline(c)
+		case *ast.RawHTML:
+			// Nothing of a tag belongs in the text.
+		case *ast.AutoLink:
+			// An autolink shows its own address and points at it.
+			target := string(v.URL(b.src))
+			b.link(target, func() { b.run(string(v.Label(b.src)), runProps{}) })
 		case *ast.Link:
-			b.inline(c)
+			// The address goes into the relationship, the text stays visible:
+			// this is what makes the link clickable in Word.
+			target := string(v.Destination)
+			b.link(target, func() { b.inline(c) })
 		case *ast.Image:
 			// No image part: the description stands in for the picture, the way
 			// a reader that cannot show images would report it.
@@ -419,7 +447,11 @@ func escape(s string) string {
 // documentXML wraps the body into the main part.
 func documentXML(body string) string {
 	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-		`<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
+		`<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"` +
+		// r: is what w:hyperlink needs for its r:id; without the declaration the
+		// part is invalid and the file is refused (measured with LibreOffice:
+		// "source file could not be loaded" as soon as one link was inside).
+		` xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
 		`<w:body>` + body +
 		`<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>` +
 		`<w:pgMar w:top="1417" w:right="1417" w:bottom="1417" w:left="1417"/>` +
@@ -440,13 +472,23 @@ const packageRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
 	`<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>` +
 	`</Relationships>`
 
-// documentRels has to name the styles and the numbering part: a part that is in
-// the package but in no relationship is invisible to Word.
-const documentRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-	`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
-	`<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
-	`<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>` +
-	`</Relationships>`
+// documentRels has to name the styles, the numbering part and every hyperlink:
+// a part that is in the package but in no relationship is invisible to Word, and
+// a w:hyperlink whose r:id is missing here is dead.
+func documentRels(links []string) string {
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`)
+	b.WriteString(`<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`)
+	b.WriteString(`<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>`)
+	b.WriteString(`<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>`)
+	for i, target := range links {
+		b.WriteString(`<Relationship Id="rId` + strconv.Itoa(linkBase+i) +
+			`" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="` +
+			escape(target) + `" TargetMode="External"/>`)
+	}
+	b.WriteString(`</Relationships>`)
+	return b.String()
+}
 
 // stylesXML defines every style the writer names. A w:pStyle that points at a
 // style which does not exist leaves the paragraph plain, silently.
@@ -460,6 +502,7 @@ const stylesXML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
 	headingStyles +
 	`<w:style w:type="paragraph" w:styleId="ListParagraph"><w:name w:val="List Paragraph"/><w:basedOn w:val="Normal"/><w:pPr><w:contextualSpacing/></w:pPr></w:style>` +
 	`<w:style w:type="paragraph" w:styleId="Code"><w:name w:val="Code"/><w:basedOn w:val="Normal"/><w:rPr><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/><w:sz w:val="19"/></w:rPr><w:pPr><w:spacing w:after="0"/></w:pPr></w:style>` +
+	`<w:style w:type="character" w:styleId="Hyperlink"><w:name w:val="Hyperlink"/><w:uiPriority w:val="99"/><w:unhideWhenUsed/><w:rPr><w:color w:val="0563C1"/><w:u w:val="single"/></w:rPr></w:style>` +
 	`<w:style w:type="character" w:styleId="CodeChar"><w:name w:val="Code Char"/><w:rPr><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/></w:rPr></w:style>` +
 	`<w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="Normal"/><w:rPr><w:i/></w:rPr></w:style>` +
 	`<w:style w:type="paragraph" w:styleId="TableHeader"><w:name w:val="Table Header"/><w:basedOn w:val="Normal"/><w:rPr><w:b/></w:rPr><w:pPr><w:spacing w:after="0"/></w:pPr></w:style>` +

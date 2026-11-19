@@ -2219,3 +2219,32 @@ richtig belegt. -h ist bei diesen Befehlen also kein Hilfeschalter und darf es
 auch nicht werden.
 
 Als acmesh-py8 aufgenommen.
+
+## 2026-11-19 Gegenprobe: haben die Originale -h und --help?
+
+In einem Debian-Container (13.7, 91 Pakete: coreutils, findutils, diffutils,
+procps, gawk, patch, tar, bsdextrautils, hostname) fuer jeden der 34
+auffaelligen Befehle beide Schalter aufgerufen, ohne stdin.
+
+Ergebnis --help: ALLE 34 antworten mit einem usage-Text und Exit 0
+(hostname mit Exit 255, free und hexdump mit einer Leerzeile davor).
+
+Ergebnis -h: Hilfetext nur bei
+    awk       -h -> Usage (gawk)
+    hostname  -h -> Usage (Exit 255)
+Anders belegt, also kein Hilfeschalter:
+    df, du, free, sort   -h = human readable
+    grep                 -h = no-filename
+    tar                  -h = dereference (Exit 2 ohne Aktion)
+    sed, tar             -h teils mit usage im Fehlertext, aber Exit ungleich 0
+    alle coreutils sonst -h = "invalid option -- 'h'" (cp, head, cut, base64,
+                         dirname, nl, pwd, sha*sum, split, stat, sync, tac,
+                         timeout, truncate, touch, basename, env)
+
+Folge fuer acmesh: die Regel aus der ersten Fassung war falsch. Richtig ist
+- --help ueberall mit usage-Text und Exit 0 - die Originale koennen das alle,
+- -h nirgends neu belegen, ausser bei awk und hostname, wo es das Original
+  selbst so macht.
+
+Damit ist die Liste der Ausnahmen kleiner als gedacht, und -h bei df, du, free
+und sort bleibt human readable, wie es das Original will.

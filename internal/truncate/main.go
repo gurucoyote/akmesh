@@ -14,6 +14,7 @@ import (
 func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	size := ""
 	reference := ""
+	noCreate := false
 	var files []string
 	for i := 0; i < len(args); i++ {
 		switch {
@@ -40,8 +41,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			i++
 			size = args[i]
 		case "-c", "--no-create":
-			fmt.Fprintln(stderr, "truncate: -c is not supported")
-			return 2
+			noCreate = true
 		default:
 			if strings.HasPrefix(args[i], "-") && args[i] != "-" {
 				fmt.Fprintf(stderr, "truncate: unknown option %q\n", args[i])
@@ -64,7 +64,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		return 2
 	}
 	for _, name := range files {
-		if err := truncateTo(name, size); err != nil {
+		if err := truncateTo(name, size, noCreate); err != nil {
 			fmt.Fprintf(stderr, "truncate: %v\n", err)
 			return 1
 		}
@@ -72,9 +72,14 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	return 0
 }
 
-func truncateTo(name, size string) error {
+func truncateTo(name, size string, noCreate bool) error {
 	info, err := os.Stat(name)
 	if err != nil {
+		if noCreate {
+			// GNU: -c says "do not create", and a missing file is then not an
+			// error either - it exits 0 and stays quiet.
+			return nil
+		}
 		// GNU truncate creates the file unless -c was given.
 		f, cerr := os.OpenFile(name, os.O_CREATE|os.O_WRONLY, 0o644)
 		if cerr != nil {

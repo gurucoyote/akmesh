@@ -19,8 +19,11 @@ require (
 
 require (
 	github.com/alecthomas/chroma/v2 v2.19.0 // indirect
+	github.com/andybalholm/brotli v1.0.6 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/itchyny/timefmt-go v0.1.9 // indirect
 	github.com/jellydator/ttlcache/v3 v3.4.0 // indirect
+	github.com/klauspost/compress v1.17.4 // indirect
+	github.com/refraction-networking/utls v1.8.2 // indirect
 	golang.org/x/sync v0.17.0 // indirect
 )

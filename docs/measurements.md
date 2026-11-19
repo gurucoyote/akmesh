@@ -2056,3 +2056,41 @@ Batterie: 221 Pruefungen Linux, 0 Fehler.
 
 Windows nach -w, -i und User-Agent (19.11.2026): 199 Pruefungen, 0 Fehler,
 akmesh.exe 15.308.288 Bytes. Linux 221/0 im selben Stand, akmesh 15.233.148 Bytes.
+
+## 2026-11-19 Stufe 2: --impersonate mit uTLS
+
+Schalter: --impersonate chrome, edge (auch chromium), firefox, safari, go.
+Kein "curl": uTLS baut keine OpenSSL- oder NSS-Handshakes nach, und ein
+Schalter, der luegt, waere schlimmer als einer, der fehlt.
+
+Gemessen an tls.peet.ws, mit akmesh nach dem Einbau:
+
+    ohne Flag            ja4 t13d1312h2_f57a46bbacb6_f50d94e863eb   HTTP/2
+    --impersonate chrome   ja4 t13d1515h1_8daaf6152771_0a20fe35d3a5   HTTP/1.1
+    --impersonate firefox  ja4 t13d1715h1_5b57614c22b0_5c2c66f702b0   HTTP/1.1
+    --impersonate safari   ja4 t13d2014h1_a09f3c656075_14788d8d241b   HTTP/1.1
+
+Der Cipher- und Erweiterungsteil ist der veroeffentlichte des jeweiligen
+Browsers (Chrome 8daaf6152771, Firefox 5b57614c22b0, Safari a09f3c656075).
+Der ALPN-Teil steht auf h1, weil diese Verbindung HTTP/1.1 spricht.
+
+Ohne die Anpassung war es inkonsistent: die erste Fassung meldete
+t13d1516h2_8daaf6152771_... also h2 im ALPN, waehrend die Anfrage als
+HTTP/1.1 lief - genau die Ungereimtheit, nach der ein Fingerabdruckdienst
+sucht. Deshalb wird der Preset jetzt nachgebaut: ALPN auf http/1.1 gekuerzt
+und die verschluesselte ALPS-Erweiterung entfernt.
+
+Bewusste Grenzen, im Code und im Ticket:
+- Nur HTTP/1.1 unter dem Schalter. Go's HTTP/2-Stack laesst sich nicht an eine
+  fremde TLS-Verbindung haengen; der HTTP/2-Abdruck bleibt ausserhalb.
+- Mit --proxy zusammen verweigert der Schalter mit Exit 2, weil der
+  ClientHello sonst durch einen CONNECT-Tunnel muesste.
+
+Groesse: 16.507.004 Bytes gegen 15.233.148 vorher, also +1.273.856 (1,27 MB).
+Batterie: 222 Pruefungen Linux, 0 Fehler.
+
+Tests: Profiltabelle mit exakter Zuordnung (eine falsche Zuordnung wurde in
+der Rotprobe erkannt), unbekanntes Profil Exit ungleich 0, echter
+TLS-Handshake gegen httptest mit -k, und die Proxy-Verweigerung. Die erste
+Fassung der Profilpruefung war zu schwach: sie pruefte nur, dass ein Name
+akzeptiert wird, nicht welches Profil dahinter steht.

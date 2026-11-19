@@ -67,8 +67,9 @@ type netOptions struct {
 	Verbose   bool
 	Compress  bool
 	Resume    bool
-	WriteOut  string
-	Front     string
+	WriteOut    string
+	Front       string
+	Impersonate string
 }
 
 // The default User-Agent names this tool and says what it behaves like. It does
@@ -345,6 +346,19 @@ func buildClient(opts netOptions, stderr *os.File) (*http.Client, error) {
 	}
 	if opts.Insecure {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+	if opts.Impersonate != "" {
+		// A proxy would have to carry the ClientHello, and that means speaking
+		// CONNECT with a foreign TLS stack: refuse instead of silently ignoring
+		// the flag (acmesh-agy).
+		if opts.Proxy != "" {
+			return nil, fmt.Errorf("--impersonate cannot be combined with --proxy")
+		}
+		dial, err := impersonateDialer(opts.Impersonate, opts.Insecure, opts.Connect)
+		if err != nil {
+			return nil, err
+		}
+		transport.DialTLSContext = dial
 	}
 	// The jar comes from a helper: TinyGo's standard library has no
 	// net/http/cookiejar, so a build tag swaps in nil and cookie options then

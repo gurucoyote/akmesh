@@ -380,6 +380,8 @@ check curl-include-has-type "1" "$(run curl -s -i "$U" | tr -d '\r' | grep -c '^
 # The default agent must not say Go (acmesh-ijz); -v shows the request headers.
 # wget has no such output, its default agent is pinned by a Go test instead.
 check curl-default-agent "1" "$(run curl -s -v "$U" 2>&1 | grep -c 'akmesh/0.1 (curl compatible)')"
+# A wrong profile must fail loudly instead of quietly using Go's handshake.
+checkcode curl-impersonate-unknown 2 "$(run curl -s --impersonate netscape "$U" >/dev/null 2>&1; echo $?)"
 kill $HTTPD_PID 2>/dev/null
 # The .exe is wrapped by /init, so the shell's $! is not the server: match the
 # port as well, or the next run finds a server on a closed directory.

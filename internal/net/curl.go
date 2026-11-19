@@ -103,6 +103,15 @@ func runCurl(args []string, stdin *os.File, stdout, stderr *os.File) int {
 				opts.Head = true
 			case "include":
 				opts.Include = true
+			case "impersonate":
+				v, ok := takeValue()
+				if !ok {
+					return curlUsage(stderr, "--impersonate needs a profile (chrome, edge, firefox, safari, go)")
+				}
+				if _, known := impersonationProfile(v); !known {
+					return curlUsage(stderr, fmt.Sprintf("unknown impersonation profile %q (chrome, edge, firefox, safari, go)", v))
+				}
+				opts.Impersonate = v
 			case "write-out":
 				v, ok := takeValue()
 				if !ok {
@@ -342,6 +351,8 @@ func printCurlHelp(stdout *os.File) {
   -G, --get                 put data in the query string
   -v, --verbose             show request and response
       --compressed          ask for gzip
+  -w, --write-out FORMAT    print http_code, size_download, url_effective, ...
+      --impersonate PROFIL  TLS-Handshake wie chrome, edge, firefox, safari, go
 
 Short switches may be combined: -fsSL. Only http and https are supported.
 `)

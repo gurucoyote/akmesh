@@ -2879,3 +2879,11 @@ printenv man. Batterie: ls-sort-time prueft jetzt die echte Sortierung (vorher
 pinnte sie das Ablehnen), ls-long-has-year ist neu.
 
 Batterie danach: 201 Pruefungen Linux, 179 Windows, beide 0 Fehler.
+
+Abschlusslauf nach dem ls-Umbau (acmesh-wx6), 19.11.2026:
+
+    ./scripts/check-all.sh   189,63 s   exit 0
+    battery linux            201 Pruefungen, 0 Fehler
+    battery windows          179 Pruefungen, 0 Fehler
+    help-audit               every command answers --help except the documented u-root gap
+    go test -race            ohne Befund

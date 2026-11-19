@@ -126,8 +126,13 @@ func TestUnknownLongOptionNamesTheWholeToken(t *testing.T) {
 		if code == 0 {
 			t.Errorf("%s --bogus: exit 0, want a failure", name)
 		}
-		if !strings.Contains(stderr, `"--bogus"`) {
+		// GNU quotes with ', the older Go message with ": the token itself is
+		// what has to appear, not the quoting style.
+		if !strings.Contains(stderr, "--bogus") {
 			t.Errorf("%s --bogus: stderr %q does not name the whole token", name, stderr)
+		}
+		if strings.Contains(stderr, `unknown option "--"`) || strings.Contains(stderr, "unknown option '--'") {
+			t.Errorf("%s --bogus: stderr %q names only the prefix", name, stderr)
 		}
 	}
 }

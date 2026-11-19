@@ -1878,6 +1878,7 @@ Nach der Arbeit:
     sum         34 / 8     80,95 %
     stat        29 / 31    48,33 %
     truncate    17 / 8     68,00 %
+    uname        4 / 1     80,00 %   (vorher 0 / 5)
 
 Beobachtung zum Werkzeug: gremlins erzeugt nicht jede Falschung. Das von Hand
 gedrehte Vorzeichen in humanCompare (sort -h) erzeugt es nicht, deshalb meldet

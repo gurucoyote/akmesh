@@ -157,3 +157,9 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
             repariert: -l druckte nichts, -r brach an Symlink-Verzeichnissen ab
             (GNU folgt nur bei -R), Fehlertexte wie "stat x: no such file".
             Batterie 233/0 Linux, 211/0 Windows.
+2026-11-19  head und wc migriert (acmesh-795): head 66,7 -> 93,3 Prozent, wc 75,7
+            -> 93,9 Prozent, fünf Batterie-Prüfungen entfernt. Repariert: head
+            -n -2 (war "zwei Zeilen"), -c -N, -n 0/-c 0 (druckten alles), -n/-c
+            und -q/-v (letzte Option gewinnt, wie GNU). wc-Spaltenbreite bleibt
+            ohne Auffuellen, als Abweichung dokumentiert. Batterie 228/0 Linux,
+            206/0 Windows.

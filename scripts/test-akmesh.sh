@@ -162,8 +162,12 @@ check base64-wrap0 "1" "$(printf 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 awk 'BEGIN{for(i=0;i<100;i++)printf "a"}' > long.txt
 check base64-default-wrap "ja" "$(run base64 long.txt 2>/dev/null | head -1 | grep -qE '^.{76}$' && echo ja || echo nein)"
 printf 'abc\n' > wct.txt
-check wc-chars "4" "$(run wc -m wct.txt | awk '{print $1}')"
-check wc-bytes "4" "$(run wc -c wct.txt | awk '{print $1}')"
+# wc behaviour lives in Go since acmesh-795 (internal/forked/wc):
+#   -m gegen -c mit Umlauten -> TestUmlautsAreCharactersNotBytes
+#   -l -w -c, Vorgabe         -> TestLinesWordsBytes, TestDefaultCountsLinesWordsBytes
+#   Summenzeile               -> TestTotalLineForSeveralFiles
+#   --files0-from             -> TestFiles0From, TestFiles0FromWithoutAValueAndAMissingList
+#   fehlende Datei            -> TestMissingFileIsNamedAndOne
 check tr-range "ABC" "$(printf 'abc' | run tr a-z A-Z | tr -d '\r')"
 check tr-complement "1234" "$(printf 'ab12cd34' | run tr -cd 0-9 | tr -d '\r')"
 check tr-squeeze "a b" "$(printf 'a   b' | run tr -s ' ' | tr -d '\r')"
@@ -260,9 +264,11 @@ rm -rf fdir g.txt
 
 # head is a forked u-root command: the short form and -q are the reason
 printf '1\n2\n3\n4\n5\n6\n7\n' > h.txt
-check head-short "1 2 3" "$(run head -5 h.txt | tr -d '\r' | head -3 | tr '\n' ' ' | sed 's/ $//')"
-check head-quiet "abc" "$(printf 'a\nb\n' > h1.txt; printf 'c\n' > h2.txt; run head -q h1.txt h2.txt | tr -d '\r' | tr -d '\n')"
-checkcode head-missing 1 "$(run head /nicht/vorhanden >/dev/null 2>&1; echo $?)"
+# head behaviour lives in Go since acmesh-795 (internal/forked/head):
+#   -5 Kurzform, -n -2, -c -3 -> TestShortFormAndQuiet, TestNegativeCountKeepsEverythingButTheEnd, TestNegativeBytesKeepTheHead
+#   -n 0 / -c 0               -> TestZeroPrintsNothing
+#   Kopfzeilen, -q, -v        -> TestHeadersFollowTheLastOption
+#   kurze Datei, fehlende Datei, -n gegen -c -> TestShortFileIsNotAnError, TestErrorsAreNotSuccess
 rm -f h.txt h1.txt h2.txt
 
 # files

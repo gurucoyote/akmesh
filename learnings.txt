@@ -35,3 +35,7 @@
             einem anderen Checkout 127.0.0.1:18080 haelt: der antwortet dann mit
             seinem Wurzelverzeichnis (404). Vor dem Messen "ss -ltnp | grep 18080"
             pruefen, nicht den Code verdaechtigen. Ticket: acmesh-ert.
+2026-11-19  u-root-Erbe pruefen statt annehmen: head hat eigene Fehlerformen
+            ("can't combine line and byte counts", -n 0 druckt alles, -n -2 liest
+            "zwei"). Die Batterie sah davon nichts, weil sie nur -5 und -q
+            prueft. Bei jedem Fork die Originaloptionen einmal durchprobieren.

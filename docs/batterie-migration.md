@@ -157,9 +157,11 @@ Stand 19.11.2026:
 
     nach find      240 Prüfungen Linux, 218 Windows
     nach grep      233 Prüfungen Linux, 211 Windows
+    nach head/wc   228 Prüfungen Linux, 206 Windows
 
 | Ticket | Befehl | entfernte Prüfungen | ersetzt durch |
 |---|---|---|---|
+| acmesh-795 | head, wc | head-short, head-quiet, head-missing, wc-chars, wc-bytes | TestShortFormAndQuiet, TestNegativeCountKeepsEverythingButTheEnd, TestNegativeBytesKeepTheHead, TestZeroPrintsNothing, TestHeadersFollowTheLastOption, TestErrorsAreNotSuccess, TestUmlautsAreCharactersNotBytes, TestLinesWordsBytes, TestTotalLineForSeveralFiles |
 | acmesh-4aj | grep | grep-extended, grep-ignore-case, grep-word, grep-context, grep-only-match, grep-no-match, grep-recursive | TestExtendedRegexpAndWordMatch, TestIgnoreCaseIsAbsolute, TestContextGroupsAreSeparatedByDashes, TestOnlyMatchAndNumbers, TestExitStatus, TestRecursiveNamesTheFile |
 | acmesh-qz2 | find | find-optional-path, find-dot-prefix, find-maxdepth, find-missing | TestStartPathIsOptional, TestMaxDepthReportsTheBoundaryDirectory, TestErrorsAreNotSuccess |
 

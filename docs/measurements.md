@@ -2424,3 +2424,52 @@ Der erste Lauf meldete vier httpd/curl-Prüfungen rot: ein alter `acmesh httpd`
 aus /root/acmesh hielt 127.0.0.1:18080 und beantwortete die Prüfungen mit
 /tmp/www2 als Wurzel (404 auf die Testdatei). Nach dem Beenden des Restprozesses
 grün. Das ist der Fall aus acmesh-ert, in Zahlen: PID 3999173, Port 18080.
+
+## 2026-11-19 head und wc: Batterie-Prüfungen in Go-Tests (acmesh-795)
+
+Vorher: head 66,7 Prozent Abdeckung (3 Prüfungen in der Batterie), wc 75,7 Prozent
+(2 Prüfungen). Nachher: head 93,3 Prozent, wc 93,9 Prozent, alle fünf Prüfungen
+entfernt.
+
+    go test ./internal/forked/head/ -cover  ->  93.3%
+    go test ./internal/forked/wc/ -cover    ->  93.9%
+
+Vier Abweichungen von GNU head 9.1/9.4, alle beim Testschreiben gefunden und
+repariert:
+
+    head -n -2    druckte die ersten ZWEI Zeilen; GNU liest das als "alles ausser
+                  den letzten zwei" (auf fünf Zeilen also drei)
+    head -c -3    ignorierte das Vorzeichen und gab die ganze Datei aus
+    head -n 0     fiel auf die Vorgabe von zehn Zeilen durch und druckte alles,
+    head -c 0     dasselbe; GNU druckt nichts
+    head -n 1 -c 1 brach mit "can't combine line and byte counts" ab (Exit 2);
+                  GNU laesst die letzte der beiden Optionen gewinnen
+    -v mit -q     -v gewann immer; GNU laesst die letzte Option gewinnen
+
+wc war beim Zaehlen richtig (-m zaehlt Zeichen, -c Bytes, Summenzeile "total",
+--files0-from). Nur die Spaltenbreite weicht ab: GNU richtet Zahlen rechtsbuendig
+aus (teils mit fuehrendem Leerzeichen), akmesh trennt mit einem Leerzeichen ohne
+Auffuellen.
+
+    GNU    " 5  5 10 five.txt" / " 2  2  4 two.txt" / " 7  7 14 total"
+    akmesh "5 5 10 five.txt"    / "2 2 4 two.txt"    / "7 7 14 total"
+
+Die Zahlen sind gleich, `awk '{print $1}'` liest beide Formen richtig. Die
+Ausrichtung folgt bei GNU keiner einfachen Regel (je Spalte eigene Breite, dazu
+eine Mindestbreite bei mehreren Dateien oder Spalten); nicht nachgebaut, hier
+festgehalten. Ein Versuch mit rechtsbuendigen Spalten wurde verworfen, weil er
+GNU nur halb traf und den Umbau nicht wert war.
+
+Mutationsprobe von Hand, sieben Mutanten, alle getötet:
+
+    head: Vorzeichen in parseCount verworfen     TestNegativeCount... rot
+    head: "count == 0" durchfallen lassen        TestZeroPrintsNothing rot
+    head: -q ohne Wirkung                        TestHeadersFollowTheLastOption rot
+    head: -c -N-Zweig entfernt                   TestNegativeBytesKeepTheHead rot
+    wc:   -m zaehlt Bytes statt Zeichen          TestUmlautsAreCharactersNotBytes rot
+    wc:   Summenzeile ab drei Dateien            TestTotalLineForSeveralFiles rot
+    wc:   -l setzt words                         TestLinesWordsBytes rot
+
+Batterie: 228 Prüfungen, 0 Fehler Linux; 206 Prüfungen, 0 Fehler Windows.
+Ein Lauf dazwischen meldete eine Prüfung rot und war im naechsten Lauf gruen -
+derselbe Lastfall wie bei acmesh-ert.

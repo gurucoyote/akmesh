@@ -26,30 +26,28 @@ import (
 	"strings"
 )
 
-var errCombine = fmt.Errorf("can't combine line and byte counts")
-
-func run(stdin io.Reader, stdout, stderr io.Writer, quiet, verbose bool, bytes, count int, files ...string) error {
-	if bytes > 0 && count > 0 {
-		return errCombine
-	}
-
-	var printBytes bool
+func run(stdin io.Reader, stdout, stderr io.Writer, header int, printBytes bool, bytes, count int, files ...string) error {
 	var buffer []byte
-	if bytes > 0 {
-		printBytes = true
+	if printBytes && bytes > 0 {
+		// Only the positive byte count reads in blocks; -c -N needs the end.
 		buffer = make([]byte, 4096)
 	}
-
-	if count == 0 {
-		count = 10
+	// A count of zero prints nothing. The caller passes 10 when no -n or -c
+	// was given at all, so a real "0" stays a zero.
+	if !printBytes && count == 0 {
+		return nil
 	}
 
 	var newLineHeader bool
 	var errs error
 
-	// Headers appear for more than one file, always with -v, never with -q.
-	headers := len(files) > 1 && !quiet
-	if verbose {
+	// The last of -q and -v wins, as in GNU. Without either, headers appear
+	// for more than one file only.
+	headers := len(files) > 1
+	switch header {
+	case 0:
+		headers = false
+	case 1:
 		headers = len(files) > 0
 	}
 
@@ -61,6 +59,17 @@ func run(stdin io.Reader, stdout, stderr io.Writer, quiet, verbose bool, bytes, 
 				fmt.Fprintf(stdout, "==> %s <==\n", name)
 				newLineHeader = true
 			}
+		}
+		if printBytes && bytes < 0 {
+			// -c -N: everything but the last N bytes.
+			all, rerr := io.ReadAll(r)
+			if rerr != nil {
+				return rerr
+			}
+			if keep := len(all) + bytes; keep > 0 {
+				stdout.Write(all[:keep])
+			}
+			return nil
 		}
 		if printBytes {
 			c := bytes
@@ -84,6 +93,18 @@ func run(stdin io.Reader, stdout, stderr io.Writer, quiet, verbose bool, bytes, 
 				if err == io.ErrUnexpectedEOF {
 					break
 				}
+			}
+		} else if count < 0 {
+			// -n -N: everything but the last N lines, so the ring holds N.
+			want := -count
+			ring := make([]string, 0, want)
+			scanner := bufio.NewScanner(r)
+			for scanner.Scan() {
+				if len(ring) == want {
+					fmt.Fprintln(stdout, ring[0])
+					ring = ring[1:]
+				}
+				ring = append(ring, scanner.Text())
 			}
 		} else {
 			var c int
@@ -138,10 +159,15 @@ func parseCount(s string) (int, error) {
 		s = s[:len(s)-1]
 	}
 	s = strings.TrimPrefix(s, "+")
+	negative := strings.HasPrefix(s, "-")
 	s = strings.TrimPrefix(s, "-")
 	n, err := strconv.Atoi(s)
 	if err != nil || n < 0 {
 		return 0, fmt.Errorf("invalid number of lines: %q", s)
+	}
+	// GNU reads "-n -2" as "everything but the last two lines", not as "two".
+	if negative {
+		return -n * mult, nil
 	}
 	return n * mult, nil
 }
@@ -152,9 +178,23 @@ func usage(stderr io.Writer) {
 
 // Run implements head for the akmesh dispatcher.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
-	bytes, count := 0, 0
-	quiet, verbose := false, false
+	var bytes, count int
+	byBytes, byLines := false, false
+	header := -1 // -1 unset, 0 from -q, 1 from -v
 	var files []string
+
+	// GNU lets the last of -c and -n win, so setting one clears the other.
+	setCount := func(n int, isBytes bool) {
+		if isBytes {
+			bytes, byBytes, byLines = n, true, false
+			return
+		}
+		count, byLines, byBytes = n, true, false
+	}
+	badCount := func(err error) int {
+		fmt.Fprintf(stderr, "head: %v\n", err)
+		return 2
+	}
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch {
@@ -162,9 +202,9 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			files = append(files, args[i+1:]...)
 			i = len(args)
 		case a == "-q" || a == "--quiet" || a == "--silent":
-			quiet = true
+			header = 0
 		case a == "-v" || a == "--verbose":
-			verbose = true
+			header = 1
 		case a == "-n" || a == "--lines":
 			if i+1 >= len(args) {
 				usage(stderr)
@@ -173,17 +213,15 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			i++
 			n, err := parseCount(args[i])
 			if err != nil {
-				fmt.Fprintf(stderr, "head: %v\n", err)
-				return 2
+				return badCount(err)
 			}
-			count = n
+			setCount(n, false)
 		case strings.HasPrefix(a, "--lines="):
 			n, err := parseCount(strings.TrimPrefix(a, "--lines="))
 			if err != nil {
-				fmt.Fprintf(stderr, "head: %v\n", err)
-				return 2
+				return badCount(err)
 			}
-			count = n
+			setCount(n, false)
 		case a == "-c" || a == "--bytes":
 			if i+1 >= len(args) {
 				usage(stderr)
@@ -192,39 +230,35 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			i++
 			n, err := parseCount(args[i])
 			if err != nil {
-				fmt.Fprintf(stderr, "head: %v\n", err)
-				return 2
+				return badCount(err)
 			}
-			bytes = n
+			setCount(n, true)
 		case strings.HasPrefix(a, "--bytes="):
 			n, err := parseCount(strings.TrimPrefix(a, "--bytes="))
 			if err != nil {
-				fmt.Fprintf(stderr, "head: %v\n", err)
-				return 2
+				return badCount(err)
 			}
-			bytes = n
+			setCount(n, true)
 		case strings.HasPrefix(a, "-n") && len(a) > 2:
 			n, err := parseCount(a[2:])
 			if err != nil {
-				fmt.Fprintf(stderr, "head: %v\n", err)
-				return 2
+				return badCount(err)
 			}
-			count = n
+			setCount(n, false)
 		case strings.HasPrefix(a, "-c") && len(a) > 2:
 			n, err := parseCount(a[2:])
 			if err != nil {
-				fmt.Fprintf(stderr, "head: %v\n", err)
-				return 2
+				return badCount(err)
 			}
-			bytes = n
+			setCount(n, true)
 		case strings.HasPrefix(a, "-") && len(a) > 1:
 			// The GNU short form: head -5, and the combined -q5.
 			rest := a[1:]
 			for len(rest) > 0 && (rest[0] == 'q' || rest[0] == 'v') {
 				if rest[0] == 'q' {
-					quiet = true
+					header = 0
 				} else {
-					verbose = true
+					header = 1
 				}
 				rest = rest[1:]
 			}
@@ -234,16 +268,15 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 				usage(stderr)
 				return 2
 			}
-			count = n
+			setCount(n, false)
 		default:
 			files = append(files, a)
 		}
 	}
-	if bytes > 0 && count > 0 {
-		fmt.Fprintf(stderr, "head: %v\n", errCombine)
-		return 2
+	if !byBytes && !byLines {
+		count = 10
 	}
-	if err := run(stdin, stdout, stderr, quiet, verbose, bytes, count, files...); err != nil {
+	if err := run(stdin, stdout, stderr, header, byBytes, bytes, count, files...); err != nil {
 		return 1
 	}
 	return 0

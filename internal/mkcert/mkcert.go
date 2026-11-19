@@ -38,6 +38,10 @@ type options struct {
 	keyType string
 	out     string
 	ca      string
+	// caDomains are the DNS suffixes a new CA may sign for. A CA with them can
+	// vouch for nothing else, which is what makes a trusted local root safe to
+	// keep on a machine (acmesh-816).
+	caDomains []string
 }
 
 func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
@@ -105,6 +109,27 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 				return 1
 			}
 			o.ca = v
+		case "-ca-domains", "--ca-domains":
+			v, ok := value()
+			if !ok {
+				return 1
+			}
+			for _, d := range strings.Split(v, ",") {
+				if d = strings.TrimSpace(d); d != "" {
+					if !strings.HasPrefix(d, ".") {
+						// Handing out "local" would also allow "notlocal"; the
+						// dot is what makes it a suffix, so say it instead of
+						// quietly adding one.
+						fmt.Fprintf(stderr, "mkcert: -ca-domains needs a suffix with a leading dot, got '%s'\n", d)
+						return 1
+					}
+					o.caDomains = append(o.caDomains, d)
+				}
+			}
+			if len(o.caDomains) == 0 {
+				fmt.Fprintln(stderr, "mkcert: -ca-domains needs at least one suffix, for example .local")
+				return 1
+			}
 		default:
 			if strings.HasPrefix(a, "-") {
 				fmt.Fprintf(stderr, "mkcert: unrecognized option '%s'\n", a)
@@ -117,6 +142,10 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	}
 	if len(o.hosts) == 0 {
 		fmt.Fprintln(stderr, "mkcert: no name to certify, use -host NAME[,NAME...]")
+		return 1
+	}
+	if len(o.caDomains) > 0 && o.ca == "" {
+		fmt.Fprintln(stderr, "mkcert: -ca-domains only applies to a CA, so it needs -ca BASE")
 		return 1
 	}
 	if o.ca != "" && strings.HasSuffix(o.ca, ".pem") {
@@ -140,7 +169,7 @@ func issue(o options, stdout *os.File) error {
 	var parentKey crypto.Signer
 
 	if o.ca != "" {
-		caCert, caKey, err := loadOrCreateCA(o.ca)
+		caCert, caKey, err := loadOrCreateCA(o.ca, o.caDomains)
 		if err != nil {
 			return err
 		}
@@ -202,7 +231,7 @@ func issue(o options, stdout *os.File) error {
 // loadOrCreateCA reads BASE-cert.pem and BASE-key.pem, or makes both. An existing
 // half pair is an error: guessing which half is meant would issue certificates
 // nobody can verify.
-func loadOrCreateCA(base string) (*x509.Certificate, crypto.Signer, error) {
+func loadOrCreateCA(base string, domains []string) (*x509.Certificate, crypto.Signer, error) {
 	certPath, keyPath := base+"-cert.pem", base+"-key.pem"
 	certPEM, certErr := os.ReadFile(certPath)
 	keyPEM, keyErr := os.ReadFile(keyPath)
@@ -215,6 +244,12 @@ func loadOrCreateCA(base string) (*x509.Certificate, crypto.Signer, error) {
 		key, err := parseKey(keyPEM)
 		if err != nil {
 			return nil, nil, fmt.Errorf("%s: %v", keyPath, err)
+		}
+		// A CA that already exists keeps its constraints: adding them later
+		// would need a new CA and a new trust entry, so say that instead of
+		// writing a certificate nobody expects.
+		if len(domains) > 0 && len(cert.PermittedDNSDomains) == 0 {
+			return nil, nil, fmt.Errorf("%s exists without name constraints; make a new CA under another name to get -ca-domains", certPath)
 		}
 		return cert, key, nil
 	case certErr != nil && keyErr != nil:
@@ -238,6 +273,18 @@ func loadOrCreateCA(base string) (*x509.Certificate, crypto.Signer, error) {
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 		MaxPathLenZero:        false,
+	}
+	if len(domains) > 0 {
+		// PermittedDNSDomains notices (.local) and, because the CA is meant for
+		// names on a local network, no IP address at all: an excluded 0.0.0.0/0
+		// and ::/0 also keeps it away from https://192.168.1.1.
+		tmpl.PermittedDNSDomains = domains
+		tmpl.PermittedDNSDomainsCritical = true
+		for _, cidr := range []string{"0.0.0.0/0", "::/0"} {
+			if _, n, err := net.ParseCIDR(cidr); err == nil {
+				tmpl.ExcludedIPRanges = append(tmpl.ExcludedIPRanges, n)
+			}
+		}
 	}
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, signer.Public(), signer)
 	if err != nil {

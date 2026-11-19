@@ -2928,3 +2928,30 @@ die Shell-PID dort eine Windows-PID ist.
 
 Batterie danach: 203 Pruefungen Linux, 181 Windows, beide 0 Fehler, keine
 Restprozesse.
+
+## 2026-11-19 Lokale CA mit Namensbeschraenkung (acmesh-816, Schritt 1)
+
+mkcert kann jetzt eine CA mit Namensbeschraenkung erzeugen:
+
+    akmesh mkcert -host test1.local,test2.local -ca ./local -ca-domains .local -out ./leaf
+
+Gemessen am gebauten Binary:
+
+    openssl x509 -in leaf-cert.pem -ext subjectAltName
+        DNS:test1.local, DNS:test2.local
+    openssl x509 -in local-cert.pem -ext nameConstraints
+        Excluded: IP:0.0.0.0/0, IP:::0/0   (mit Beschraenkung sind alle IPs ausgeschlossen)
+    akmesh verify -ca local-cert.pem -host test1.local leaf-cert.pem
+        OK: test1.local chains to a trusted root, Exit 0
+    akmesh verify -ca local-cert.pem -host test1.example.com leaf-cert.pem
+        x509: certificate is valid for test1.local, test2.local, not test1.example.com, Exit 1
+
+Der eigentliche Beweis steht im Go-Test TestCADomainsConstrainTheCA: ein Blatt,
+das die CA selbst fuer example.com bzw. fuer 127.0.0.1 ausgestellt hat, verkettet
+nicht bis zur Wurzel - die Beschraenkung greift auch dann, wenn jemand falsch
+signiert. Dazu TestCADomainsRefusals: ein Suffix ohne Punkt, -ca-domains ohne -ca
+und eine vorhandene CA ohne Beschraenkung werden abgelehnt statt still passend
+gemacht.
+
+Rotprobe: mit entfernter PermittedDNSDomains-Zuweisung faellt der Test mit
+"CA permits [], want [.local]"; nach dem Zurueckspielen gruen.

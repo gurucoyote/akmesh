@@ -214,13 +214,16 @@ var Texts = map[string]Entry{
 			"  -q, --quiet   print nothing on success",
 	},
 	"mkcert": {
-		"-host NAME[,NAME...] [-days N] [-key-type ecdsa|rsa|ed25519] [-out BASE] [-ca BASE]",
+		"-host NAME[,NAME...] [-days N] [-key-type ecdsa|rsa|ed25519] [-out BASE] [-ca BASE] [-ca-domains SUFFIX]",
 		"  -host NAMES       names to certify, comma separated; an address becomes an IP SAN\n" +
 			"  -days N           how long the leaf is valid, default 365\n" +
 			"  -key-type KIND    ecdsa (P-256, default), rsa (2048) or ed25519\n" +
 			"  -out BASE         writes BASE-cert.pem and BASE-key.pem, default the first name\n" +
 			"  -ca BASE          sign with BASE-cert.pem and BASE-key.pem, creating them\n" +
 			"                    on first use; without -ca the leaf signs itself\n" +
+			"  -ca-domains SUF   new CA may only sign names ending in these comma separated\n" +
+			"                    suffixes (.local,.test) and no IP address at all; a\n" +
+			"                    trusted local root that can vouch for nothing else\n" +
 			"\n" +
 			"Limits, and they are real: PEM only, so PKCS#12 (.pfx/.p12) and JKS are\n" +
 			"refused with a message naming the format. No passphrase, because the\n" +

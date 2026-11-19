@@ -238,3 +238,78 @@ func TestRefusals(t *testing.T) {
 		t.Fatalf("encrypted CA key: exit %d, stderr %q", code, stderr)
 	}
 }
+
+// TestCADomainsConstrainTheCA: a CA made with -ca-domains can only vouch for
+// those suffixes. Even a leaf the CA did sign for example.com is refused by the
+// chain check, and so is every IP address (acmesh-816).
+func TestCADomainsConstrainTheCA(t *testing.T) {
+	dir := t.TempDir()
+	caBase := filepath.Join(t.TempDir(), "localca")
+	_, stderr, code := run(t, dir, "-host", "test1.local", "-ca", caBase, "-ca-domains", ".local", "-out", filepath.Join(dir, "t1"))
+	if code != 0 {
+		t.Fatalf("exit %d, stderr %q", code, stderr)
+	}
+	caCert := readCert(t, caBase+"-cert.pem")
+	if got := caCert.PermittedDNSDomains; len(got) != 1 || got[0] != ".local" {
+		t.Fatalf("CA permits %v, want [.local]", got)
+	}
+	if len(caCert.ExcludedIPRanges) == 0 {
+		t.Fatal("CA does not exclude IP addresses")
+	}
+	pool := x509.NewCertPool()
+	pool.AddCert(caCert)
+
+	leaf := readCert(t, filepath.Join(dir, "t1-cert.pem"))
+	if _, err := leaf.Verify(x509.VerifyOptions{DNSName: "test1.local", Roots: pool}); err != nil {
+		t.Fatalf("test1.local does not verify: %v", err)
+	}
+	// The root is trusted, but it may not vouch for a foreign name or an IP.
+	if _, err := leaf.Verify(x509.VerifyOptions{DNSName: "test2.local", Roots: pool}); err == nil {
+		t.Fatal("the CA vouched for a name it never signed")
+	}
+
+	foreign := filepath.Join(dir, "foreign")
+	if _, stderr, code := run(t, dir, "-host", "example.com", "-ca", caBase, "-out", foreign); code != 0 {
+		t.Fatalf("signing was refused, so this test proves nothing: %q", stderr)
+	}
+	if _, err := readCert(t, foreign+"-cert.pem").Verify(x509.VerifyOptions{DNSName: "example.com", Roots: pool}); err == nil {
+		t.Fatal("a leaf for example.com chained to the constrained CA")
+	}
+
+	ip := filepath.Join(dir, "ip")
+	if _, stderr, code := run(t, dir, "-host", "127.0.0.1", "-ca", caBase, "-out", ip); code != 0 {
+		t.Fatalf("signing was refused, so this test proves nothing: %q", stderr)
+	}
+	if _, err := readCert(t, ip+"-cert.pem").Verify(x509.VerifyOptions{DNSName: "127.0.0.1", Roots: pool}); err == nil {
+		t.Fatal("a leaf for an IP address chained to the constrained CA")
+	}
+}
+
+// TestCADomainsRefusals: the flag is not guessed at. A suffix needs its dot, it
+// needs a CA, and an existing CA without constraints is not silently reused.
+func TestCADomainsRefusals(t *testing.T) {
+	dir := t.TempDir()
+	cases := [][]string{
+		{"-host", "a.local", "-ca", filepath.Join(dir, "c"), "-ca-domains", "local"},
+		{"-host", "a.local", "-ca-domains", ".local"},
+		{"-host", "a.local", "-ca", filepath.Join(dir, "c2"), "-ca-domains", ","},
+	}
+	for _, args := range cases {
+		if _, stderr, code := run(t, dir, args...); code == 0 {
+			t.Fatalf("%v was accepted, stderr %q", args, stderr)
+		}
+	}
+
+	// A CA without constraints, then the same base with -ca-domains.
+	plain := filepath.Join(dir, "plain")
+	if _, stderr, code := run(t, dir, "-host", "a.local", "-ca", plain); code != 0 {
+		t.Fatalf("exit %d: %q", code, stderr)
+	}
+	_, stderr, code := run(t, dir, "-host", "a.local", "-ca", plain, "-ca-domains", ".local")
+	if code == 0 {
+		t.Fatal("an existing unconstrained CA was reused with -ca-domains")
+	}
+	if !strings.Contains(stderr, "name constraints") {
+		t.Fatalf("message does not explain it: %q", stderr)
+	}
+}

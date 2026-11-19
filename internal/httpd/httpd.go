@@ -41,10 +41,13 @@ type Options struct {
 	NoCache    bool   // -N: send no-store, for looking at files while editing
 	Cert       string // -S: PEM certificate, turns on TLS
 	Key        string // -K: PEM key
+	// CACert is --tls-ca: the local root to sign a leaf per SNI name with, and
+	// -K then holds its key (acmesh-816).
+	CACert string
 }
 
 const usage = `usage: httpd [-ifv[v]] [-N] [-c CONFFILE] [-p [IP:]PORT] [-u USER[:GRP]]
-             [-r REALM] [-h HOME] [-S CERT -K KEY]
+             [-r REALM] [-h HOME] [-S CERT -K KEY | --tls-ca CAFILE -K CAKEY]
    or  httpd -d/-e STRING
    or  httpd -M STRING
 
@@ -59,6 +62,10 @@ const usage = `usage: httpd [-ifv[v]] [-N] [-c CONFFILE] [-p [IP:]PORT] [-u USER
   -h        document root
   -N        send no-store for text/html, so an editor's change is seen
   -S, -K    serve HTTPS with this certificate and key
+  --tls-ca  serve HTTPS by signing a leaf per SNI name with this local CA; -K
+            then holds the CA's key, and names outside the CA's constraints are
+            refused. This is how test1.local works: one trusted root, a leaf per
+            name, 390 days each.
   -d        URL-decode STRING and print it
   -e        HTML-escape STRING and print it
   -M        print the MIME type for this file name
@@ -151,6 +158,13 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 				return 1
 			}
 			opts.Key = args[i]
+		case "--tls-ca":
+			i++
+			if i >= len(args) {
+				fmt.Fprintln(stderr, "httpd: --tls-ca needs a CA certificate")
+				return 1
+			}
+			opts.CACert = args[i]
 		case "--help":
 			fmt.Fprint(stderr, usage)
 			return 0
@@ -159,7 +173,14 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			return 1
 		}
 	}
-	if (opts.Cert == "") != (opts.Key == "") {
+	if opts.CACert != "" {
+		// With --tls-ca the key is the CA's, so -K alone is right and -S would
+		// be a second, contradicting certificate.
+		if opts.Key == "" {
+			fmt.Fprintln(stderr, "httpd: --tls-ca needs -K with the CA's key")
+			return 1
+		}
+	} else if (opts.Cert == "") != (opts.Key == "") {
 		fmt.Fprintln(stderr, "httpd: -S and -K belong together")
 		return 1
 	}
@@ -204,14 +225,26 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	}
 	if opts.Verbose > 0 {
 		scheme := "http"
-		if opts.Cert != "" {
+		if opts.Cert != "" || opts.CACert != "" {
 			scheme = "https"
 		}
 		fmt.Fprintf(stderr, "httpd: serving %s on %s://%s\n", opts.Home, scheme, ln.Addr())
 	}
 
 	s := &http.Server{Handler: mux}
-	if opts.Cert != "" {
+	if opts.CACert != "" {
+		if opts.Cert != "" {
+			fmt.Fprintln(stderr, "httpd: --tls-ca signs its own leaves, so -S has no place here")
+			return 1
+		}
+		signer, err := newSNISigner(opts.CACert, opts.Key)
+		if err != nil {
+			fmt.Fprintf(stderr, "httpd: %v\n", err)
+			return 1
+		}
+		s.TLSConfig = signer.tlsConfig()
+		err = s.ServeTLS(ln, "", "")
+	} else if opts.Cert != "" {
 		err = s.ServeTLS(ln, opts.Cert, opts.Key)
 	} else {
 		err = s.Serve(ln)

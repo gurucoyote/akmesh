@@ -2988,3 +2988,35 @@ geschrieben; im Test stand ein /usr/local/share/ca-certificates/akmesh-nope.crt.
 Jetzt stubben beide Install-Tests das Verzeichnis, und das angelegte Zertifikat
 traegt die Namensbeschraenkung (-ca-domains wurde im Install-Zweig nicht
 weitergereicht).
+
+## 2026-11-19 httpd signiert pro SNI-Namen (acmesh-816, Schritt 3)
+
+    akmesh mkcert -host test1.local -ca ./local -ca-domains .local -out ./leaf
+    akmesh mkcert -install -ca ./local
+    akmesh httpd -f -p 127.0.0.1:18971 -h . --tls-ca local-cert.pem -K local-key.pem
+
+Gemessen am gebauten Binary, 19.11.2026:
+
+    curl --resolve test1.local:18971:127.0.0.1 https://test1.local:18971/index.html
+        sni-ok, Exit 0
+    curl --resolve test2.local:18971:127.0.0.1 https://test2.local:18971/index.html
+        sni-ok, Exit 0 - ein anderer Name am selben Prozess, eigenes Blatt
+    curl --resolve example.com:18971:127.0.0.1 https://example.com:18971/
+        Exit 35 (Handshake abgelehnt)
+    Serverlog:
+        TLS handshake error from 127.0.0.1:47924:
+        example.com is not covered by the CA's name constraints (.local)
+
+Das Blatt: ECDSA P-256, der Name im SAN, 390 Tage (Test prueft 389 bis 391),
+Signatur von der lokalen Wurzel. Ein Name wird gehasht und beim zweiten Handshake
+wiederverwendet, ein fremder Name wird nie signiert. Ein Blattzertifikat als
+--tls-ca wird abgelehnt ("is not a CA certificate").
+
+Dazu in dieser Runde: curl kann --cacert (ersetzt den Systemstore, wie bei GNU)
+und --resolve. Ein Handshake mit einem Namen ausserhalb der Beschraenkung endet
+mit Exit 35, nicht mit einer leeren Antwort.
+
+Batteriepruefungen dazu: ca-sni-test1, ca-sni-test2, ca-sni-foreign (Exit 35) und
+ca-sni-notice (die Logzeile ist da). Der Block installiert nichts ins
+Systemverzeichnis: curl bekommt die Wurzel mit --cacert, damit die Batterie
+nichts ausserhalb ihres Verzeichnisses anfasst.

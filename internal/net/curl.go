@@ -104,6 +104,12 @@ func runCurl(args []string, stdin *os.File, stdout, stderr *os.File) int {
 				opts.Head = true
 			case "include":
 				opts.Include = true
+			case "cacert":
+				v, ok := takeValue()
+				if !ok {
+					return curlUsage(stderr, "--cacert needs a file")
+				}
+				opts.CAFile = v
 			case "resolve":
 				v, ok := takeValue()
 				if !ok {
@@ -338,6 +344,7 @@ func printCurlHelp(stdout *os.File) {
 
   -X, --request METHOD      method (GET, POST, PUT, ...)
   -H, --header "Name: v"    add a request header
+      --cacert FILE         verify the server with these roots, not the system's
       --resolve H:P:ADDR    dial ADDR for host H on port P, the name stays
   -d, --data DATA           form encoded body, repeatable
       --data-raw DATA       body as typed

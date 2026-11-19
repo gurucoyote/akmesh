@@ -1,9 +1,12 @@
 package net
 
 import (
+	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -48,5 +51,42 @@ func TestResolveRefusesForeignSyntax(t *testing.T) {
 		if _, code := capture(t, runCurl, []string{"-s", "--resolve", v, "http://example.invalid/"}); code != 2 {
 			t.Fatalf("%q: exit %d, want 2", v, code)
 		}
+	}
+}
+
+// TestCACertReplacesTheSystemRoots: --cacert is how a local CA is trusted for
+// one request without touching the system store (acmesh-816).
+func TestCACertReplacesTheSystemRoots(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("ok\n"))
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	caPath := filepath.Join(dir, "ca.pem")
+	cert := server.Certificate()
+	if err := os.WriteFile(caPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, code := capture(t, runCurl, []string{"-s", "--cacert", caPath, server.URL})
+	if code != 0 {
+		t.Fatalf("exit %d, out %q", code, out)
+	}
+	if strings.TrimSpace(out) != "ok" {
+		t.Fatalf("body %q", out)
+	}
+
+	// A file without a certificate is an error, not a silent fallback to the
+	// system store: that would make a test pass for the wrong reason.
+	junk := filepath.Join(dir, "junk.pem")
+	if err := os.WriteFile(junk, []byte("not a certificate\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, code := capture(t, runCurl, []string{"-s", "--cacert", junk, server.URL}); code == 0 {
+		t.Fatal("a file without a certificate was accepted")
+	}
+	if _, code := capture(t, runCurl, []string{"-s", "--cacert", filepath.Join(dir, "nope.pem"), server.URL}); code == 0 {
+		t.Fatal("a missing --cacert file was accepted")
 	}
 }

@@ -646,6 +646,38 @@ while [ $stops -lt 20 ]; do
   stops=$((stops+1))
 done
 check tls-httpd-stopped "000" "$stop_code"
+
+# A local CA: httpd signs a leaf per SNI name, so a name no public CA would ever
+# certify gets a certificate the client can verify against that one root
+# (acmesh-816). No -install here: the battery must not touch the system's trust
+# store, so curl gets the root with --cacert.
+CA_DIR=$(mktemp -d "${TMPDIR:-/tmp}/catest.XXXXXX")
+run mkcert -host test1.local -ca "$CA_DIR/local" -ca-domains .local -out "$CA_DIR/leaf" >/dev/null 2>&1
+CA_PORT=$((tls_port + 1))
+crt=0
+while [ $crt -lt 20 ] && curl -sk -m 1 -o /dev/null "https://127.0.0.1:$CA_PORT/" 2>/dev/null; do
+  CA_PORT=$((CA_PORT + 7))
+  crt=$((crt + 1))
+done
+printf 'sni-ok\n' > "$CA_DIR/index.html"
+"$BIN" httpd -f -p 127.0.0.1:$CA_PORT -h "$CA_DIR" --tls-ca "$CA_DIR/local-cert.pem" -K "$CA_DIR/local-key.pem" >"$CA_DIR/srv.log" 2>&1 &
+CA_PID=$!
+tries=0
+while [ $tries -lt 40 ]; do
+  run curl -s -m 1 --cacert "$CA_DIR/local-cert.pem" --resolve "test1.local:$CA_PORT:127.0.0.1" "https://test1.local:$CA_PORT/index.html" 2>/dev/null | grep -q sni-ok && break
+  sleep 0.5
+  tries=$((tries+1))
+done
+check ca-sni-test1 "sni-ok" "$(run curl -s -m 5 --cacert "$CA_DIR/local-cert.pem" --resolve "test1.local:$CA_PORT:127.0.0.1" "https://test1.local:$CA_PORT/index.html" | tr -d '\r')"
+check ca-sni-test2 "sni-ok" "$(run curl -s -m 5 --cacert "$CA_DIR/local-cert.pem" --resolve "test2.local:$CA_PORT:127.0.0.1" "https://test2.local:$CA_PORT/index.html" | tr -d '\r')"
+# That curl verified test2.local against the root is the proof that the second
+# name got its own leaf: hostname verification fails on a foreign certificate.
+# A name outside the CA's constraints is refused in the handshake, not signed.
+checkcode ca-sni-foreign 35 "$(run curl -s -m 5 --cacert "$CA_DIR/local-cert.pem" --resolve "example.com:$CA_PORT:127.0.0.1" "https://example.com:$CA_PORT/" >/dev/null 2>&1; echo $?)"
+check ca-sni-notice "1" "$(grep -c 'not covered by the CA' "$CA_DIR/srv.log")"
+kill $CA_PID 2>/dev/null
+pkill -f "httpd -f -p 127.0.0.1:$CA_PORT" 2>/dev/null
+rm -rf "$CA_DIR"
 rm -rf "$CERT_DIR"
 
 printf '%d checks, %d failures\n' "$checks" "$fails"

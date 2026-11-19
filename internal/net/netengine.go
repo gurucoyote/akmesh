@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -74,6 +75,9 @@ type netOptions struct {
 	// Resolve maps "host:port" to the address to dial, so a name can be tested
 	// without an /etc/hosts entry (curl --resolve).
 	Resolve map[string]string
+	// CAFile is --cacert: the roots to verify the server's chain against,
+	// instead of the system's store.
+	CAFile string
 }
 
 // The default User-Agent names this tool and says what it behaves like. It does
@@ -350,6 +354,21 @@ func buildClient(opts netOptions, stderr *os.File) (*http.Client, error) {
 	}
 	if opts.Insecure {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+	if opts.CAFile != "" {
+		// curl --cacert: this file replaces the system store, as it does there.
+		pem, err := os.ReadFile(opts.CAFile)
+		if err != nil {
+			return nil, fmt.Errorf("--cacert %s: %v", opts.CAFile, err)
+		}
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(pem) {
+			return nil, fmt.Errorf("--cacert %s: no PEM certificate found", opts.CAFile)
+		}
+		if transport.TLSClientConfig == nil {
+			transport.TLSClientConfig = &tls.Config{}
+		}
+		transport.TLSClientConfig.RootCAs = pool
 	}
 	if opts.Impersonate != "" {
 		// A proxy would have to carry the ClientHello, and that means speaking

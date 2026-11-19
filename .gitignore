@@ -1,7 +1,7 @@
 /akmesh
 /akmesh.exe
-/ext
-/ext.exe
+/akmesh-ext
+/akmesh-ext.exe
 /.build/
 /.cache/
 /.gopath/

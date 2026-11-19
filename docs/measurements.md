@@ -1893,3 +1893,34 @@ bevor er als Regression gilt.
 
     Batterie Linux      215 Pruefungen, 0 Fehler (vorher 214, +1 sort-human)
     Batterie Windows    193 Pruefungen, 0 Fehler (vorher 192, +1 sort-human)
+
+## 2026-11-19 TLS- und HTTP/2-Fingerabdruck unseres Clients
+
+Gemessen, nicht behauptet:
+
+    ./akmesh curl -s --max-time 20 https://tls.peet.ws/api/all
+
+Antwort des Reflektors (Go 1.27, net/http):
+
+    ja3_hash    03117a8ed39ef02427ebbc39f121275c
+    ja4         t13d1312h2_f57a46bbacb6_f50d94e863eb
+    akamai h2   2:0;4:4194304;5:1048576;6:10485760|1073741824|0|a,m,p,s
+    SETTINGS    ENABLE_PUSH=0, INITIAL_WINDOW_SIZE=4194304,
+                MAX_FRAME_SIZE=1048576, MAX_HEADER_LIST_SIZE=10485760
+    ALPN        h2
+    User-Agent  Go-http-client/2.0
+
+Chrome auf dem Desktop sendet (Werte aus den Profiltabellen der
+Impersonations-Bibliotheken):
+
+    ja4 core    8daaf6152771 (Chrome/Edge)
+    akamai h2   1:65536;2:0;4:6291456;6:262144|15663105|0|m,a,s,p
+
+Unterschied in drei Punkten: die Cipher-Liste, die SETTINGS-Werte samt
+Reihenfolge und die Reihenfolge der Pseudo-Header (bei uns a,m,p,s, bei Chrome
+m,a,s,p). Dazu der User-Agent, der Go selbst nennt.
+
+Vergleichswerkzeug: curl-impersonate (MIT) patcht curl gegen BoringSSL
+(Chrome) oder NSS (Firefox) und aendert die TLS-Erweiterungen und die
+HTTP/2-SETTINGS; es ist C mit eigener Bibliothek, also fuer ein Go-Binary nur
+als Vorbild brauchbar, nicht als Abhaengigkeit.

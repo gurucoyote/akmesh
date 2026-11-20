@@ -65,7 +65,7 @@ func TestCommandTableMatchesEntryPoints(t *testing.T) {
 		"html2md": true, "docx2md": true, "rtf2md": true, "pdf2md": true,
 		"md2txt-l": true, "md2pdf": true, "md2docx": true, "md2epub": true,
 		"epub2md": true, "gibtsnicht": true, "httpd": true, "tracedeps": true,
-		"epub2html": true, "html2epub": true,
+		"epub2html": true, "html2epub": true, "pdf2html": true,
 	}
 	for _, e := range entries {
 		name := e.Name()

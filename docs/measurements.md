@@ -3250,3 +3250,22 @@ Drei Dinge, die der Umbau gebraucht hat:
 
 Mutationen: bodyOfPage aus -> Titel der Seite leckt ins Kapitel (rot);
 Colophon-Ueberspringen aus -> Lizenzseite reist mit (rot).
+
+## pdf2html: getaggtes PDF als HTML (20.11.2026)
+
+Der Strukturbaum traegt schon die Rollen, also schreibt `pdf2html` HTML statt
+Markdown. Am eigenen Fixture (testdata/tagged.pdf):
+
+    <h1>Kapitel eins</h1>          <h2>Unterkapitel</h2>
+    <ul><li>Erster Punkt</li><li>Zweiter Punkt</li></ul>
+    <thead><tr><th>Name</th><th>Wert</th></tr></thead>
+    <tbody><tr><td>Alpha</td><td>1</td></tr>
+
+Ohne Strukturbaum geht es ueber den Seitenweg: der geratene Markdown-Text wird
+mit goldmark zu HTML, also eine Regelmenge und ein Ergebnis.
+
+Mutationen: TH nicht mehr als Kopfzeile gezaehlt -> TestHTMLTableHeadIsAHead rot;
+Liste als Absatz geschrieben -> TestHTMLKeepsTheStructure rot ("body lacks <ul>").
+
+Was nicht mitkommt: Bilddaten (pdfmd liest keine Bildstroeme, die Figure steht mit
+ihrem Alt-Text) und Links (Ziel steht in der Anmerkung, nicht im Baum).

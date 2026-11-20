@@ -3170,3 +3170,23 @@ vor der Tabelle steht.
 
 Mutation: den alten Kurzschluss wieder einsetzen faerbt
 TestPageWithTableKeepsTheTextAroundIt rot ("page lacks ...").
+
+## docx2md liest Bilder und Inline-Code (20.11.2026)
+
+Vorher: ein eingebettetes Bild verschwand spurlos, Inline-Code kam ohne Ticks
+heraus. Jetzt:
+
+    docx2md -o out.md doc.docx .... out.md mit "![Ein rotes Rechteck](bild1.png)"
+                                    und bild1.png daneben, 191 Bytes (wie im Paket)
+    ohne -o (stdout) .............. "[Ein roter Rechteck]"? nein: "[Ein rotes Rechteck]"
+                                    als Text, weil es keinen Ordner gibt
+    zwei Bilder auf einer Datei ... bild1.png, bild1-2.png (eigene Namen)
+    Inline-Code ................... `inline` aus der Zeichenvorlage CodeChar
+                                    oder aus einer Monospace-Schrift (Consolas,
+                                    Courier, Menlo, ...)
+    Kette docx -> md -> epub ...... Bild kommt mit, epub2md liest
+                                    images/bild1.png zurueck
+
+Mutationen: Bildzweig abgeschaltet -> TestPictureComesOutOfThePackage rot;
+Code-Erkennung abgeschaltet -> TestInlineCodeBecomesBackticks und
+TestMonospaceFaceIsCode rot.

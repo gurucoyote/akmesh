@@ -28,34 +28,51 @@ import (
 
 // Convert reads a docx and returns the Markdown for it.
 func Convert(data []byte) (string, error) {
+	text, _, err := ConvertTo(data, "")
+	return text, err
+}
+
+// Image is one picture taken out of the package.
+type Image struct {
+	Name string // file name to write next to the Markdown
+	Data []byte
+}
+
+// ConvertTo is Convert with a place for the pictures. With a folder, a drawing
+// becomes an image reference and its bytes are returned for the caller to
+// write; without one, the description stays as text - a reference to a file
+// nobody wrote is a dead link, and that is worse than a description.
+func ConvertTo(data []byte, imagesDir string) (string, []Image, error) {
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
-		return "", fmt.Errorf("not a docx (no zip): %w", err)
+		return "", nil, fmt.Errorf("not a docx (no zip): %w", err)
 	}
 	document, err := part(zr, "word/document.xml")
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	numbering, _ := part(zr, "word/numbering.xml") // optional
 	rels, _ := part(zr, "word/_rels/document.xml.rels")
 
 	root, err := parse(document)
 	if err != nil {
-		return "", fmt.Errorf("word/document.xml: %w", err)
+		return "", nil, fmt.Errorf("word/document.xml: %w", err)
 	}
 	body := root.find("body")
 	if body == nil {
-		return "", fmt.Errorf("word/document.xml has no w:body")
+		return "", nil, fmt.Errorf("word/document.xml has no w:body")
 	}
 
 	w := &writer{
+		zr:          zr,
+		imagesDir:   imagesDir,
 		numFmt:      readNumbering(numbering),
 		rel:         readRels(rels),
 		counts:      map[string]int{},
 		atLineStart: true,
 	}
 	w.blocks(body)
-	return w.finish(), nil
+	return w.finish(), w.images, nil
 }
 
 // part returns one member of the zip.
@@ -203,6 +220,10 @@ func readRels(data []byte) map[string]string {
 
 // writer collects the Markdown.
 type writer struct {
+	zr          *zip.Reader
+	imagesDir   string
+	images      []Image
+	imageNames  map[string]bool
 	out         strings.Builder
 	numFmt      map[string]map[string]string
 	rel         map[string]string
@@ -360,7 +381,8 @@ type seg struct {
 	bold   bool
 	italic bool
 	strike bool
-	raw    bool // already Markdown: a link, not text
+	code   bool // set in a monospace face or a code character style
+	raw    bool // already Markdown: a link or a picture, not text
 	br     bool // a line break after this piece
 }
 
@@ -403,17 +425,18 @@ func (w *writer) segs(n *node) []seg {
 // runSeg turns one w:r into a piece. A run that carries more than text (a tab,
 // a break) becomes more than one piece so that the markers wrap the words only.
 func (w *writer) runSeg(r *node) []seg {
-	bold, italic, strike := false, false, false
+	bold, italic, strike, code := false, false, false, false
 	if rpr := r.find("rPr"); rpr != nil {
 		bold = on(rpr.find("b"))
 		italic = on(rpr.find("i"))
 		strike = on(rpr.find("strike"))
+		code = codeRun(rpr)
 	}
 	var out []seg
 	pending := ""
 	flush := func() {
 		if pending != "" {
-			out = append(out, seg{text: pending, bold: bold, italic: italic, strike: strike})
+			out = append(out, seg{text: pending, bold: bold, italic: italic, strike: strike, code: code})
 			pending = ""
 		}
 	}
@@ -426,10 +449,109 @@ func (w *writer) runSeg(r *node) []seg {
 		case "br", "cr":
 			flush()
 			out = append(out, seg{br: true})
+		case "drawing", "pict":
+			// A picture is neither text nor formatting: it becomes a reference
+			// of its own, so the markers around it cannot swallow it.
+			flush()
+			if img, ok := w.picture(c); ok {
+				out = append(out, img)
+			}
 		}
 	}
 	flush()
 	return out
+}
+
+// codeRun reports whether a run is set as code: a character style for code, or
+// a monospace face. Word keeps the face on the run when the style is applied
+// directly, so both signs are read.
+func codeRun(rpr *node) bool {
+	if st := rpr.find("rStyle"); st != nil {
+		v := strings.ToLower(st.attrs["val"])
+		if strings.Contains(v, "code") || strings.Contains(v, "verbatim") || strings.Contains(v, "mono") {
+			return true
+		}
+	}
+	if f := rpr.find("rFonts"); f != nil {
+		for _, k := range []string{"ascii", "hAnsi", "cs"} {
+			if monoFace(f.attrs[k]) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// monoFace says whether a font name is a monospace face. The list is short on
+// purpose: guessing from a name that happens to look technical would turn prose
+// into code.
+func monoFace(name string) bool {
+	n := strings.ToLower(strings.TrimSpace(name))
+	if n == "" {
+		return false
+	}
+	for _, s := range []string{"mono", "courier", "consolas", "menlo", "inconsolata"} {
+		if strings.Contains(n, s) {
+			return true
+		}
+	}
+	return false
+}
+
+// picture turns a drawing into a Markdown reference. Without a folder to write
+// the picture into, the description stays as text: a picture reference to a
+// file nobody wrote is a dead link.
+func (w *writer) picture(drawing *node) (seg, bool) {
+	blip := drawing.find("blip")
+	if blip == nil {
+		return seg{}, false
+	}
+	target := strings.TrimPrefix(w.rel[blip.attrs["embed"]], "/")
+	if target == "" {
+		return seg{}, false
+	}
+	alt := "Bild"
+	if pr := drawing.find("docPr"); pr != nil && pr.attrs["descr"] != "" {
+		alt = pr.attrs["descr"]
+	}
+	if w.imagesDir == "" {
+		return seg{text: "[" + alt + "]", raw: true}, true
+	}
+	data, err := part(w.zr, "word/"+target)
+	if err != nil {
+		// The relationship promises a file the package does not carry: the
+		// description is what is left.
+		return seg{text: "[" + alt + "]", raw: true}, true
+	}
+	name := w.imageName(target)
+	w.images = append(w.images, Image{Name: name, Data: data})
+	return seg{text: "![" + alt + "](" + name + ")", raw: true}, true
+}
+
+// imageName gives each picture a file name of its own, so two drawings cannot
+// land on the same file.
+func (w *writer) imageName(target string) string {
+	base := target
+	if i := strings.LastIndex(base, "/"); i >= 0 {
+		base = base[i+1:]
+	}
+	if base == "" {
+		base = "bild"
+	}
+	if w.imageNames == nil {
+		w.imageNames = map[string]bool{}
+	}
+	name := base
+	for i := 2; w.imageNames[name]; i++ {
+		dot := strings.LastIndex(base, ".")
+		if dot < 0 {
+			name = base + "-" + strconv.Itoa(i)
+			continue
+		}
+		name = base[:dot] + "-" + strconv.Itoa(i) + base[dot:]
+	}
+	w.imageNames[name] = true
+	return name
 }
 
 // render writes pieces with their markers, merging neighbours that share the
@@ -463,6 +585,9 @@ func (w *writer) render(segs []seg) string {
 		if cur.strike && !cur.raw {
 			text = "~~" + text + "~~"
 		}
+		if cur.code {
+			text = "`" + text + "`"
+		}
 		b.WriteString(text)
 		w.atLineStart = strings.HasSuffix(text, "\n")
 		cur = nil
@@ -475,7 +600,8 @@ func (w *writer) render(segs []seg) string {
 			continue
 		}
 		if cur != nil && !s.raw && !cur.raw &&
-			cur.bold == s.bold && cur.italic == s.italic && cur.strike == s.strike {
+			cur.bold == s.bold && cur.italic == s.italic && cur.strike == s.strike &&
+			cur.code == s.code {
 			cur.text += s.text
 			continue
 		}

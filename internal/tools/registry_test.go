@@ -80,7 +80,10 @@ func TestCommandTableMatchesEntryPoints(t *testing.T) {
 				t.Errorf("cmd/%s/main.go: %v", name, err)
 				continue
 			}
-			if !strings.Contains(string(src), ".Run(") {
+			// The entry point is Run or a Run of its own (RunHTML, RunFile):
+			// the point is that the command calls its package, not that every
+			// package has exactly one entry.
+			if !strings.Contains(string(src), ".Run") {
 				t.Errorf("cmd/%s is exempt from the table but calls no package of its own", name)
 			}
 			continue

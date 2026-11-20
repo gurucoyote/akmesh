@@ -3269,3 +3269,31 @@ Liste als Absatz geschrieben -> TestHTMLKeepsTheStructure rot ("body lacks <ul>"
 
 Was nicht mitkommt: Bilddaten (pdfmd liest keine Bildstroeme, die Figure steht mit
 ihrem Alt-Text) und Links (Ziel steht in der Anmerkung, nicht im Baum).
+
+## html2docx: HTML direkt nach docx (20.11.2026)
+
+Der Weg ist HTML -> Markdown -> Dokument, und das ist Absicht: der Markdown-Leser
+ist der, dem dieses Werkzeug schon vertraut, ein zweiter Dokumentbauer wuerde
+davon abweichen. Damit die Tabelle dabei eine Tabelle bleibt, schreibt
+`htmlmd.ConvertGFM` jetzt eine GFM-Tabelle mit Trennzeile; `Convert` bleibt
+unveraendert, weil fuer das Lesen die schlichte Form schoener ist.
+
+Gemessen an /tmp/t2.html (Ueberschrift, Code, fett, Link, Tabelle mit Kopf,
+verschachtelte Liste, Bild):
+
+    docx-Paket ............... 1x <w:tbl>, 6x <w:numPr>, <w:b/>, word/media/bild1.png
+    notker check ............. "check clean: 7 parts identical"
+    notker read .............. 7 Absaetze, 1 Tabelle (Kopfzeile als Tabellenzeile),
+                               Listeneintraege als "List Paragraph", [image]
+    docx2md zurueck .......... "# Probe", Tabelle mit Trennzeile, "- eins / - tief",
+                               "[Link](https://example.org)"
+
+Zwei Fehler unterwegs: ohne Trennzeile war die Tabelle fuer goldmark kein GFM,
+also wurde sie zu Pipe-Text; und der Seitentitel aus <head> wanderte als erster
+Absatz ins Dokument.
+
+Mutationen: ConvertGFM -> Convert (Tabelle weg, rot); pageBody abgeschaltet
+(Titel zweimal im Dokument, rot).
+
+Was durch Markdown nicht erhalten bleibt und deshalb auch hier nicht: Spaltenbreiten,
+verbundene Zellen, Farben, Schriften, Textboxen.

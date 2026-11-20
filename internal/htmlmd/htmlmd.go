@@ -36,7 +36,19 @@ import (
 // text but lose their tag, except pre and code, which carry content that must
 // not be mangled.
 func Convert(fragment string) string {
-	p := &parser{src: fragment, lineStart: true}
+	return convert(fragment, false)
+}
+
+// ConvertGFM is Convert with tables written as a GFM table: a header row, a
+// separator row, then the body. For reading a page the plain form is nicer, but
+// a writer that has to build a real table needs the separator - without it a
+// Markdown table is a run of lines with pipes in it.
+func ConvertGFM(fragment string) string {
+	return convert(fragment, true)
+}
+
+func convert(fragment string, gfm bool) string {
+	p := &parser{src: fragment, lineStart: true, gfmTables: gfm}
 	p.run()
 	p.closeLinks()
 	return p.finish()
@@ -58,6 +70,8 @@ type parser struct {
 	quoteDepth  int
 	lineStart   bool
 	cdata       string // "script" or "style" while inside one
+	gfmTables   bool   // write a GFM table with its separator row
+	rowIndex    int    // which row of the current table is being written
 }
 
 func (p *parser) run() {
@@ -384,6 +398,9 @@ func (p *parser) openBlock(name string, attrs map[string]string) {
 		p.block()
 		p.inPre = true
 		p.out.WriteString("```\n")
+	case "table":
+		p.block()
+		p.rowIndex = 0
 	case "tr":
 		p.itemBreak()
 		p.inRow = true
@@ -425,6 +442,16 @@ func (p *parser) closeBlock(name string) {
 		// Closing a cell changes nothing: the separator went in at its start.
 	case "tr":
 		p.out.WriteString("\n")
+		// The first row of a GFM table is its head; the separator below it is
+		// what makes a Markdown reader see a table at all.
+		if p.gfmTables && p.rowIndex == 0 && p.cells > 0 {
+			parts := make([]string, p.cells)
+			for i := range parts {
+				parts[i] = "---"
+			}
+			p.out.WriteString(strings.Join(parts, " | ") + "\n")
+		}
+		p.rowIndex++
 		p.inRow = false
 		p.cells = 0
 		p.lineStart = true

@@ -3178,8 +3178,8 @@ heraus. Jetzt:
 
     docx2md -o out.md doc.docx .... out.md mit "![Ein rotes Rechteck](bild1.png)"
                                     und bild1.png daneben, 191 Bytes (wie im Paket)
-    ohne -o (stdout) .............. "[Ein roter Rechteck]"? nein: "[Ein rotes Rechteck]"
-                                    als Text, weil es keinen Ordner gibt
+    ohne -o (stdout) .............. "[Ein rotes Rechteck]" als Text, weil es
+                                    keinen Ordner gibt, in den das Bild kaeme
     zwei Bilder auf einer Datei ... bild1.png, bild1-2.png (eigene Namen)
     Inline-Code ................... `inline` aus der Zeichenvorlage CodeChar
                                     oder aus einer Monospace-Schrift (Consolas,

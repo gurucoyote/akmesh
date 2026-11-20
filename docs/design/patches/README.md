@@ -54,3 +54,26 @@ Merker `.build/goldmark-pdf-fork.applied` haelt Version und Patch-Pruefsumme.
 - In `go.mod` bleiben `go-swiss/fonts` und `ttlcache` als `// indirect`
   stehen, weil die go.mod des gepatchten Moduls sie noch nennt. Im Build sind
   sie nicht mehr: `go list -deps ./cmd/md2pdf` zeigt keinen Treffer.
+
+## Stand 20.11.2026: der Patch ist selbsttragend
+
+Der Patch ist ein vollstaendiges Abbild von goldmark-pdf v0.4.2 (unveraendert aus
+dem Modul-Zip) auf den Stand, den dieses Repository braucht. Er laesst sich ohne
+Vorbedingung auf ein frisches Modul anwenden:
+
+    unzip v0.4.2.zip /tmp/gp-clean            # oder frischer Modul-Cache
+    patch -p1 -d <modulverzeichnis> < patches/goldmark-pdf-0.4.2-....patch
+
+Warum das wichtig ist: eine aeltere Fassung dieses Patches baute auf einem
+frueheren no-chroma-Patch auf, der nicht mehr existierte. Der Build gelang nur,
+weil der lokale Modul-Cache noch gepatcht war - ein frischer Clone haette nicht
+gebaut. Erzeugt wurde der Patch mit `diff -ru` zwischen ungepacktem Modul und
+gepatchtem Modul; neun Dateien, danach mit `diff -r` gegen den gepatchten Stand
+als identisch geprueft.
+
+Zweite Lehre aus demselben Lauf: `scripts/apply-goldmark-pdf-fork.sh` erkannte
+einen bereits angewandten Patch ueber `patch -R --dry-run`. Unter BusyBox-patch
+(der Build ruft das Skript ueber `sh`) antwortet das anders als GNU patch, und der
+Build scheiterte mit "patch does not apply". Die Erkennung fragt jetzt das Modul
+selbst: steht die Zeile "google fonts are not built in" in `fonts.go`, ist der
+Fork in Kraft.

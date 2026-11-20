@@ -57,6 +57,10 @@ export GOCACHE="$ROOT/.cache"
 export GOPATH="$ROOT/.gopath"
 export GOTOOLCHAIN=auto
 export GOFLAGS=
+# A workspace file somewhere above the build would pull its own module set into
+# this build; a stray /tmp/wk/go.work once failed it with a Go version that has
+# nothing to do with this repository.
+export GOWORK=off
 
 if [ ! -d "$UROOT_DIR/.git" ]; then
 	mkdir -p "$ROOT/.build"
@@ -160,10 +164,14 @@ fi
 # usage and carry on; the patches and their guards live in patch-uroot.sh.
 "$ROOT/scripts/patch-uroot.sh" "$UROOT_DIR"
 
-# The workspace is what lets makebb see our own packages.
+# The workspace is what lets makebb see our own packages. Its Go version has to
+# be the one our go.mod asks for: a workspace that names an older version stops
+# the build with "module ../.. requires go >= 1.27.1, but go.work lists 1.27.0".
+GOVER=$(awk '$1 == "go" { print $2; exit }' "$ROOT/go.mod")
+[ -n "$GOVER" ] || GOVER=1.27.1
 WORKFILE="$ROOT/.build/go.work"
 cat > "$WORKFILE" <<EOF
-go 1.27.0
+go $GOVER
 
 use (
 	$UROOT_DIR
@@ -174,7 +182,7 @@ export GOWORK="$WORKFILE"
 
 # Every name our own tools provide. Where u-root also builds the same name for
 # the target, u-root wins: it is already in the list and needs no extra bytes.
-OURS_ALL="awk basename certinfo ls head find grep chmod cp echo false curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall mkcert md5sum nl patch ps sed sha1sum sha256sum sha512sum shuf sort split stat sync tac timeout truncate uname verify wget sh policy ssh scp pwd true xargs tar hexdump base64 wc tr touch tracedeps html2md httpd docx2md rtf2md pdf2md md2txt-l md2pdf md2docx md2epub epub2md"
+OURS_ALL="awk basename certinfo ls head find grep chmod cp echo false curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall mkcert md5sum nl patch ps sed sha1sum sha256sum sha512sum shuf sort split stat sync tac timeout truncate uname verify wget sh policy ssh scp pwd true xargs tar hexdump base64 wc tr touch tracedeps html2md httpd docx2md rtf2md pdf2md md2txt-l md2pdf md2docx md2epub epub2md pdf2html html2docx html2epub epub2html"
 
 PROFILE_FILE="$ROOT/scripts/profiles/$PROFILE.txt"
 if [ ! -f "$PROFILE_FILE" ]; then
@@ -254,7 +262,11 @@ cd "$UROOT_DIR"
 # shellcheck disable=SC2086
 # makebb has no -tags flag; the go tool it calls does read GOFLAGS.
 if [ -n "$TAGS" ]; then
-	export GOFLAGS="-tags=$TAGS"
+	export GOFLAGS=
+# A workspace file somewhere above the build would pull its own module set into
+# this build; a stray /tmp/wk/go.work once failed it with a Go version that has
+# nothing to do with this repository.
+export GOWORK=off"-tags=$TAGS"
 	echo "build tags: $TAGS"
 fi
 # A generator-only run is what a non-Go compiler needs: makebb writes the

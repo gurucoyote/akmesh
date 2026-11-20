@@ -40,8 +40,10 @@ MODCACHE=$(go env GOMODCACHE)
 DIR="$MODCACHE/$MOD@$VER"
 [ -d "$DIR" ] || { echo "fork: $DIR not in the module cache" >&2; exit 1; }
 
-# Already applied? The reverse dry run answers that without touching anything.
-if patch -p1 -R --dry-run --force --silent -d "$DIR" < "$PATCH" >/dev/null 2>&1; then
+# Already applied? Ask the module itself, not patch: busybox patch and GNU patch
+# disagree about a reverse dry run on an applied patch, and the build calls this
+# script through sh. The marker below is a line only the fork's fonts.go has.
+if grep -q "google fonts are not built in" "$DIR/fonts.go" 2>/dev/null; then
 	# Record it, so the build report can say the fork is in force.
 	mkdir -p .build
 	printf '%s %s\n' "$VER" "$(sha256sum "$PATCH" | cut -d' ' -f1)" > "$MARK"

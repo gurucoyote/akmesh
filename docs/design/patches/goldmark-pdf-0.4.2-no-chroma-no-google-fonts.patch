@@ -1,5 +1,3 @@
-diff --git a/cache.go b/cache.go
-index 24017b5..f2f273f 100644
 --- a/cache.go
 +++ b/cache.go
 @@ -1,31 +1,7 @@
@@ -38,11 +36,9 @@ index 24017b5..f2f273f 100644
 -	c.c.Set(key, val, ttlcache.DefaultTTL)
 -}
 +// FontsCachePlaceholder keeps the file so the patch stays small and readable.
-diff --git a/config.go b/config.go
-index aa9d39e..fc937e2 100644
 --- a/config.go
 +++ b/config.go
-@@ -7,7 +7,6 @@ import (
+@@ -7,7 +7,6 @@
  	"net/http"
  	"os"
  
@@ -50,21 +46,19 @@ index aa9d39e..fc937e2 100644
  	"github.com/yuin/goldmark/util"
  )
  
-@@ -23,9 +22,6 @@ type Config struct {
+@@ -22,9 +21,6 @@
+ 
  	// All other options have sensible defaults
  	Styles Styles
- 
+-
 -	// A cache for the fonts
 -	FontsCache fonts.Cache
--
+ 
  	// For debugging
  	TraceWriter io.Writer
- 
-diff --git a/fonts.go b/fonts.go
-index 1aa25bc..31ac413 100644
 --- a/fonts.go
 +++ b/fonts.go
-@@ -4,8 +4,6 @@ import (
+@@ -4,8 +4,6 @@
  	"context"
  	"fmt"
  
@@ -73,7 +67,7 @@ index 1aa25bc..31ac413 100644
  )
  
  type fontType string
-@@ -68,7 +66,7 @@ func GetCodeFont(family string, fallback Font) Font {
+@@ -68,7 +66,7 @@
  	return fallback
  }
  
@@ -82,7 +76,7 @@ index 1aa25bc..31ac413 100644
  	fontsToLoad := []Font{
  		styles.H1.Font,
  		styles.H2.Font,
-@@ -86,22 +84,12 @@ func addStyleFonts(ctx context.Context, pdf PDF, styles Styles, fontsCache fonts
+@@ -86,22 +84,12 @@
  		styles.CodeFont,
  	}
  
@@ -108,11 +102,9 @@ index 1aa25bc..31ac413 100644
  	}
  
  	for _, f := range fonts {
-diff --git a/fpdf.go b/fpdf.go
-index a0a2a0e..1db3185 100644
 --- a/fpdf.go
 +++ b/fpdf.go
-@@ -4,7 +4,6 @@ import (
+@@ -4,7 +4,6 @@
  	"context"
  	"io"
  
@@ -120,7 +112,7 @@ index a0a2a0e..1db3185 100644
  	"github.com/phpdave11/gofpdf"
  )
  
-@@ -19,13 +18,13 @@ type FpdfConfig struct {
+@@ -19,13 +18,13 @@
  	LogoFormat string
  
  	// Header
@@ -137,7 +129,7 @@ index a0a2a0e..1db3185 100644
  	fpdf := Fpdf{
  		Fpdf:    gofpdf.New(c.Orientation, "pt", c.PaperSize, ""),
  		anchors: make(map[string]int),
-@@ -36,11 +35,11 @@ func NewFpdf(ctx context.Context, c FpdfConfig, fontsCache fonts.Cache) *Fpdf {
+@@ -36,11 +35,11 @@
  	fpdf.Fpdf.SetCellMargin(0)
  
  	if c.HeaderFunc != nil {
@@ -151,11 +143,9 @@ index a0a2a0e..1db3185 100644
  	}
  
  	fpdf.AddPage()
-diff --git a/option.go b/option.go
-index bd98f11..290f06c 100644
 --- a/option.go
 +++ b/option.go
-@@ -7,8 +7,6 @@ import (
+@@ -7,8 +7,6 @@
  	"io"
  	"net/http"
  
@@ -164,7 +154,7 @@ index bd98f11..290f06c 100644
  	"github.com/yuin/goldmark/util"
  )
  
-@@ -54,12 +52,6 @@ func WithImageFS(images http.FileSystem) Option {
+@@ -54,12 +52,6 @@
  }
  
  // Set a cache for fonts
@@ -177,7 +167,7 @@ index bd98f11..290f06c 100644
  // Set a color for links
  func WithLinkColor(val color.Color) Option {
  	return OptionFunc(func(c *Config) {
-@@ -110,12 +102,6 @@ func WithCodeFont(f Font) Option {
+@@ -110,12 +102,6 @@
  	})
  }
  
@@ -190,18 +180,16 @@ index bd98f11..290f06c 100644
  
  type withNodeRenderers struct {
  	value []util.PrioritizedValue
-@@ -139,5 +125,5 @@ func WithPDF(pdf PDF) Option {
+@@ -139,5 +125,5 @@
  
  // Easily configure a PDF writer to use based on https://github.com/phpdave11/gofpdf
  func WithFpdf(ctx context.Context, c FpdfConfig) Option {
 -	return WithPDF(NewFpdf(ctx, c, nil))
 +	return WithPDF(NewFpdf(ctx, c))
  }
-diff --git a/renderer.go b/renderer.go
-index ed25ff7..d85c82c 100644
 --- a/renderer.go
 +++ b/renderer.go
-@@ -72,13 +72,13 @@ func (r *renderer) Render(w io.Writer, source []byte, n ast.Node) error {
+@@ -72,13 +72,13 @@
  
  	pdf := r.config.PDF
  	if pdf == nil {
@@ -217,11 +205,9 @@ index ed25ff7..d85c82c 100644
  	if err != nil {
  		return fmt.Errorf("could not load fonts: %w", err)
  	}
-diff --git a/renderer_funcs.go b/renderer_funcs.go
-index bc5c6f2..398c7ac 100644
 --- a/renderer_funcs.go
 +++ b/renderer_funcs.go
-@@ -3,15 +3,11 @@ package pdf
+@@ -3,15 +3,11 @@
  import (
  	"bytes"
  	"fmt"
@@ -237,7 +223,7 @@ index bc5c6f2..398c7ac 100644
  	"github.com/yuin/goldmark/util"
  )
  
-@@ -169,143 +165,27 @@ func (r *nodeRederFuncs) renderBlockquote(w *Writer, source []byte, node ast.Nod
+@@ -169,143 +165,27 @@
  
  func (r *nodeRederFuncs) renderCodeBlock(w *Writer, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
  	if !entering {
@@ -272,8 +258,16 @@ index bc5c6f2..398c7ac 100644
 -	withLang, hasLang := node.(*ast.FencedCodeBlock)
 -	if hasLang {
 -		lang = string(withLang.Language(source))
--	}
--
++	st := w.Styles.CodeBlock
++	SetStyle(w.Pdf, *st)
++	w.Pdf.BR(st.Size + st.Spacing)
++	for _, line := range strings.Split(content, "\n") {
++		height := st.Size + st.Spacing
++		w.Pdf.CellFormat(w.Pdf.MeasureTextWidth(line), height, line, "", 0, "L", true, 0, "")
++		w.Pdf.BR(height)
+ 	}
++	w.Pdf.BR(st.Size + st.Spacing)
+ 
 -	var lexer chroma.Lexer
 -	if lang == "" {
 -		lexer = lexers.Analyse(content)
@@ -372,16 +366,8 @@ index bc5c6f2..398c7ac 100644
 -	}).Format(nil, w.Styles.CodeBlockTheme, iterator)
 -	if err != nil {
 -		return ast.WalkStop, fmt.Errorf("could not format fenced code block: %w", err)
-+	st := w.Styles.CodeBlock
-+	SetStyle(w.Pdf, *st)
-+	w.Pdf.BR(st.Size + st.Spacing)
-+	for _, line := range strings.Split(content, "\n") {
-+		height := st.Size + st.Spacing
-+		w.Pdf.CellFormat(w.Pdf.MeasureTextWidth(line), height, line, "", 0, "L", true, 0, "")
-+		w.Pdf.BR(height)
- 	}
-+	w.Pdf.BR(st.Size + st.Spacing)
- 
+-	}
+-
 -	w.Pdf.SetX(mleft)
 -	w.Pdf.CellFormat(pageWidth-mright-mleft, height, "", "1", 0, "L", true, 0, "")
 -	w.Pdf.BR(fBgStyle.Size + fBgStyle.Spacing)
@@ -391,11 +377,9 @@ index bc5c6f2..398c7ac 100644
  	return ast.WalkContinue, nil
  }
  
-diff --git a/style.go b/style.go
-index 1a5dce4..8991f53 100644
 --- a/style.go
 +++ b/style.go
-@@ -3,8 +3,6 @@ package pdf
+@@ -3,8 +3,6 @@
  import (
  	"image/color"
  
@@ -404,7 +388,7 @@ index 1a5dce4..8991f53 100644
  )
  
  // Style is the struct to capture the styling features for text
-@@ -43,8 +41,8 @@ type Styles struct {
+@@ -43,8 +41,8 @@
  
  	// code and preformatted text
  	CodeFont Font
@@ -415,7 +399,7 @@ index 1a5dce4..8991f53 100644
  
  	// link text
  	LinkColor color.Color
-@@ -100,7 +98,10 @@ func DefaultStyles() Styles {
+@@ -100,7 +98,10 @@
  	}
  
  	c.CodeFont = FontRobotoMono
@@ -427,11 +411,9 @@ index 1a5dce4..8991f53 100644
  
  	return c
  }
-diff --git a/writer.go b/writer.go
-index 50b1e79..cef0a8e 100644
 --- a/writer.go
 +++ b/writer.go
-@@ -4,13 +4,11 @@ import (
+@@ -4,13 +4,11 @@
  	"bufio"
  	"bytes"
  	"fmt"
@@ -445,7 +427,7 @@ index 50b1e79..cef0a8e 100644
  	"github.com/yuin/goldmark/ast"
  	east "github.com/yuin/goldmark/extension/ast"
  	"github.com/yuin/goldmark/util"
-@@ -103,35 +101,6 @@ func (w *Writer) WriteText(stringContents string) {
+@@ -103,35 +101,6 @@
  	w.Text(currentStyle, bb.String())
  }
  

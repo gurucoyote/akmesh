@@ -659,13 +659,64 @@ func textOfPage(d map[string]*object, content []byte, fonts map[string]*font, re
 		r.flushLine()
 		lines, rects = r.lines, r.rects
 	}
-	// A page whose cells are drawn as rectangles is a table; the text that sits
-	// inside those cells is the table, and the rest of the page order would only
-	// repeat it.
-	if t := tableFromRects(rects, lines); t != "" {
-		return t
+	return composePage(lines, rects)
+}
+
+// composePage turns the text and the drawn cells of one page into Markdown.
+//
+// The text path wins when it recognizes a table: aligned columns carry every
+// row, while the cells know only where a cell is. The cells decide only when the
+// text alone does not line up, and even then they claim nothing but the lines
+// that fall inside a cell - the rest of the page keeps its place around them.
+//
+// The rows outside the cells used to be dropped (measured 2026-11-20: heading,
+// two paragraphs and a table row lost on a page that carried a table).
+func composePage(lines []textLine, rects []rect) string {
+	body := bodySize(lines)
+	// The text path first: aligned columns are the cheaper and the fuller
+	// answer, because every row of text is there. Only when it finds no table
+	// do the drawn cells speak - they know where a cell is, but not what is
+	// outside them.
+	textOut, hasTable := renderLinesPart(lines, body)
+	if hasTable {
+		return textOut
 	}
-	return renderLines(lines)
+	// A page whose cells are drawn as rectangles has a table on it that the
+	// text alone does not line up. Only the lines inside those cells belong to
+	// it; everything else on the page is still text and keeps its place around
+	// it. Replacing the whole page by the table lost a heading, two paragraphs
+	// and a table row on a page that carried both (measured 2026-11-20).
+	if table, used := tableFromRects(rects, lines); table != "" {
+		var segs []string
+		var cur []textLine
+		flush := func() {
+			if len(cur) == 0 {
+				return
+			}
+			if s := renderLinesWithBody(cur, body); strings.TrimSpace(s) != "" {
+				segs = append(segs, strings.TrimRight(s, "\n"))
+			}
+			cur = nil
+		}
+		emitted := false
+		for i, l := range lines {
+			if used[i] {
+				if !emitted {
+					flush()
+					segs = append(segs, strings.TrimRight(table, "\n"))
+					emitted = true
+				}
+				continue
+			}
+			cur = append(cur, l)
+		}
+		flush()
+		if !emitted {
+			return table
+		}
+		return strings.Join(segs, "\n\n") + "\n"
+	}
+	return textOut
 }
 
 // matrix is the current transformation matrix of a content stream. Text and
@@ -1023,7 +1074,7 @@ func xobjectsOf(d map[string]*object, resources string) map[string]string {
 // text whose middle falls inside it, which is how a calendar or an invoice is
 // laid out. Only rectangles that could be a cell are used: a page background or
 // a decorative band is too large for that.
-func tableFromRects(rects []rect, lines []textLine) string {
+func tableFromRects(rects []rect, lines []textLine) (string, []bool) {
 	var cells []rect
 	for _, r := range rects {
 		if r.w < 6 || r.h < 6 || r.h > 80 || r.w > 300 {
@@ -1032,7 +1083,7 @@ func tableFromRects(rects []rect, lines []textLine) string {
 		cells = append(cells, r)
 	}
 	if len(cells) < 4 {
-		return ""
+		return "", nil
 	}
 	// Group by row: the y of a cell within a few points is the same row.
 	sortRects(cells, func(a, b rect) bool { return a.y > b.y })
@@ -1069,7 +1120,7 @@ func tableFromRects(rects []rect, lines []textLine) string {
 		}
 	}
 	if len(xs) < 2 || len(rows) < 2 {
-		return ""
+		return "", nil
 	}
 	sortFloats(xs)
 	table := make([][]string, len(rows))
@@ -1093,7 +1144,7 @@ func tableFromRects(rects []rect, lines []textLine) string {
 		}
 	}
 	if filled < len(rows) {
-		return ""
+		return "", nil
 	}
 	var out strings.Builder
 	for i, rw := range table {
@@ -1110,7 +1161,28 @@ func tableFromRects(rects []rect, lines []textLine) string {
 			out.WriteString("\n")
 		}
 	}
-	return out.String()
+	return out.String(), usedBy(cells, lines)
+}
+
+// usedBy marks the lines whose text was taken into a cell: those are the table,
+// and the page's other lines are not.
+func usedBy(cells []rect, lines []textLine) []bool {
+	used := make([]bool, len(lines))
+	for i, l := range lines {
+		for _, pc := range l.pieces {
+			mx, my := pc.x+pc.w/2, l.y
+			for _, c := range cells {
+				if mx >= c.x && mx <= c.x+c.w && my >= c.y && my <= c.y+c.h {
+					used[i] = true
+					break
+				}
+			}
+			if used[i] {
+				break
+			}
+		}
+	}
+	return used
 }
 
 // textInRect returns the text whose middle lies inside the cell.
@@ -1399,6 +1471,12 @@ func renderTable(rows []textLine) string {
 // table, a line set clearly larger than the body text becomes a heading (the
 // size tiers pdf-inspector uses), and the rest is text.
 func renderLines(lines []textLine) string {
+	return renderLinesWithBody(lines, bodySize(lines))
+}
+
+// bodySize is the size most of the text is set in: the letters, not the count
+// of lines, so a document with many small footnotes still finds its body.
+func bodySize(lines []textLine) float64 {
 	total := map[float64]int{}
 	for _, l := range lines {
 		total[l.size] += len([]rune(l.text))
@@ -1410,10 +1488,26 @@ func renderLines(lines []textLine) string {
 			best, body = n, size
 		}
 	}
+	return body
+}
+
+// renderLinesWithBody renders lines whose body size is already known, which is
+// what a page needs when it is rendered in pieces around a table.
+func renderLinesWithBody(lines []textLine, body float64) string {
+	out, _ := renderLinesPart(lines, body)
+	return out
+}
+
+// renderLinesPart reports whether it recognized a table among the lines: a page
+// renders that table itself, and a second one from its rectangles would print
+// it twice.
+func renderLinesPart(lines []textLine, body float64) (string, bool) {
+	found := false
 	var out strings.Builder
 	prevHeading := false
 	for i := 0; i < len(lines); i++ {
 		if rows := tableGroup(lines, i); rows != nil {
+			found = true
 			if out.Len() > 0 {
 				out.WriteString("\n")
 			}
@@ -1451,7 +1545,7 @@ func renderLines(lines []textLine) string {
 		prevHeading = false
 		out.WriteString(l.text + "\n")
 	}
-	return strings.ReplaceAll(out.String(), "\r", "\n")
+	return strings.ReplaceAll(out.String(), "\r", "\n"), found
 }
 
 // tok is one operator with the operands that were collected before it.

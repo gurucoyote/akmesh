@@ -3149,3 +3149,24 @@ Eintrag fuer das Bild weglassen -> Test rot.
 Die Lizenzseite ist ein eigenes Dokument (colophon.xhtml) und keine Kapitel-
 datei: sie ist nicht das, was der Autor geschrieben hat, steht aber im Spine,
 damit ein Leser sie findet.
+
+## pdf2md: Tabellenseite verliert nicht mehr den Rest der Seite (20.11.2026)
+
+Fehler: sobald eine Seite Zellrechtecke hatte, gab pdfmd nur die Tabelle aus
+(pdfmd.go, alter Kommentar "the rest of the page order would only repeat it").
+Gemessen an unserem eigenen PDF mit acht Abschnitten, 30-Zeilen-Tabelle und
+Codeblock:
+
+    /tmp/pdf2md  (alt) ...  63 Zeilen,  504 Woerter
+    /tmp/pdf2md  (neu) ... 152 Zeilen, 1186 Woerter
+    pdftotext -layout  ...          1177 Woerter
+
+Neu gilt: der Textweg entscheidet zuerst (ausgerichtete Spalten tragen jede
+Zeile), die Rechtecke nur, wenn der Text allein keine Spalten ergibt. Und dann
+gehoeren ihnen nur die Zeilen innerhalb einer Zelle; alles andere bleibt in
+Lesereihenfolge erhalten. Die Koerpergroesse kommt von der ganzen Seite, nicht
+vom Bruchstueck - sonst verliert eine Ueberschrift ihre Ebene, wenn sie allein
+vor der Tabelle steht.
+
+Mutation: den alten Kurzschluss wieder einsetzen faerbt
+TestPageWithTableKeepsTheTextAroundIt rot ("page lacks ...").

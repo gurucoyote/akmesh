@@ -269,15 +269,15 @@ func TestExplicitPrintIsTheDefault(t *testing.T) {
 func TestPredicateErrorsAreUsageErrors(t *testing.T) {
 	dir := tree(t)
 	cases := [][]string{
-		{"-name"},                       // value missing
-		{"-maxdepth"},                   // number missing
-		{"-maxdepth", "x"},              // not a number
-		{"-mindepth", "-1"},             // negative
-		{"-type", "q"},                  // no such file type
-		{"-mode", "999"},                // not octal for a mode
-		{"-regex", "["},                 // broken expression
-		{"-exec", "echo"},               // no terminating ';'
-		{"-not"},                        // nothing to negate
+		{"-name"},                        // value missing
+		{"-maxdepth"},                    // number missing
+		{"-maxdepth", "x"},               // not a number
+		{"-mindepth", "-1"},              // negative
+		{"-type", "q"},                   // no such file type
+		{"-mode", "999"},                 // not octal for a mode
+		{"-regex", "["},                  // broken expression
+		{"-exec", "echo"},                // no terminating ';'
+		{"-not"},                         // nothing to negate
 		{".", "-name", "a", "sub/b.txt"}, // path after a predicate
 	}
 	for _, args := range cases {

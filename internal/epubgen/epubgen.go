@@ -60,13 +60,6 @@ type chapter struct {
 
 // Convert writes the EPUB of a Markdown document.
 func Convert(w io.Writer, markdown []byte, opts Options) error {
-	if opts.Title == "" {
-		opts.Title = "Ohne Titel"
-	}
-	if opts.Language == "" {
-		opts.Language = "de"
-	}
-
 	md := goldmark.New(
 		goldmark.WithExtensions(extension.GFM, extension.Strikethrough),
 		goldmark.WithRendererOptions(html.WithXHTML(), html.WithUnsafe()),
@@ -75,10 +68,31 @@ func Convert(w io.Writer, markdown []byte, opts Options) error {
 	if err := md.Convert(markdown, &rendered); err != nil {
 		return err
 	}
+	return ConvertHTML(w, rendered.Bytes(), opts)
+}
+
+// ConvertHTML writes the EPUB of an HTML document.
+//
+// HTML is what a book is made of: the chapters of an EPUB are XHTML, so a book
+// that comes as HTML needs no trip through Markdown. Markdown stays the readable
+// source, HTML the exact one - a table with a header, a nested list and inline
+// code survive the second way where the first may flatten them.
+func ConvertHTML(w io.Writer, htmlText []byte, opts Options) error {
+	if opts.Title == "" {
+		opts.Title = "Ohne Titel"
+	}
+	if opts.Language == "" {
+		opts.Language = "de"
+	}
+
+	// A whole web page brings its declaration, its head and a title of its own
+	// along; those belong to the page it came from, not to a chapter of the
+	// book. Only the body is text.
+	inner := bodyOfPage(string(htmlText))
 
 	// Pictures first: the chapters are cut from the rewritten HTML, so an
 	// image reference points at the copy inside the book.
-	body, images := embedImages(rendered.String(), opts.BaseDir)
+	body, images := embedImages(inner, opts.BaseDir)
 	chapters := splitChapters(body)
 
 	// The fonts and their licence travel with the book; the terms are read out
@@ -140,6 +154,25 @@ func Convert(w io.Writer, markdown []byte, opts Options) error {
 		}
 	}
 	return zw.Close()
+}
+
+// bodyOfPage returns what stands between <body> and </body>, or the whole
+// document when it has no body: a fragment is legitimate input.
+func bodyOfPage(doc string) string {
+	lower := strings.ToLower(doc)
+	start := strings.Index(lower, "<body")
+	if start < 0 {
+		return doc
+	}
+	if gt := strings.Index(doc[start:], ">"); gt >= 0 {
+		start += gt + 1
+	} else {
+		return doc
+	}
+	if end := strings.LastIndex(lower, "</body>"); end > start {
+		return doc[start:end]
+	}
+	return doc[start:]
 }
 
 // splitChapters cuts the rendered HTML at its top-level headings. A document

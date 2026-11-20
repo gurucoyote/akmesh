@@ -255,6 +255,10 @@ type item struct {
 }
 
 type packageDoc struct {
+	Metadata struct {
+		Title    string `xml:"title"`
+		Language string `xml:"language"`
+	} `xml:"metadata"`
 	Manifest struct {
 		Items []item `xml:"item"`
 	} `xml:"manifest"`

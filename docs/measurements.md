@@ -3227,3 +3227,26 @@ Dazu zwei Fehler in der Textextraktion, die erst durch den Baum sichtbar wurden:
 
 Mutationen: Baumweg abgeschaltet -> Liste und Tabelle kommen nicht mehr als
 solche zurueck; MCID-Zahlen im /K ignoriert -> dito.
+
+## HTML als zweite Sprache: epub2html und html2epub (20.11.2026)
+
+Die Kapitel eines EPUB sind selbst XHTML, also geht es ohne Markdown-Zwischen-
+schritt. Neu: `epub2html` (Buch -> eine HTML-Seite) und `html2epub` (HTML ->
+Buch, ueber `epubgen.ConvertHTML`).
+
+    epub -> html ............ doc.html + images/bild1.png, 191 Bytes wie im Paket
+    html -> epub ............ chapter1.xhtml, images/bild1.png, Fonts, colophon
+    epub2md zurueckgelesen .. "# Bilderprobe", "![Ein rotes Rechteck](images/bild1.png)"
+    ohne -o ................. statt <img> steht "[Ersatzttext]", kein toter Verweis
+    Tabelle/verschachtelte Liste/Inline-Code kommen als HTML durch (Test)
+
+Drei Dinge, die der Umbau gebraucht hat:
+
+    bodyOfPage .............. eine ganze Seite bringt <!DOCTYPE>, <head> und ihren
+                              Titel mit; im Buch steht davon nur der Body
+    colophon.xhtml .......... wird beim Zuruecklesen uebersprungen, sonst steht die
+                              Lizenzseite im naechsten Buch zweimal
+    Bilder .................. brauchen einen Ordner; ohne -o bleibt der Ersatztext
+
+Mutationen: bodyOfPage aus -> Titel der Seite leckt ins Kapitel (rot);
+Colophon-Ueberspringen aus -> Lizenzseite reist mit (rot).

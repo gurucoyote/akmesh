@@ -262,8 +262,9 @@ func (p *parser) itemBreak() {
 	if s == "" {
 		return
 	}
-	s = strings.TrimSuffix(s, "\n\n")
-	s = strings.TrimSuffix(s, "\n")
+	// Whitespace between two rows or items is one newline, however much of it
+	// the source had: a blank line in the middle of a table ends the table.
+	s = strings.TrimRight(s, "\n")
 	p.out.Reset()
 	p.out.WriteString(s)
 	p.out.WriteString("\n")
@@ -299,7 +300,8 @@ func (p *parser) tag(name string, closing, selfClosing bool, attrs map[string]st
 	}
 
 	switch name {
-	case "p", "div", "section", "article", "header", "footer", "main", "h1", "h2", "h3", "h4", "h5", "h6", "table", "tr", "td", "th", "ul", "ol", "blockquote", "pre":
+	case "p", "div", "section", "article", "header", "footer", "main", "h1", "h2", "h3", "h4", "h5", "h6",
+		"table", "thead", "tbody", "tfoot", "tr", "td", "th", "ul", "ol", "blockquote", "pre":
 		if closing {
 			p.closeBlock(name)
 		} else if !selfClosing {
@@ -401,6 +403,10 @@ func (p *parser) openBlock(name string, attrs map[string]string) {
 	case "table":
 		p.block()
 		p.rowIndex = 0
+	case "thead", "tbody", "tfoot":
+		// A table section groups rows; it is not a block of its own. Breaking
+		// the block here puts a blank line between the head row and the rows
+		// below, and Markdown sees no table any more.
 	case "tr":
 		p.itemBreak()
 		p.inRow = true
@@ -438,6 +444,10 @@ func (p *parser) closeBlock(name string) {
 			p.out.WriteString("\n")
 		}
 		p.out.WriteString("```\n\n")
+	case "thead", "tbody", "tfoot":
+		// A table section is a grouping, not a paragraph: breaking the block
+		// here would put a blank line between the head row and the separator
+		// below it, and the table would stop being a table.
 	case "td", "th":
 		// Closing a cell changes nothing: the separator went in at its start.
 	case "tr":

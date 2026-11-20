@@ -46,6 +46,14 @@ func Convert(data []byte) (string, error) {
 	if len(pages) == 0 {
 		return "", fmt.Errorf("no pages found")
 	}
+	// A tagged document says what its text is; following the tree keeps the
+	// headings and tables that a page reader can only guess from positions.
+	if tree := structTreeOf(doc); tree != nil {
+		refs := pageRefs(doc)
+		if md := tree.toMarkdown(textOfStructPages(doc, refs), ""); strings.TrimSpace(md) != "" {
+			return md, nil
+		}
+	}
 	var out strings.Builder
 	for _, page := range pages {
 		text := pageText(doc, page)
@@ -64,6 +72,28 @@ func Convert(data []byte) (string, error) {
 		text = strings.ReplaceAll(text, "\n\n\n", "\n\n")
 	}
 	return text, nil
+}
+
+// keyIndex finds a name in a dictionary, choosing an occurrence that ends at a
+// delimiter - a name runs until whitespace or one of the PDF's own characters.
+func keyIndex(dict, name string) int {
+	off := 0
+	for {
+		i := strings.Index(dict[off:], name)
+		if i < 0 {
+			return -1
+		}
+		i += off
+		end := i + len(name)
+		if end >= len(dict) {
+			return i
+		}
+		switch dict[end] {
+		case ' ', '\t', '\r', '\n', '/', '<', '>', '[', ']', '(', ')':
+			return i
+		}
+		off = i + len(name)
+	}
 }
 
 // object is one indirect object: its dictionary (or value) and its stream.
@@ -125,7 +155,67 @@ func parseObjects(data []byte) map[string]*object {
 		}
 		out[h.key] = obj
 	}
+	expandObjectStreams(out)
 	return out
+}
+
+// expandObjectStreams unpacks the objects that a writer put into an object
+// stream (/Type /ObjStm) instead of writing them on their own.
+//
+// It matters more than it sounds: a PDF writer that compresses its objects
+// hides the structure tree in there, and a reader that only follows "N G obj"
+// sees a document with no structure at all.
+func expandObjectStreams(out map[string]*object) {
+	for _, obj := range out {
+		if !hasTag(obj.dict, "/Type/ObjStm") || len(obj.stream) == 0 {
+			continue
+		}
+		first := 0
+		if raw := strings.TrimSpace(value(obj.dict, "First")); raw != "" {
+			first, _ = strconv.Atoi(strings.Fields(raw)[0])
+		}
+		n := 0
+		if raw := strings.TrimSpace(value(obj.dict, "N")); raw != "" {
+			n, _ = strconv.Atoi(strings.Fields(raw)[0])
+		}
+		if first <= 0 || first > len(obj.stream) {
+			continue
+		}
+		// The header is "num offset num offset ...", one pair per object.
+		head := strings.Fields(string(obj.stream[:first]))
+		type entry struct {
+			key  string
+			from int
+		}
+		var entries []entry
+		for i := 0; i+1 < len(head); i += 2 {
+			key := head[i]
+			off, err := strconv.Atoi(head[i+1])
+			if err != nil || key == "" {
+				continue
+			}
+			entries = append(entries, entry{key: key, from: first + off})
+		}
+		if n > 0 && len(entries) > n {
+			entries = entries[:n]
+		}
+		for i, e := range entries {
+			end := len(obj.stream)
+			if i+1 < len(entries) {
+				end = entries[i+1].from
+			}
+			if e.from < 0 || e.from >= len(obj.stream) || end > len(obj.stream) || end < e.from {
+				continue
+			}
+			body := strings.TrimSpace(string(obj.stream[e.from:end]))
+			if body == "" {
+				continue
+			}
+			// An object inside a stream carries no stream of its own. The key
+			// keeps the generation number, the way a header in the file does.
+			out[e.key+" 0"] = &object{dict: body}
+		}
+	}
 }
 
 func isDigit(b byte) bool { return b >= '0' && b <= '9' }
@@ -165,8 +255,12 @@ func decoded(obj *object) []byte {
 }
 
 // value returns the raw value that follows "/key" in a dictionary.
+//
+// The key has to end where a name ends: "/S" also stands at the front of
+// "/StructTreeRoot", and cutting there gave a role of "tructElem" - a structure
+// tree read through that was silently no tree at all.
 func value(dict, key string) string {
-	idx := strings.Index(dict, "/"+key)
+	idx := keyIndex(dict, "/"+key)
 	if idx < 0 {
 		return ""
 	}
@@ -204,7 +298,10 @@ func value(dict, key string) string {
 		}
 		return rest
 	case strings.HasPrefix(rest, "/"):
-		end := 0
+		// The value is a name, and a name starts with the slash: counting from
+		// zero stopped at the first character and returned nothing at all -
+		// which is how a role of "/S /Document" read as an empty string.
+		end := 1
 		for end < len(rest) && !strings.ContainsRune(" \t\r\n/>[]", rune(rest[end])) {
 			end++
 		}
@@ -259,7 +356,23 @@ func refsIn(raw string) []string {
 }
 
 // pageObjects returns the page objects in the order of the page tree.
+// pageRef is a page together with the object key it lives under: the structure
+// tree names its pages by that key, so a page without it cannot be filled.
+type pageRef struct {
+	key string
+	obj *object
+}
+
 func pageObjects(d map[string]*object) []*object {
+	refs := pageRefs(d)
+	out := make([]*object, 0, len(refs))
+	for _, r := range refs {
+		out = append(out, r.obj)
+	}
+	return out
+}
+
+func pageRefs(d map[string]*object) []*pageRef {
 	// Catalog first.
 	var rootKey string
 	for key, obj := range d {
@@ -268,7 +381,7 @@ func pageObjects(d map[string]*object) []*object {
 			break
 		}
 	}
-	var pages []*object
+	var pages []*pageRef
 	seen := map[string]bool{}
 	var walk func(key string, depth int)
 	walk = func(key string, depth int) {
@@ -281,7 +394,7 @@ func pageObjects(d map[string]*object) []*object {
 			return
 		}
 		if hasTag(obj.dict, "/Type/Page") && !hasTag(obj.dict, "/Type/Pages") {
-			pages = append(pages, obj)
+			pages = append(pages, &pageRef{key: key, obj: obj})
 			return
 		}
 		for _, kid := range refsIn(value(obj.dict, "Kids")) {
@@ -295,7 +408,7 @@ func pageObjects(d map[string]*object) []*object {
 		} else if raw := value(d[rootKey].dict, "Pages"); raw != "" {
 			// A single page as the root's /Pages is unusual but possible.
 			if obj := d[raw]; obj != nil {
-				pages = append(pages, obj)
+				pages = append(pages, &pageRef{key: raw, obj: obj})
 			}
 		}
 	}
@@ -304,7 +417,7 @@ func pageObjects(d map[string]*object) []*object {
 		for _, key := range sortedKeys(d) {
 			obj := d[key]
 			if hasTag(obj.dict, "/Type/Page") && !hasTag(obj.dict, "/Type/Pages") {
-				pages = append(pages, obj)
+				pages = append(pages, &pageRef{key: key, obj: obj})
 			}
 		}
 	}
@@ -786,6 +899,7 @@ type contentReader struct {
 	buf          bytes.Buffer
 	pieces       []piece
 	lineSizes    map[float64]int
+	mcStack      []int
 	lineHasText  bool
 	spacePending bool
 
@@ -820,6 +934,26 @@ func (r *contentReader) newLine() {
 		r.lineHasText = false
 	}
 	r.spacePending = false
+}
+
+// mcid is the marked content block the reader stands in, or -1 outside one.
+func (r *contentReader) mcid() int {
+	if n := len(r.mcStack); n > 0 {
+		return r.mcStack[n-1]
+	}
+	return -1
+}
+
+// mcidIn reads the MCID out of a marked content property dictionary.
+func mcidIn(dict string) int {
+	raw := strings.TrimSpace(value(dict, "MCID"))
+	if raw == "" {
+		return -1
+	}
+	if n, err := strconv.Atoi(strings.TrimSpace(strings.Fields(raw)[0])); err == nil {
+		return n
+	}
+	return -1
 }
 
 func (r *contentReader) flushLine() {
@@ -862,9 +996,15 @@ func (r *contentReader) emit(b []byte) {
 		return
 	}
 	gap := r.tx - (r.lastStart + r.lastWidth)
-	if r.lineHasText && (r.spacePending || gap > 0.35*r.size) {
+	spaced := false
+	// A word space is about a quarter of the size in most faces, and a writer
+	// that places every word with its own matrix leaves exactly that on the
+	// page: the threshold has to sit between kerning (a fraction of a point)
+	// and a real space (measured: 3 points at a 12 point face).
+	if r.lineHasText && (r.spacePending || gap > 0.2*r.size) {
 		if !strings.HasSuffix(r.buf.String(), " ") && !strings.HasPrefix(text, " ") {
 			r.buf.WriteString(" ")
+			spaced = true
 		}
 	}
 	r.spacePending = false
@@ -877,12 +1017,12 @@ func (r *contentReader) emit(b []byte) {
 		for _, part := range parts {
 			x := px + offset*r.size/1000
 			if part.text != "" {
-				r.pieces = append(r.pieces, piece{text: part.text, x: x, y: py, w: advancePart(part.text, r.size, r.m)})
+				r.pieces = append(r.pieces, piece{mcid: r.mcid(), space: spaced, text: part.text, x: x, y: py, w: advancePart(part.text, r.size, r.m)})
 			}
 			offset += part.offset
 		}
 	} else {
-		r.pieces = append(r.pieces, piece{text: text, x: px, y: py, w: r.advance(b)})
+		r.pieces = append(r.pieces, piece{mcid: r.mcid(), space: spaced, text: text, x: px, y: py, w: r.advance(b)})
 	}
 	r.lineSizes[r.size] += len([]rune(text))
 	r.lastStart = r.tx
@@ -901,6 +1041,14 @@ func (r *contentReader) run(content []byte, depth int) {
 	defer func() { r.m = saved }()
 	for _, t := range tokens(string(content)) {
 		switch t.op {
+		case "BDC", "BMC":
+			// A tagged document wraps its text in marked content blocks; the
+			// MCID is the name the structure tree refers to.
+			r.mcStack = append(r.mcStack, mcidIn(t.dict))
+		case "EMC":
+			if n := len(r.mcStack); n > 0 {
+				r.mcStack = r.mcStack[:n-1]
+			}
 		case "q":
 			stack = append(stack, r.m)
 		case "Q":
@@ -928,8 +1076,10 @@ func (r *contentReader) run(content []byte, depth int) {
 		case "Do":
 			r.doXObject(t.name, depth)
 		case "BT":
+			// The text object starts at the origin, but the end of the previous
+			// piece stays known: a writer that places every word with its own
+			// matrix separates its words by nothing but that gap.
 			r.tx, r.ty = 0, 0
-			r.lastStart, r.lastWidth = 0, 0
 		case "Tf":
 			if len(t.nums) > 0 {
 				r.size = t.nums[0]
@@ -942,7 +1092,6 @@ func (r *contentReader) run(content []byte, depth int) {
 				if t.nums[1] != 0 {
 					_, py := r.m.apply(r.tx, r.ty)
 					r.breakLine(py)
-					r.lastStart, r.lastWidth = r.tx, 0
 				}
 			}
 		case "T*":
@@ -954,20 +1103,25 @@ func (r *contentReader) run(content []byte, depth int) {
 					r.breakLine(py)
 				}
 				r.tx, r.ty = t.nums[4], t.nums[5]
-				r.lastStart, r.lastWidth = r.tx, 0
 			}
 		case "Tj":
 			r.emit(t.str)
 		case "TJ":
-			for _, piece := range t.pieces {
-				r.emit(piece)
-			}
-			for _, n := range t.nums {
-				// A large negative adjustment is a word space, a small one is
-				// kerning inside a word.
-				if n <= -100 {
-					r.spacePending = true
+			// The array is a sequence of glyph runs and pen movements. Both
+			// have to be walked in order: the run says where the pen lands
+			// after its width, and a number between two runs is the space
+			// between two words - one writer in this house puts a whole line
+			// into one array.
+			for _, item := range t.items {
+				if item.isNum {
+					r.tx -= item.num / 1000 * r.size
+					if item.num <= -100 {
+						r.spacePending = true
+					}
+					continue
 				}
+				r.emit(item.str)
+				r.tx += r.advance(item.str)
 			}
 		case "'", `"`:
 			r.newLine()
@@ -1228,10 +1382,12 @@ type textLine struct {
 
 // piece is one run of text and where it stands on the page.
 type piece struct {
-	text string
-	x    float64
-	y    float64
-	w    float64
+	mcid  int
+	space bool // a word space comes before this piece
+	text  string
+	x     float64
+	y     float64
+	w     float64
 }
 
 // sortedPieces returns the runs of a line from left to right.
@@ -1553,8 +1709,19 @@ type tok struct {
 	op     string
 	name   string
 	str    []byte
+	dict   string // a << >> operand, kept because a marked content block names its MCID there
+	items  []tokItem
 	pieces [][]byte
 	nums   []float64
+}
+
+// tokItem is one entry of a TJ array: a string of glyphs, or a number that
+// moves the pen. The order matters - a number between two strings is the space
+// between two words.
+type tokItem struct {
+	str   []byte
+	num   float64
+	isNum bool
 }
 
 // tokens tokenizes a content stream into operators with their operands. An
@@ -1576,7 +1743,9 @@ func tokens(s string) []tok {
 			i = skipString(s, i)
 			cur.str = unescapeString(s[start+1 : i-1])
 		case c == '<' && i+1 < len(s) && s[i+1] == '<':
+			start := i
 			i = skipDict(s, i)
+			cur.dict = s[start:i]
 		case c == '<':
 			end := strings.IndexByte(s[i:], '>')
 			if end < 0 {
@@ -1592,14 +1761,18 @@ func tokens(s string) []tok {
 				case s[i] == '(':
 					start := i
 					i = skipString(s, i)
-					cur.pieces = append(cur.pieces, unescapeString(s[start+1:i-1]))
+					str := unescapeString(s[start+1 : i-1])
+					cur.pieces = append(cur.pieces, str)
+					cur.items = append(cur.items, tokItem{str: str})
 				case s[i] == '<':
 					end := strings.IndexByte(s[i:], '>')
 					if end < 0 {
 						i = len(s)
 						continue
 					}
-					cur.pieces = append(cur.pieces, unhex(s[i+1:i+end]))
+					str := unhex(s[i+1 : i+end])
+					cur.pieces = append(cur.pieces, str)
+					cur.items = append(cur.items, tokItem{str: str})
 					i += end + 1
 				case s[i] == ' ' || s[i] == '\t' || s[i] == '\r' || s[i] == '\n':
 					i++
@@ -1610,6 +1783,7 @@ func tokens(s string) []tok {
 					}
 					if n, err := strconv.ParseFloat(s[start:i], 64); err == nil {
 						cur.nums = append(cur.nums, n) // kerning inside the array
+						cur.items = append(cur.items, tokItem{num: n, isNum: true})
 					}
 				}
 			}

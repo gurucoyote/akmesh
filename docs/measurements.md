@@ -3190,3 +3190,40 @@ heraus. Jetzt:
 Mutationen: Bildzweig abgeschaltet -> TestPictureComesOutOfThePackage rot;
 Code-Erkennung abgeschaltet -> TestInlineCodeBecomesBackticks und
 TestMonospaceFaceIsCode rot.
+
+## pdf2md liest den Strukturbaum getaggter PDFs (20.11.2026)
+
+Ein getaggtes PDF sagt, was sein Text ist. pdfmd folgt jetzt diesem Baum, statt
+Ebenen aus Schriftgroessen zu raten. Am eigenen Testdokument
+(internal/pdfmd/testdata/tagged.pdf, Ausgabe von joshua html2pdf):
+
+    vorher (nur Seiten) ....... "# Kapitel eins", Tabellenzeile als Text,
+                                Liste als zwei Absaetze
+    jetzt (Strukturbaum) ...... "# Kapitel eins", "## Unterkapitel",
+                                "- Erster Punkt", "- Zweiter Punkt",
+                                "| Name | Wert |", "| Alpha | 1 |"
+
+Drei Fehler fielen dabei auf, alle mit Test:
+
+    value(dict, "/S") ......... gab fuer einen Namen als Wert "" zurueck, weil
+                                die Schleife beim fuehrenden "/" schon endete.
+                                Folge: jede Rolle leer, der Baum war keiner.
+    Schluesselsuche ............ "/S" traf auch "/StructTreeRoot" ("tructElem").
+                                Jetzt muss der Name an einem Trenner enden.
+    arrayItems ................ "/K [27 0 R 28 0 R]" wurde an Leerzeichen
+                                zerschnitten, und die Zahl aus der Referenz
+                                landete als MCID im Baum.
+
+Dazu zwei Fehler in der Textextraktion, die erst durch den Baum sichtbar wurden:
+
+    TJ-Array .................. der Stift wurde nicht weiterbewegt und die
+                                Zahlen im Array (Kerning, Wortabstand) fielen
+                                weg: "DerersteAbsatz".
+    BT und Tm ................. setzten die gemerkte Textposition zurueck, damit
+                                war jeder Wortabstand unsichtbar. Jetzt bleibt
+                                das Ende des vorigen Stuecks bekannt; Schwelle
+                                0,2 der Schriftgroesse (Wortabstand bei 12 pt: 3 pt,
+                                Kerning: Bruchteile eines Punktes).
+
+Mutationen: Baumweg abgeschaltet -> Liste und Tabelle kommen nicht mehr als
+solche zurueck; MCID-Zahlen im /K ignoriert -> dito.

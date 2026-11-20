@@ -27,6 +27,8 @@ import (
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer/html"
+
+	"akmesh/internal/webfonts"
 )
 
 // Options carries what a book needs beyond its text.
@@ -38,6 +40,16 @@ type Options struct {
 	Author string
 	// Language is the book language; de is the default.
 	Language string
+	// BaseDir is where relative image paths are resolved: the folder of the
+	// Markdown file. Empty means the working directory.
+	BaseDir string
+}
+
+// imagePart is one picture in the book: its name under OEBPS/, the bytes and
+// the format they are in.
+type imagePart struct {
+	name string
+	data []byte
 }
 
 // chapter is one section of the book.
@@ -64,7 +76,15 @@ func Convert(w io.Writer, markdown []byte, opts Options) error {
 		return err
 	}
 
-	chapters := splitChapters(rendered.String())
+	// Pictures first: the chapters are cut from the rewritten HTML, so an
+	// image reference points at the copy inside the book.
+	body, images := embedImages(rendered.String(), opts.BaseDir)
+	chapters := splitChapters(body)
+
+	// The fonts and their licence travel with the book; the terms are read out
+	// of the programs themselves (internal/webfonts). The licence page is its
+	// own document, not a chapter: it is not part of what the author wrote.
+	families := webfonts.Book()
 
 	zw := zip.NewWriter(w)
 	// The mimetype entry has to come first and uncompressed.
@@ -78,8 +98,10 @@ func Convert(w io.Writer, markdown []byte, opts Options) error {
 
 	parts := []struct{ name, body string }{
 		{"META-INF/container.xml", containerXML},
-		{"OEBPS/package.opf", packageOPF(opts, chapters)},
+		{"OEBPS/package.opf", packageOPF(opts, chapters, families, images)},
 		{"OEBPS/nav.xhtml", navXHTML(opts, chapters)},
+		{"OEBPS/style.css", styleCSS(families)},
+		{"OEBPS/colophon.xhtml", colophonXHTML(opts, families)},
 	}
 	for i, c := range chapters {
 		parts = append(parts, struct{ name, body string }{
@@ -93,6 +115,27 @@ func Convert(w io.Writer, markdown []byte, opts Options) error {
 			return err
 		}
 		if _, err := io.WriteString(f, p.body); err != nil {
+			return err
+		}
+	}
+	// The programs and the pictures are bytes, not text.
+	for _, fam := range families {
+		for _, face := range fam.Faces {
+			f, err := zw.Create("OEBPS/" + fontName(fam.Name, face.Style))
+			if err != nil {
+				return err
+			}
+			if _, err := f.Write(face.TTF); err != nil {
+				return err
+			}
+		}
+	}
+	for _, img := range images {
+		f, err := zw.Create("OEBPS/" + img.name)
+		if err != nil {
+			return err
+		}
+		if _, err := f.Write(img.data); err != nil {
 			return err
 		}
 	}
@@ -228,20 +271,10 @@ func xhtmlPage(lang, title, body string) string {
 	return `<?xml version="1.0" encoding="UTF-8"?>` + "\n" +
 		`<!DOCTYPE html>` + "\n" +
 		`<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="` + esc(lang) + `" lang="` + esc(lang) + `">` + "\n" +
-		`<head><meta charset="UTF-8"/><title>` + esc(title) + `</title>` + chapterCSS + `</head>` + "\n" +
+		`<head><meta charset="UTF-8"/><title>` + esc(title) + `</title>` +
+		`<link rel="stylesheet" type="text/css" href="style.css"/></head>` + "\n" +
 		`<body>` + "\n" + body + "\n" + `</body></html>`
 }
-
-// chapterCSS keeps the book readable without depending on a reader's defaults.
-const chapterCSS = `<style>
-body { font-family: serif; line-height: 1.5; margin: 1em; }
-h1, h2, h3 { line-height: 1.2; }
-table { border-collapse: collapse; }
-th, td { border: 1px solid #888; padding: 0.2em 0.4em; }
-pre { background: #f4f4f4; padding: 0.6em; overflow-x: auto; }
-code { font-family: monospace; }
-blockquote { margin-left: 1em; font-style: italic; }
-</style>`
 
 // chapterXHTML is one chapter file.
 func chapterXHTML(opts Options, c chapter) string {
@@ -264,13 +297,31 @@ func navXHTML(opts Options, chapters []chapter) string {
 }
 
 // packageOPF is the package document: metadata, manifest, spine.
-func packageOPF(opts Options, chapters []chapter) string {
+func packageOPF(opts Options, chapters []chapter, families []webfonts.Family, images []imagePart) string {
 	var manifest, spine strings.Builder
 	manifest.WriteString(`<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`)
+	manifest.WriteString(`<item id="css" href="style.css" media-type="text/css"/>`)
+	manifest.WriteString(`<item id="colophon" href="colophon.xhtml" media-type="application/xhtml+xml"/>`)
 	for i := range chapters {
 		manifest.WriteString(`<item id="c` + fmt.Sprint(i+1) + `" href="chapter` +
 			fmt.Sprint(i+1) + `.xhtml" media-type="application/xhtml+xml"/>`)
 		spine.WriteString(`<itemref idref="c` + fmt.Sprint(i+1) + `"/>`)
+	}
+	spine.WriteString(`<itemref idref="colophon"/>`)
+	// Every program and every picture needs its manifest entry: a reader shows
+	// nothing that it cannot find there, and one that checks conformity says
+	// the package is broken.
+	fi := 0
+	for _, fam := range families {
+		for _, face := range fam.Faces {
+			fi++
+			manifest.WriteString(`<item id="f` + fmt.Sprint(fi) + `" href="` +
+				fontName(fam.Name, face.Style) + `" media-type="font/ttf"/>`)
+		}
+	}
+	for i, img := range images {
+		manifest.WriteString(`<item id="i` + fmt.Sprint(i+1) + `" href="` + img.name +
+			`" media-type="image/` + strings.TrimPrefix(img.name[strings.LastIndex(img.name, ".")+1:], "") + `"/>`)
 	}
 	author := ""
 	if opts.Author != "" {

@@ -74,6 +74,16 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		title = strings.TrimSuffix(base, filepath.Ext(base))
 	}
 	opts := Options{Title: title, Author: author}
+	// Pictures are resolved against the folder of the first input file, or the
+	// working directory when the Markdown comes from standard input.
+	if baseDir, err := os.Getwd(); err == nil {
+		opts.BaseDir = baseDir
+	}
+	if len(files) > 0 {
+		if abs, err := filepath.Abs(files[0]); err == nil {
+			opts.BaseDir = filepath.Dir(abs)
+		}
+	}
 
 	if out == "" {
 		w := bufio.NewWriter(stdout)

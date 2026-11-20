@@ -3123,3 +3123,29 @@ Bilder im docx (md2docx): Betten jetzt ein statt nur [alt] zu schreiben.
 Zwei Fallen, mutationsgeprueft: ohne `xmlns:wp` am Dokument sagt LibreOffice
 "source file could not be loaded", und ein `w:drawing` in einem offenen `w:p`
 ist ein verschachtelter Absatz, den beide Programme nicht zeigen.
+
+## md2epub: Schriften, Bilder, Lizenzseite (20.11.2026)
+
+md2epub gab es schon (goldmark -> XHTML, Kapitel an den H1, OPF/nav selbst
+geschrieben). Gefehlt haben Schriften, Bilder und die Lizenz - jetzt drin:
+
+    Testbuch mit bild.png (120x60) ... 575817 Bytes, davon 570 KB Schriften
+      OEBPS/fonts/lora-regular.ttf .... 212196
+      OEBPS/fonts/lora-bold.ttf .......  90024
+      OEBPS/fonts/lora-italic.ttf .....  94204
+      OEBPS/fonts/go-mono-regular.ttf . 173248
+      OEBPS/images/bild1.png ..........    191
+      OEBPS/style.css .................    866
+      OEBPS/colophon.xhtml ............   2876
+    Alle xhtml/opf wohlgeformt (xml.dom.minidom), mimetype erster Eintrag, stored
+    epub2md liest das Buch zurueck: Kapitel, Bildpfad images/bild1.png und die
+    Lizenzseite kommen als Markdown heraus
+
+Der Bildweg ist derselbe wie im docx: internal/imgload entscheidet nach den
+Bytes (nur PNG, JPEG, GIF; nie HTTP), fehlt das Bild, bleibt [Beschreibung]
+stehen. Mutationen: Bild-Tag unveraendert durchreichen -> Test rot; Manifest-
+Eintrag fuer das Bild weglassen -> Test rot.
+
+Die Lizenzseite ist ein eigenes Dokument (colophon.xhtml) und keine Kapitel-
+datei: sie ist nicht das, was der Autor geschrieben hat, steht aber im Spine,
+damit ein Leser sie findet.

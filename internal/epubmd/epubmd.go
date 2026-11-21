@@ -67,6 +67,12 @@ func Convert(data []byte) (string, error) {
 		if strings.Contains(it.Properties, "nav") {
 			continue
 		}
+		// The licence page this tool writes itself (internal/epubgen) is not
+		// the author's text. Read back, it must not become a chapter, or a book
+		// made from a book carries the licence twice.
+		if path.Base(it.Href) == "colophon.xhtml" {
+			continue
+		}
 		body, err := readFile(files, path.Join(base, it.Href))
 		if err != nil {
 			// A missing chapter must not silently shorten the book.

@@ -138,6 +138,28 @@ func TestNavIsNotAChapter(t *testing.T) {
 	}
 }
 
+// TestColophonIsNotAChapter: the licence page this tool writes itself is not
+// the author's text. Read back, it must not turn into a chapter, or a book made
+// from a book carries the licence twice.
+func TestColophonIsNotAChapter(t *testing.T) {
+	data := buildEPUB(t,
+		[]string{"colophon.xhtml", "c0.xhtml"},
+		map[string]string{
+			"colophon.xhtml": `<h1>Schriften und Lizenzen</h1><p>Lizenz.</p>`,
+			"c0.xhtml":       `<h1>Eins</h1><p>Text.</p>`,
+		})
+	got, err := Convert(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got, "Lizenzen") {
+		t.Errorf("colophon.xhtml wurde als Kapitel gelesen:\n%s", got)
+	}
+	if !strings.Contains(got, "Eins") {
+		t.Errorf("das echte Kapitel fehlt, der Test waere auch bei leerer Ausgabe gruen:\n%s", got)
+	}
+}
+
 // TestHeadingAndParagraphBecomeMarkdown: the chapter body arrives as Markdown,
 // not as HTML with tags in it.
 func TestHeadingAndParagraphBecomeMarkdown(t *testing.T) {

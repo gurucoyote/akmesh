@@ -1,15 +1,16 @@
-// Command html2md turns an HTML fragment into Markdown, reachable as its own
-// name inside the akmesh binary.
+// Command html2md is any2md with the format fixed to html. The reader lives in
+// internal/anymd; this name stays so that a script that means "html" keeps
+// saying so.
 package main
 
 import (
 	"os"
 
-	"akmesh/internal/htmlmd"
+	"akmesh/internal/anymd"
 	"akmesh/internal/policy"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(htmlmd.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(anymd.RunAs("html2md", anymd.HTML, os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

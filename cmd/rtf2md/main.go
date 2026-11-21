@@ -1,15 +1,16 @@
-// Command rtf2md turns an RTF document into Markdown, reachable as its own name
-// inside the akmesh binary.
+// Command rtf2md is any2md with the format fixed to rtf. The reader lives in
+// internal/anymd; this name stays so that a script that means "rtf" keeps
+// saying so.
 package main
 
 import (
 	"os"
 
+	"akmesh/internal/anymd"
 	"akmesh/internal/policy"
-	"akmesh/internal/rtfmd"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(rtfmd.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(anymd.RunAs("rtf2md", anymd.RTF, os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

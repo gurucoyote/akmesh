@@ -3297,3 +3297,41 @@ Mutationen: ConvertGFM -> Convert (Tabelle weg, rot); pageBody abgeschaltet
 
 Was durch Markdown nicht erhalten bleibt und deshalb auch hier nicht: Spaltenbreiten,
 verbundene Zellen, Farben, Schriften, Textboxen.
+
+## any2md: ein Leser, fuenf Aliase (21.11.2026)
+
+Gebaut mit `GOTOOLCHAIN=auto ./scripts/build-bb.sh linux`, geprueft am Binary
+gegen fuenf echte Dokumente (docx/epub mit unseren eigenen Schreibern aus einem
+Markdown gebaut, PDF = internal/pdfmd/testdata/tagged.pdf, dazu eine HTML-Seite
+und eine RTF-Datei):
+
+    any2md angebot.docx ....... "# Kapitel", "Ein Absatz mit **fett**."
+    any2md buch.epub .......... dito
+    any2md seite.html ......... "# Seite"
+    any2md brief.rtf .......... "**Fett und Text.**"
+    any2md bericht.pdf ........ "# Kapitel eins"
+    any2md ohne-endung ........ (Kopie der PDF) "# Kapitel eins" -> Erkennung an den Bytes
+    any2md notiz.txt .......... "unknown document format (any2md reads pdf, docx, epub, rtf, html)", exit 1
+
+Die Aliase sind gegen any2md byte-gleich (`cmp`, alle vier gruen):
+
+    pdf2md bericht.pdf      == any2md -f pdf bericht.pdf
+    docx2md -o d1.md        == any2md -o d2.md
+    html2md seite.html      == any2md seite.html
+    epub2md buch.epub       == any2md buch.epub
+    rtf2md brief.rtf        == any2md brief.rtf
+
+Format gepinnt, Bytes sagen etwas anderes:
+
+    pdf2md seite.html -> "pdf2md: seite.html: not a pdf, the bytes look like html", exit 1
+    any2md -o x.md seite.html brief.rtf -> exit 2 ("-o takes one document")
+
+Gatter: `./scripts/test-akmesh.sh ./akmesh` = 211 Checks, 0 Fehler;
+`./scripts/help-audit.sh --check ./akmesh` = exit 0 (any2md und die fuenf
+antworten auf --help mit ihrem Text). Groesse linux: 16310396 Bytes, wie vor dem
+Umbau (16310396) - die Aliase kosten kein Byte, weil sie derselbe Leser sind.
+
+Nebenbefund aus dem Gatter: epub2md las die eigene Lizenzseite als drittes
+Kapitel (Batterie epub2md-chapter-count erwartete 2, bekam 3). Ursache war die
+Spine-Schleife, die nur `properties="nav"` uebersprang; jetzt auch
+`path.Base(href) == "colophon.xhtml"` (acmesh-g5x).

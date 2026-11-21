@@ -112,6 +112,52 @@ und geht durch dieselbe Policy-Huelle wie die eingebauten.
   Nicht nachgebaut: GNU polstert die Spalten in -l auf eigene Mindestbreiten.
   Die Felder sind identisch, ein awk-Skript sieht keinen Unterschied.
 
+## Dokumente lesen: any2md, und die fuenf Namen als Aliase (21.11.2026)
+
+Ein Dokument zu lesen war bisher fuenf Befehle: html2md, rtf2md, docx2md,
+epub2md, pdf2md. Jeder hatte seine eigene Argumentschleife, seine eigene
+Fehlermeldung und seinen eigenen `-o`-Weg. Jetzt gibt es einen Leser
+(internal/anymd), und die fuenf Namen sind Aliase, die ihr Format festnageln.
+
+Warum ein Name und nicht fuenf:
+
+- Die Richtung ist bei Lesern eindeutig. Eine PDF ist keine DOCX, das Format
+  steckt in den Bytes (`Detect`: `%PDF-`, `{\rtf`, ZIP mit `word/document.xml`
+  oder `META-INF/container.xml`, sonst fuehrendes `<`). Damit braucht any2md kein
+  Formatflag und keine Wahl, die ein Agent raten muesste.
+- Die alten Namen enthielten eine Symmetriefalle: html2md, pdf2html,
+  html2docx, aber kein docx2html. Wer die Richtung raet, raet manchmal falsch,
+  und "command not found" ist ein verschwendeter Turn.
+- Anthropic raet in "Writing effective tools for agents" vom Eins-zu-eins-
+  Verpacken von Endpunkten ab und zur Zusammenfassung auf den Arbeitsablauf.
+
+Warum die fuenf Namen bleiben:
+
+- Ein Name ist in einer Shell auch ein Stichwort. Die Namensliste ist die
+  Suchliste; fuenf Namen sind fuenf Anker fuer den Agenten.
+- Ein expliziter Name ist belegbar: in Tickets und Messwerten steht "pdf2md
+  gegen pdftotext -layout", nicht "any2md".
+- Ein Skript, das meint "das muss eine PDF sein", sagt weiter pdf2md. Der Alias
+  nagelt das Format fest und lehnt eine erkennbar andere Datei ab
+  (`pdf2md seite.html` -> "not a pdf, the bytes look like html", exit 1).
+
+Was der Umbau mitnimmt:
+
+- `-f/--from FORMAT` ist der Notausgang fuer Bytes ohne Marker; `-o FILE.md`
+  schreibt die Datei und legt die docx-Bilder daneben.
+- Ein Fehler in der Argumentbehandlung ist jetzt einer statt fuenf.
+- `-o` mit mehr als einer Eingabe war vorher stiller Datenverlust (die letzte
+  Datei gewann); jetzt exit 2 mit dem Hinweis, umzuleiten.
+- Eine fehlende Datei beendet die Liste nicht mehr: gemeldet, exit 1, die
+  naechste Datei wird gelesen.
+- Die Hilfetexte der fuenf liegen in internal/anymd (aliasUsage), nicht mehr
+  neben einer zweiten Implementierung. Der Text ist der alte, ergaenzt um den
+  Satz, der das Format nennt.
+
+Die Schreiberichtung bleibt getrennt: md2pdf, md2docx, md2epub sind keine
+Erkennung, sondern eine Wahl. Ein any2any braeuchte ein Ziel-Flag, und ein Flag
+ist genau die Stelle, an der ein Agent raet.
+
 ## Was sich absetzt, und was nicht
 
 Nur httpd laeuft im Hintergrund (Vorgabe), mit -f im Vordergrund: ein

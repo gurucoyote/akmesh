@@ -206,17 +206,15 @@ func TestMarkersAlreadyProtectALine(t *testing.T) {
 	}
 }
 
-// TestNotADocxIsAnError: the message has to say what was wrong, and the exit
-// code has to be non-zero, or an agent reads an empty conversion as an empty
-// document.
+// TestNotADocxIsAnError: the message has to say what was wrong, and the caller
+// has to see a non-zero exit code, or an agent reads an empty conversion as an
+// empty document. The exit code itself is any2md's business now; what this
+// package owes is the reason.
 func TestNotADocxIsAnError(t *testing.T) {
-	var out, errOut bytes.Buffer
-	code := RunFile("nicht-docx", []byte("das ist kein zip"), &out, &errOut)
-	if code == 0 {
-		t.Errorf("exit 0 for a file that is not a docx")
-	}
-	if !strings.Contains(errOut.String(), "zip") {
-		t.Errorf("error does not name the reason: %q", errOut.String())
+	if _, err := Convert([]byte("das ist kein zip")); err == nil {
+		t.Fatal("no error for a file that is not a docx")
+	} else if !strings.Contains(err.Error(), "zip") {
+		t.Errorf("error does not name the reason: %q", err)
 	}
 }
 
@@ -229,12 +227,12 @@ func TestDocxWithoutDocumentPartIsAnError(t *testing.T) {
 	w.Write([]byte("hallo"))
 	zw.Close()
 
-	var out, errOut bytes.Buffer
-	if code := RunFile("leer.docx", buf.Bytes(), &out, &errOut); code == 0 {
-		t.Errorf("exit 0 for a zip without word/document.xml")
+	_, err := Convert(buf.Bytes())
+	if err == nil {
+		t.Fatal("no error for a zip without word/document.xml")
 	}
-	if !strings.Contains(errOut.String(), "document.xml") {
-		t.Errorf("error does not name the missing part: %q", errOut.String())
+	if !strings.Contains(err.Error(), "document.xml") {
+		t.Errorf("error does not name the missing part: %q", err)
 	}
 }
 

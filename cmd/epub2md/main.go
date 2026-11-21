@@ -1,14 +1,16 @@
-// Command epub2md reads an EPUB book into Markdown.
+// Command epub2md is any2md with the format fixed to epub. The reader lives in
+// internal/anymd; this name stays so that a script that means "epub" keeps
+// saying so.
 package main
 
 import (
 	"os"
 
-	"akmesh/internal/epubmd"
+	"akmesh/internal/anymd"
 	"akmesh/internal/policy"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(epubmd.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(anymd.RunAs("epub2md", anymd.EPUB, os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

@@ -158,6 +158,36 @@ Die Schreiberichtung bleibt getrennt: md2pdf, md2docx, md2epub sind keine
 Erkennung, sondern eine Wahl. Ein any2any braeuchte ein Ziel-Flag, und ein Flag
 ist genau die Stelle, an der ein Agent raet.
 
+## Die Befehlsliste gehoert uns (21.11.2026)
+
+Wer das Binary mit einem Namen aufruft, den es nicht traegt, bekommt eine Liste
+seiner Befehle. Diese Liste war ein flaches Alphabet aus gobusybox, und dort
+standen die Konverter zwischen `df` und `echo`.
+
+Was jetzt gilt:
+
+- Der Text und die Gruppierung stehen in `internal/cmdlist` (eine Tabelle
+  Name -> Gruppe, die Bloecke Dokumente, Dateien/Text, System, Netzwerk, Shell,
+  Sonstiges). Sie ist unser Code, mit Tests, und ohne Fremdquelle.
+- Der Build forkt die Ausgabe: `makebb -g` erzeugt den Multicall-Quellbaum, dann
+  schreibt `scripts/build-bb.sh` unser `cmdlist.go` (Paketklausel umgeschrieben)
+  und `scripts/gen/print.go` in diesen Baum, patcht die Fehlerverzweigung der
+  generierten `main.go` (`docs/design/patches/gobusybox-grouped-list.patch`) und
+  baut das Binary mit `go build` selbst.
+- Warum generierte Datei statt gobusybox-Quelle: die Aenderung liegt dann in
+  unserem Repo, nicht als Patch an fremdem Code. Der Generator bleibt unberuehrt.
+- Drei Waechter: der Patch muss greifen, die generierte main.go muss den Aufruf
+  `printSupported()` enthalten, und das fertige Binary muss den Block-Titel
+  "Files and text:" tragen. Sonst bricht der Build ab, statt still wieder die
+  flache Liste zu liefern.
+- `go build` laeuft mit den Flags, die makebb benutzt haette (`-a`,
+  `-gcflags=all=-l`, `-ldflags "-s -w -buildid="`, `-trimpath`, `GOWORK=off`).
+  Ohne `-a -gcflags` waechst das Binary um 1,87 MB (gemessen), und die
+  Groessengrenze haette den Build gestoppt.
+- Ein neuer Befehl braucht eine Zeile in der Tabelle: `TestEveryCommandIsPlaced`
+  liest `scripts/cmds.txt` und `OURS_ALL` und macht aus einem vergessenen Namen
+  einen roten Test.
+
 ## Was sich absetzt, und was nicht
 
 Nur httpd laeuft im Hintergrund (Vorgabe), mit -f im Vordergrund: ein

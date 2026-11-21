@@ -106,6 +106,33 @@ if [ ! -x "$MAKEBB" ] || ! makebb_is_pinned "$MAKEBB"; then
 	install_makebb
 fi
 
+# The generated multicall source. It stays on disk, so a failed build can be
+# read, and so the list checks below have something to look at.
+GEN_DIR="${GEN_DIR:-$ROOT/.build/gen}"
+LISTPATCH="$ROOT/docs/design/patches/gobusybox-grouped-list.patch"
+# prepare_gen makes the generated tree ours: the command list is printed by
+# internal/cmdlist (its table), not by gobusybox's template. Both steps are
+# checked by a marker, because a generator that rewords its dispatcher must stop
+# the build instead of shipping the flat list again.
+prepare_gen() {
+	gen="$1"
+	[ -d "$gen" ] || { echo "no generated source in $gen" >&2; exit 1; }
+	sed 's/^package cmdlist$/package main/' "$ROOT/internal/cmdlist/cmdlist.go" > "$gen/cmdlist.go" || exit 1
+	if ! grep -q '^func Print(' "$gen/cmdlist.go"; then
+		echo "cmdlist.go was not written into $gen" >&2
+		exit 1
+	fi
+	cp "$ROOT/scripts/gen/print.go" "$gen/print.go" || exit 1
+	if ! patch -p0 -d "$gen" -i "$LISTPATCH" >/dev/null; then
+		echo "the generated dispatcher does not match $LISTPATCH: the command list cannot be grouped" >&2
+		exit 1
+	fi
+	if ! grep -q 'printSupported()' "$gen/main.go"; then
+		echo "the list patch left no call in $gen/main.go" >&2
+		exit 1
+	fi
+}
+
 # u-root's dispatcher calls itself "busybox" in the two messages a mistyped
 # command produces. The binary is called akmesh, so those words are replaced in
 # every copy of gobusybox the build can link: the vendored one inside the u-root
@@ -273,15 +300,34 @@ fi
 # multicall source and the build is done by the caller.
 if [ -n "${AKMESH_GEN_DIR:-}" ]; then
 	"$MAKEBB" -g -gen-dir "$AKMESH_GEN_DIR" -o "$ROOT/$OUT" $PKGS
+	prepare_gen "$AKMESH_GEN_DIR"
 	echo "generated: $AKMESH_GEN_DIR"
 	exit 0
 fi
-# shellcheck disable=SC2086
-"$MAKEBB" -o "$ROOT/$OUT" $PKGS
+# makebb generates the multicall main.go, then we build it ourselves: that is
+# how the command list becomes ours. The flags below are the ones makebb would
+# have used (-a, inlining off, stripped, trimpath) with the same toolchain, so
+# the size stays comparable; the size budget further down would notice a
+# difference of a megabyte.
+rm -rf "$GEN_DIR"
+"$MAKEBB" -g -gen-dir "$GEN_DIR" -o "$ROOT/$OUT" $PKGS
+prepare_gen "$GEN_DIR"
+(
+	cd "$GEN_DIR" &&
+		GOWORK=off GOTOOLCHAIN=auto \
+			go build -o "$ROOT/$OUT" -mod=vendor -a -gcflags=all=-l \
+			-ldflags "-s -w -buildid=" -trimpath .
+)
 # The rename above must reach the binary. A vendor/module mismatch would build
 # fine and still ship u-root's wording, so the build checks its own output.
 if tr -d '\000' < "$ROOT/$OUT" | grep -q 'not present in busybox\|not present in acmesh'; then
 	echo "$OUT still says busybox: the dispatcher rename did not reach the build" >&2
+	exit 1
+fi
+# And the list has to be ours. The marker is a group title only internal/cmdlist
+# has, so a build that ignored the patch cannot pass as a grouped list.
+if ! tr -d '\000' < "$ROOT/$OUT" | grep -q 'Files and text:'; then
+	echo "$OUT has no grouped command list: the list patch did not reach the build" >&2
 	exit 1
 fi
 ls -l "$ROOT/$OUT"

@@ -3335,3 +3335,24 @@ Nebenbefund aus dem Gatter: epub2md las die eigene Lizenzseite als drittes
 Kapitel (Batterie epub2md-chapter-count erwartete 2, bekam 3). Ursache war die
 Spine-Schleife, die nur `properties="nav"` uebersprang; jetzt auch
 `path.Base(href) == "colophon.xhtml"` (acmesh-g5x).
+
+## Gruppierte Befehlsliste (21.11.2026)
+
+Der Build generiert mit `makebb -g` und baut selbst (`GOTOOLCHAIN=auto
+./scripts/build-bb.sh linux`, danach `windows`).
+
+    ./akmesh            -> "Supported commands are:", dann "Documents (...)",
+                           dann "Files and text:", "System:", "Network:",
+                           "Shell:", "Other:"; 107 Zeilen " - name"
+    ./akmesh.exe        -> dasselbe, 106 Namen (tracedeps fehlt auf Windows)
+
+    Groesse linux ...... 16359651 Bytes (vorher 16310396, +49 KB fuer Tabelle und
+                         Text). Ohne `-a -gcflags=all=-l` waeren es 18182268
+                         Bytes gewesen: makebb baut mit abgeschaltetem Inlining,
+                         und ein go build ohne diese Flags liegt 1,87 MB darueber.
+    Batterie ........... 211 Checks, 0 Fehler
+    help-audit --check . exit 0
+
+Waechter, die rot werden muessen: Patch greift nicht (build-bb.sh bricht ab),
+`printSupported()` fehlt in der generierten main.go (Abbruch), Binary ohne
+"Files and text:" (Abbruch), Befehl ohne Gruppe (TestEveryCommandIsPlaced).

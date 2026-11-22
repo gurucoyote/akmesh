@@ -290,6 +290,13 @@ var Texts = map[string]Entry{
 			"      --hidden        also search dot-files\n" +
 			"      --no-ignore     ignore .gitignore, .ignore and .rgignore\n" +
 			"  -j N, --threads     worker count\n" +
+			"      --pre CMD       search documents through a converter: any2md (the\n" +
+			"                      default) reads docx, pdf, epub, rtf and html in\n" +
+			"                      process, any other CMD is run with the file path as\n" +
+			"                      its last argument. Line and column numbers refer to\n" +
+			"                      the converted text, not to the original file.\n" +
+			"      --pre-glob GLOB which files go through --pre (default: the any2md\n" +
+			"                      suffixes); everything else is searched raw\n" +
 			"Not built (unlike ripgrep): PCRE2, --type-add/--type-clear, --encoding,\n" +
 			"and the global gitignore file (core.excludesFile).",
 	},

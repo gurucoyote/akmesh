@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -45,6 +47,13 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) (code int) {
 		return 2
 	}
 
+	pre := newPreprocessor(cfg)
+	for _, g := range cfg.preGlob {
+		if _, err := path.Match(strings.TrimPrefix(g, "!"), ""); err != nil {
+			fmt.Fprintf(stderr, "rg: invalid --pre-glob %q: %v\n", g, err)
+			return 2
+		}
+	}
 	globSet, requireMatch, err := buildGlobs(cfg)
 	if err != nil {
 		fmt.Fprintf(stderr, "rg: %v\n", err)
@@ -73,7 +82,7 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) (code int) {
 		return searchStdin(cfg, matcher, stdin, stdout, stderr)
 	}
 
-	return searchPaths(cfg, matcher, globSet, requireMatch, typesMatcher, stdout, stderr)
+	return searchPaths(cfg, matcher, globSet, requireMatch, typesMatcher, pre, stdout, stderr)
 }
 
 func buildMatcher(cfg config) (match.Matcher, error) {
@@ -222,7 +231,7 @@ func intPtr(n int) *int {
 }
 
 // searchPaths walks the PATH arguments and searches every regular file.
-func searchPaths(cfg config, matcher match.Matcher, globSet *glob.Set, requireMatch bool, typesMatcher *filetype.Matcher, stdout, stderr io.Writer) int {
+func searchPaths(cfg config, matcher match.Matcher, globSet *glob.Set, requireMatch bool, typesMatcher *filetype.Matcher, pre *preprocessor, stdout, stderr io.Writer) int {
 	showPath, missing := wantPaths(cfg)
 	if missing != "" {
 		fmt.Fprintf(stderr, "rg: %s: No such file or directory\n", missing)
@@ -262,6 +271,29 @@ func searchPaths(cfg config, matcher match.Matcher, globSet *glob.Set, requireMa
 			w.searcher.BinaryMode = search.BinaryConvert
 		}
 
+		var reader io.Reader
+		if pre != nil && pre.applies(e.Path) {
+			// What is searched is the converted Markdown; the hit still names
+			// the document, and line numbers refer to the conversion (see the
+			// help text). A failed conversion is an error, never a silent
+			// empty result.
+			md, err := pre.text(e.Path)
+			if err != nil {
+				reportErr(e.Path, err)
+				return walk.Continue
+			}
+			reader = strings.NewReader(md)
+			w.searcher.BinaryMode = search.BinaryNone
+		} else {
+			f, err := os.Open(e.Path)
+			if err != nil {
+				reportErr(e.Path, err)
+				return walk.Continue
+			}
+			defer f.Close()
+			reader = stripBOM(f)
+		}
+
 		tracked := &binaryTracker{
 			Sink:           w.sink,
 			matched:        &anyMatched,
@@ -273,13 +305,7 @@ func searchPaths(cfg config, matcher match.Matcher, globSet *glob.Set, requireMa
 			searcher:       w.searcher,
 		}
 
-		f, err := os.Open(e.Path)
-		if err != nil {
-			reportErr(e.Path, err)
-			return walk.Continue
-		}
-		defer f.Close()
-		if err := w.searcher.Search(e.Path, stripBOM(f), tracked); err != nil {
+		if err := w.searcher.Search(e.Path, reader, tracked); err != nil {
 			reportErr(e.Path, err)
 		}
 		return walk.Continue

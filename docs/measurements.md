@@ -3546,3 +3546,36 @@ Gegen das installierte ripgrep 15.1.0 gemessen, nicht gegen eine Erwartung.
 Was das Kommando bewusst nicht nachbaut (steht so in `rg --help`): PCRE2,
 --type-add/--type-clear, --encoding, die globale gitignore-Datei
 (core.excludesFile), --json und -q.
+
+## rg --pre: Dokumente durchsuchen über any2md (22.11.2026, acmesh-idv)
+
+Gemessen am gebauten Sammel-Binary, nicht am Entwicklungsstand.
+
+- Ein docx (mit `akmesh md2docx` aus Markdown erzeugt) mit dem Satz
+  "Der Vertrag endet am 31.12.": `./akmesh rg -n --pre any2md 'endet am 31.12' .`
+  -> `./vertrag.docx:3:Der Vertrag endet am 31.12.`, Exit 0. Die Zeile 3 ist
+  die dritte Zeile der Umwandlung ("# Vertrag", Leerzeile, Text), nicht eine
+  Zeile im docx; so steht es auch in `rg --help`.
+- Dieselbe Datei ohne `--pre`: `./akmesh rg 'endet am 31.12' .` -> kein
+  Treffer, Exit 1. Der Treffer oben kommt also vom Preprocessor.
+- Kaputtes PDF (Bytes mit `%PDF-1.4`, kein xref) im Verzeichnis:
+  `rg: ./kaputt.pdf: no objects found`, Exit 2, Datei übersprungen. Kein
+  stiller Ausfall.
+- `--pre-glob '*.txt'` in einem Lauf: die .txt geht durch den Wandler
+  (`any2md: unknown document format` -> Exit 2), das docx bleibt roh und wird
+  nicht gefunden. Beide Richtungen in einem Lauf sichtbar.
+- Externer Befehl (`--pre <programm>`, Dateipfad als letztes Argument):
+  `cat` über eine .dat liefert den Treffer; der Test überspringt sich mit
+  Meldung, wenn das Programm fehlt.
+- Dauer für 20 docx (je ~2,9 KB, `akmesh md2docx`, bash time, 3 Läufe):
+  mit `--pre any2md` 0,023-0,029 s, ohne `--pre` 0,009-0,010 s. Die Umwandlung
+  kostet also rund 0,7 ms je Datei (jede Datei wird in einem Lauf genau
+  einmal gewandelt; einen Plattencache gibt es nicht).
+- Windows: `./akmesh.exe rg --pre any2md --pre-glob '*.ini' 'for 16'
+  C:/Windows/win.ini` -> `rg: C:/Windows/win.ini: any2md: unknown document
+  format ...`, Exit 2. Der Fehlerpfad des Preprocessors läuft auf Windows; ein
+  Erfolgsfall mit Dokument liegt dort nicht vor, ohne eine Datei auf C: anzulegen.
+- Größe: linux 17084643 Bytes (vorher 17080547, +4096),
+  windows 17163264 (vorher 17157120, +6144).
+- Gatter: `go test ./...` grün, gofmt sauber, Hilfe-Audit exit 0, Batterie
+  211 Checks 0 Fehler, Lizenzprüfung 19 Module.

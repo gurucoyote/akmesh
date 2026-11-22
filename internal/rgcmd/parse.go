@@ -40,6 +40,10 @@ type config struct {
 	hidden   bool
 	noIgnore bool
 	workers  int
+
+	pre        bool
+	preCommand string
+	preGlob    []string
 }
 
 // parse reads args like the tool the agent already knows. The dialect rules
@@ -167,6 +171,24 @@ func parse(args []string) (config, error) {
 				var v string
 				if v, err = value(); err == nil {
 					cfg.workers, err = intValue("--threads", v)
+				}
+			case "pre":
+				cfg.pre = true
+				cfg.preCommand = "any2md"
+				if hasValue {
+					if rest != "" {
+						cfg.preCommand = rest
+					}
+				} else if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+					// rg's own shape: --pre COMMAND. The built-in name
+					// "any2md" is recognized, like any other command.
+					i++
+					cfg.preCommand = args[i]
+				}
+			case "pre-glob":
+				var v string
+				if v, err = value(); err == nil {
+					cfg.preGlob = append(cfg.preGlob, v)
 				}
 			default:
 				return cfg, fmt.Errorf("unrecognized flag --%s", name)

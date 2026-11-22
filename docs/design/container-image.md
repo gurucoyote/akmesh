@@ -19,9 +19,9 @@ Jede Zahl stammt aus docs/measurements.md, jeder Schritt hat ein Ticket.
 - Groesse 21,2-fach ueber BusyBox (17105123 gegen 808712), Start 6,84 ms je
   Aufruf gegen 0,86 ms.
 
-## Der Befund, der die Reihenfolge aendert
+## Der Befund, der die Reihenfolge geaendert hat (behoben in acmesh-4g7)
 
-Unser `sh` ist heute kein Login-faehiger Shell-Ersatz:
+Unser `sh` war kein Login-faehiger Shell-Ersatz:
 
 - `internal/sh/sh.go` liest ohne `-c` die ganze Standardeingabe bis EOF und
   fuehrt sie einmal aus: keine Eingabeaufforderung, keine Zeilenschleife, kein
@@ -47,9 +47,15 @@ Ohne reproduzierbaren Bau bleibt jede Messung Handarbeit.
 - Ende: `podman run <tag> sh -c 'ls /; printf "b\na\n" | sort'` antwortet ohne
   Bind-Mounts und ohne PATH-Gebastel.
 
-## Stufe 1: Login-faehige Shell, damit Profile greifen (acmesh-4g7, P1)
+## Stufe 1: Login-faehige Shell, damit Profile greifen (acmesh-4g7, P1) - erledigt
 
-Der Schritt, den Martin als naechstes will. Kein WSL- oder Docker-Sonderweg.
+Gebaut am 22.11.2026: `-l`/`--login` lesen /etc/profile und dann ~/.profile
+(.bash_profile nur bei bash), Prompt aus PS1, Zeilenschleife mit Fortsetzung,
+Zustand bleibt ueber Zeilen, umask eingebaut. Belege in docs/measurements.md,
+Abschnitt "sh: Login-Modus". Login ueber den Aufrufnamen `-sh` geht nicht, weil
+der Dispatcher argv[0] auf "gosh" setzt: `-l` ist der Weg (acmesh-51b).
+
+Der urspruengliche Befund, der diese Stufe nach vorn holte:
 
 - Interaktive Schleife: Prompt aus PS1 (Vorgabe `# ` fuer root, `$ ` sonst),
   je Zeile parsen und ausfuehren, Exitcode merken.

@@ -1,107 +1,423 @@
 package sh
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
+	"sync"
+
+	"golang.org/x/term"
 
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/interp"
 	"mvdan.cc/sh/v3/syntax"
 )
 
-// runSh runs the shell that the policy applies to. It is mvdan's shell, so the
+// The startup files. They are variables so tests can point them at a temporary
+// directory instead of changing /etc/profile on the machine that runs them.
+var (
+	etcProfile = "/etc/profile"
+	homeEnv    = os.Getenv
+)
+
+// invocation is what the arguments asked for, before anything runs.
+type invocation struct {
+	command     string
+	scriptFile  string
+	positional  []string
+	interactive bool
+	login       bool
+}
+
+// Run runs the shell that the policy applies to. It is mvdan's shell, so the
 // language is POSIX-ish bash, but every file it opens, every program it starts
 // and every child those programs start lives inside the policy the process
 // applied before this function ran.
-func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
-	command := ""
-	var positional []string
-	var scriptFile string
-	interactive := false
-	for i := 0; i < len(args); i++ {
-		a := args[i]
-		if a == "-c" {
-			if i+1 >= len(args) {
-				fmt.Fprintln(stderr, "sh: -c needs a command string")
-				return 2
-			}
-			command = args[i+1]
-			positional = args[i+2:]
-			i = len(args)
-			continue
-		}
-		if a == "-i" {
-			interactive = true
-			continue
-		}
-		if a == "--help" {
-			fmt.Fprintln(stdout, "usage: sh [-c COMMAND] [SCRIPT [ARGS...]]")
-			fmt.Fprintln(stdout, "runs mvdan/sh inside the policy of this process")
-			return 0
-		}
-		if strings.HasPrefix(a, "-") && a != "-" {
-			fmt.Fprintf(stderr, "sh: unsupported option %q\n", a)
-			return 2
-		}
-		if command == "" && scriptFile == "" {
-			scriptFile = a
-			continue
-		}
-		positional = append(positional, a)
-	}
-	_ = interactive
+func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	return RunAs(os.Args[0], args, stdin, stdout, stderr)
+}
 
-	var src, name string
-	switch {
-	case command != "":
-		src, name = command, "<command>"
-	case scriptFile != "" && scriptFile != "-":
-		data, err := os.ReadFile(scriptFile)
-		if err != nil {
-			fmt.Fprintf(stderr, "sh: %v\n", err)
-			return 127
-		}
-		src, name = string(data), scriptFile
-	default:
-		data, err := io.ReadAll(stdin)
-		if err != nil {
-			fmt.Fprintf(stderr, "sh: %v\n", err)
-			return 1
-		}
-		src, name = string(data), "<stdin>"
+// RunAs is Run with an explicit argv[0]. A name that starts with a dash ("-sh")
+// is the classic way of asking for a login shell, and the tests need it.
+func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	inv, ok := parseArgs(args, stdout, stderr)
+	if !ok {
+		return 2
 	}
+	if inv.command == "" && inv.scriptFile == "" && !inv.interactive && isTerminal(stdin) {
+		inv.interactive = true
+	}
+	base := filepath.Base(argv0)
+	login := inv.login || strings.HasPrefix(base, "-")
+	bash := base == "bash" || base == "-bash"
 
-	dir, err := os.Getwd()
-	if err != nil {
-		dir = "/"
+	out := &switchWriter{w: stdout}
+	in := &switchReader{r: stdin}
+	env := os.Environ()
+	if inv.interactive {
+		// The parent process may export its own PS1; a shell must not inherit
+		// it. Start from the ash default, and let the profile override it.
+		env = withoutVar(env, "PS1")
+		env = append(env, "PS1="+defaultPrompt())
 	}
 	opts := []interp.RunnerOption{
-		interp.StdIO(stdin, stdout, stderr),
-		interp.Dir(dir),
-		interp.Env(expand.ListEnviron(os.Environ()...)),
+		interp.StdIO(in, out, stderr),
+		interp.Dir(workingDir()),
+		interp.Env(expand.ListEnviron(env...)),
 	}
-	if len(positional) > 0 {
-		opts = append(opts, interp.Params(positional...))
+	if len(inv.positional) > 0 {
+		opts = append(opts, interp.Params(inv.positional...))
 	}
+	if inv.interactive {
+		// Interactive makes the shell behave like one: it keeps the last exit
+		// status, does not stop at the first error and knows PS1.
+		opts = append(opts, interp.Interactive(true))
+	}
+	// umask is a builtin in ash and in every /etc/profile of this machine.
+	// mvdan/sh does not have one, so it is answered here, in-process.
+	opts = append(opts, interp.CallHandler(umaskCall(out, stderr)))
 	runner, err := interp.New(opts...)
 	if err != nil {
 		fmt.Fprintf(stderr, "sh: %v\n", err)
 		return 1
 	}
-	file, err := syntax.NewParser().Parse(strings.NewReader(src), name)
+
+	// Startup files run in the same runner as the session, so what they export
+	// is what the session sees.
+	for _, path := range startupFiles(login, bash, inv.interactive) {
+		if code, stop := runStartup(runner, path, stderr); stop {
+			return code
+		}
+	}
+
+	switch {
+	case inv.command != "":
+		return finish(runner, runSource(runner, inv.command, "<command>"), stderr)
+	case inv.scriptFile != "" && inv.scriptFile != "-":
+		data, err := os.ReadFile(inv.scriptFile)
+		if err != nil {
+			fmt.Fprintf(stderr, "sh: %v\n", err)
+			return 127
+		}
+		return finish(runner, runSource(runner, string(data), inv.scriptFile), stderr)
+	case inv.interactive:
+		in.swap(strings.NewReader(""))
+		return interactiveLoop(runner, stdin, in, out, stderr)
+	default:
+		data, err := io.ReadAll(in)
+		if err != nil {
+			fmt.Fprintf(stderr, "sh: %v\n", err)
+			return 1
+		}
+		return finish(runner, runSource(runner, string(data), "<stdin>"), stderr)
+	}
+}
+
+// parseArgs understands the flags a login shell is called with. Anything else
+// stays an error: a shell that swallows every typo hides what went wrong.
+func parseArgs(args []string, stdout, stderr io.Writer) (invocation, bool) {
+	var inv invocation
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case a == "-c":
+			if i+1 >= len(args) {
+				fmt.Fprintln(stderr, "sh: -c needs a command string")
+				return inv, false
+			}
+			inv.command = args[i+1]
+			inv.positional = args[i+2:]
+			return inv, true
+		case a == "-i":
+			inv.interactive = true
+		case a == "-l" || a == "--login":
+			inv.login = true
+		case a == "--":
+			rest := args[i+1:]
+			if len(rest) > 0 && inv.scriptFile == "" {
+				inv.scriptFile = rest[0]
+				inv.positional = append(inv.positional, rest[1:]...)
+			} else {
+				inv.positional = append(inv.positional, rest...)
+			}
+			return inv, true
+		case a == "--help":
+			usage(stdout)
+			return inv, false
+		case strings.HasPrefix(a, "-") && a != "-":
+			fmt.Fprintf(stderr, "sh: unsupported option %q\n", a)
+			return inv, false
+		default:
+			if inv.scriptFile == "" {
+				inv.scriptFile = a
+				continue
+			}
+			inv.positional = append(inv.positional, a)
+		}
+	}
+	return inv, true
+}
+
+// usage answers --help. It also carries the one decision a reader will ask
+// about: which startup file this shell reads.
+func usage(w io.Writer) {
+	fmt.Fprintln(w, "usage: sh [-c COMMAND] [-i] [-l|--login] [SCRIPT [ARGS...]]")
+	fmt.Fprintln(w, "runs mvdan/sh inside the policy of this process")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "  -c COMMAND   run COMMAND and exit")
+	fmt.Fprintln(w, "  -i           interactive: read one statement per line")
+	fmt.Fprintln(w, "  -l, --login  login shell: read /etc/profile, then the user profile")
+	fmt.Fprintln(w, "               (.profile; .bash_profile only when called as bash)")
+}
+
+// startupFiles is the list of files a shell reads before its first command, in
+// order. A login shell reads /etc/profile and then the user's file; an
+// interactive shell that is not a login shell reads $ENV, as POSIX says. A
+// plain script call reads nothing at all.
+func startupFiles(login, bash, interactive bool) []string {
+	var files []string
+	if login {
+		files = append(files, etcProfile)
+		if home := homeEnv("HOME"); home != "" {
+			name := ".profile"
+			if bash {
+				// bash's own convention; reading both would run the setup twice.
+				name = ".bash_profile"
+			}
+			files = append(files, filepath.Join(home, name))
+		}
+		return files
+	}
+	if interactive {
+		if env := homeEnv("ENV"); env != "" {
+			files = append(files, env)
+		}
+	}
+	return files
+}
+
+// runStartup runs one startup file. A missing file is not an error (a container
+// has no /etc/profile), an unreadable one is reported but does not end the
+// session, and "exit" in a profile really ends it.
+func runStartup(r *interp.Runner, path string, stderr io.Writer) (int, bool) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			fmt.Fprintf(stderr, "sh: %v\n", err)
+		}
+		return 0, false
+	}
+	err = runSource(r, string(data), path)
+	if r.Exited() {
+		return exitCode(err), true
+	}
 	if err != nil {
 		fmt.Fprintf(stderr, "sh: %v\n", err)
-		return 2
 	}
-	if err := runner.Run(context.Background(), file); err != nil {
-		if status, ok := interp.IsExitStatus(err); ok {
-			return int(status)
+	return 0, false
+}
+
+// interactiveLoop reads statements until EOF, prints the prompt before each
+// one and keeps the session alive after a failing command. It reads lines
+// itself instead of using the parser's sequence API: a test with a plain
+// strings.Reader has to behave exactly like a terminal.
+func interactiveLoop(r *interp.Runner, stdin io.Reader, in *switchReader, out *switchWriter, stderr io.Writer) int {
+	// The session's input belongs to this loop: the shell gets an empty reader,
+	// otherwise it buffers lines for its own commands and the session loses one.
+	reader := bufio.NewReader(stdin)
+	var pending strings.Builder
+	out.WriteString(promptString(r, in, out))
+	for {
+		line, readErr := reader.ReadString('\n')
+		if line == "" && readErr != nil {
+			return 0
 		}
-		fmt.Fprintf(stderr, "sh: %v\n", err)
-		return 1
+		pending.WriteString(line)
+		src := pending.String()
+		file, err := syntax.NewParser().Parse(strings.NewReader(src), "<stdin>")
+		if err != nil {
+			if syntax.IsIncomplete(err) {
+				out.WriteString("> ")
+				if readErr != nil {
+					return 0
+				}
+				continue
+			}
+			fmt.Fprintf(stderr, "sh: %v\n", err)
+			pending.Reset()
+			out.WriteString(promptString(r, in, out))
+			if readErr != nil {
+				return 0
+			}
+			continue
+		}
+		pending.Reset()
+		runErr := runStatements(r, file)
+		if r.Exited() {
+			return exitCode(runErr)
+		}
+		if runErr != nil {
+			fmt.Fprintf(stderr, "sh: %v\n", runErr)
+		}
+		out.WriteString(promptString(r, in, out))
+		if readErr != nil {
+			return 0
+		}
+	}
+}
+
+// promptString is PS1 when the profile set one, otherwise the ash default. The
+// value is expanded by the shell itself, so a profile can use $USER or $PWD.
+func promptString(r *interp.Runner, in *switchReader, out *switchWriter) string {
+	var buf strings.Builder
+	prevOut := out.swap(&buf)
+	// The prompt is expanded without giving the shell the session input: an
+	// interactive runner may read ahead, and the session would lose a line.
+	prevIn := in.swap(strings.NewReader(""))
+	_ = runSource(r, `printf '%s' "$PS1"`, "<prompt>")
+	in.swap(prevIn)
+	out.swap(prevOut)
+	if s := buf.String(); s != "" {
+		return s
+	}
+	return defaultPrompt()
+}
+
+// defaultPrompt is what ash prints when no profile set PS1.
+func defaultPrompt() string {
+	if os.Geteuid() == 0 {
+		return "# "
+	}
+	return "$ "
+}
+
+// withoutVar returns the environment with every definition of name removed.
+func withoutVar(env []string, name string) []string {
+	prefix := name + "="
+	out := env[:0:0]
+	for _, kv := range env {
+		if !strings.HasPrefix(kv, prefix) {
+			out = append(out, kv)
+		}
+	}
+	return out
+}
+
+// runSource parses and runs one chunk of shell code.
+func runSource(r *interp.Runner, src, name string) error {
+	file, err := syntax.NewParser().Parse(strings.NewReader(src), name)
+	if err != nil {
+		return err
+	}
+	return runStatements(r, file)
+}
+
+// runStatements runs one statement at a time. Passing a whole *syntax.File to
+// Runner.Run implies an exit - the runner is then spent, and the next line of
+// an interactive session would do nothing. Statements keep the session alive,
+// and the variables, options and directory with it.
+func runStatements(r *interp.Runner, file *syntax.File) error {
+	var last error
+	for _, stmt := range file.Stmts {
+		last = r.Run(context.Background(), stmt)
+		if r.Exited() {
+			return last
+		}
+		if last != nil {
+			if _, ok := interp.IsExitStatus(last); !ok {
+				return last
+			}
+		}
+	}
+	return last
+}
+
+// finish turns the last error into the process exit code.
+func finish(_ *interp.Runner, err error, stderr io.Writer) int {
+	if err == nil {
+		return 0
+	}
+	if status, ok := interp.IsExitStatus(err); ok {
+		return int(status)
+	}
+	fmt.Fprintf(stderr, "sh: %v\n", err)
+	return 1
+}
+
+func exitCode(err error) int {
+	if status, ok := interp.IsExitStatus(err); ok {
+		return int(status)
 	}
 	return 0
+}
+
+func workingDir() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "/"
+	}
+	return dir
+}
+
+// isTerminal decides whether a call without a command is interactive: a shell
+// on a terminal waits for input, a shell on a pipe reads it to the end.
+func isTerminal(r io.Reader) bool {
+	f, ok := r.(*os.File)
+	if !ok {
+		return false
+	}
+	return term.IsTerminal(int(f.Fd()))
+}
+
+// switchWriter lets the shell's own output go somewhere else for a moment. The
+// prompt is expanded by the shell, and that needs the same runner without
+// leaking the output into the session.
+type switchWriter struct {
+	mu sync.Mutex
+	w  io.Writer
+}
+
+func (s *switchWriter) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.w.Write(p)
+}
+
+func (s *switchWriter) WriteString(str string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, _ = io.WriteString(s.w, str)
+}
+
+func (s *switchWriter) swap(w io.Writer) io.Writer {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	prev := s.w
+	s.w = w
+	return prev
+}
+
+// switchReader does the same for input: the prompt needs the shell to run
+// without touching the session's stdin.
+type switchReader struct {
+	mu sync.Mutex
+	r  io.Reader
+}
+
+func (s *switchReader) Read(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.r.Read(p)
+}
+
+func (s *switchReader) swap(r io.Reader) io.Reader {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	prev := s.r
+	s.r = r
+	return prev
 }

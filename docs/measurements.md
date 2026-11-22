@@ -3840,3 +3840,58 @@ Stichproben gegen BusyBox 1.37.0 im Alpine-Container, gleiche Aufrufe:
   "flag provided but not defined: -f", Exit 2.
 - Alle drei Abweichungen stehen als eigenes Ticket, weil sie Ausgabeformate
   sind, die Skripte lesen, und nicht nur fehlende Namen.
+
+## sh: Login-Modus, Startdateien und eine Sitzung, die bleibt (22.11.2026, acmesh-4g7)
+
+Befund vorher (am Quelltext, nicht vermutet): `internal/sh` las ohne `-c` die
+ganze Standardeingabe bis EOF und fuehrte sie einmal aus; `-i` wurde geparst
+und verworfen; Startdateien wurden nicht gelesen. u-root-gosh hilft nicht, sein
+interaktiver Teil ist `errNotImplemented`.
+
+Umgesetzt:
+
+- `-l` und `--login` lesen /etc/profile, dann ~/.profile; heisst die Shell
+  `bash`, ~/.bash_profile statt ~/.profile (beide zu lesen wuerde die Einrichtung
+  doppelt ausfuehren).
+- Ein interaktiver Aufruf ohne Login liest `$ENV`, wie POSIX es vorsieht.
+- Ein fehlendes Profil ist kein Fehler (ein leeres Image hat keines); `exit` im
+  Profil beendet die Sitzung mit dem Exitcode.
+- Prompt aus PS1, Vorgabe `# ` fuer root und `$ ` sonst; eine von aussen
+  geerbte PS1 wird entfernt; bei unfertiger Eingabe (for/if/heredoc) `> `.
+- Zustand bleibt ueber Zeilen: `x=7` in einer Zeile, `echo $x` in der naechsten
+  gibt `7`.
+- `umask` fehlte in mvdan/sh und wird von jedem /etc/profile aufgerufen; jetzt
+  als eingebauter Befehl (oktal, Abfrage und `-p`); Symbolik meldet ehrlich
+  "not supported", Windows meldet "not supported on Windows".
+
+Zwei eigene Fehler, die erst die Tests zeigten:
+
+- Ein ganzer `*syntax.File` an `Runner.Run` bedeutet "exit": der Interpreter ist
+  danach verbraucht, die naechste Zeile tut nichts. `Runner.Reset()` dazwischen
+  "repariert" das nur scheinbar - Reset loescht Variablen, Optionen und das
+  Verzeichnis. Richtig ist, die Statements einzeln zu fahren (`runStatements`).
+- Der Interpreter puffert stdin fuer eigene Befehle und stiehlt der Sitzung eine
+  Zeile; das war zu einem Drittel der Testlaeufe zu sehen. Die Leseschleife
+  liest jetzt die Roh-Eingabe, und die Shell bekommt einen leeren Leser.
+
+Belege am gebauten Binary (Linux, 17166563 Bytes, +20480 gegen 17146083;
+Windows 17196544, +17920):
+
+- Pipe: `printf 'echo eins\necho zwei\nx=7\necho x=$x\n' | ./akmesh sh -i`
+  druckt `# eins`, `# zwei`, dann `# x=7`, Exit 0.
+- Mehrzeilig: `for i in a b; do` zeigt `> `, danach `teil a` und `teil b`.
+- Echtes Terminal (pty): Prompt `# `, getippte Zeile wird ausgefuehrt, naechster
+  Prompt erscheint.
+- Login mit dem echten /etc/profile (Alpine): `umask` gibt `0022` und keine
+  Fehlermeldung mehr; PATH kommt aus dem Profil.
+- Container (alpine, Binary eingebunden): `sh -l -c 'echo "PATH=$PATH"; umask'`
+  -> PATH aus /etc/profile, `0022`; ein eigenes ~/.profile im Container setzt
+  `MARK=im-container` und das ist in der Sitzung sichtbar.
+- Tests: 13 Faelle in internal/sh (Reihenfolge der Profile, .bash_profile,
+  fehlendes Profil, exit im Profil, Zeilenschleife, Fehler ueberlebt, PS1,
+  Zustand ueber Zeilen, umask in drei Faellen, unbekannte Option).
+
+Grenzen, offen als Ticket acmesh-51b: in der Sitzung liest das builtin `read`
+nichts, weil die Shell einen leeren Leser bekommt; und `$0` ist in jedem Aufruf
+`gosh`, weil der Dispatcher argv[0] setzt - der Login ueber den Namen `-sh` ist
+damit nicht erreichbar, `-l`/`--login` ist der Weg.

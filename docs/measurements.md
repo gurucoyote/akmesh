@@ -3615,3 +3615,12 @@ beide denselben Prozess sehen.
   windows 17173504 (vorher 17163264, +10240).
 - Gatter: go test ./... grün, gofmt sauber, Batterie 211 Checks 0 Fehler,
   Hilfe-Audit exit 0.
+
+## Referenz-Image fuer GNU-Vergleiche gepinnt (22.11.2026, acmesh-ytk)
+
+Das wandernde Tag debian:stable-slim lieferte im November 2026 nacheinander
+coreutils 9.1, 9.4 und 9.7. Ab jetzt steht das Image mit Digest in
+docs/reference-image.txt, samt Debian-Version (13.7) und den Werkzeugversionen
+(coreutils 9.7, sed 4.9, grep 3.11, tar 1.35, procps-ng 4.0.4 per apt). Neue
+Messabschnitte nennen die Version des verglichenen Werkzeugs; aeltere Abschnitte
+bleiben als Historie stehen.

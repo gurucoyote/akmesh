@@ -1,0 +1,43 @@
+Referenz-Image für alle GNU-Vergleiche
+=====================================
+
+Warum: "gegen GNU gemessen" ist nur reproduzierbar, wenn das Image feststeht.
+debian:stable-slim ist ein wanderndes Tag; am 18.11.2026 lieferte es coreutils
+9.1 (aus rust:1-slim-bookworm) und 9.4, am 22.11.2026 coreutils 9.7.
+
+Stand 22.11.2026
+-----------------
+Image:    docker.io/library/debian:stable-slim
+Digest:   sha256:cd9f2189b62dc5ce003b22ad8cb109bbc3cef8ddcc8bc13771472a6edeb16980
+Debian:   13.7
+Erstellt: 2026-11-04
+
+Werkzeuge im Image (gemessen mit "<werkzeug> --version"):
+  GNU coreutils 9.7   (sort, base64, stat, cp, mv, rm, tr, wc, ...)
+  GNU sed 4.9
+  GNU grep 3.11
+  GNU tar 1.35
+  procps-ng 4.0.4     (nicht im Image enthalten, per apt nachinstalliert)
+
+Aufruf
+------
+  podman run --rm -i -v /tmp/probe:/w:ro,Z \
+    docker.io/library/debian@sha256:cd9f2189b62dc5ce003b22ad8cb109bbc3cef8ddcc8bc13771472a6edeb16980 \
+    <befehl>
+
+  Für Prozessvergleiche zusätzlich --pid=host, damit beide dieselben Prozesse
+  sehen.
+
+Erneuern
+--------
+1. podman pull docker.io/library/debian:stable-slim
+2. podman image inspect docker.io/library/debian:stable-slim \
+     --format '{{index .RepoDigests 0}}'
+3. Dieses Dokument mit neuem Digest, Debian-Version und Werkzeugversionen
+   überschreiben.
+4. In jedem Messabschnitt, der neu entsteht, die Version des verglichenen
+   Werkzeugs nennen (Beispiel: "GNU coreutils 9.7").
+
+Ältere Abschnitte in docs/measurements.md nennen teils coreutils 9.1, 9.4 oder
+grep 3.11 ohne Digest; sie bleiben als Historie stehen und werden nicht
+nachträglich umgeschrieben.

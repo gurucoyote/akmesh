@@ -67,6 +67,9 @@ reach for powershell or python, which is worse than a slightly larger binary.
 
 - A build is not a proof. The binary is run on the target: on Linux directly,
   on Windows from this WSL shell (`./akmesh.exe ls C:/Windows`), which needs no wine.
+- GNU comparisons run in the pinned reference container: image plus digest and
+  the tool version are in `docs/reference-image.txt`, and each measurement
+  section names the version it compared against.
 - Every behaviour claim in a report names the command that produced it.
 - A command that u-root ships with different flags is a finding, not a bug in
   akmesh: `find` has no `-maxdepth`, `head` has no `-3`. Record it in

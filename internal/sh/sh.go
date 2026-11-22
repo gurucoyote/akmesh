@@ -31,6 +31,7 @@ type invocation struct {
 	positional  []string
 	interactive bool
 	login       bool
+	showHelp    bool
 }
 
 // Run runs the shell that the policy applies to. It is mvdan's shell, so the
@@ -47,6 +48,10 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 	inv, ok := parseArgs(args, stdout, stderr)
 	if !ok {
 		return 2
+	}
+	if inv.showHelp {
+		usage(stdout)
+		return 0
 	}
 	if inv.command == "" && inv.scriptFile == "" && !inv.interactive && isTerminal(stdin) {
 		inv.interactive = true
@@ -145,9 +150,9 @@ func parseArgs(args []string, stdout, stderr io.Writer) (invocation, bool) {
 				inv.positional = append(inv.positional, rest...)
 			}
 			return inv, true
-		case a == "--help":
-			usage(stdout)
-			return inv, false
+		case a == "--help" || a == "-h":
+			inv.showHelp = true
+			return inv, true
 		case strings.HasPrefix(a, "-") && a != "-":
 			fmt.Fprintf(stderr, "sh: unsupported option %q\n", a)
 			return inv, false

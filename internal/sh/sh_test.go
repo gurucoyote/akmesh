@@ -202,3 +202,17 @@ func TestInteractiveKeepsShellState(t *testing.T) {
 		t.Fatalf("state lost between lines, output %q", out.String())
 	}
 }
+
+// TestHelpEndsZero: the help audit asks every command for --help and -h and
+// fails on a non-zero exit; a help text that ends with 2 is not help.
+func TestHelpEndsZero(t *testing.T) {
+	for _, flag := range []string{"--help", "-h"} {
+		var out, errb bytes.Buffer
+		if code := RunAs("sh", []string{flag}, strings.NewReader(""), &out, &errb); code != 0 {
+			t.Fatalf("%s exit %d, want 0", flag, code)
+		}
+		if !strings.Contains(out.String(), "usage: sh") {
+			t.Fatalf("%s printed %q, want a usage line", flag, out.String())
+		}
+	}
+}

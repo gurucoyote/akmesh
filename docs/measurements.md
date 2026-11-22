@@ -3891,6 +3891,10 @@ Windows 17196544, +17920):
   fehlendes Profil, exit im Profil, Zeilenschleife, Fehler ueberlebt, PS1,
   Zustand ueber Zeilen, umask in drei Faellen, unbekannte Option).
 
+- `sh --help` und `sh -h` drucken die Hilfe und enden mit 0 (vorher 2: der
+  Hilfe-Audit meldete beide Namen zu Recht).
+- Gatter: go test gruen, Hilfe-Audit exit 0, Batterie 211 Checks 0 Fehler.
+
 Grenzen, offen als Ticket acmesh-51b: in der Sitzung liest das builtin `read`
 nichts, weil die Shell einen leeren Leser bekommt; und `$0` ist in jedem Aufruf
 `gosh`, weil der Dispatcher argv[0] setzt - der Login ueber den Namen `-sh` ist

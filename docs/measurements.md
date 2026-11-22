@@ -3624,3 +3624,32 @@ docs/reference-image.txt, samt Debian-Version (13.7) und den Werkzeugversionen
 (coreutils 9.7, sed 4.9, grep 3.11, tar 1.35, procps-ng 4.0.4 per apt). Neue
 Messabschnitte nennen die Version des verglichenen Werkzeugs; aeltere Abschnitte
 bleiben als Historie stehen.
+
+## akmesh als minimales System im Container (22.11.2026, acmesh-w6d)
+
+Proben mit dem gebauten Binary, nicht mit einer Erwartung.
+
+- Der Standardbau ist dynamisch gegen musl: `ldd /akmesh` im Alpine-Container
+  nennt `/lib/ld-musl-x86_64.so.1`. In debian stable-slim antwortet die Shell
+  deshalb `sh: 1: /akmesh: not found` - der Loader fehlt, nicht die Datei.
+- Ursache sind die cgo-Pakete `net`, `os/user`, `runtime/cgo` (gezaehlt mit
+  `go list -deps`). Mit CGO_ENABLED=0 baut das Skript unveraendert; die Groesse
+  faellt von 17096931 auf 17035388 Bytes.
+- Dieses statische Binary laeuft in einem leeren Image (per `podman import`
+  aus einer leeren tar gebaut): `/akmesh sh -c 'echo static-ok'` antwortet.
+- Mit Applet-Symlinks (`/bin/ls -> /akmesh` usw.) und PATH=/bin laeuft ein
+  richtiges Skript: `ls /`, `printf "b\na\n" | sort` (a, b), `ps -e`, `wc -w`
+  (3), `date -u`. Dazu braucht es nur einen Mount von /proc (fuer ps) - den
+  legt der Container-Laufzeit an, nicht akmesh.
+- Was fehlt, sobald das Image leer ist:
+  `id` bricht mit `open /etc/passwd: no such file or directory` ab (kein
+  Rueckfall auf die nackte UID), `cat /etc/passwd` ebenso; curl/ssh brauchen
+  /etc/resolv.conf und das CA-Bundle; /dev/null legt podman an, akmesh kann es
+  nicht (kein mknod, kein mdev).
+- Nicht vorhanden und fuer ein bootendes System noetig: init/PID1 (kein
+  Zombie-Reaping), mount, mdev, ip/ifconfig, login/passwd, chroot, flock, fuser.
+- Windows: alles aus scripts/cmds.txt baut mit; nur die Liste
+  scripts/cmds-linux-only.txt (df du free hostname kill ps sync timeout uname)
+  ist ausgenommen, wobei kill und ps inzwischen eigene Windows-Fassungen haben.
+  Nicht uebertragbar bleiben mount, mdev, init als PID1, chroot, ip/ifconfig
+  (Windows-API), login/passwd (Windows-Konten).

@@ -88,6 +88,18 @@ MAKEBB_VERSION=v0.6.0
 # (acmesh-4ne), which the library's Go-flavoured engine does not.
 "$ROOT/scripts/apply-go-sed-fork.sh"
 
+# rg runs on gripgrep, pinned. Its GitHub mirror ended at v0.17.0 while the
+# forge had v0.17.3, so the version is checked against the build list instead
+# of being assumed from "@latest" (acmesh-55u). A different version is a
+# decision, not an accident: change it here and in go.mod together.
+GRIPGREP_VERSION=v0.17.3
+GRIPGREP_HAVE=$(cd "$ROOT" && go list -m -f '{{.Version}}' git.site.quack-lab.dev/dave/gripgrep 2>/dev/null || true)
+if [ "$GRIPGREP_HAVE" != "$GRIPGREP_VERSION" ]; then
+	echo "gripgrep: build list has '${GRIPGREP_HAVE:-nothing}', pinned is $GRIPGREP_VERSION" >&2
+	echo "the module comes from git.site.quack-lab.dev/dave/gripgrep; see acmesh-55u" >&2
+	exit 1
+fi
+
 MAKEBB="$GOPATH/bin/makebb"
 if [ ! -x "$MAKEBB" ]; then
 	MAKEBB="$GOPATH/bin/makebb.exe"
@@ -265,7 +277,7 @@ export GOWORK="$WORKFILE"
 
 # Every name our own tools provide. Where u-root also builds the same name for
 # the target, u-root wins: it is already in the list and needs no extra bytes.
-OURS_ALL="awk basename certinfo ls head find grep chmod cp echo false curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall mkcert md5sum nl patch ps sed sha1sum sha256sum sha512sum shuf sort split stat sync tac timeout truncate uname verify wget sh policy ssh scp pwd true xargs tar hexdump base64 wc tr touch tracedeps any2md html2md httpd docx2md rtf2md pdf2md md2txt-l md2pdf md2docx md2epub epub2md pdf2html html2docx html2epub epub2html"
+OURS_ALL="awk basename certinfo ls head find grep chmod cp echo false curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall mkcert md5sum nl patch ps sed rg sha1sum sha256sum sha512sum shuf sort split stat sync tac timeout truncate uname verify wget sh policy ssh scp pwd true xargs tar hexdump base64 wc tr touch tracedeps any2md html2md httpd docx2md rtf2md pdf2md md2txt-l md2pdf md2docx md2epub epub2md pdf2html html2docx html2epub epub2html"
 
 PROFILE_FILE="$ROOT/scripts/profiles/$PROFILE.txt"
 if [ ! -f "$PROFILE_FILE" ]; then

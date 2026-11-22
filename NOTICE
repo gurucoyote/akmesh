@@ -38,10 +38,13 @@ follows is the notice, not a replacement for the text.
    github.com/benhoyt/goawk v1.31.0            MIT, Copyright (c) 2022 Ben Hoyt
    github.com/bluekeyes/go-gitdiff v0.9.0      MIT, Copyright (c) 2019 Billy Keyes
    github.com/go-swiss/fonts                   MIT, Copyright (c) 2022 Stephen Afam-Osemene
+   github.com/grafana/regexp                   BSD-3-Clause, Copyright 2009 The Go Authors
    github.com/itchyny/gojq v0.12.20            MIT, Copyright (c) 2019-2026 itchyny
    github.com/itchyny/timefmt-go v0.1.9        MIT, Copyright (c) 2020-2026 itchyny
    github.com/jellydator/ttlcache/v3 v3.4.0    MIT, Copyright (c) 2022 Jellydator
+   github.com/petar-dambovaliev/aho-corasick   MIT, Copyright (c) 2021 Petar Dambovaliev
    github.com/phpdave11/gofpdf v1.4.3          MIT, Copyright (c) 2020 David Barnes
+   github.com/rivo/uniseg v0.4.7               MIT, Copyright (c) 2019 Oliver Kuederle
    github.com/rwtodd/Go.Sed                    MIT
    github.com/stephenafamo/goldmark-pdf v0.4.2 MIT, Copyright (c) 2020 Stephen Afam-Osemene
    github.com/yuin/goldmark v1.8.7             MIT, Copyright (c) 2019 Yusuke Inuzuka
@@ -51,6 +54,19 @@ follows is the notice, not a replacement for the text.
    goldmark-pdf is not used as published: chroma and the Google font download
    are removed, the changes are in docs/design/patches/. The licence is MIT in
    either form.
+
+6. gripgrep (the library behind "rg")
+   Source:  git.site.quack-lab.dev/dave/gripgrep
+   Pinned:  v0.17.3
+   Licence: MIT, Copyright (c) 2026 Steve Yackey (yackey-labs)
+   Used as: the walk, search and printer packages behind "rg", linked
+            unmodified; no fork, no patch.
+
+   gripgrep is an independent Go implementation that ports algorithm designs,
+   semantics and test cases from ripgrep (https://github.com/BurntSushi/ripgrep),
+   authored by Andrew Gallant. ripgrep is dual-licensed UNLICENSE/MIT,
+   Copyright (c) 2015 Andrew Gallant. The module carries the full ripgrep
+   notice in its own LICENSE-THIRD-PARTY; the copyright lines are these.
 
 What a distributed binary has to carry: the notices above with their
 copyright lines, and the licence texts. A build that ships akmesh without them

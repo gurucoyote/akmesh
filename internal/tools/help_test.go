@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"akmesh/internal/rgcmd"
 	"akmesh/internal/usage"
 )
 
@@ -51,9 +52,15 @@ func readBack(t *testing.T, f *os.File) string {
 // still fails for the command the author meant.
 func TestEveryUsageTextBelongsToACommand(t *testing.T) {
 	for name := range usage.Texts {
-		if _, ok := Commands[name]; !ok {
-			t.Errorf("usage text for %q, but no command of that name exists", name)
+		if _, ok := Commands[name]; ok {
+			continue
 		}
+		if standalone[name] {
+			// A package of its own reaches its text through usage.Run in its
+			// own main; TestRGHelpAnswer runs that path for rg.
+			continue
+		}
+		t.Errorf("usage text for %q, but no command of that name exists", name)
 	}
 }
 
@@ -63,6 +70,9 @@ func TestEveryUsageTextBelongsToACommand(t *testing.T) {
 // error instead (acmesh-py8).
 func TestEveryCommandWithTextAnswersHelp(t *testing.T) {
 	for name := range usage.Texts {
+		if standalone[name] {
+			continue
+		}
 		stdout, stderr, code := runThroughDispatcher(t, name, "--help")
 		want := usage.ExitCode(name)
 		if code != want {
@@ -156,6 +166,22 @@ func TestDashHIsHelpOnlyWhereTheOriginalSaysSo(t *testing.T) {
 	stdout, _, _ = runThroughDispatcher(t, "basename", "-h")
 	if stdout != "-h\n" {
 		t.Errorf("basename -h: stdout %q, want %q", stdout, "-h\n")
+	}
+}
+
+// TestRGHelpAnswer runs rg's real entry point (usage.RunIO around rgcmd.Run),
+// because rg is a package of its own and never passes through the tools table.
+func TestRGHelpAnswer(t *testing.T) {
+	var stdout, stderr strings.Builder
+	code := usage.RunIO("rg", []string{"--help"}, strings.NewReader(""), &stdout, &stderr, rgcmd.Run)
+	if code != 0 {
+		t.Fatalf("rg --help: exit %d, want 0 (stderr %q)", code, stderr.String())
+	}
+	if !strings.HasPrefix(stdout.String(), "Usage: rg ") {
+		t.Fatalf("rg --help: stdout %q, want a Usage line", firstLine(stdout.String()))
+	}
+	if stderr.String() != "" {
+		t.Fatalf("rg --help wrote to stderr: %q", stderr.String())
 	}
 }
 

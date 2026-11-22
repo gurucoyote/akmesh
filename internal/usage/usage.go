@@ -266,6 +266,33 @@ var Texts = map[string]Entry{
 		"",
 		"Print the current working directory.",
 	},
+	"rg": {
+		"[-i] [-F] [-w] [-n] [-l] [-c] [-o] [-A N] [-B N] [-C N] [-g GLOB] [-t TYPE] PATTERN [PATH...]",
+		"Recursive, gitignore-aware search over text files; no -r needed.\n" +
+			"Exit 0 on a match, 1 on none, 2 on an error.\n" +
+			"  -e PATTERN          add a pattern (repeatable)\n" +
+			"  -i, --ignore-case   case-insensitive\n" +
+			"  -S, --smart-case    case-insensitive unless the pattern has uppercase\n" +
+			"  -F, --fixed-strings PATTERN is literal, not a regexp\n" +
+			"  -w, --word-regexp   match whole words only\n" +
+			"  -x, --line-regexp   match whole lines only\n" +
+			"  -v, --invert-match  print non-matching lines\n" +
+			"  -n, --line-number   print line numbers (off when the output is piped)\n" +
+			"  -l, --files-with-matches  print only the names of matching files\n" +
+			"  -c, --count         print the match count per file\n" +
+			"  -o, --only-matching print only the matching part of a line\n" +
+			"  -A/-B/-C N          N lines of after/before/both context\n" +
+			"  -m N, --max-count   stop after N matches per file\n" +
+			"  -d N, --max-depth   descend at most N directory levels\n" +
+			"  -g GLOB, --glob     include (or exclude with !GLOB) paths\n" +
+			"  -t TYPE / -T TYPE   include / exclude a known file type (go, py, ...)\n" +
+			"      --files         list the files that would be searched\n" +
+			"      --hidden        also search dot-files\n" +
+			"      --no-ignore     ignore .gitignore, .ignore and .rgignore\n" +
+			"  -j N, --threads     worker count\n" +
+			"Not built (unlike ripgrep): PCRE2, --type-add/--type-clear, --encoding,\n" +
+			"and the global gitignore file (core.excludesFile).",
+	},
 	"sed": {
 		"[-n] [-i] [-E] (-e SCRIPT | SCRIPT) [FILE...]",
 		"  -e, --expression=SCRIPT  add SCRIPT (repeatable)\n" +

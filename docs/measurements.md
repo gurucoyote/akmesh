@@ -3514,3 +3514,35 @@ Grenze, die offen bleibt und im Fehlertext steht: Rückverweise im Suchmuster
 Gatter: go test ./... grün, gofmt sauber, Batterie 211 Checks Linux und 189
 Checks Windows, 0 Fehler, help-audit --check exit 0. Größe linux 16371939
 Bytes (vorher 16363747, also +8192), windows 16433664 (vorher 16422400).
+
+## rg: ripgrep-Syntax auf der gripgrep-Fassade (22.11.2026, acmesh-55u)
+
+Gegen das installierte ripgrep 15.1.0 gemessen, nicht gegen eine Erwartung.
+
+- 26 Vergleichsfälle, Ausgabe als sortierte Menge (der Walker läuft parallel,
+  die Reihenfolge ist kein Vertrag) plus Exitcode: rekursiv, -n, -c, -l, -F,
+  -w, -x, -i, -S, -v, -A/-B/-C, -m, -o, -g (auch mit !), -t, -d, --hidden,
+  --no-ignore, --files, --files -g, zwei -e, zwei Pfade, kein Treffer. Alle 26
+  grün: `cd internal/rgcmd && go test -run TestMatchesRipgrep -v -count=1 .`
+  (ohne rg im PATH überspringt der Test mit Meldung, er wird nicht still grün).
+- Exitcodes: 0 bei Treffer, 1 ohne, 2 bei kaputtem Muster und bei fehlendem
+  Pfad (`go test -run TestExitCodes .`).
+- Probe am echten Baum:
+  `diff <(./akmesh rg -n -t go 'func Run' internal | sort) <(rg -n -t go 'func Run' internal | sort)`
+  -> identisch, 65 Zeilen. `./akmesh rg -c 'func ' internal` nennt 268 Dateien,
+  `./akmesh rg --files .` 414 Dateien.
+- rg im Sammel-Binary: `./akmesh rg --help` exit 0, `./akmesh gibtsnicht` listet
+  " - rg" unter "Files and text:", `./scripts/help-audit.sh --check ./akmesh`
+  exit 0.
+- Windows (akmesh.exe aus dieser WSL-Shell, ohne wine):
+  `./akmesh.exe rg -n 'for 16' C:/Windows/win.ini` -> `1:; for 16-bit app
+  support` exit 0, CRLF bleibt im Treffer; `./akmesh.exe rg --files
+  C:/Windows/System32/drivers/etc` listet 5 Dateien mit "/" als Trenner.
+- Größe: linux 17080547 Bytes (vorher 16371939, +708608),
+  windows 17157120 Bytes (vorher 16433664, +723456). Warnlinie 25 MB,
+  harte Grenze 30 MB.
+- Batterie: `./scripts/test-akmesh.sh ./akmesh` -> 211 Checks, 0 Fehler.
+
+Was das Kommando bewusst nicht nachbaut (steht so in `rg --help`): PCRE2,
+--type-add/--type-clear, --encoding, die globale gitignore-Datei
+(core.excludesFile), --json und -q.

@@ -3,6 +3,7 @@ module akmesh
 go 1.27.1
 
 require (
+	git.site.quack-lab.dev/dave/gripgrep v0.17.3
 	github.com/benhoyt/goawk v1.31.0
 	github.com/bluekeyes/go-gitdiff v0.9.0
 	github.com/go-opentype/fonts v0.14.0
@@ -19,7 +20,6 @@ require (
 )
 
 require (
-	git.site.quack-lab.dev/dave/gripgrep v0.17.3 // indirect
 	github.com/andybalholm/brotli v1.2.6 // indirect
 	github.com/go-swiss/fonts v0.0.0-20230807175105-90067c2f5042 // indirect
 	github.com/grafana/regexp v0.0.0-20250905101755-5eb4f3acbf71 // indirect

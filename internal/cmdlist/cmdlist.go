@@ -92,6 +92,7 @@ var groups = map[string]string{
 	"patch":     Files,
 	"readlink":  Files,
 	"realpath":  Files,
+	"rg":        Files,
 	"rm":        Files,
 	"sed":       Files,
 	"seq":       Files,

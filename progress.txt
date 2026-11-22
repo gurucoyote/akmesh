@@ -214,3 +214,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-22: Produktname per AKMESH_NAME konfigurierbar (Binary, Meldungen, User-Agent, shuf/jq), Zertifikats-Issuer per -org/AKMESH_CERT_ORG zur Laufzeit (acmesh-9if).
 2026-11-22: grep -r Anzeigepfade: filepath.Rel statt TrimPrefix, Punktverzeichnisse und absolute Wurzeln repariert, auf Linux und Windows gemessen (acmesh-6nl).
 2026-11-22: sed spricht GNU-Dialekt: Go.Sed als Patch geforkt (BRE, \1 und &, linkeste/laengste Trefferwahl, "." ueber Zeilenumbruch), 13 von 13 Faellen bytegleich mit GNU sed 4.9 aus dem Debian-Container, Linux und Windows gebaut (acmesh-4ne).
+2026-11-22: rg gebaut: eigener Befehl auf gripgreps walk/search/printer-Fassade (26 Faelle sortiert gleich mit ripgrep 15.1.0, Exitcodes 0/1/2, rg --help, Linux und Windows gebaut); Preprocessor-Naht bleibt fuer acmesh-idv offen (acmesh-55u).

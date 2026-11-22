@@ -7,6 +7,17 @@ import (
 	"testing"
 )
 
+// standalone are the commands that are whole packages of their own: they have
+// no entry in the tools table, the multicall binary reaches them through
+// cmd/<name>, and they answer their own --help.
+var standalone = map[string]bool{
+	"html2md": true, "docx2md": true, "rtf2md": true, "pdf2md": true,
+	"md2txt-l": true, "md2pdf": true, "md2docx": true, "md2epub": true,
+	"epub2md": true, "gibtsnicht": true, "httpd": true, "tracedeps": true,
+	"epub2html": true, "html2epub": true, "pdf2html": true, "html2docx": true,
+	"any2md": true, "rg": true,
+}
+
 // TestCommandTableMatchesEntryPoints checks the wiring the akmesh binary depends
 // on. The table dispatches a name to a Func, but the binary only reaches that
 // Func through cmd/<name>/main.go; a table entry without that package, or a main
@@ -60,14 +71,8 @@ func TestCommandTableMatchesEntryPoints(t *testing.T) {
 	// document and server commands are whole packages of their own with their own
 	// signature; the multicall binary reaches them through cmd/<name>, and the
 	// loop above already proved that their main calls that package. Demanding a
-	// table entry for them asserted something that was never true.
-	standalone := map[string]bool{
-		"html2md": true, "docx2md": true, "rtf2md": true, "pdf2md": true,
-		"md2txt-l": true, "md2pdf": true, "md2docx": true, "md2epub": true,
-		"epub2md": true, "gibtsnicht": true, "httpd": true, "tracedeps": true,
-		"epub2html": true, "html2epub": true, "pdf2html": true, "html2docx": true,
-		"any2md": true,
-	}
+	// table entry for them asserted something that was never true. The list is
+	// the package-level standalone map, shared with the help tests.
 	for _, e := range entries {
 		name := e.Name()
 		if _, ok := Commands[name]; ok {

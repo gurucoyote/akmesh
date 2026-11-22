@@ -188,6 +188,42 @@ Was jetzt gilt:
   liest `scripts/cmds.txt` und `OURS_ALL` und macht aus einem vergessenen Namen
   einen roten Test.
 
+## Der Name gehoert dem Build, nicht den Quellen (22.11.2026)
+
+Das Repository heisst akmesh; ein Binary daraus muss nicht so heissen. Ein Build
+kann sich bssdsh nennen, und alles, was ein Mensch liest, sagt dann bssdsh.
+
+Wie der Name reist:
+
+- `internal/appname.Name` ist eine var (keine const, nur eine var ist per
+  Linker setzbar). `scripts/build-bb.sh` liest `AKMESH_NAME`, schreibt den Namen
+  in `-ldflags "-X akmesh/internal/appname.Name=..."`, in den Dateinamen des
+  Binaries und in die zwei Dispatcher-Meldungen aus gobusybox.
+- Die zwei Meldungen sind Zeichenketten in einer fremden Datei. Der Build
+  ersetzt in ihnen das Wort, das ein frueherer Build hinterlassen hat, statt
+  gegen eine Liste alter Namen zu pruefen: `AKMESH_NAME=bssdsh` und danach ein
+  normaler Build muessen in jeder Reihenfolge gehen, und eine schwarze Liste
+  kennt nicht jeden Namen, den ein Build je hatte.
+- Der zweite Satz ("NAME dispatched %q") wird an Anfuehrungszeichen und ` %q`
+  verankert. Die Datei deklariert naemlich auch
+  `var dispatched atomic.Pointer[string]`; ein Muster ohne Anker hat daraus eine
+  kaputte Deklaration gemacht (gesehen am 22.11.2026, Build brach mit
+  "syntax error" in register.go ab).
+- Felder, die dem Namen folgen: die Befehlsliste (kein Name), `shuf --version`,
+  `jq -V`, der User-Agent von curl/wget (`bssdsh/0.1 (curl compatible)`), die
+  Organisation eines Testzertifikats (`bssdsh mkcert`) und das Dateipraefix im
+  Trust-Store (`bssdsh-BASE.crt`).
+- Der Modulpfad bleibt `akmesh/internal`. Name und Importpfad sind zwei Dinge,
+  und ein Binary namens bssdsh darf weiter akmesh-Pakete importieren.
+
+Der Zertifikats-Issuer ist zusaetzlich zur Laufzeit waehlbar: `mkcert -org NAME`,
+sonst `AKMESH_CERT_ORG`, sonst `<Buildname> mkcert`. Eine CA, die schon existiert,
+behaelt ihren Issuer - ihr Subject steckt in jedem ausgestellten Zertifikat und
+in jedem Store, der ihr vertraut -, und mkcert sagt das, statt still ein anderes
+Subject zu liefern. Der Name im Trust-Store folgt dem Build-Namen, nicht `-org`:
+der Eintrag muss ohne Raten wieder zu entfernen sein, und die Fehlermeldung nennt
+den Dateinamen.
+
 ## Was sich absetzt, und was nicht
 
 Nur httpd laeuft im Hintergrund (Vorgabe), mit -f im Vordergrund: ein

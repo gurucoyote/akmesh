@@ -3356,3 +3356,36 @@ Der Build generiert mit `makebb -g` und baut selbst (`GOTOOLCHAIN=auto
 Waechter, die rot werden muessen: Patch greift nicht (build-bb.sh bricht ab),
 `printSupported()` fehlt in der generierten main.go (Abbruch), Binary ohne
 "Files and text:" (Abbruch), Befehl ohne Gruppe (TestEveryCommandIsPlaced).
+
+## Produktname und Zertifikats-Issuer (22.11.2026)
+
+Gebaut mit `AKMESH_NAME=bssdsh GOTOOLCHAIN=auto ./scripts/build-bb.sh linux`,
+danach wieder mit dem Standardnamen.
+
+    ./bssdsh ............... "Failed to run command: command is not present in bssdsh: bssdsh"
+    ./bssdsh shuf --version  "shuf (bssdsh) 1.0"
+    ./bssdsh jq -V .......... "jq-bssdsh-1.0 (gojq)"
+    ./akmesh (danach) ....... "command is not present in akmesh: akmesh"
+
+Der Hin- und Rueckweg ist der Punkt: bssdsh bauen, dann akmesh bauen, dann sagt
+jedes Binary seinen eigenen Namen. Groesse Linux 16363747 Bytes (vorher
+16359651, +4 KB fuer internal/appname), Windows 16422400.
+
+Issuer, mit `--ca ca --org "Test GmbH"`:
+
+    certinfo ca-cert.pem .... Subject: CN=bssdsh test CA ca,O=Test GmbH
+    certinfo leaf-cert.pem .. Issuer:  CN=bssdsh test CA ca,O=Test GmbH
+    zweiter Aufruf, --org "Andere AG", gleiche CA:
+        "mkcert: ca-cert.pem keeps its issuer \"Test GmbH\"; -org applies to a new CA"
+    ohne --org, neue CA ...... Subject: CN=bssdsh test CA ca2,O=bssdsh mkcert
+
+Gatter: Batterie 211 Checks 0 Fehler Linux, 189 Checks 0 Fehler Windows;
+help-audit --check exit 0 auf beiden. `./akmesh mkcert --help` nennt -org, den
+Standard aus dem Build-Namen und den Dateinamen im Trust-Store.
+
+Zwei Fehler unterwegs: das erste sed fuer "NAME dispatched" traf auch
+`var dispatched atomic.Pointer[string]` und zerlegte register.go (Build brach mit
+"syntax error" ab); jetzt ist das Muster an Anfuehrungszeichen und ` %q`
+verankert. Und makebb bettet register.go beim Installieren ein, also muss nach
+einem Namenswechsel neu installiert werden - der Build prueft dafuer jetzt
+`not present in $NAME` im makebb-Binary statt gegen eine Liste alter Namen.

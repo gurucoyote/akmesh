@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"akmesh/internal/appname"
 	"akmesh/internal/winmode"
 )
 
@@ -42,6 +43,11 @@ type options struct {
 	// vouch for nothing else, which is what makes a trusted local root safe to
 	// keep on a machine (acmesh-816).
 	caDomains []string
+	// org is the organisation in the certificate subject: the issuer a reader
+	// sees. mkcert -org sets it; the default is the build name plus " mkcert".
+	// An existing CA keeps the issuer it was made with, because its subject is
+	// part of what everyone already trusts.
+	org string
 	// install puts the CA into the system trust store, uninstall takes it out.
 	install   bool
 	uninstall bool
@@ -112,6 +118,16 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 				return 1
 			}
 			o.ca = v
+		case "-org", "--org":
+			v, ok := value()
+			if !ok {
+				return 1
+			}
+			if v = strings.TrimSpace(v); v == "" {
+				fmt.Fprintln(stderr, "mkcert: -org needs a name, for example 'Test GmbH'")
+				return 1
+			}
+			o.org = v
 		case "-install", "--install":
 			o.install = true
 		case "-uninstall", "--uninstall":
@@ -147,6 +163,15 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			return 1
 		}
 	}
+	if o.org == "" {
+		// The environment is for a whole session (a build or a test rig that
+		// mints certificates all day); the flag wins over it.
+		o.org = strings.TrimSpace(os.Getenv("AKMESH_CERT_ORG"))
+	}
+	if o.org == "" {
+		o.org = appname.Org()
+	}
+
 	if o.install || o.uninstall {
 		// Installing has nothing to certify; the CA is the subject.
 		if o.ca == "" {
@@ -162,7 +187,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		}
 		// -ca-domains applies here too: the certificate that gets installed is
 		// the one that carries the constraint.
-		if _, _, err := loadOrCreateCA(o.ca, o.caDomains); err != nil {
+		if _, _, err := loadOrCreateCA(o.ca, o.caDomains, o.org); err != nil {
 			fmt.Fprintf(stderr, "mkcert: %v\n", err)
 			return 1
 		}
@@ -188,7 +213,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		o.out = strings.NewReplacer("*", "wildcard", ":", "_", "/", "_").Replace(o.hosts[0])
 	}
 
-	if err := issue(o, stdout); err != nil {
+	if err := issue(o, stdout, stderr); err != nil {
 		fmt.Fprintf(stderr, "mkcert: %v\n", err)
 		return 1
 	}
@@ -196,16 +221,24 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 }
 
 // issue makes the leaf, and the CA first when one is asked for or needed.
-func issue(o options, stdout *os.File) error {
+func issue(o options, stdout, stderr *os.File) error {
 	var parent *x509.Certificate
 	var parentKey crypto.Signer
 
 	if o.ca != "" {
-		caCert, caKey, err := loadOrCreateCA(o.ca, o.caDomains)
+		caCert, caKey, err := loadOrCreateCA(o.ca, o.caDomains, o.org)
 		if err != nil {
 			return err
 		}
 		parent, parentKey = caCert, caKey
+		// A CA that already exists cannot change its issuer: its subject is in
+		// every certificate and in every trust store that already holds it.
+		// Saying so is better than issuing leaves that quietly say something
+		// else than the caller asked for.
+		if len(caCert.Subject.Organization) > 0 && caCert.Subject.Organization[0] != o.org {
+			fmt.Fprintf(stderr, "mkcert: %s-cert.pem keeps its issuer %q; -org applies to a new CA\n",
+				o.ca, caCert.Subject.Organization[0])
+		}
 	} else {
 		// Without -ca the certificate signs itself; it is honest about that and
 		// still carries the names, which is what a quick test needs.
@@ -219,7 +252,7 @@ func issue(o options, stdout *os.File) error {
 
 	tmpl := &x509.Certificate{
 		SerialNumber:          serial(),
-		Subject:               pkix.Name{CommonName: o.hosts[0], Organization: []string{"akmesh mkcert"}},
+		Subject:               pkix.Name{CommonName: o.hosts[0], Organization: []string{o.org}},
 		NotBefore:             time.Now().Add(-time.Minute),
 		NotAfter:              time.Now().Add(time.Duration(o.days) * 24 * time.Hour),
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
@@ -263,7 +296,7 @@ func issue(o options, stdout *os.File) error {
 // loadOrCreateCA reads BASE-cert.pem and BASE-key.pem, or makes both. An existing
 // half pair is an error: guessing which half is meant would issue certificates
 // nobody can verify.
-func loadOrCreateCA(base string, domains []string) (*x509.Certificate, crypto.Signer, error) {
+func loadOrCreateCA(base string, domains []string, org string) (*x509.Certificate, crypto.Signer, error) {
 	certPath, keyPath := base+"-cert.pem", base+"-key.pem"
 	certPEM, certErr := os.ReadFile(certPath)
 	keyPEM, keyErr := os.ReadFile(keyPath)
@@ -298,7 +331,7 @@ func loadOrCreateCA(base string, domains []string) (*x509.Certificate, crypto.Si
 	}
 	tmpl := &x509.Certificate{
 		SerialNumber:          serial(),
-		Subject:               pkix.Name{CommonName: "akmesh test CA " + filepath.Base(base), Organization: []string{"akmesh mkcert"}},
+		Subject:               pkix.Name{CommonName: appname.Name + " test CA " + filepath.Base(base), Organization: []string{org}},
 		NotBefore:             time.Now().Add(-time.Minute),
 		NotAfter:              time.Now().Add(caLife),
 		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature | x509.KeyUsageCRLSign,

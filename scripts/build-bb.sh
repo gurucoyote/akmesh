@@ -19,16 +19,23 @@ set -eu
 
 PLATFORM=${1:-linux}
 PROFILE=${2:-full}
+# The name this build answers to. The sources stay akmesh; the binary, the
+# messages and the issuer of a test certificate say whatever is set here:
+#   AKMESH_NAME=bssdsh ./scripts/build-bb.sh linux
+# It travels two ways: into internal/appname.Name through the linker (-X), and
+# into the two dispatcher messages, which come from gobusybox and are renamed
+# here because they are strings in a foreign file, not variables.
+NAME=${AKMESH_NAME:-akmesh}
 case "$PLATFORM" in
 windows)
 	export GOOS=windows GOARCH=amd64
-	OUT=akmesh.exe
+	OUT="$NAME.exe"
 	# ssh and scp come from internal/tools now, for both targets.
 	UROOT_EXTRA=""
 	;;
 linux)
 	export GOOS=linux GOARCH=amd64
-	OUT=akmesh
+	OUT="$NAME"
 	# strace is Linux only. ssh and scp come from internal/tools now.
 	UROOT_EXTRA="strace"
 	;;
@@ -122,7 +129,7 @@ prepare_gen() {
 		echo "cmdlist.go was not written into $gen" >&2
 		exit 1
 	fi
-	cp "$ROOT/scripts/gen/print.go" "$gen/print.go" || exit 1
+	cp "$ROOT/scripts/gen/print.go.txt" "$gen/print.go" || exit 1
 	if ! patch -p0 -d "$gen" -i "$LISTPATCH" >/dev/null; then
 		echo "the generated dispatcher does not match $LISTPATCH: the command list cannot be grouped" >&2
 		exit 1
@@ -173,16 +180,62 @@ rename_in_dispatcher() {
 		exit 1
 	fi
 }
-rename_in_dispatcher "not present in akmesh" "not present in busybox" "not present in acmesh"
-rename_in_dispatcher "akmesh dispatched" "busybox dispatched" "acmesh dispatched"
+# The word to replace is whatever a previous build left there, not a list of
+# names: AKMESH_NAME=bssdsh followed by a plain build has to work in either
+# order, and a blacklist of old spellings cannot know every name a build may
+# have had.
+rewrite_in_dispatcher() {
+	new=$1
+	pattern=$2
+	found=0
+	for file in $DISPATCHER_FILES; do
+		[ -f "$file" ] || continue
+		found=1
+		if grep -q "$new" "$file"; then
+			continue
+		fi
+		if ! grep -q "$pattern" "$file"; then
+			echo "u-root no longer says \"$pattern\" in $file: the dispatcher text changed" >&2
+			exit 1
+		fi
+		sed -i "s/$pattern [A-Za-z0-9_.-]*/$pattern $NAME/" "$file"
+		if ! grep -q "$new" "$file"; then
+			echo "could not put \"$new\" into $file" >&2
+			exit 1
+		fi
+	done
+	if [ "$found" -eq 0 ]; then
+		echo "no gobusybox register.go found: the dispatcher text cannot be renamed" >&2
+		exit 1
+	fi
+}
+rewrite_in_dispatcher "not present in $NAME" "not present in"
+# The second message reads "<name> dispatched %q", so the name stands before the
+# word and needs its own expression; nothing after "dispatched" is the name.
+for file in $DISPATCHER_FILES; do
+	[ -f "$file" ] || continue
+	grep -q "$NAME dispatched" "$file" && continue
+	if ! grep -q ' dispatched ' "$file"; then
+		echo "u-root no longer says \" dispatched \" in $file: the dispatcher text changed" >&2
+		exit 1
+	fi
+	# Anchored on the quote and on " dispatched %q": the file also declares
+	# `var dispatched atomic.Pointer[string]`, and an unanchored pattern turned
+	# that declaration into a syntax error.
+	sed -i 's/"\([A-Za-z0-9_.-]*\) dispatched %q/"'"$NAME"' dispatched %q/' "$file"
+done
 
 # makebb embeds that source with //go:embed, so a tool installed before the
 # rename still carries the old word. Rebuild it once now that the source is
 # patched; if the word survives anyway, stop rather than ship it.
-if tr -d '\000' < "$MAKEBB" | grep -q 'not present in busybox\|not present in acmesh'; then
+# The copied source must carry this build's name, not a previous one. Asking for
+# the name instead of listing the old wordings keeps a renamed build (AKMESH_NAME)
+# working: with a blacklist, makebb kept embedding "akmesh" and the message that
+# reached the binary named the wrong tool.
+if ! tr -d '\000' < "$MAKEBB" | grep -q "not present in $NAME"; then
 	install_makebb
-	if tr -d '\000' < "$MAKEBB" | grep -q 'not present in busybox\|not present in acmesh'; then
-		echo "makebb still embeds u-root's busybox wording: the rename cannot reach the build" >&2
+	if ! tr -d '\000' < "$MAKEBB" | grep -q "not present in $NAME"; then
+		echo "makebb does not carry \"not present in $NAME\": the rename cannot reach the build" >&2
 		exit 1
 	fi
 fi
@@ -316,12 +369,12 @@ prepare_gen "$GEN_DIR"
 	cd "$GEN_DIR" &&
 		GOWORK=off GOTOOLCHAIN=auto \
 			go build -o "$ROOT/$OUT" -mod=vendor -a -gcflags=all=-l \
-			-ldflags "-s -w -buildid=" -trimpath .
+			-ldflags "-s -w -buildid= -X akmesh/internal/appname.Name=$NAME" -trimpath .
 )
 # The rename above must reach the binary. A vendor/module mismatch would build
 # fine and still ship u-root's wording, so the build checks its own output.
-if tr -d '\000' < "$ROOT/$OUT" | grep -q 'not present in busybox\|not present in acmesh'; then
-	echo "$OUT still says busybox: the dispatcher rename did not reach the build" >&2
+if ! tr -d '\000' < "$ROOT/$OUT" | grep -q "not present in $NAME"; then
+	echo "$OUT does not say \"not present in $NAME\": the dispatcher rename did not reach the build" >&2
 	exit 1
 fi
 # And the list has to be ours. The marker is a group title only internal/cmdlist

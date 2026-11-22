@@ -13,6 +13,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"akmesh/internal/appname"
 )
 
 func keychain() string {
@@ -37,5 +39,5 @@ func installCA(base, certPath string) error {
 }
 
 func uninstallCA(base string) error {
-	return fmt.Errorf("removing a root needs Keychain Access by hand; the certificate is named akmesh-%s", base)
+	return fmt.Errorf("removing a root needs Keychain Access by hand; the certificate is named "+appname.Name+"-%s", base)
 }

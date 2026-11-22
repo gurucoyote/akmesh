@@ -217,7 +217,7 @@ var Texts = map[string]Entry{
 			"  -q, --quiet   print nothing on success",
 	},
 	"mkcert": {
-		"-host NAME[,NAME...] [-days N] [-key-type ecdsa|rsa|ed25519] [-out BASE] [-ca BASE] [-ca-domains SUFFIX]",
+		"-host NAME[,NAME...] [-days N] [-key-type ecdsa|rsa|ed25519] [-out BASE] [-ca BASE] [-ca-domains SUFFIX] [-org NAME]",
 		"  -host NAMES       names to certify, comma separated; an address becomes an IP SAN\n" +
 			"  -days N           how long the leaf is valid, default 365\n" +
 			"  -key-type KIND    ecdsa (P-256, default), rsa (2048) or ed25519\n" +
@@ -225,9 +225,16 @@ var Texts = map[string]Entry{
 			"  -ca BASE          sign with BASE-cert.pem and BASE-key.pem, creating them\n" +
 			"                    on first use; without -ca the leaf signs itself\n" +
 			"  -install          put BASE-cert.pem into the system trust store (root rights\n" +
-			"                    on Linux, the user's root store on Windows); a CA that\n" +
+			"                    on Linux, the user's root store on Windows); the file there is\n" +
+			"                    named after the build name (akmesh-BASE.crt), not -org; a CA that\n" +
 			"                    does not exist yet is created and installed in one go\n" +
 			"  -uninstall        take it out again\n" +
+			"  -org NAME         organisation in the certificate subject, the issuer a\n" +
+			"                    reader sees; default the build name plus \" mkcert\"; AKMESH_CERT_ORG\n" +
+			"                    sets it for a session. A CA that already exists keeps its\n" +
+			"                    issuer: the subject is in every certificate it signed and in\n" +
+			"                    every store that trusts it, so -org applies to a new CA, made\n" +
+			"                    under another base name\n" +
 			"  -ca-domains SUF   new CA may only sign names ending in these comma separated\n" +
 			"                    suffixes (.local,.test) and no IP address at all; a\n" +
 			"                    trusted local root that can vouch for nothing else\n" +

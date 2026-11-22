@@ -17,6 +17,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"akmesh/internal/appname"
 )
 
 type options struct {
@@ -38,7 +40,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			fmt.Fprint(stdout, usageText)
 			return 0
 		case "version":
-			fmt.Fprintln(stdout, "shuf (akmesh) 1.0")
+			fmt.Fprintln(stdout, "shuf ("+appname.Name+") 1.0")
 			return 0
 		}
 		fmt.Fprintf(stderr, "shuf: %s\n", errMsg)

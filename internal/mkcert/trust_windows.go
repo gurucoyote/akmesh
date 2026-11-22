@@ -8,6 +8,8 @@ package mkcert
 import (
 	"fmt"
 	"os/exec"
+
+	"akmesh/internal/appname"
 )
 
 // installCA adds the certificate to the current user's root store. That is what
@@ -20,7 +22,7 @@ func installCA(base, certPath string) error {
 func uninstallCA(base string) error {
 	// certutil has no remove, so the message says what to do instead of
 	// pretending the certificate is gone.
-	return fmt.Errorf("removing a root needs certlm.msc or certmgr.msc by hand; the stored name is akmesh-%s", base)
+	return fmt.Errorf("removing a root needs certlm.msc or certmgr.msc by hand; the stored name is "+appname.Name+"-%s", base)
 }
 
 func certutil(args ...string) error {

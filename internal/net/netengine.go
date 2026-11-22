@@ -22,6 +22,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"akmesh/internal/appname"
 )
 
 // Exit codes are curl's, because scripts check them.
@@ -99,9 +101,12 @@ const defaultParallelMax = 50
 // not claim to be curl or wget: the version in a fake string is a lie a server
 // can check, and the measured 503 on amazon.de was triggered by the literal
 // "Go-http-client", not by the absence of a browser name (acmesh-ijz).
-const (
-	agentCurl = "akmesh/0.1 (curl compatible)"
-	agentWget = "akmesh/0.1 (wget compatible)"
+// The agent a request claims to come from. A var, not a const, because the name
+// comes from appname.Name (set at link time). A server log then says bssdsh when
+// the binary is called bssdsh.
+var (
+	agentCurl = appname.Name + "/0.1 (curl compatible)"
+	agentWget = appname.Name + "/0.1 (wget compatible)"
 )
 
 func defaultUserAgent(front string) string {

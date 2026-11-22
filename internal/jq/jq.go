@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/itchyny/gojq"
+
+	"akmesh/internal/appname"
 )
 
 // jqExit codes, as in jq: 3 for a program that does not compile, 5 for an error
@@ -53,7 +55,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			printJqHelp(stdout)
 			return 0
 		case a == "--version" || a == "-V":
-			fmt.Fprintln(stdout, "jq-akmesh-1.0 (gojq)")
+			fmt.Fprintln(stdout, "jq-"+appname.Name+"-1.0 (gojq)")
 			return 0
 		case a == "-r" || a == "--raw-output":
 			rawOutput = true

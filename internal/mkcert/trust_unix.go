@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"akmesh/internal/appname"
 )
 
 // trustDir is where the distribution looks for extra roots. A variable so the
@@ -24,7 +26,9 @@ func installCA(base, certPath string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("cannot create %s: %v (installing a root needs root)", dir, err)
 	}
-	dst := filepath.Join(dir, "akmesh-"+filepath.Base(base)+".crt")
+	// The name in the store follows the build name, not -org: it has to be
+	// findable again without remembering which issuer was typed that day.
+	dst := filepath.Join(dir, appname.Name+"-"+filepath.Base(base)+".crt")
 	data, err := os.ReadFile(certPath)
 	if err != nil {
 		return err
@@ -42,7 +46,7 @@ func installCA(base, certPath string) error {
 // uninstallCA removes it again; a CA that is not there is not an error, only
 // worth saying.
 func uninstallCA(base string) error {
-	dst := filepath.Join(trustDir, "akmesh-"+filepath.Base(base)+".crt")
+	dst := filepath.Join(trustDir, appname.Name+"-"+filepath.Base(base)+".crt")
 	if err := os.Remove(dst); err != nil {
 		if os.IsNotExist(err) {
 			fmt.Printf("%s is not installed, nothing to remove\n", dst)

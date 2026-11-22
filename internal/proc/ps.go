@@ -21,7 +21,21 @@ type procInfo struct {
 	TTY     string
 	Comm    string
 	CmdLine string
+
+	// Started is the wall clock start of the process. Unknown stays zero.
+	Started time.Time
+	// CPUPercent is the lifetime average, as procps prints it: CPU time over
+	// elapsed time. MemPercent is the resident size over total memory. Both are
+	// -1 when the platform cannot tell; the column then prints "-".
+	CPUPercent float64
+	MemPercent float64
+	// VsizeKB and RssKB are the sizes in KiB procps prints under VSZ and RSS.
+	VsizeKB int64
+	RssKB   int64
 }
+
+// unknown is the value of a number no platform could fill.
+const unknown = -1
 
 // psField is one column of the output.
 type psField struct {
@@ -39,10 +53,32 @@ var psFields = []psField{
 	{"stat", "STAT", false, func(p procInfo) string { return orDash(p.Stat) }},
 	{"time", "TIME", true, func(p procInfo) string { return formatCPUTime(p.CPUTime) }},
 	{"etime", "ELAPSED", true, func(p procInfo) string { return formatElapsed(p.Elapsed) }},
-	{"tty", "TTY", false, func(p procInfo) string { return orDash(p.TTY) }},
+	{"tty", "TTY", false, func(p procInfo) string { return orQuestion(p.TTY) }},
 	{"comm", "COMM", false, func(p procInfo) string { return orDash(p.Comm) }},
 	{"cmd", "CMD", false, func(p procInfo) string { return orDash(p.command()) }},
+	{"pcpu", "%CPU", true, func(p procInfo) string { return formatPercent(p.CPUPercent) }},
+	{"pmem", "%MEM", true, func(p procInfo) string { return formatPercent(p.MemPercent) }},
+	{"vsz", "VSZ", true, func(p procInfo) string { return formatKB(p.VsizeKB) }},
+	{"rss", "RSS", true, func(p procInfo) string { return formatKB(p.RssKB) }},
+	{"start", "START", true, func(p procInfo) string { return formatStart(p.Started, time.Now(), false) }},
+	{"stime", "STIME", true, func(p procInfo) string { return formatStart(p.Started, time.Now(), true) }},
+	{"c", "C", true, func(p procInfo) string { return formatCPUInt(p.CPUPercent) }},
 }
+
+// auxStart, auxTime and auxCommand are the spellings procps uses only in the
+// aux layout: START without seconds, TIME without leading zeros and the header
+// COMMAND instead of CMD.
+var (
+	auxStart = psField{"start", "START", true, func(p procInfo) string {
+		return formatStart(p.Started, time.Now(), true)
+	}}
+	auxTime = psField{"time", "TIME", true, func(p procInfo) string {
+		return formatCPUTimeShort(p.CPUTime)
+	}}
+	auxCommand = psField{"cmd", "COMMAND", false, func(p procInfo) string {
+		return orDash(p.command())
+	}}
+)
 
 func (p procInfo) command() string {
 	if p.CmdLine != "" {
@@ -58,7 +94,7 @@ func orDash(s string) string {
 	return s
 }
 
-// formatCPUTime prints a duration the way ps does: MM:SS or HH:MM:SS.
+// formatCPUTime prints a duration the way procps prints TIME: HH:MM:SS.
 func formatCPUTime(d time.Duration) string {
 	if d < 0 {
 		return "-"
@@ -67,10 +103,74 @@ func formatCPUTime(d time.Duration) string {
 	h := total / 3600
 	m := (total % 3600) / 60
 	s := total % 60
-	if h > 0 {
-		return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
+	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
+}
+
+// formatCPUTimeShort is the compact TIME of the aux layout: 0:00, 1:05:03.
+func formatCPUTimeShort(d time.Duration) string {
+	if d < 0 {
+		return "-"
 	}
-	return fmt.Sprintf("%02d:%02d", m, s)
+	total := int64(d / time.Second)
+	h := total / 3600
+	m := (total % 3600) / 60
+	s := total % 60
+	if h > 0 {
+		return fmt.Sprintf("%d:%02d:%02d", h, m, s)
+	}
+	return fmt.Sprintf("%d:%02d", m, s)
+}
+
+// formatPercent prints a percentage with one decimal, the way %CPU and %MEM
+// appear in procps.
+func formatPercent(v float64) string {
+	if v < 0 {
+		return "-"
+	}
+	return fmt.Sprintf("%.1f", v)
+}
+
+// formatCPUInt prints the integer C column. procps truncates there, so 92.5
+// becomes 92, not 93.
+func formatCPUInt(v float64) string {
+	if v < 0 {
+		return "-"
+	}
+	return strconv.Itoa(int(v))
+}
+
+// formatKB prints a size in KiB, or "-" when the platform has no value.
+func formatKB(v int64) string {
+	if v < 0 {
+		return "-"
+	}
+	return strconv.FormatInt(v, 10)
+}
+
+// formatStart prints a start time the way ps does: today as a clock (with
+// seconds in the STARTED spelling), an earlier day of this year as MonDD, and
+// anything older as a year.
+func formatStart(t, now time.Time, short bool) string {
+	if t.IsZero() {
+		return "-"
+	}
+	if t.Year() == now.Year() && t.YearDay() == now.YearDay() {
+		if short {
+			return t.Format("15:04")
+		}
+		return t.Format("15:04:05")
+	}
+	if t.Year() == now.Year() {
+		return t.Format("Jan02")
+	}
+	return t.Format("2006")
+}
+
+func orQuestion(s string) string {
+	if s == "" {
+		return "?"
+	}
+	return s
 }
 
 // formatElapsed prints [[DD-]HH:]MM:SS.
@@ -120,12 +220,12 @@ func (r psRequest) columnsFor() []psField {
 	}
 	switch {
 	case r.bsd:
-		// USER PID %CPU %MEM VSZ RSS TTY STAT START TIME COMMAND is what aux
-		// normally prints. We print the columns we can fill and say so in the
-		// docs instead of inventing numbers for the rest.
-		return byName("user", "pid", "stat", "tty", "time", "cmd")
+		// USER PID %CPU %MEM VSZ RSS TTY STAT START TIME COMMAND, as aux.
+		cols := byName("user", "pid", "pcpu", "pmem", "vsz", "rss", "tty", "stat")
+		return append(cols, auxStart, auxTime, auxCommand)
 	case r.full:
-		return byName("user", "pid", "ppid", "stat", "etime", "tty", "time", "cmd")
+		// UID PID PPID C STIME TTY TIME CMD, as ps -f and ps -ef.
+		return byName("uid", "pid", "ppid", "c", "stime", "tty", "time", "cmd")
 	}
 	return byName("pid", "tty", "time", "cmd")
 }
@@ -251,7 +351,7 @@ func parseFieldList(s string) ([]psField, error) {
 		}
 		f, ok := psFieldByName(name)
 		if !ok {
-			return nil, fmt.Errorf("unknown field %q (supported: pid, ppid, user, uid, stat, time, etime, tty, comm, cmd)", name)
+			return nil, fmt.Errorf("unknown field %q (supported: pid, ppid, user, uid, stat, time, etime, tty, comm, cmd, pcpu, pmem, vsz, rss, start, stime, c)", name)
 		}
 		out = append(out, f)
 	}
@@ -267,7 +367,7 @@ func parseFieldList(s string) ([]psField, error) {
 func runPS(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	if len(args) == 1 && (args[0] == "-h" || args[0] == "--help") {
 		fmt.Fprintln(stdout, "usage: ps [-e|-A|-f|-ef|aux|-x] [-eo FIELDS] [-p PID[,PID]]")
-		fmt.Fprintln(stdout, "fields: pid ppid user uid stat time etime tty comm cmd")
+		fmt.Fprintln(stdout, "fields: pid ppid user uid stat time etime tty comm cmd pcpu pmem vsz rss start stime c")
 		return 0
 	}
 	req, err := parsePS(args)

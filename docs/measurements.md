@@ -3579,3 +3579,39 @@ Gemessen am gebauten Sammel-Binary, nicht am Entwicklungsstand.
   windows 17163264 (vorher 17157120, +6144).
 - Gatter: `go test ./...` grün, gofmt sauber, Hilfe-Audit exit 0, Batterie
   211 Checks 0 Fehler, Lizenzprüfung 19 Module.
+
+## ps: Spalten wie procps-ng 4.0.4 (22.11.2026, acmesh-vfj)
+
+Gemessen am gebauten Binary gegen procps im Container, mit --pid=host, damit
+beide denselben Prozess sehen.
+
+- procps-ng 4.0.4 (debian stable-slim, per apt nachinstalliert) sagt:
+  `ps -ef` -> `UID          PID    PPID  C STIME TTY          TIME CMD`,
+  `ps aux` -> `USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND`.
+  akmesh gibt jetzt dieselben Kopfzeilen in derselben Reihenfolge aus:
+  `UID PID PPID C STIME TTY TIME CMD` und
+  `USER PID %CPU %MEM VSZ RSS TTY STAT START TIME COMMAND`.
+- Feldliste: `ps -o pid,pcpu,pmem,vsz,rss,time,start,stime,c -p PID` liefert
+  `PID %CPU %MEM VSZ RSS TIME START STIME C` (START mit Sekunden wie procps
+  -o start, STIME ohne).
+- Werte an einem Besetzt-Prozess (`while :; do :; done`, 3 s alt):
+  VSZ 1656 / 1656, RSS 948 / 948, %CPU 85,1 / 86,5 (die zwei Läufe lagen
+  Sekunden auseinander, %CPU ist der Lebensdurchschnitt), C 85 / 86
+  (abgeschnitten, nicht gerundet), TIME 00:01:33 / 00:01:53 aus demselben Grund.
+- RSS: erst aus dem rss-Feld von /proc/pid/stat gelesen, das lag 144 KB unter
+  VmRSS (804 gegen 948). procps nimmt die resident-Zahl aus /proc/pid/statm;
+  nach der Umstellung sind beide gleich.
+- TIME: bei -ef und im Standardaufruf immer HH:MM:SS (procps: 00:00:00), in aux
+  kompakt (0:00), wie procps es zeigt.
+- START/STIME: heute HH:MM:SS bzw. HH:MM, früherer Tag im selben Jahr "Nov19",
+  älter "2025". Im Container stand 16:22, auf dem Host 17:22 - das ist die
+  Zeitzone (UTC im Container), nicht die Uhrzeit.
+- Windows (`./akmesh.exe ps aux`): Kopfzeile identisch; Prozesse, die sich
+  öffnen lassen, füllen VSZ/RSS/%CPU/START (z. B. AUDIODG.EXE mit Nov07).
+  Geschützte Prozesse (System, svchost) bleiben bei "-", weil OpenProcess
+  abgelehnt wird. RSS kann dort größer als VSZ sein, weil Windows
+  WorkingSetSize und PagefileUsage liefert und nicht virtuellen Speicher.
+- Größe: linux 17096931 Bytes (vorher 17084643, +12288),
+  windows 17173504 (vorher 17163264, +10240).
+- Gatter: go test ./... grün, gofmt sauber, Batterie 211 Checks 0 Fehler,
+  Hilfe-Audit exit 0.

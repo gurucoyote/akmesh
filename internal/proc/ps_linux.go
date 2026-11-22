@@ -24,6 +24,7 @@ func listProcesses() ([]procInfo, error) {
 	}
 	bootTime := readBootTime()
 	users := shared.ReadPasswd()
+	memTotalKB := readMemTotalKB()
 	now := time.Now()
 	out := make([]procInfo, 0, len(entries))
 	for _, e := range entries {
@@ -35,9 +36,41 @@ func listProcesses() ([]procInfo, error) {
 		if !ok {
 			continue
 		}
+		// procps prints %CPU as the lifetime average and %MEM as the resident
+		// size over total memory. Both are derived here, once the numbers are in.
+		if info.Elapsed > 0 && info.CPUTime >= 0 {
+			info.CPUPercent = info.CPUTime.Seconds() / info.Elapsed.Seconds() * 100
+		}
+		if info.RssKB > 0 && memTotalKB > 0 {
+			info.MemPercent = float64(info.RssKB) / float64(memTotalKB) * 100
+		}
 		out = append(out, info)
 	}
 	return out, nil
+}
+
+// readMemTotalKB is the MemTotal line of /proc/meminfo, the denominator procps
+// uses for %MEM.
+func readMemTotalKB() int64 {
+	data, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return 0
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if !strings.HasPrefix(line, "MemTotal:") {
+			continue
+		}
+		vals := strings.Fields(line)
+		if len(vals) < 2 {
+			return 0
+		}
+		kb, err := strconv.ParseInt(vals[1], 10, 64)
+		if err != nil {
+			return 0
+		}
+		return kb
+	}
+	return 0
 }
 
 func readBootTime() time.Time {
@@ -68,7 +101,11 @@ func readProc(pid int, bootTime time.Time, users map[string]string, now time.Tim
 	if !ok {
 		return procInfo{}, false
 	}
-	info := procInfo{PID: pid, Comm: comm}
+	info := procInfo{
+		PID: pid, Comm: comm,
+		CPUPercent: unknown, MemPercent: unknown,
+		VsizeKB: unknown, RssKB: unknown,
+	}
 	// After the parenthesised command name come: state ppid pgrp session
 	// tty_nr tpgid flags minflt cminflt majflt cmajflt utime stime cutime
 	// cstime priority nice num_threads itrealvalue starttime ...
@@ -88,8 +125,24 @@ func readProc(pid int, bootTime time.Time, users map[string]string, now time.Tim
 	}
 	if len(fields) > 19 {
 		start, _ := strconv.ParseInt(fields[19], 10, 64)
-		started := bootTime.Add(time.Duration(start) * time.Second / clockTicks)
-		info.Elapsed = now.Sub(started)
+		info.Started = bootTime.Add(time.Duration(start) * time.Second / clockTicks)
+		info.Elapsed = now.Sub(info.Started)
+	}
+	// vsize in bytes follows starttime. RSS comes from statm, not from the rss
+	// field of stat: the kernel's stat rss can lag behind VmRSS (and procps
+	// prints the statm number), which showed up as a 144 KB difference in the
+	// comparison against procps 4.0.4.
+	if len(fields) > 20 {
+		if vsize, err := strconv.ParseInt(fields[20], 10, 64); err == nil {
+			info.VsizeKB = vsize / 1024
+		}
+	}
+	if data, err := os.ReadFile(filepath.Join(dir, "statm")); err == nil {
+		if vals := strings.Fields(string(data)); len(vals) > 1 {
+			if resident, err := strconv.ParseInt(vals[1], 10, 64); err == nil {
+				info.RssKB = resident * int64(os.Getpagesize()) / 1024
+			}
+		}
 	}
 	// argc/argv, NUL separated
 	if data, err := os.ReadFile(filepath.Join(dir, "cmdline")); err == nil && len(data) > 0 {

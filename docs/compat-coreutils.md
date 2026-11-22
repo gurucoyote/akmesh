@@ -28,7 +28,9 @@ Drei Routen je Luecke:
     dd if= of= bs= count=, tar -c -f -x -t -v (unkomprimiert)
     gzip -d -c, base64 -d, shasum -a 256
     date -u -r, id -u/-g/-G/-n, which -a, sleep 0.2 / 1m
-    ps -ef / ps aux / ps -eo / ps -p
+    ps -ef / ps aux / ps -eo / ps -p   (Spalten wie procps: UID PID PPID C
+                                       STIME TTY TIME CMD bzw. USER PID %CPU
+                                       %MEM VSZ RSS TTY STAT START TIME COMMAND)
     df -h -k -m, du -sh, free -h, uname -a
     stat -c '%a %n', cut -d: -f1, cut -c1-3, nl -ba ist NICHT ok (siehe B)
     awk -F -v -f, sed -n -e -f -i, diff -u -L, patch -p -i --dry-run

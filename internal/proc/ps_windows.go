@@ -3,6 +3,7 @@
 package proc
 
 import (
+	"sync"
 	"time"
 	"unsafe"
 
@@ -37,6 +38,11 @@ func listProcesses() ([]procInfo, error) {
 			// Negative means "unknown"; the table prints those as "-".
 			CPUTime: -1,
 			Elapsed: -1,
+
+			CPUPercent: unknown,
+			MemPercent: unknown,
+			VsizeKB:    unknown,
+			RssKB:      unknown,
 		}
 		fillProcessDetail(&info, now)
 		out = append(out, info)
@@ -51,6 +57,69 @@ func listProcesses() ([]procInfo, error) {
 func filetimeDuration(ft windows.Filetime) time.Duration {
 	ticks := uint64(ft.HighDateTime)<<32 | uint64(ft.LowDateTime)
 	return time.Duration(ticks) * 100 * time.Nanosecond
+}
+
+// psapi.dll answers the two sizes procps prints as VSZ and RSS: the pagefile
+// usage and the working set. Both are optional; a protected process keeps "-".
+var (
+	procGetProcessMemoryInfo = windows.NewLazySystemDLL("psapi.dll").NewProc("GetProcessMemoryInfo")
+	procGlobalMemoryStatusEx = windows.NewLazySystemDLL("kernel32.dll").NewProc("GlobalMemoryStatusEx")
+)
+
+// processMemoryCounters mirrors PROCESS_MEMORY_COUNTERS from psapi.h.
+type processMemoryCounters struct {
+	CB                         uint32
+	PageFaultCount             uint32
+	PeakWorkingSetSize         uintptr
+	WorkingSetSize             uintptr
+	QuotaPeakPagedPoolUsage    uintptr
+	QuotaPagedPoolUsage        uintptr
+	QuotaPeakNonPagedPoolUsage uintptr
+	QuotaNonPagedPoolUsage     uintptr
+	PagefileUsage              uintptr
+	PeakPagefileUsage          uintptr
+}
+
+// memoryStatusEx mirrors MEMORYSTATUSEX from sysinfoapi.h.
+type memoryStatusEx struct {
+	Length               uint32
+	MemoryLoad           uint32
+	TotalPhys            uint64
+	AvailPhys            uint64
+	TotalPageFile        uint64
+	AvailPageFile        uint64
+	TotalVirtual         uint64
+	AvailVirtual         uint64
+	AvailExtendedVirtual uint64
+}
+
+func fillMemory(h windows.Handle, info *procInfo) {
+	var counters processMemoryCounters
+	counters.CB = uint32(unsafe.Sizeof(counters))
+	ok, _, _ := procGetProcessMemoryInfo.Call(uintptr(h), uintptr(unsafe.Pointer(&counters)), uintptr(counters.CB))
+	if ok == 0 {
+		return
+	}
+	info.RssKB = int64(counters.WorkingSetSize) / 1024
+	info.VsizeKB = int64(counters.PagefileUsage) / 1024
+}
+
+// totalMemoryKB is asked once; %MEM needs the whole machine, not the process.
+var (
+	totalMemoryOnce  sync.Once
+	totalMemoryValue int64
+)
+
+func totalMemoryKB() int64 {
+	totalMemoryOnce.Do(func() {
+		var status memoryStatusEx
+		status.Length = uint32(unsafe.Sizeof(status))
+		ok, _, _ := procGlobalMemoryStatusEx.Call(uintptr(unsafe.Pointer(&status)))
+		if ok != 0 {
+			totalMemoryValue = int64(status.TotalPhys / 1024)
+		}
+	})
+	return totalMemoryValue
 }
 
 // fillProcessDetail adds the fields Toolhelp32 does not carry. Every one of them
@@ -78,7 +147,18 @@ func fillProcessDetail(info *procInfo, now time.Time) {
 		info.CPUTime = filetimeDuration(kernel) + filetimeDuration(user)
 		started := time.Unix(0, creation.Nanoseconds())
 		if !started.IsZero() {
+			info.Started = started
 			info.Elapsed = now.Sub(started)
+		}
+	}
+	// %CPU is the lifetime average, the same ratio procps prints.
+	if info.Elapsed > 0 && info.CPUTime >= 0 {
+		info.CPUPercent = info.CPUTime.Seconds() / info.Elapsed.Seconds() * 100
+	}
+	fillMemory(h, info)
+	if info.RssKB > 0 {
+		if total := totalMemoryKB(); total > 0 {
+			info.MemPercent = float64(info.RssKB) / float64(total) * 100
 		}
 	}
 

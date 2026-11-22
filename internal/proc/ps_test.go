@@ -87,13 +87,22 @@ func TestColumnsFor(t *testing.T) {
 		}
 		return strings.Join(parts, " ")
 	}
-	if got := headerFor("-ef"); !strings.Contains(got, "PPID") || !strings.Contains(got, "CMD") {
-		t.Fatalf("-ef header = %q, must contain PPID and CMD", got)
+	if got := headerFor("-ef"); got != "UID PID PPID C STIME TTY TIME CMD" {
+		t.Fatalf("-ef header = %q, want the procps columns", got)
+	}
+	if got := headerFor("-f"); got != "UID PID PPID C STIME TTY TIME CMD" {
+		t.Fatalf("-f header = %q, want the procps columns", got)
+	}
+	if got := headerFor("aux"); got != "USER PID %CPU %MEM VSZ RSS TTY STAT START TIME COMMAND" {
+		t.Fatalf("aux header = %q, want the procps columns", got)
 	}
 	if got := headerFor(); got != "PID TTY TIME CMD" {
 		t.Fatalf("default header = %q", got)
 	}
 	if got := headerFor("-eo", "pid,comm"); got != "PID COMM" {
+		t.Fatalf("-eo header = %q", got)
+	}
+	if got := headerFor("-eo", "pid,vsz,rss,pcpu,pmem,start,stime,c"); got != "PID VSZ RSS %CPU %MEM START STIME C" {
 		t.Fatalf("-eo header = %q", got)
 	}
 }
@@ -103,14 +112,27 @@ func TestTimeFormatting(t *testing.T) {
 		in   time.Duration
 		want string
 	}{
-		{0, "00:00"},
-		{65 * time.Second, "01:05"},
+		{0, "00:00:00"},
+		{65 * time.Second, "00:01:05"},
 		{3661 * time.Second, "01:01:01"},
 		{-1, "-"},
 	}
 	for _, c := range cases {
 		if got := formatCPUTime(c.in); got != c.want {
 			t.Fatalf("formatCPUTime(%v) = %q, want %q", c.in, got, c.want)
+		}
+	}
+	short := []struct {
+		in   time.Duration
+		want string
+	}{
+		{0, "0:00"},
+		{65 * time.Second, "1:05"},
+		{3661 * time.Second, "1:01:01"},
+	}
+	for _, c := range short {
+		if got := formatCPUTimeShort(c.in); got != c.want {
+			t.Fatalf("formatCPUTimeShort(%v) = %q, want %q", c.in, got, c.want)
 		}
 	}
 	elapsed := []struct {
@@ -194,5 +216,46 @@ func TestPrintTableAlignment(t *testing.T) {
 	}
 	if lines[2][:6] != "12345 " {
 		t.Fatalf("pid column width should follow the widest value: %q", lines[2])
+	}
+}
+
+// TestProcpsValueSpellings pins the spellings procps 4.0.4 prints and the way
+// the derived numbers are rounded: START today is a clock, an older day is
+// MonDD, an older year is the year; C truncates, %CPU and %MEM keep one decimal.
+func TestProcpsValueSpellings(t *testing.T) {
+	now := time.Date(2026, 11, 22, 17, 0, 0, 0, time.UTC)
+	cases := []struct {
+		start time.Time
+		short bool
+		want  string
+	}{
+		{time.Date(2026, 11, 22, 9, 5, 7, 0, time.UTC), false, "09:05:07"},
+		{time.Date(2026, 11, 22, 9, 5, 7, 0, time.UTC), true, "09:05"},
+		{time.Date(2026, 11, 19, 9, 5, 7, 0, time.UTC), true, "Nov19"},
+		{time.Date(2025, 12, 31, 9, 5, 7, 0, time.UTC), true, "2025"},
+		{time.Time{}, true, "-"},
+	}
+	for _, c := range cases {
+		if got := formatStart(c.start, now, c.short); got != c.want {
+			t.Fatalf("formatStart(%v, short=%v) = %q, want %q", c.start, c.short, got, c.want)
+		}
+	}
+	if got := formatPercent(92.46); got != "92.5" {
+		t.Fatalf("formatPercent(92.46) = %q, want 92.5", got)
+	}
+	if got := formatPercent(unknown); got != "-" {
+		t.Fatalf("formatPercent(unknown) = %q, want -", got)
+	}
+	if got := formatCPUInt(92.9); got != "92" {
+		t.Fatalf("formatCPUInt(92.9) = %q, want 92 (truncated like procps)", got)
+	}
+	if got := formatKB(2680); got != "2680" {
+		t.Fatalf("formatKB = %q", got)
+	}
+	if got := formatKB(unknown); got != "-" {
+		t.Fatalf("formatKB(unknown) = %q", got)
+	}
+	if got := orQuestion(""); got != "?" {
+		t.Fatalf("orQuestion(empty) = %q, want ?", got)
 	}
 }

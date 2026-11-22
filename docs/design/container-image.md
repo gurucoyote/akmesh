@@ -1,102 +1,134 @@
-# Roadmap: akmesh als Container-Image
+# Roadmap: akmesh als BusyBox-Ersatz und Systemkern
 
-Stand 22.11.2026. Jede Zahl stammt aus docs/measurements.md, jeder offene
-Schritt hat ein Ticket. Die Roadmap ist nach Stufen geordnet: jede Stufe hat
-ein pruefbares Ende, und keine Stufe setzt eine spaetere voraus.
+Stand 22.11.2026, nach Martins Entscheidung vom selben Tag: kein gemischter
+Betrieb. akmesh soll BusyBox ersetzen, nicht ergaenzen, und der Kern eines
+minimalen WSL- oder Docker-Images sein. Login hat Vorrang, weil erst damit
+/etc/profile, ~/.profile und ~/.bash_profile greifen.
 
-## Ist-Stand (gemessen)
+Jede Zahl stammt aus docs/measurements.md, jeder Schritt hat ein Ticket.
 
-- Statischer Bau (CGO_ENABLED=0) 17092732 Bytes, laeuft in einem leeren Image
-  (per podman import aus einer leeren tar); der dynamische Bau scheitert dort
-  an fehlendem ld-musl.
-- Im leeren Image laufen ls, sort, ps (mit gebundenem /proc), wc, date, id.
-- Systempaket 1 (acmesh-hdb) ist drin: mount, umount, mknod, blkid, losetup;
-  mit --privileged gemessen (tmpfs, Geraetedatei, Schreiben darauf).
-- Es fehlt: kein init als PID 1, kein ip/dhclient, kein /dev-Aufbau, kein
-  Resolver und kein CA-Bundle, kein login/cron/syslog.
-- Groesse 21,2-fach ueber BusyBox, Start 6,84 ms je Aufruf (BusyBox 0,86 ms).
+## Was heute gemessen ist
 
-## Zwei Wege, und der billigere zuerst
+- Statischer Bau (CGO_ENABLED=0) 17092732 Bytes laeuft in einem leeren Image;
+  der dynamische Bau scheitert dort an fehlendem ld-musl.
+- Im leeren Image laufen ls, sort, ps (mit gebundenem /proc), wc, date, id;
+  mount, umount, mknod, blkid und losetup sind seit acmesh-hdb drin.
+- Abdeckung 71 von 283 ausgelieferten BusyBox-Applets; 27 fehlende Namen werden
+  von den Init-Skripten dieses Systems wirklich aufgerufen, oben mount, ip,
+  brctl.
+- Groesse 21,2-fach ueber BusyBox (17105123 gegen 808712), Start 6,84 ms je
+  Aufruf gegen 0,86 ms.
 
-Weg 1, das gemischte Image: BusyBox bleibt PID 1 und /bin/sh, akmesh liegt
-daneben als Werkzeug fuer den Agenten. Kostet heute kein neues Feature, weil
-busybox ash, init, ip und mdev mitbringt und akmesh nur ergaenzt, was BusyBox
-nicht hat (rg, jq, file, patch, die Konverter, policy). Empfehlung fuer alles,
-was in den naechsten Wochen laufen soll.
+## Der Befund, der die Reihenfolge aendert
 
-Weg 2, das reine akmesh-Image: akmesh ersetzt BusyBox ganz. Braucht Stufe B
-bis D und ist erst danach ehrlich zu empfehlen.
+Unser `sh` ist heute kein Login-faehiger Shell-Ersatz:
 
-## Stufe A: Symlink-Baum und Image bauen
+- `internal/sh/sh.go` liest ohne `-c` die ganze Standardeingabe bis EOF und
+  fuehrt sie einmal aus: keine Eingabeaufforderung, keine Zeilenschleife, kein
+  `-l`, kein Rueckgabewert je Kommando.
+- `-i` wird geparst und dann verworfen (`_ = interactive`).
+- Startdateien werden nicht gelesen: kein /etc/profile, kein ~/.profile, kein
+  ENV.
+- u-root-gosh hilft nicht weiter: `errNotImplemented` fuer den interaktiven
+  Teil, ebenfalls keine Startdateien.
+- Die Bibliothek kann es: `interp.Interactive(true)` in mvdan.cc/sh/v3 v3.14.1,
+  dazu eine Leseschleife und x/term (schon Abhaengigkeit).
 
-Heute entsteht das Image von Hand (Symlinks anlegen, podman import). Das ist
-kein Produkt, sondern eine Probe.
+Ohne diese Shell gibt es kein Login, und ohne Login greift keine Profildatei -
+auch nicht mit /etc/passwd und einem login-Befehl.
 
-- Ein Skript scripts/make-image.sh: statisch bauen, Applet-Symlinks aus der
-  Befehlsliste erzeugen (eine Quelle, nicht zwei Listen), OCI-Image bauen
-  (Containerfile oder podman import), Tag aus dem Produktnamen.
-- Der Symlink-Baum muss aus scripts/cmds.txt plus OURS_ALL entstehen, sonst
-  fehlt nach dem naechsten Befehl wieder ein Name.
-- Ende der Stufe: `podman run akmesh:dev sh -c 'ls /; printf "b\na\n" | sort'`
-  antwortet ohne Bind-Mounts und ohne PATH-Gebastel.
-- Ticket: acmesh-35q.
+## Stufe 0: Image-Bau als Skript (acmesh-35q)
 
-## Stufe B: Netz im Container (acmesh-iey)
+Ohne reproduzierbaren Bau bleibt jede Messung Handarbeit.
 
-- ip (u-root, netlink: address, link, route, neigh, rule, netns) und dhclient
-  aufnehmen; beide nur Linux, also mit dem Praefix `linux:`.
-- Dazu gehoert, was Netz erst nutzbar macht: /etc/resolv.conf (dhclient
-  schreibt sie), ein CA-Bundle im Image, sonst endet curl mit Exit 60.
-- Ende der Stufe: im Image mit Netz laedt `curl https://example.com` Exit 0,
-  und `ip addr` zeigt die Adresse, die dhclient geholt hat.
+- scripts/make-image.sh: statisch bauen, Applet-Symlinks aus scripts/cmds.txt
+  plus OURS_ALL erzeugen (eine Quelle), OCI-Image bauen, Tag aus dem
+  Produktnamen.
+- Ende: `podman run <tag> sh -c 'ls /; printf "b\na\n" | sort'` antwortet ohne
+  Bind-Mounts und ohne PATH-Gebastel.
 
-## Stufe C: init als PID 1 (acmesh-b97)
+## Stufe 1: Login-faehige Shell, damit Profile greifen (acmesh-4g7, P1)
 
-Ohne PID 1, das Zombies erntet und Signale weiterreicht, bleibt jeder Container
-haengen, sobald ein Kindprozess endet.
+Der Schritt, den Martin als naechstes will. Kein WSL- oder Docker-Sonderweg.
+
+- Interaktive Schleife: Prompt aus PS1 (Vorgabe `# ` fuer root, `$ ` sonst),
+  je Zeile parsen und ausfuehren, Exitcode merken.
+- Login-Modus: `sh -l`, `sh --login` und der Name `-sh` (argv[0] mit
+  Bindestrich) lesen der Reihe nach /etc/profile und dann ~/.profile.
+- .bash_profile: nur lesen, wenn /bin/sh als bash aufgerufen wird - sonst
+  bleibt es bei ash-Konvention (.profile). Das ist eine Entscheidung, keine
+  Auslassung; sie gehoert in die Hilfe.
+- ENV nur fuer nicht-interaktive Aufrufe (POSIX).
+- Ende: `podman run -it <tag> sh -l` zeigt einen Prompt, ein `echo` in
+  /etc/profile und eines in ~/.profile sind vor dem ersten Kommando sichtbar,
+  `echo $PATH` zeigt den PATH aus dem Profil.
+
+## Stufe 2: login und getty (acmesh-7q7)
+
+- `login`: /etc/passwd lesen (Name, UID, GID, Home, Shell), setgid/setuid,
+  Home-Verzeichnis betreten, HOME, USER, LOGNAME, SHELL, PATH setzen und die
+  Shell als Login-Shell starten. Passwortpruefung gegen /etc/shadow ist eine
+  eigene Entscheidung: in einem Container ohne PAM ist sie optional, in WSL
+  uebernimmt Windows die Anmeldung.
+- `getty`: u-root bringt eines (cmds/exp), es oeffnet ein TTY und startet eine
+  Shell ohne Passwort - als Konsolenzugang brauchbar, als login-Ersatz nicht.
+- Ende: im Image mit /etc/passwd und einem Home-Verzeichnis startet `login -f
+  nutzer` eine Shell als dieser Nutzer, `id` zeigt die passende UID, und
+  ~/.profile dieses Nutzers wurde gelesen.
+
+## Stufe 3: Netz (acmesh-iey)
+
+- ip (u-root, netlink) und dhclient aufnehmen, beide mit dem Praefix `linux:`
+  in scripts/cmds.txt.
+- Dazu /etc/resolv.conf (schreibt dhclient) und ein CA-Bundle im Image, sonst
+  endet curl mit Exit 60.
+- Ende: `curl https://example.com` im Image Exit 0, `ip addr` zeigt die Adresse
+  von dhclient.
+
+## Stufe 4: init als PID 1 (acmesh-b97)
+
+Nur fuer Docker noetig: in WSL ist PID 1 der Windows-Init, dort startet
+wsl.exe die Shell direkt.
 
 - Der u-root-init hat weder SIGCHLD-Handling noch wait4 (Quelltextpruefung
-  22.11.); entweder forken oder bewusst BusyBox/tini als PID 1 setzen.
-- Ende der Stufe: ein Skript startet drei Kinder, die sofort enden; `ps -e`
-  zeigt danach keine Z-Zeile, und ein SIGTERM an PID 1 beendet den Container in
-  unter einer Sekunde.
+  22.11.). Forken oder bewusst nicht PID 1 werden.
+- Ende: drei Kinder, die sofort enden, hinterlassen keine Z-Zeile in `ps -e`;
+  SIGTERM an PID 1 beendet den Container in unter einer Sekunde.
 
-## Stufe D: Ausgabe und Rechte wie BusyBox (acmesh-u38)
+## Stufe 5: Ausgabe und Rechte wie BusyBox (acmesh-u38)
 
-- mknod: 0666&Umask statt 0660&Umask.
-- blkid: `/dev/sdX: UUID="..." TYPE="..."` statt nackter Pfade.
-- losetup: `-f` (freies Loop-Geraet) fehlt.
-- Ende der Stufe: die drei Aufrufe sind bytegleich mit BusyBox 1.37.0 im
-  Alpine-Container, je ein Vergleichsfall in den Go-Tests.
+- mknod 0666&Umask statt 0660&Umask, blkid mit `/dev/sdX: UUID=... TYPE=...`,
+  losetup mit `-f`.
+- Ende: bytegleich mit BusyBox 1.37.0 im Alpine-Container, je ein
+  Vergleichsfall in den Go-Tests.
 
-## Stufe E: Groesse im Griff (acmesh-y2o als Vorarbeit)
+## Stufe 6: Groesse (Vorarbeit acmesh-y2o)
 
-- Ein Profil `image` in scripts/profiles/: keep-Liste mit dem, was ein Agent im
-  Container braucht; das Profil gibt es schon als Mechanik (ext/fs).
-- Zahlen: heute 17,1 MB dynamisch, 17,09 MB statisch; ein keep-Profil schneidet
-  die Konverter und die Netzwerkbefehle heraus, wenn sie nicht gebraucht werden.
-- Ende der Stufe: ein Image unter 10 MB, das die Batterie in einem eigenen,
-  kleineren Umfang besteht; die Zahl steht in docs/measurements.md.
+- Profil `image` in scripts/profiles/ mit keep-Liste; die Mechanik gibt es.
+- Ende: Image unter 10 MB, das die Batterie in einem kleineren Umfang besteht;
+  Zahl in docs/measurements.md.
 
-## Stufe F: Policy im Image (vorhanden, ungemessen im Container)
+## Stufe 7: Policy im Container
 
-- AKMESH_POLICY wird per Landlock vor jedem Befehl angewandt, auch fuer Kinder.
-- Ende der Stufe: im Image schreibt ein Lauf mit Policy auf einen gesperrten
-  Pfad: Exit nonzero, keine Ausgabe, kein stiller Fallback auf ungeprueft.
-- Braucht Kernel >= 5.13; im Image pruefen, nicht annehmen.
+- AKMESH_POLICY per Landlock, prozessweit, auch fuer Kinder.
+- Ende: ein Lauf mit Policy schreibt auf einen gesperrten Pfad: Exit nonzero,
+  keine Ausgabe, kein stiller Fallback. Kernel >= 5.13 im Image pruefen.
 
-## Stufe G: Betrieb
+## Stufe 8: Betrieb
 
-- acmesh-696: die Batterie gegen akmesh.exe (Windows-Ziel) einmal fahren.
-- Ein Lauf der Batterie gegen das IMAGE, nicht gegen das Host-Binary: dieselbe
-  Pruefung, andere Umgebung (das ist die Luecke, die die leere Box aufdeckt).
-- Referenz-Image bleibt debian:stable-slim@sha256:cd9f2189... fuer die
-  GNU-Vergleiche; das Produkt-Image ist davon getrennt.
+- acmesh-696: Batterie gegen akmesh.exe einmal fahren.
+- Batterie gegen das IMAGE, nicht gegen das Host-Binary.
+- docs/design/akmesh.md nachziehen, sobald init und login stehen.
 
-## Was diese Roadmap nicht verspricht
+## Was der reine Weg kostet, ehrlich
 
-- Kein passwortbasierter Login, kein cron, kein syslog (acmesh-8v3 entscheidet
-  das, nicht diese Roadmap).
-- Kein ash: akmesh faehrt gosh. Skripte mit ash- oder bash-Eigenheiten laufen
-  anders; das ist ein Dialekt, kein Bug.
-- Keinen Ersatz fuer den Distributions-Userland ausserhalb des Containers.
+- Bis Stufe 2 ist das Image kein System, sondern eine Probe: kein Login, keine
+  Profildateien, keine Netzadresse. Das ist der Preis fuer den Verzicht auf den
+  gemischten Betrieb.
+- Kein ash: gosh mit `interp.Interactive` ist ein Nachbau, kein ash. Skripte
+  mit ash- oder bash-Eigenheiten laufen anders; das bleibt eine dauerhafte
+  Grenze und gehoert in die Hilfe.
+- Kein mdev und kein udev: /dev muss die Laufzeit liefern (Docker: der Daemon,
+  WSL: Windows).
+- cron, syslog und passwortbasierter Login entscheidet acmesh-8v3, nicht diese
+  Roadmap.

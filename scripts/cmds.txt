@@ -14,7 +14,7 @@ mv rm mkdir ln mktemp readlink realpath
 cpio gzip md5sum shasum dd strings
 
 # system and time
-date time uptime sleep id printenv which man
+date time uptime sleep printenv which man
 
 # network
 ping netcat

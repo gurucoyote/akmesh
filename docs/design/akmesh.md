@@ -309,7 +309,10 @@ tar (acmesh-r9r: -czf/-tzf/-xzf, gzip-Erkennung beim Lesen, -C,
 --strip-components, --exclude), find
 (acmesh-29n: Startpfad optional, -maxdepth, -mindepth, -exec, -not, -path,
 -print0, "./" wie GNU) und grep (acmesh-2nz: -E, -w, -o, -A/-B/-C, -r/-R,
-Exit 0/1/2 und -c je Datei wie GNU). Bei find fiel pkg/ls weg, bei grep das
+Exit 0/1/2 und -c je Datei wie GNU), id (acmesh-eqq: fehlende
+/etc/passwd oder /etc/group sind kein Abbruch, die Zahlen werden gedruckt;
+-kombinierte Kurzflags wie -un; die Primaergruppe steht in groups=).
+Bei find fiel pkg/ls weg, bei grep das
 flag-Paket und unixflag: ein Fork, der weniger Fremdcode mitzieht, ist der
 kleinere. Ein Dateiname aus pkg/ bekommt das Elternverzeichnis als Praefix
 (pkg/find/find.go -> find_find.go), sonst kollidiert er mit dem Befehl selbst.

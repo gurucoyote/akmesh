@@ -404,6 +404,17 @@ var Texts = map[string]Entry{
 			"Transparency are not consulted, so verify answers 'chain and name are\n" +
 			"sound', not 'this certificate is still trusted today'.",
 	},
+	"id": {
+		"[-g|-G|-u] [-n] [-r] [USER]",
+		"  -g, --group     print only the effective group ID\n" +
+			"  -G, --groups    print all group IDs\n" +
+			"  -u, --user      print only the effective user ID\n" +
+			"  -n, --name      print a name instead of a number, for -ugG\n" +
+			"  -r, --real      print the real ID instead of the effective one\n" +
+			"  Without /etc/passwd or /etc/group the numbers are printed, as GNU\n" +
+			"  id does on a system without an account database; -n then reports\n" +
+			"  the missing name and exits 1.",
+	},
 	"wc": {
 		"[-l] [-w] [-c] [-m] [-b] [--files0-from=FILE] [FILE...]",
 		"  -l, --lines       count lines\n" +

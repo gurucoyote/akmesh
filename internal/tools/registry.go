@@ -82,6 +82,7 @@ var Commands = map[string]Func{
 	"tr":        runTr,
 	"uname":     runUname,
 	"verify":    runVerify,
+	"id":        runID,
 	"wc":        runWc,
 	"xargs":     runXargs,
 	"gosh":      runSh,

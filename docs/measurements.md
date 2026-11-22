@@ -3653,3 +3653,35 @@ Proben mit dem gebauten Binary, nicht mit einer Erwartung.
   ist ausgenommen, wobei kill und ps inzwischen eigene Windows-Fassungen haben.
   Nicht uebertragbar bleiben mount, mdev, init als PID1, chroot, ip/ifconfig
   (Windows-API), login/passwd (Windows-Konten).
+
+## id: antwortet ohne /etc/passwd, wie GNU (22.11.2026, acmesh-eqq)
+
+Geforkt (internal/forked/id, Upstream-Commit und Hashes im Manifest), weil
+u-root-id bei fehlender Datei abbricht. Vergleich im Container mit leeren
+Dateien bzw. im leeren Image.
+
+- GNU id mit leerer /etc/passwd und /etc/group (debian stable-slim, Dateien per
+  -v auf leere Kopien gebunden): `uid=0 gid=0 groups=0`, Exit 0.
+  `id -un`: druckt `0`, dazu `id: cannot find name for user ID 0` auf stderr,
+  Exit 1.
+- akmesh im leeren Image (statischer Bau, /bin/id -> /akmesh, nur /proc
+  gemountet): `uid=0 gid=0 groups=0`, Exit 0; `id -un` druckt `0` plus
+  dieselbe Meldung, Exit 1. Vorher: `open /etc/passwd: no such file or
+  directory`, keine Ausgabe.
+- Primaergruppe: u-root nahm nur syscall.Getgroups(); im leeren Image war die
+  Liste leer und die Ausgabe endete bei `groups=`. Jetzt wird die GID des
+  Prozesses ergaenzt, wenn sie fehlt - daher `groups=0`.
+- Kombinierte Kurzflags: `id -un` scheiterte am flag-Paket
+  ("flag provided but not defined: -un"); jetzt werden -g/-G/-n/-u/-r
+  zerlegt, `id -un` druckt `root`, `id -Gn` die Gruppen, `id -uZ` bleibt ein
+  Fehler mit Exit 2.
+- Ein bekannter Nutzer behaelt seine Namen: `./akmesh id` auf dem Host
+  `uid=0(root) gid=0(root) groups=0(root),...` wie vorher.
+- Windows: `./akmesh.exe id` -> `uid=-1 gid=-1 groups=-1`, unveraendert
+  gegenueber u-root (es gibt dort keine uid; eine Windows-Fassung ueber
+  Token-SIDs waere eigene Arbeit).
+- Groesse: linux 17105123 Bytes (vorher 17096931, +8192),
+  windows 17178112 (vorher 17173504, +4608).
+- Gatter: go test ./... gruen (einmalig flackerte
+  TestDashDashStillEndsTheOptions mit fremdem stdin, einzeln und im zweiten
+  Lauf gruen), Batterie 211 Checks 0 Fehler, Hilfe-Audit exit 0.

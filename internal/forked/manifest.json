@@ -75,6 +75,23 @@
         }
       ]
     },
+    "id": {
+      "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
+      "files": [
+        {
+          "sha256": "ca571f56e58b5df7bcf13496c8440ed3283501892c9fe133e04ba291c85b915b",
+          "upstream": "cmds/core/id/groups.go"
+        },
+        {
+          "sha256": "3d69a80a139c00aa5c954e75774f21fd6b971e353025cfd692b7f92fc9316a35",
+          "upstream": "cmds/core/id/id.go"
+        },
+        {
+          "sha256": "702f5f84e866cf57a92f9dc6774f5a859d1a2a3b542dd9922fb6e5aef5dcd79e",
+          "upstream": "cmds/core/id/users.go"
+        }
+      ]
+    },
     "touch": {
       "commit": "869f00f6b224ce02b1db51806159d6cd9c246f76",
       "files": [

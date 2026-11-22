@@ -1,4 +1,7 @@
 # Commands that only build for Linux in this setup.
 # ssh and strace are Linux-only here; df, du, free, kill and ps do not build
 # for Windows in u-root (a native Windows replacement is a ticket of its own).
+# This file is the note, not an input of the build: our own commands carry the
+# platform in build tags, and u-root names that only build for Linux are marked
+# with a "linux:" line in scripts/cmds.txt (acmesh-hdb).
 ssh strace df du free kill ps

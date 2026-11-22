@@ -310,7 +310,19 @@ fi
 
 # One name per line: cmds.txt groups names on a line, and the profile excludes
 # compare whole lines. Without this, "exclude ping" never matched "ping netcat".
-NAMES=$(grep -v '^#' "$ROOT/scripts/cmds.txt" | tr ' ' '\n' | sed '/^$/d')
+# A line may start with "linux:", which marks u-root commands that only build
+# for Linux (mount, ip, mknod): they are left out of the Windows build instead
+# of breaking it.
+NAMES=$(awk -v goos="$GOOS" '
+	/^[[:space:]]*#/ { next }
+	{
+		line = $0
+		only = ""
+		if (line ~ /^linux:([[:space:]]|$)/) { only = "linux"; sub(/^linux:[[:space:]]*/, "", line) }
+		if (only != "" && goos != only) next
+		n = split(line, a, /[[:space:]]+/)
+		for (i = 1; i <= n; i++) if (a[i] != "") print a[i]
+	}' "$ROOT/scripts/cmds.txt")
 for c in $PROFILE_EXCLUDE; do
 	NAMES=$(echo "$NAMES" | grep -v "^$c$" || true)
 done

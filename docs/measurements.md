@@ -3685,3 +3685,158 @@ Dateien bzw. im leeren Image.
 - Gatter: go test ./... gruen (einmalig flackerte
   TestDashDashStillEndsTheOptions mit fremdem stdin, einzeln und im zweiten
   Lauf gruen), Batterie 211 Checks 0 Fehler, Hilfe-Audit exit 0.
+
+## BusyBox-Ersatz: gemessener Bedarf statt Schaetzung (22.11.2026, acmesh-w6d)
+
+Fortsetzung des Abschnitts oben. Messsystem: Alpine 3.16, BusyBox 1.37.0
+(`busybox 2>&1 | head -1`), akmesh vom 22.11. 19:51 (Linux-Bau).
+
+Anzahl und Abdeckung:
+
+- `busybox --list | wc -l` -> 304 Applets.
+- Als Symlink auf /bin/busybox ausgeliefert (Python-Lauf ueber /bin, /sbin,
+  /usr/bin, /usr/sbin: `os.readlink` endet auf `busybox`) -> 283 Applets.
+  Die 21 Differenz sind Applets, die diese Installation nicht verlinkt
+  (z.B. linux32, linux64, nanddump/lzop-Familie).
+- `./akmesh gibtsnicht` -> 108 Befehle (Zeilen der Form " - Name").
+- Schnittmenge: 71 von 283 ausgelieferten Applets, also 25 Prozent. Es fehlen
+  212 Namen.
+- Umgekehrt: 38 akmesh-Befehle hat BusyBox nicht - any2md, die *2md-Aliase,
+  *2html, md2*, html2*, rg, jq, curl, file, patch, mkcert, policy, verify,
+  strace, tracedeps, certinfo, iconv, shasum, netcat, ssh, scp.
+
+Was dieses System wirklich aufruft (nicht geschaetzt): 60 Skripte mit
+`#!/bin/sh` oder `#!/sbin/openrc-run` unter /etc/init.d, /etc/periodic,
+/etc/profile.d, /usr/local/bin, /etc/apk, /etc/network, /lib/rc,
+/usr/share/udhcpc sowie /etc/profile und /etc/crontabs/root (86 Dateien
+gesehen, 54 davon openrc-run). Tokenzaehlung, jeweils erstes Wort eines
+Segments nach ; & | ( ) und $(, Zuweisungen abgeschnitten.
+
+Haeufigste Aufrufe, die akmesh NICHT hat (Anzahl Aufrufstellen):
+
+    mount 30, ip 26, brctl 26, modprobe 11, sysctl 8, printf 7, umount 6,
+    mknod 5, test 2, ifdown 2, rmdir 2, dmesg 2, ifconfig 2, route 2,
+    hwclock 2, swapon 1, swapoff 1, su 1, chattr 1, fuser 1, chgrp 1,
+    halt 1, reboot 1, fsck 1, zcat 1, blkid 1, depmod 1, pgrep 1
+
+Haeufigste Aufrufe, die akmesh hat: echo 27, rm 21, grep 19, mkdir 18,
+sed 13, sleep 13, ln 9, cat 8, awk 7, find 5, chmod 5, sync 4, cp 4,
+xargs 4, mv 4, env 4, cut 3, mktemp 3, uname 3, timeout 3, wget 2,
+readlink 2, hostname 2, true 2, dazu je einmal touch, dirname, dd, md5sum,
+which, df, tail, ping, kill, head.
+
+Grenze der Methode: die Zaehlung ist eine Obergrenze. Sie zaehlt auch Woerter
+aus case-Zweigen, Funktionsnamen und Aufrufe, die erst in einer if-Verzweigung
+gelten. Sie sagt nichts ueber Haeufigkeit zur Laufzeit; dazu gehoerte ein
+Mitschnitt auf einem laufenden System, den es hier nicht gibt.
+
+Groesse und Startzeit (300 Laeufe je Binary, while-Schleife mit echo):
+
+- Groesse: akmesh 17105123 Bytes gegen BusyBox 808712 - Faktor 21,2,
+  Mehrverbrauch 15,6 MB im Image.
+- Startzeit: akmesh 2053 ms fuer 300 Laeufe (6,84 ms je Aufruf), BusyBox
+  258 ms (0,86 ms). Also rund 8x und knapp 6 ms Aufschlag je Kommando.
+  Fuer eine Skriptkette mit 100 Kommandos sind das 0,6 Sekunden.
+
+Stichproben gleicher Namen (BusyBox 1.37.0 gegen akmesh):
+
+- `ls -l f.txt`: akmesh `-rw-r--r-- 1 root root 4 Nov 22 21:56 f.txt`,
+  BusyBox polstert Rechte und Groesse breiter (`-rw-r--r--    1 root     root
+  ...`). Gleiche Felder, andere Spaltenbreite - Skripte, die Spalten per cut
+  schneiden, brechen.
+- `tar czf t.tgz f.txt` (alte Form ohne Bindestrich): BusyBox macht es,
+  akmesh antwortet `tar: must supply at least one of: -c, -x, -t` und Exit 2.
+  Mit `-czf` oder `-c -z -f` baut akmesh das Archiv, das BusyBox wieder
+  auspackt. Altform ohne Bindestrich ist also die einzige Luecke.
+- `gzip`: beide erzeugen g1.gz bzw. g2.gz, Exit 0.
+- `sh`: akmesh faehrt gosh (mvdan/sh) statt ash; `echo $((1+1))`, Zuweisung
+  und Ausgabe stimmen. Das ist ein anderer Dialekt, kein Nachbau: 54 der
+  gescannten Skripte sind openrc-run, und /bin/sh zeigt hier auf BusyBox-ash.
+
+Antwort: nein als vollstaendiger Ersatz, teilweise als Werkzeugkasten.
+
+- Als Ersatz fuer busybox auf diesem System: nein. Es fehlt die ganze
+  Systemklasse - kein init/PID1 mit Zombie-Reaping, kein mount, kein ip,
+  kein mknod/mdev, kein ash als /bin/sh, kein login/passwd. Ohne diese fuenf
+  bootet nichts, was heute bootet.
+- Als Shell fuer einen Agenten: ja, mit Bedingungen. Der Agentenkern ist
+  breiter als BusyBox (rg, jq, curl, file, patch, die Konverter), die
+  Textwerkzeuge sind gemessen GNU-nah (sed 13 von 13, ps nach procps,
+  grep -r Pfade), und die Policy greift prozessweit.
+- Der Abstand ist billiger zu schliessen, als er aussieht: von den 27
+  fehlenden, tatsaechlich aufgerufenen Namen bringt u-root 12 schon mit
+  (mount, umount, ip, brctl, mknod, dmesg, modprobe, hwclock, blkid, reboot,
+  switch_root, init) - das ist eine Zeile in scripts/cmds.txt, kein neuer
+  Code. Geprueft per `ls .build/uroot/cmds/core` und `cmds/exp`; ob die
+  u-root-Fassung die benutzten Unterbefehle kann, sagt erst ein Lauf im
+  leeren Image.
+
+Luecken nach Klasse (Namen, die diese Installation ausliefert und akmesh nicht
+hat; erzeugt aus den Symlinks gegen die Befehlsliste, ohne Gewichtung):
+
+- Kern (Text, Dateien, Suche), 21: ash beep bunzip2 bzcat bzip2 chgrp chown
+  cksum egrep fgrep groups gunzip install od printf rmdir test tty who whoami
+  zcat
+- Netzwerk, 19: arp brctl ether-wake ifconfig ifenslave ip ipaddr iplink
+  iproute iprule iptunnel nc netstat nslookup ping6 route traceroute udhcpc
+  vconfig
+- Hardware und System, 61: blkid blockdev dmesg dnsdomainname eject fbsplash
+  fdisk findfs fsck fstrim getopt hwclock init insmod ionice iostat ipcrm ipcs
+  killall5 klogd less loadfont loadkmap logger logread losetup lsmod lsof lsusb
+  mdev mknod mkswap modinfo modprobe mount mountpoint nameif nbd-client
+  partprobe pivot_root poweroff pwdx raidautorun readahead rev rfkill setconsole
+  slattach su swapoff swapon switch_root sysctl syslogd top tunctl vlock watch
+  watchdog zcip
+- Boot und Init, 1 (der Rest der Bootkette steht oben unter Hardware): reboot
+- Login und Rechte, 12: addgroup adduser chpasswd chroot crond crontab cryptpw
+  delgroup deluser login mkpasswd passwd
+- Ohne eigene Klasse, 98: acpid add-shell adjtimex arch arping bbconfig bc
+  blkdiscard cal chvt dc deallocvt depmod dos2unix dumpkmap expand expr factor
+  fallocate fatattr fbset fdflush flock fold fsync getty hd hostid inotifyd
+  ipcalc ipneigh kbd_mode last link linux32 linux64 lzop lzopcat makemime mesg
+  microcom mkfifo mpstat nanddump nandwrite nice nmeter nohup nologin nproc
+  nsenter ntpd openvt paste pgrep pidof pipe_progress pkill pmap pscan rdate
+  rdev reformime remove-shell renice resize rmmod run-parts sendmail setfont
+  setkeycodes setlogcons setpriv setserial setsid sha3sum showkey shred stty sum
+  traceroute6 tree ttysize udhcpc6 umount unexpand unix2dos unlink unlzop
+  unshare usleep uudecode uuencode vi volname whois
+
+## Systempaket 1: mount, umount, mknod, blkid, losetup (22.11.2026, acmesh-hdb)
+
+Fuenf u-root-core-Befehle aufgenommen, weil w6d sie als gemessene Luecke zeigt
+(mount 30 Aufrufstellen in den Init-Skripten, umount 6, mknod 5, blkid 1).
+
+Bau und Plattform:
+
+- Neue Zeile in scripts/cmds.txt: `linux: mount umount mknod blkid losetup`.
+  Ein Praefix `linux:` markiert Namen, die nur fuer Linux bauen; der Bau filtert
+  sie fuer GOOS=windows heraus, statt am fehlenden Linux-Code zu scheitern. Die
+  Kennung lesen ausserdem internal/cmdlist (Test) und scripts/help-audit.sh.
+- `./akmesh gibtsnicht` listet die fuenf unter System, `./akmesh.exe gibtsnicht`
+  listet keinen davon (gezaehlt mit grep -c).
+- Groesse Linux 17146083 Bytes (vorher 17105123, +40960), Windows 17178624
+  (vorher 17178112, +512). Statischer Bau (CGO_ENABLED=0) 17092732.
+- `bash scripts/help-audit.sh --check ./akmesh` exit 0. blkid antwortet auf
+  --help ohne Usage-Text (u-root), steht deshalb in KNOWN_NO_HELP.
+
+Lauf im leeren Image (Rezept references/minimal-system-probe.md, statischer Bau):
+
+- Ohne --privileged: `mount -t tmpfs tmpfs /mnt/t` -> "operation not permitted",
+  Exit 1; `mknod` ebenso. Das ist der fehlende CAP_SYS_ADMIN des Containers,
+  nicht der Befehl. Der Befehl nimmt also Rechte ernst.
+- Mit --privileged: mount Exit 0, Datei in den tmpfs geschrieben und gelesen,
+  umount Exit 0; `mknod /tmp/nk c 1 3` Exit 0, danach `echo x > /tmp/nk` Exit 0
+  (die Geraetedatei tut, was sie soll).
+
+Stichproben gegen BusyBox 1.37.0 im Alpine-Container, gleiche Aufrufe:
+
+- `mknod /tmp/nk c 1 3`: BusyBox legt `crw-r--r--` an (0666 und Umask 0022),
+  akmesh `crw-r-----` (0660 und Umask). Gleiche Geraetenummern, andere Rechte.
+- `blkid`: BusyBox druckt je Geraet `"/dev/sdd: UUID=... TYPE=..."`. akmesh
+  druckt nur nackte Pfade (`/dev/loop0`, `/dev/sda`) ohne UUID und TYPE - und
+  nennt sie auch dann, wenn /dev im Container gar keine Blockgeraete hat, die
+  Liste kommt also nicht aus /dev.
+- `losetup -f`: BusyBox druckt `/dev/loop0`. u-root-losetup kennt -f nicht:
+  "flag provided but not defined: -f", Exit 2.
+- Alle drei Abweichungen stehen als eigenes Ticket, weil sie Ausgabeformate
+  sind, die Skripte lesen, und nicht nur fehlende Namen.

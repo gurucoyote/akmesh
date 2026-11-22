@@ -76,6 +76,9 @@ func readCmdsTxt(t *testing.T) []string {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
+		// A line may start with "linux:", the marker for u-root commands that
+		// only build for Linux (see scripts/cmds.txt). The marker is not a name.
+		line = strings.TrimPrefix(line, "linux:")
 		out = append(out, strings.Fields(line)...)
 	}
 	return out

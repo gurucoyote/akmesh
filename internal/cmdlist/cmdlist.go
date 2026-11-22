@@ -119,7 +119,8 @@ var groups = map[string]string{
 	"yes":       Files,
 
 	// System.
-	"certinfo":  Files, // a certificate is a file
+	"blkid":     System, // a block device, read like a file
+	"certinfo":  Files,  // a certificate is a file
 	"date":      System,
 	"df":        System,
 	"du":        System,
@@ -130,8 +131,11 @@ var groups = map[string]string{
 	"id":        System,
 	"kill":      System,
 	"killall":   System,
+	"losetup":   System,
 	"man":       System,
 	"mkcert":    System,
+	"mknod":     System,
+	"mount":     System,
 	"policy":    System,
 	"printenv":  System,
 	"ps":        System,
@@ -142,6 +146,7 @@ var groups = map[string]string{
 	"timeout":   System,
 	"tracedeps": System,
 	"true":      System,
+	"umount":    System,
 	"uname":     System,
 	"uptime":    System,
 	"verify":    System,

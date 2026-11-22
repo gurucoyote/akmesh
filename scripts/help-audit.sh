@@ -29,7 +29,7 @@ fi
 # u-root commands that still answer --help with something other than help.
 # Listed so that a NEW command without help fails the gate instead of hiding
 # in a big number (acmesh-py8).
-KNOWN_NO_HELP=" mv rm mkdir gzip uptime printenv man "
+KNOWN_NO_HELP=" mv rm mkdir gzip uptime printenv man blkid "
 # Commands whose help does not end with 0. GNU /bin/false reports its usage and
 # still exits 1 (measured 19.11.2026); everything else ends with 0.
 KNOWN_NONZERO=" false "
@@ -50,7 +50,7 @@ TMP=$SCRATCH/out.txt
 # commands we keep (cmds.txt). The dispatcher does not print a list of its own.
 HERE=$(dirname "$0")
 OURS=$(sed -n 's/^OURS_ALL="\(.*\)"$/\1/p' "$HERE/build-bb.sh" 2>/dev/null)
-UROOT=$(awk 'NF && $1 !~ /^#/ {print}' "$HERE/cmds.txt" 2>/dev/null | tr ' ' '\n')
+UROOT=$(sed 's/^[[:space:]]*linux:[[:space:]]*//' "$HERE/cmds.txt" 2>/dev/null | awk 'NF && $1 !~ /^#/ {print}' | tr ' ' '\n')
 CMDS=$(printf '%s\n%s\n' "$OURS" "$UROOT" | tr ' ' '\n' | awk 'NF && !seen[$0]++' | tr '\n' ' ')
 if [ -z "$CMDS" ]; then
 	echo "no command list found in scripts/cmds.txt and scripts/build-bb.sh" >&2

@@ -9,7 +9,9 @@ are English; documents meant for Martin are German.
 - `scripts/build-bb.sh`: the only build entry point. Pins the u-root commit and
   the command list, calls `makebb`.
 - `scripts/cmds.txt`: the command list per platform (one name per line,
-  `#` comments allowed). Adding a command means adding it here.
+  `#` comments allowed). Adding a command means adding it here. A line may start
+  with `linux:`, which keeps u-root names that only build for Linux out of the
+  Windows build (`linux: mount umount mknod blkid losetup`).
 - `internal/tools/`: our own commands in one package with one table. The table is
   what the multicall binary dispatches on and what the per-name entry points use.
 - `internal/usage/`: the shared `--help` answer (one table of short texts, plus

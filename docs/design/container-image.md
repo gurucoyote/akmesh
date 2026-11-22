@@ -69,7 +69,14 @@ Der urspruengliche Befund, der diese Stufe nach vorn holte:
   /etc/profile und eines in ~/.profile sind vor dem ersten Kommando sichtbar,
   `echo $PATH` zeigt den PATH aus dem Profil.
 
-## Stufe 2: login und getty (acmesh-7q7)
+## Stufe 2: login und getty (acmesh-7q7) - login erledigt, getty offen
+
+Gebaut am 22.11.2026: `login [-f] USER` liest /etc/passwd, wechselt UID/GID,
+setzt HOME/USER/LOGNAME/SHELL/PATH und startet die Shell mit -l. Im Container
+belegt (Datei aus ~/.profile gehoert danach dem neuen Nutzer). Ohne -f verweigert
+es die Anmeldung, weil es keine Passwortpruefung gibt. Belege in
+docs/measurements.md, Abschnitt "login". getty ist nicht gebaut: u-root bringt
+eines in cmds/exp, es startet eine Shell ohne Nutzerwechsel.
 
 - `login`: /etc/passwd lesen (Name, UID, GID, Home, Shell), setgid/setuid,
   Home-Verzeichnis betreten, HOME, USER, LOGNAME, SHELL, PATH setzen und die

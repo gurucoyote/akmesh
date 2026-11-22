@@ -53,6 +53,7 @@ var Commands = map[string]Func{
 	"hexdump":   runHexdump,
 	"iconv":     runIconv,
 	"jq":        runJq,
+	"login":     runLogin,
 	"ls":        runLs,
 	"kill":      runKill,
 	"killall":   runKillall,

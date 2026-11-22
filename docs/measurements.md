@@ -3899,3 +3899,44 @@ Grenzen, offen als Ticket acmesh-51b: in der Sitzung liest das builtin `read`
 nichts, weil die Shell einen leeren Leser bekommt; und `$0` ist in jedem Aufruf
 `gosh`, weil der Dispatcher argv[0] setzt - der Login ueber den Namen `-sh` ist
 damit nicht erreichbar, `-l`/`--login` ist der Weg.
+
+## login: eine Sitzung als anderer Nutzer (22.11.2026, acmesh-7q7)
+
+Der zweite Teil des Logins: acmesh-4g7 hat der Shell beigebracht, Profile zu
+lesen; `login` bringt die Sitzung als den richtigen Nutzer ins richtige
+Home-Verzeichnis.
+
+- `login [-f] USER` liest /etc/passwd (Name, UID, GID, Home, Shell) und wechselt
+  der Reihe nach: Gruppe, Zusatzgruppen (auf die eine Gruppe gesetzt), dann UID.
+  Ein Fehler dabei bricht ab; es gibt keinen Rueckfall auf den aktuellen Nutzer.
+- Home-Verzeichnis wird betreten; fehlt es, gibt es eine Warnung und die Sitzung
+  startet in /.
+- Umgebung: HOME, USER, LOGNAME, SHELL und PATH werden gesetzt, der Rest der
+  Aufrufer-Umgebung bleibt, der PATH des Aufrufers ebenfalls (ein Login an der
+  Konsole erbt, was getty hatte). Eine geerbte HOME des Aufrufers wird ersetzt,
+  nicht verdoppelt.
+- Die Shell wird mit `-l` gestartet, wenn sie sh oder bash heisst; damit liest sie
+  /etc/profile und dann ~/.profile.
+- Ohne `-f` verweigert login die Anmeldung mit einem Satz: in diesem Bau gibt es
+  keine Passwortpruefung (kein PAM, kein /etc/shadow-Leser). Ein Login, der
+  Anmeldung vortaeuscht, waere schlimmer als einer, der es sagt.
+- Windows: der Befehl antwortet "not supported on Windows" (kein /etc/passwd,
+  kein setuid), Hilfe mit Exit 0.
+
+Beleg im Container (alpine, eigenes /etc/passwd eingebunden, /sh -> /akmesh):
+
+    /akmesh login -f tester < /dev/null   -> Exit 0
+    ls -l /home/tester                    -> proof, Besitzer tester uid 1000
+    cat /home/tester/proof                -> "profil von tester"
+
+Das zeigt in einem Lauf: UID/GID-Wechsel, Home als Arbeitsverzeichnis,
+Login-Shell gestartet, ~/.profile gelesen - und dass die Datei dem neuen Nutzer
+gehoert, nicht root.
+
+Weitere Belege: 7 Tests in internal/login (ID-Wechsel, PATH bleibt, HOME wird
+ersetzt, ohne -f verweigert, unbekannter Nutzer, Hilfe); go test gruen;
+`scripts/help-audit.sh --check ./akmesh` Exit 0; Batterie 211 Checks 0 Fehler;
+`./akmesh.exe login -h` antwortet ebenfalls.
+
+Groesse: Linux 17182947 Bytes (+16384 gegen 17166563), Windows 17198080
+(+2048 gegen 17196032).

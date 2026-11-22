@@ -108,3 +108,49 @@ func TestAwkProgramErrorExitsNonzero(t *testing.T) {
 	}
 	_ = io.Discard
 }
+
+// The values below are GNU sed 4.9 (debian:stable-slim, measured 22.11.2026,
+// see docs/measurements.md "sed gegen GNU sed"). /bin/sed on this host is
+// BusyBox, so it is not the reference for anything GNU adds.
+func TestSedGnUCompatibleSubstitution(t *testing.T) {
+	cases := []struct {
+		name  string
+		args  []string
+		input string
+		want  string
+	}{
+		{"ERE alternation takes the longest", []string{"-E", "s/a|ab/X/"}, "ab\n", "X\n"},
+		{"ERE back reference", []string{"-E", `s/(ab)/<\1>/`}, "xaby\n", "x<ab>y\n"},
+		{"ERE whole match", []string{"-E", "s/(ab)/<&>/"}, "xaby\n", "x<ab>y\n"},
+		{"BRE plus", []string{`s/a\+/X/`}, "aaa\n", "X\n"},
+		{"BRE question mark", []string{`s/a\?/X/g`}, "ba\n", "XbX\n"},
+		{"BRE group and back reference", []string{`s/\(ab\)/<\1>/`}, "xaby\n", "x<ab>y\n"},
+		{"BRE interval", []string{`s/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/`}, "1234567\n", "1234,567\n"},
+		{"dot matches a newline", []string{"N;s/a.*b/X/"}, "a\nb\n", "X\n"},
+		{"bare pipe is literal in BRE", []string{`s/a|ab/X/`}, "ab\n", "ab\n"},
+		{"alternation in BRE", []string{`s/x\|y/Z/g`}, "xyx\n", "ZZZ\n"},
+		{"posix class", []string{`s/[[:upper:]]/./g`}, "aBcD\n", "a.c.\n"},
+	}
+	for _, c := range cases {
+		got, errText, code := runHere(t, "sed", c.args, c.input)
+		if code != 0 || errText != "" {
+			t.Errorf("%s: exit %d, stderr %q", c.name, code, errText)
+			continue
+		}
+		if got != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
+// A back reference inside the search pattern cannot be served by Go's engine;
+// the command has to say so instead of matching something wrong.
+func TestSedPatternBackReferenceIsRefused(t *testing.T) {
+	_, errText, code := runHere(t, "sed", []string{`s/\(a\)\1/X/`}, "aa\n")
+	if code == 0 {
+		t.Fatalf("exit 0, want nonzero for an unsupported back reference")
+	}
+	if !strings.Contains(errText, "back reference") {
+		t.Errorf("stderr %q, want a message naming the back reference", errText)
+	}
+}

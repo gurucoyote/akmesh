@@ -1,0 +1,567 @@
+--- a/sed/conditions.go
++++ b/sed/conditions.go
+@@ -37,8 +37,12 @@
+ 	return r.re.MatchString(svm.pat)
+ }
+ 
+-func newRECondition(s string, loc *location) (*regexpcond, error) {
+-	re, err := regexp.Compile(s)
++func newRECondition(s string, loc *location, extended bool) (*regexpcond, error) {
++	translated, terr := translatePattern(s, extended)
++	if terr != nil {
++		return nil, fmt.Errorf("Regexp Error: %s %v", terr.Error(), loc)
++	}
++	re, err := regexp.Compile(translated)
+ 	if err != nil {
+ 		err = fmt.Errorf("Regexp Error: %s %v", err.Error(), loc)
+ 	}
+--- a/sed/engine.go
++++ b/sed/engine.go
+@@ -11,6 +11,12 @@
+ // So this is a Go-flavored sed, rather than a drop-in replacement for
+ // a UNIX sed.  Depending on your tastes, you will either consider this
+ // an improvement or completely brain-dead.
++//
++// akmesh fork: a basic regular expression (the default) is now translated to
++// Go's syntax and both spellings of a group reference work (\1 and $1), so a
++// UNIX command line keeps working.  Matching is POSIX leftmost-longest, as GNU
++// sed does it.  NewExtended/NewQuietExtended take -E/-r scripts, in which the
++// operators are written without backslashes.
+ package sed
+ 
+ import (
+@@ -48,13 +54,13 @@
+ 
+ // makeEngine is the logic behine the New and NewQuiet public functions.
+ // It lexes and parses the program, and makes a new Engine out of it.
+-func makeEngine(program io.Reader, isQuiet bool) (*Engine, error) {
++func makeEngine(program io.Reader, isQuiet, extended bool) (*Engine, error) {
+ 	bufprog := bufio.NewReader(program)
+ 	ch := make(chan *token, 128)
+ 	errch := make(chan error, 1)
+ 	go lex(bufprog, ch, errch)
+ 
+-	instructions, parseErr := parse(ch, isQuiet)
++	instructions, parseErr := parse(ch, isQuiet, extended)
+ 	var err = <-errch // look for lexing errors first...
+ 	if err == nil {
+ 		// if there were no lex errors, look for a parsing error
+@@ -69,14 +75,25 @@
+ // engine will be 'nil' and the error will be returned.  Otherwise, the returned
+ // error will be nil.
+ func New(program io.Reader) (*Engine, error) {
+-	return makeEngine(program, false)
++	return makeEngine(program, false, false)
+ }
+ 
+ // NewQuiet creates a new sed engine from a program.  It behaves exactly as
+ // New(), except it produces an engine that doesn't print lines by defualt. This
+ // is the classic '-n' sed behaviour.
+ func NewQuiet(program io.Reader) (*Engine, error) {
+-	return makeEngine(program, true)
++	return makeEngine(program, true, false)
++}
++
++// NewExtended is New for a -E/-r script: operators are written without
++// backslashes and nothing is translated.
++func NewExtended(program io.Reader) (*Engine, error) {
++	return makeEngine(program, false, true)
++}
++
++// NewQuietExtended is NewQuiet for a -E/-r script.
++func NewQuietExtended(program io.Reader) (*Engine, error) {
++	return makeEngine(program, true, true)
+ }
+ 
+ // Wrap supplies an io.Reader that applies the sed Engine to the given
+--- a/sed/engine_test.go
++++ b/sed/engine_test.go
+@@ -39,7 +39,7 @@
+ }
+ 
+ func TestBranchRedo(t *testing.T) {
+-	prog := `:redo;s/^([^]]*\[[^] ]*) /${1}_/;t redo`
++	prog := `:redo;s/^\([^]]*\[[^] ]*\) /\1_/;t redo`
+ 	runprog(t, prog,
+ 		"one [place with some brackets] [and another]\n",
+ 		"one [place_with_some_brackets] [and another]\n")
+@@ -52,7 +52,7 @@
+ 	prog := `
+ # a program to commify numbers
+ :loop 
+-s/(.*\d)(\d\d\d)/$1,$2/
++s/\(.*[0-9]\)\([0-9][0-9][0-9]\)/\1,\2/
+ t loop
+ `
+ 	runprog(t, prog,
+@@ -70,7 +70,7 @@
+ func TestSubst(t *testing.T) {
+ 	runprog(t, `
+ # test a few features of s/pattern/replacement/flags
+-s:(\d)(\d)(\d):$1\t$2\t$3:  # put tabs between 3 digits
++s:\([0-9]\)\([0-9]\)\([0-9]\):\1\t\2\t\3:  # put tabs between 3 digits
+ s/[a-z]/X/3g                # replace lowercase letters with an X, starting with the 3rd one
+ `,
+ 		"a 234 is the Way\n12345 ONE two three\n",
+@@ -136,7 +136,7 @@
+ 	prog := `
+ # a program to commify numbers
+ :loop 
+-s/(.*\d)(\d\d\d)/$1,$2/
++s/\(.*[0-9]\)\([0-9][0-9][0-9]\)/\1,\2/
+ t loop
+ `
+ 	engine, err := New(strings.NewReader(prog))
+--- a/sed/lex.go
++++ b/sed/lex.go
+@@ -217,6 +217,12 @@
+ 				buffer.WriteRune(character)
+ 				character = ' ' // don't escape the next one
+ 			default:
++				// sed's \1 is a group and \& a literal ampersand, so the
++				// backslash has to survive this reader; everything else keeps
++				// the old "escape means the character itself" behaviour.
++				if (character >= '1' && character <= '9') || character == '&' || character == '$' {
++					buffer.WriteRune('\\')
++				}
+ 				buffer.WriteRune(character)
+ 			}
+ 		} else {
+--- a/sed/parse.go
++++ b/sed/parse.go
+@@ -29,11 +29,12 @@
+ 	t_labels   map[string]instruction // named t branch labels
+ 	blockLevel int                    // how deeply nested are our blocks?
+ 	quiet      bool                   // are we building a quiet engine (-n sed)?
++	extended   bool                   // is the script written in -E/-r syntax?
+ 	err        error                  // record any errors we encounter
+ }
+ 
+-func parse(input <-chan *token, quiet bool) ([]instruction, error) {
+-	ps := &parseState{toks: input, b_labels: make(map[string]instruction), t_labels: make(map[string]instruction), quiet: quiet}
++func parse(input <-chan *token, quiet, extended bool) ([]instruction, error) {
++	ps := &parseState{toks: input, b_labels: make(map[string]instruction), t_labels: make(map[string]instruction), quiet: quiet, extended: extended}
+ 
+ 	ps.ins = append(ps.ins, cmd_fillNext)
+ 	parse_toplevel(ps)
+@@ -95,7 +96,7 @@
+ 			compile_cond(ps, eofcond{})
+ 		case tok_RX:
+ 			var rx condition
+-			rx, ps.err = newRECondition(tok.args[0], &tok.location)
++			rx, ps.err = newRECondition(tok.args[0], &tok.location, ps.extended)
+ 			if ps.err != nil {
+ 				break
+ 			}
+@@ -175,7 +176,7 @@
+ 	case tok_DOLLAR:
+ 		c2 = eofcond{}
+ 	case tok_RX:
+-		c2, ps.err = newRECondition(tok.args[0], &tok.location)
++		c2, ps.err = newRECondition(tok.args[0], &tok.location, ps.extended)
+ 		if ps.err != nil {
+ 			break
+ 		}
+@@ -285,7 +286,7 @@
+ 		}
+ 		ps.ins = append(ps.ins, reader)
+ 	case 's':
+-		subst, err := newSubstitution(cmd.args[0], cmd.args[1], cmd.args[2])
++		subst, err := newSubstitution(cmd.args[0], cmd.args[1], cmd.args[2], ps.extended)
+ 		if err != nil {
+ 			ps.err = fmt.Errorf("Substitution parse: %s %v", err.Error(), &cmd.location)
+ 			break
+--- a/sed/substitution.go
++++ b/sed/substitution.go
+@@ -21,13 +21,14 @@
+ 	which       int            // which pattern to replace
+ 	pflag       bool           // do we print upon replacement?
+ 	gflag       bool           // do we replace every match after 'which'?
++	longest     *longestMatcher // POSIX leftmost-longest, nil when it cannot differ
+ }
+ 
+ func (s *substitute) run(svm *vm) (err error) {
+ 	svm.ip++
+ 
+ 	// perform the search
+-	matches := s.pattern.FindAllStringSubmatchIndex(svm.pat, -1)
++	matches := s.longest.matches(s.pattern, svm.pat)
+ 
+ 	// filter to the matches we want to replace
+ 	var end int = len(matches)
+@@ -58,7 +59,7 @@
+ 	var substrings []string
+ 	endpt := 0 // where we left off in the src string
+ 	for _, idx := range indexes {
+-		exp := string(subst.pattern.ExpandString(nil, subst.replacement, src, idx))
++		exp := expandReplacement(subst.pattern, src, subst.replacement, idx)
+ 		substrings = append(substrings, src[endpt:idx[0]], exp)
+ 		endpt = idx[1]
+ 	}
+@@ -67,13 +68,17 @@
+ 	return strings.Join(substrings, "")
+ }
+ 
+-func newSubstitution(pattern string, replacement string, mods string) (instruction, error) {
+-	rx, err := regexp.Compile(pattern)
++func newSubstitution(pattern string, replacement string, mods string, extended bool) (instruction, error) {
++	translated, terr := translatePattern(pattern, extended)
++	if terr != nil {
++		return nil, terr
++	}
++	rx, err := regexp.Compile(translated)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+-	command := &substitute{pattern: rx, replacement: replacement}
++	command := &substitute{pattern: rx, replacement: replacement, longest: newLongestMatcher(translated)}
+ 	var numbers []rune
+ 
+ 	for _, char := range mods {
+@@ -135,4 +140,345 @@
+ 		svm.ip++
+ 		return nil
+ 	}, nil
++}
++
++// ------------------------------------------------------------------
++// -  REGULAR EXPRESSIONS (akmesh fork)  ----------------------------
++// ------------------------------------------------------------------
++
++// longestMatcher gives a pattern POSIX's leftmost-longest choice. Go's engine
++// takes the leftmost start (which POSIX wants too) but then the first
++// alternative that fits, so "a|ab" matches "a" in "ab" while GNU sed matches
++// "ab". CompilePOSIX is no way out: in Go it drops every match that spans a
++// newline, and a sed pattern space is multi-line as soon as N or G was used
++// (measured: "[^<]*" on "a\nb" gives "a\nb" with Compile and nothing with
++// CompilePOSIX, which sent a "N; b loop" program into an endless loop).
++//
++// So the refinement is built from the pattern itself: split a top-level "|"
++// into its alternatives, search each of them anchored at the match start, keep
++// the longest, and take the groups from the whole pattern applied to exactly
++// that slice. A pattern without a top-level "|" cannot differ and is left
++// alone; one with ^ or $ is left alone too, because searching a slice of the
++// text would move those anchors.
++type longestMatcher struct {
++	alts  []*regexp.Regexp // one per alternative, anchored at the text start
++	whole *regexp.Regexp   // the whole pattern, anchored at both ends
++}
++
++func newLongestMatcher(pat string) *longestMatcher {
++	alts := topLevelAlternatives(pat)
++	if len(alts) < 2 || hasLineAnchor(pat) {
++		return nil
++	}
++	m := &longestMatcher{}
++	for _, a := range alts {
++		rx, err := regexp.Compile(`\A(?:` + a + `)`)
++		if err != nil {
++			return nil
++		}
++		m.alts = append(m.alts, rx)
++	}
++	whole, err := regexp.Compile(`\A(?:` + pat + `)\z`)
++	if err != nil {
++		return nil
++	}
++	m.whole = whole
++	return m
++}
++
++// matches is FindAllStringSubmatchIndex with the longest alternative at each
++// match start. A nil matcher keeps Go's own choice.
++func (m *longestMatcher) matches(re *regexp.Regexp, src string) [][]int {
++	out := re.FindAllStringSubmatchIndex(src, -1)
++	if m == nil {
++		return out
++	}
++	for _, idx := range out {
++		start, end := idx[0], idx[1]
++		for _, alt := range m.alts {
++			loc := alt.FindStringIndex(src[start:])
++			if loc == nil || start+loc[1] <= end {
++				continue
++			}
++			full := m.whole.FindStringSubmatchIndex(src[start : start+loc[1]])
++			if full == nil {
++				continue
++			}
++			for k, off := range full {
++				if off < 0 {
++					idx[k] = -1
++					continue
++				}
++				idx[k] = start + off
++			}
++			end = start + loc[1]
++		}
++	}
++	return out
++}
++
++// translatePattern turns the sed spelling of a regexp into Go's. A basic
++// regular expression (the default, no -E) gets its escapes rewritten; an
++// extended one already uses the operators unescaped and is passed through.
++func translatePattern(pattern string, extended bool) (string, error) {
++	translated := pattern
++	if !extended {
++		var err error
++		if translated, err = breToERE(pattern); err != nil {
++			return "", err
++		}
++	}
++	// In sed a "." matches a newline too: the pattern space is multi-line as
++	// soon as N or G was used, and GNU sed still matches across it. Go's
++	// default does not, so the flag goes on every pattern.
++	return "(?s)" + translated, nil
++}
++
++// breToERE rewrites a basic regular expression as GNU sed reads it into the
++// syntax Go's regexp package understands: \( \) \+ \? \| \{ become the
++// operators, the same characters unescaped become literals, \< and \> become
++// word boundaries, \b \w \d keep their Go meaning, and a bracket expression is
++// copied unchanged because nothing inside it is an operator.
++func breToERE(pat string) (string, error) {
++	var b strings.Builder
++	// goGroup[i] is true for a "(" that opened a Go-style group (?...), whose
++	// ")" must stay unescaped. Those are passed through, so a pattern written
++	// for the old engine ((?:...), (?s), (?i)) keeps working.
++	var goGroup []bool
++	inInterval := false
++	for i := 0; i < len(pat); i++ {
++		switch c := pat[i]; c {
++		case '[':
++			// A "]" right after "[" or "[^" is a member, not the end.
++			j := i + 1
++			if j < len(pat) && pat[j] == '^' {
++				j++
++			}
++			if j < len(pat) && pat[j] == ']' {
++				j++
++			}
++			for j < len(pat) && pat[j] != ']' {
++				if pat[j] == '\\' {
++					j++
++				}
++				j++
++			}
++			if j >= len(pat) {
++				return "", fmt.Errorf("unterminated bracket expression %q", pat)
++			}
++			b.WriteString(pat[i : j+1])
++			i = j
++		case '\\':
++			if i+1 >= len(pat) {
++				b.WriteString(`\\`)
++				continue
++			}
++			i++
++			switch d := pat[i]; d {
++			case '(':
++				b.WriteByte('(')
++				goGroup = append(goGroup, false)
++			case ')':
++				b.WriteByte(')')
++				if n := len(goGroup); n > 0 {
++					goGroup = goGroup[:n-1]
++				}
++			case '{':
++				b.WriteByte('{')
++				inInterval = true
++			case '+', '?', '|':
++				b.WriteByte(d)
++			case '}':
++				// Closing brace of "a\{2\}", or a lone "\}" for a literal one.
++				if inInterval {
++					inInterval = false
++					b.WriteByte('}')
++				} else {
++					b.WriteString(`\}`)
++				}
++			case '<', '>':
++				b.WriteString(`\b`)
++			case '1', '2', '3', '4', '5', '6', '7', '8', '9':
++				return "", fmt.Errorf("back reference %q in the search pattern needs a regexp engine with backtracking, the Go engine has none", `\`+string(d))
++			default:
++				b.WriteByte('\\')
++				b.WriteByte(d)
++			}
++		case '(':
++			if i+1 < len(pat) && pat[i+1] == '?' {
++				// A Go-style group: (?:...), (?P<name>...) opens one, (?s)
++				// and its friends are a flag setting that closes at once.
++				if i+2 < len(pat) && pat[i+2] == ':' {
++					b.WriteString("(?:")
++					goGroup = append(goGroup, true)
++					i += 2
++					continue
++				}
++				if end := strings.IndexByte(pat[i:], ')'); end > 0 && pat[i+2] != 'P' {
++					b.WriteString(pat[i : i+end+1])
++					i += end
++					continue
++				}
++				if gt := strings.IndexByte(pat[i:], '>'); gt > 0 {
++					b.WriteString(pat[i : i+gt+1])
++					goGroup = append(goGroup, true)
++					i += gt
++					continue
++				}
++			}
++			b.WriteString(`\(`)
++		case ')':
++			if n := len(goGroup); n > 0 && goGroup[n-1] {
++				goGroup = goGroup[:n-1]
++				b.WriteByte(')')
++				continue
++			}
++			if n := len(goGroup); n > 0 {
++				goGroup = goGroup[:n-1]
++			}
++			b.WriteString(`\)`)
++		case '{', '}':
++			// A literal brace: escaped, because a bare one starts an interval.
++			b.WriteByte('\\')
++			b.WriteByte(c)
++		case '+', '?', '|':
++			b.WriteByte('\\')
++			b.WriteByte(c)
++		default:
++			b.WriteByte(c)
++		}
++	}
++	return b.String(), nil
++}
++
++// topLevelAlternatives splits a pattern at the "|" characters that are not
++// inside a group, a bracket expression or an escape.
++func topLevelAlternatives(pat string) []string {
++	var parts []string
++	depth, start := 0, 0
++	for i := 0; i < len(pat); i++ {
++		switch pat[i] {
++		case '\\':
++			i++
++		case '[':
++			i++
++			if i < len(pat) && pat[i] == '^' {
++				i++
++			}
++			if i < len(pat) && pat[i] == ']' {
++				i++
++			}
++			for i < len(pat) && pat[i] != ']' {
++				if pat[i] == '\\' {
++					i++
++				}
++				i++
++			}
++		case '(':
++			depth++
++		case ')':
++			if depth > 0 {
++				depth--
++			}
++		case '|':
++			if depth == 0 {
++				parts = append(parts, pat[start:i])
++				start = i + 1
++			}
++		}
++	}
++	return append(parts, pat[start:])
++}
++
++// hasLineAnchor reports whether the pattern anchors to the start or the end of
++// the text outside a bracket expression.
++func hasLineAnchor(pat string) bool {
++	for i := 0; i < len(pat); i++ {
++		switch pat[i] {
++		case '\\':
++			i++
++		case '[':
++			i++
++			if i < len(pat) && pat[i] == '^' {
++				i++
++			}
++			if i < len(pat) && pat[i] == ']' {
++				i++
++			}
++			for i < len(pat) && pat[i] != ']' {
++				if pat[i] == '\\' {
++					i++
++				}
++				i++
++			}
++		case '^', '$':
++			return true
++		}
++	}
++	return false
++}
++
++// expandReplacement builds one replacement the way sed writes it: & is the
++// whole match, \1 to \9 are the captured groups, \\ is a backslash, \& a
++// literal ampersand, \n and \t a newline and a tab. $1 and ${name} keep
++// working, because that is how the engine spelled a group before.
++func expandReplacement(re *regexp.Regexp, src, repl string, idx []int) string {
++	group := func(n int) string {
++		if n < 0 || 2*n+1 >= len(idx) || idx[2*n] < 0 {
++			return ""
++		}
++		return src[idx[2*n]:idx[2*n+1]]
++	}
++	var b strings.Builder
++	for i := 0; i < len(repl); i++ {
++		switch c := repl[i]; c {
++		case '\\':
++			if i+1 >= len(repl) {
++				b.WriteByte('\\')
++				continue
++			}
++			i++
++			if repl[i] >= '1' && repl[i] <= '9' {
++				b.WriteString(group(int(repl[i] - '0')))
++				continue
++			}
++			switch repl[i] {
++			case 'n':
++				b.WriteByte('\n')
++			case 't':
++				b.WriteByte('\t')
++			default:
++				b.WriteByte(repl[i])
++			}
++		case '&':
++			b.WriteString(group(0))
++		case '$':
++			if i+1 < len(repl) && repl[i+1] == '$' {
++				b.WriteByte('$')
++				i++
++				continue
++			}
++			if i+1 < len(repl) && repl[i+1] == '{' {
++				if end := strings.IndexByte(repl[i+2:], '}'); end >= 0 {
++					name := repl[i+2 : i+2+end]
++					if n, err := strconv.Atoi(name); err == nil {
++						b.WriteString(group(n))
++					} else {
++						b.WriteString(group(re.SubexpIndex(name)))
++					}
++					i += 2 + end
++					continue
++				}
++			}
++			if i+1 < len(repl) && repl[i+1] >= '0' && repl[i+1] <= '9' {
++				b.WriteString(group(int(repl[i+1] - '0')))
++				i++
++				continue
++			}
++			b.WriteByte('$')
++		default:
++			b.WriteByte(c)
++		}
++	}
++	return b.String()
+ }

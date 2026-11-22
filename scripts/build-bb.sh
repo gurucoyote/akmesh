@@ -84,6 +84,9 @@ MAKEBB_VERSION=v0.6.0
 # The slimmed goldmark-pdf fork lives as a patch, not as a copy of the module:
 # apply it to the module cache before the compiler reads the module (acmesh-y9r).
 "$ROOT/scripts/apply-goldmark-pdf-fork.sh"
+# Same shape for Go.Sed: sed has to read a regexp the way GNU sed does
+# (acmesh-4ne), which the library's Go-flavoured engine does not.
+"$ROOT/scripts/apply-go-sed-fork.sh"
 
 MAKEBB="$GOPATH/bin/makebb"
 if [ ! -x "$MAKEBB" ]; then

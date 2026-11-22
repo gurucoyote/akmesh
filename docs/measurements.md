@@ -3465,3 +3465,52 @@ TestRecursiveRootsAgreeWithTheirOwnSpelling (rot vor dem Fix: stderr
 "grep: ./hidden/deep/h.txt: No such file or directory"). Gatter: go test ./...
 gruen, gofmt sauber, Batterie 211 Checks Linux und 189 Checks Windows,
 0 Fehler, help-audit --check exit 0.
+
+## sed gegen GNU sed (22.11.2026, acmesh-4ne)
+
+Referenz ist echtes GNU sed 4.9, nicht /bin/sed auf diesem Host (das ist
+BusyBox, "This is not GNU sed version 4.0"):
+
+    podman run --rm -i docker.io/library/debian:stable-slim sed --version
+
+Vergleichslauf, je Fall `printf ... | ./akmesh sed <args>` gegen
+`printf ... | podman run --rm -i docker.io/library/debian:stable-slim sed <args>`:
+
+    Fall                        Argumente                                    vorher        GNU/akmesh jetzt
+    a|ab auf "ab"               -E  s/a|ab/X/                                Xb            X
+    Gruppe, Rückverweis         -E  s/(ab)/<\1>/                             x<1>y         x<ab>y
+    ganzer Treffer              -E  s/(ab)/<&>/                              x<&>y         x<ab>y
+    BRE plus                    s/a\+/X/ auf "aaa"                           aaa           X
+    BRE Fragezeichen /g         s/a\?/X/g auf "ba"                           ba            XbX
+    BRE Gruppe, Rückverweis     s/\(ab\)/<\1>/                               xaby (kein
+                                                                              Gruppieren)   x<ab>y
+    BRE Intervall               s/\(.*[0-9]\)\([0-9]\{3\}\)/\1,\2/          unverändert   1234,567
+    Punkt über Zeilenumbruch    N;s/a.*b/X/ auf "a\nb"                       a\nb          X
+    BRE, nackter Strich         s/a|ab/X/                                    ab            ab
+    BRE Alternation             s/x\|y/Z/g                                   xyx           ZZZ
+    POSIX-Klasse                s/[[:upper:]]/./g auf "aBcD"                 a.c.          a.c.
+
+13 von 13 Fällen bytegleich mit GNU sed 4.9, davon 8 vorher abweichend.
+
+Der Weg: `regexp.CompilePOSIX` aus dem Ticketvorschlag ist gemessen
+untauglich - Go lässt im POSIX-Modus jeden Treffer fallen, der einen
+Zeilenumbruch überspannt:
+
+    CompilePOSIX("[^<]*").FindAllString("a\nb")  ->  ["a" "b"]
+    Compile("[^<]*").FindAllString("a\nb")       ->  ["a\nb"]
+    CompilePOSIX("a.*b").FindAllString("a\nb")   ->  []
+
+In einem sed-Programm mit `N` und `b loop` wurde daraus eine Endlosschleife
+(Go.Sed-Test TestRemoveTags, 20 s Timeout). Geforkt wird deshalb als Patch
+(docs/design/patches/go-sed-gnu-semantics.patch, angewandt von
+scripts/apply-go-sed-fork.sh): POSIX-linkeste, längste Wahl über die
+Alternation des Musters selbst, BRE-Übersetzung, sed-Ersetzung mit \1..\9 und
+&, "(?s)" auf jedem Muster, damit "." den Zeilenumbruch trifft, und
+-E/-r über NewExtended/NewQuietExtended.
+
+Grenze, die offen bleibt und im Fehlertext steht: Rückverweise im Suchmuster
+(`s/\(a\)\1/X/`) brauchen einen Backtracking-Motor, den keine Go-Engine hat.
+
+Gatter: go test ./... grün, gofmt sauber, Batterie 211 Checks Linux und 189
+Checks Windows, 0 Fehler, help-audit --check exit 0. Größe linux 16371939
+Bytes (vorher 16363747, also +8192), windows 16433664 (vorher 16422400).

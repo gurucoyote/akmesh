@@ -11,14 +11,19 @@ import (
 	"github.com/rwtodd/Go.Sed/sed"
 )
 
-// runSed implements sed through the Go.Sed engine: -e, -f, -n, -i and -E
-// (accepted because the engine is extended by default).
+// runSed implements sed through the Go.Sed engine: -e, -f, -n, -i and -E.
 //
-// The engine uses Go's regular expressions, so GNU back references such as
-// \(...\)/\1 are not understood; capture groups are written ( ) and used as $1.
+// The engine is forked (scripts/apply-go-sed-fork.sh): a basic regular
+// expression is translated to Go's syntax, so \(...\)/\1 and & work, the
+// leftmost longest match wins, and "." matches a newline. Without -E the
+// pattern is read the way GNU sed reads it; with -E the operators are written
+// unescaped and nothing is translated. What stays open: back references inside
+// the search pattern (\(a\)\1) need an engine with backtracking, and the error
+// says so.
 func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	var programs []string
 	quiet := false
+	extended := false
 	inPlace := false
 	var files []string
 	for i := 0; i < len(args); i++ {
@@ -43,9 +48,7 @@ func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			}
 			programs = append(programs, string(data))
 		case "-E", "-r", "--regexp-extended":
-			// The engine matches with Go's regular expressions, which are
-			// extended already; the flag is accepted so a command line that
-			// carries it keeps working.
+			extended = true
 		case "-n", "--quiet", "--silent":
 			quiet = true
 		case "-i", "--in-place":
@@ -69,9 +72,14 @@ func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	program := strings.Join(programs, "\n")
 	var eng *sed.Engine
 	var err error
-	if quiet {
+	switch {
+	case quiet && extended:
+		eng, err = sed.NewQuietExtended(strings.NewReader(program))
+	case quiet:
 		eng, err = sed.NewQuiet(strings.NewReader(program))
-	} else {
+	case extended:
+		eng, err = sed.NewExtended(strings.NewReader(program))
+	default:
 		eng, err = sed.New(strings.NewReader(program))
 	}
 	if err != nil {

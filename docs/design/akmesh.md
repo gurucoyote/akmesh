@@ -224,6 +224,32 @@ Subject zu liefern. Der Name im Trust-Store folgt dem Build-Namen, nicht `-org`:
 der Eintrag muss ohne Raten wieder zu entfernen sein, und die Fehlermeldung nennt
 den Dateinamen.
 
+## sed spricht den GNU-Dialekt, ueber einen Fork von Go.Sed (22.11.2026, acmesh-4ne)
+
+sed, awk und grep sind die drei Werkzeuge, bei denen ein Agent seine
+gewohnte Eingabe hineinschreibt. sed lief bisher auf `rwtodd/Go.Sed`, dessen
+regulaere Ausdruecke Go-Syntax sind: keine BRE-Escapes, `\1` und `&` in der
+Ersetzung kaputt, linkester erster statt linkester laengster Treffer. Der
+Engine wird deshalb als **Patch** geforkt (kein Kopie-Baum, wie bei
+goldmark-pdf): `docs/design/patches/go-sed-gnu-semantics.patch`, angewandt von
+`scripts/apply-go-sed-fork.sh`, aufgerufen vor dem Bau in
+`scripts/build-bb.sh` und in `scripts/check-all.sh`. Das Skript ist idempotent
+und prueft den angewandten Stand am Modulinhalt, nicht per `patch -R`.
+
+Der Patch uebersetzt BRE (`\( \) \+ \? \| \{`), macht `\1..\9` und `&` in
+der Ersetzung moeglich (`$1` bleibt gueltig), laesst bei einer Alternation den
+laengsten Treffer gewinnen, setzt `(?s)` auf jedes Muster, damit `.` wie in sed
+den Zeilenumbruch trifft, und oeffnet `-E`/`-r` ueber
+`NewExtended`/`NewQuietExtended`. `regexp.CompilePOSIX` war der naheliegende
+Weg und ist gemessen falsch: Go laesst dort jeden Treffer fallen, der einen
+Zeilenumbruch ueberspannt (Zahlen und Fälle in `docs/measurements.md`,
+"sed gegen GNU sed"; Referenz ist GNU sed 4.9 aus einem Debian-Container, nicht
+das BusyBox-`/bin/sed` dieses Hosts).
+
+Offene Grenze: Rueckverweise im Suchmuster (`s/\(a\)\1/X/`) brauchen einen
+Backtracking-Motor, den keine Go-Engine hat; sed meldet das als Fehler, statt
+etwas Falsches zu treffen.
+
 ## Was sich absetzt, und was nicht
 
 Nur httpd laeuft im Hintergrund (Vorgabe), mit -f im Vordergrund: ein

@@ -3389,3 +3389,52 @@ Zwei Fehler unterwegs: das erste sed fuer "NAME dispatched" traf auch
 verankert. Und makebb bettet register.go beim Installieren ein, also muss nach
 einem Namenswechsel neu installiert werden - der Build prueft dafuer jetzt
 `not present in $NAME` im makebb-Binary statt gegen eine Liste alter Namen.
+
+## gripgrep auf Windows (22.11.2026, Vorarbeit für ein rg-Kommando)
+
+Gegenstand: `gg.exe` (gripgrep, github.com/yackey-labs/gripgrep v0.17.0,
+windows/amd64) gegen `/usr/bin/rg` (ripgrep 15.1.0, linux/amd64), gestartet
+über WSL-Interop. Beide Binaries lesen dieselben Bytes, also ist der Vergleich
+der Ausgabe ein Byte-Vergleich und kein Plattformvergleich.
+
+Gebaut mit:
+
+    GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w" \
+      -o binwin/gg.exe github.com/yackey-labs/gripgrep/cmd/gg   # 3313664 Bytes
+
+Testkorpus (git-Repo, damit die Ignore-Regeln greifen): `crlf.txt` mit CRLF,
+`lf.txt` mit LF, `latin1.txt` mit Bytes 0xfc/0x0f, `bin.dat` mit NUL-Bytes,
+`.gitignore` sperrt `secret.txt` und das geschachtelte Verzeichnis
+`sub/deep/`.
+
+    gg.exe --files <dir>          gleiche Dateiliste wie rg, inklusive
+                                  .gitignore und geschachteltem Verzeichnis
+    rg -n token crlf.txt | od     beide: "value \r \n", das CR bleibt stehen
+    gg.exe -n token crlf.txt|od   identisch, also CRLF wie bei rg behandelt
+    latin1.txt                    0xfc geht unveraendert durch, keine
+                                  UTF-8-Ersetzung, beide gleich
+    bin.dat                        beide: -c meldet 1, Exitcode 0
+    -n -c -l -F -w                alle Ausgaben nach sort bytegleich mit rg
+    Exitcodes                     Treffer 0, kein Treffer 1, beide gleich
+    relativer Pfad, "." und "sub"  funktionieren, Ausgabe mit "/" wie bei rg
+
+Ganze Baum-Suche, warm, je drei bis fuenf Laeufe (`time`, Sekunden):
+
+    Literal "func Run"        rg 0,021-0,025   gg 0,010-0,016
+    Alternation "regexp|strings" rg 0,024-0,028 gg 0,012-0,013
+    --files                   rg 0,021-0,023   gg 0,010-0,016
+
+Faktor rund zwei zugunsten von gg auf diesem Korpus, nicht langsamer.
+
+Nebenbefund, vorhandener Befehl: `akmesh.exe grep -r <dir>` setzt Pfade unter
+Windows falsch zusammen. Gemessen im selben Korpus:
+
+    .\akmesh.exe grep -r func sub   -> "sub/deep\\b.txt" (gemischte Trenner)
+    .\akmesh.exe grep -r func .     -> "grep: ./git\\HEAD: ... nicht gefunden"
+                                       fuer jede Datei in .git
+    .\akmesh.exe grep -r func <abs> -> "<abs>/root\\.hermes\\..." , der ganze
+                                       Pfad steht doppelt
+
+Das CR am Zeilenende entfernt `akmesh.exe grep` anders als rg: auf beiden
+Plattformen ohne `\r`, also plattformunabhaengig richtig und anders als rg,
+das das CR stehen laesst.

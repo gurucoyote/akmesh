@@ -92,6 +92,77 @@ func TestRecursiveNamesTheFile(t *testing.T) {
 	}
 }
 
+// TestRecursiveDotRootKeepsTheDotOfHiddenDirs: filepath.Walk already cleans the
+// names ("<>.git/HEAD", not "./.git/HEAD"), so a string prefix trim of "." ate
+// the dot of the directory name and grep then opened a path that did not exist
+// ("grep: ./git/HEAD: No such file or directory"). GNU grep prints "./.git/HEAD"
+// and finds the line.
+func TestRecursiveDotRootKeepsTheDotOfHiddenDirs(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, ".hidden", "deep"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".hidden", "deep", "h.txt"), []byte("hit\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("hit\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wd, _ := os.Getwd()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(wd)
+	out, errOut, code := runGrep(t, []string{"-r", "hit", "."}, "")
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want none: the hidden directory must be readable", errOut)
+	}
+	if code != 0 {
+		t.Fatalf("exit %d, want 0", code)
+	}
+	if !strings.Contains(out, "./.hidden/deep/h.txt:hit") {
+		t.Fatalf("grep -r = %q, want ./.hidden/deep/h.txt:hit", out)
+	}
+}
+
+// TestRecursiveRootsAgreeWithTheirOwnSpelling: the display keeps the spelling of
+// the start path - "." stays "./", a relative root stays without "./", and an
+// absolute root is not doubled (Windows: os.PathSeparator is "\\" while the root
+// arrives with "/", the prefix trim then failed and appended the whole path).
+func TestRecursiveRootsAgreeWithTheirOwnSpelling(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("hit\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "sub", "b.txt"), []byte("hit\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wd, _ := os.Getwd()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(wd)
+
+	out, errOut, _ := runGrep(t, []string{"-r", "hit", "sub"}, "")
+	if errOut != "" || !strings.Contains(out, "sub/b.txt:hit") || strings.Contains(out, "./sub/") {
+		t.Fatalf("root \"sub\": out %q stderr %q, want sub/b.txt:hit", out, errOut)
+	}
+
+	out, errOut, _ = runGrep(t, []string{"-r", "hit", dir}, "")
+	if errOut != "" {
+		t.Fatalf("absolute root: stderr %q, want none", errOut)
+	}
+	if !strings.Contains(out, dir+"/sub/b.txt:hit") {
+		t.Fatalf("absolute root: out %q, want %s/sub/b.txt:hit once", out, dir)
+	}
+}
+
 // TestCountPerFile: -c prints one count per file, with the name when there is
 // more than one file.
 func TestCountPerFile(t *testing.T) {

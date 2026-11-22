@@ -212,3 +212,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 2026-11-21: any2md gebaut, fuenf *2md sind Aliase mit festem Format; epub2md liest die eigene Lizenzseite nicht mehr als Kapitel (acmesh-0v5, acmesh-g5x).
 2026-11-21: Befehlsliste gehoert uns (internal/cmdlist, gruppiert); Build generiert mit makebb -g und baut selbst (acmesh-wzj).
 2026-11-22: Produktname per AKMESH_NAME konfigurierbar (Binary, Meldungen, User-Agent, shuf/jq), Zertifikats-Issuer per -org/AKMESH_CERT_ORG zur Laufzeit (acmesh-9if).
+2026-11-22: grep -r Anzeigepfade: filepath.Rel statt TrimPrefix, Punktverzeichnisse und absolute Wurzeln repariert, auf Linux und Windows gemessen (acmesh-6nl).

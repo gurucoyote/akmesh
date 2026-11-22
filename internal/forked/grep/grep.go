@@ -502,8 +502,18 @@ func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 			return filepath.Walk(root, func(name string, fi os.FileInfo, werr error) error {
 				display := shown
 				if name != root {
-					rel := strings.TrimPrefix(strings.TrimPrefix(name, root), string(os.PathSeparator))
-					display = shown + "/" + rel
+					// filepath.Walk hands out cleaned names (".git/HEAD", not
+					// "./.git/HEAD"), so trimming the root as a string prefix ate
+					// the dot of a hidden directory and appended an absolute root
+					// a second time when os.PathSeparator differed from the
+					// root's spelling. Rel does the relative part properly; the
+					// display separator is always "/", as rg prints it, and the
+					// file is opened under that name on both platforms.
+					rel, rerr := filepath.Rel(root, name)
+					if rerr != nil {
+						rel = name
+					}
+					display = shown + "/" + filepath.ToSlash(rel)
 				}
 				if werr != nil {
 					fmt.Fprintf(stderr, "grep: %s: %s\n", display, errText(werr))

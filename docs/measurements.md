@@ -3438,3 +3438,30 @@ Windows falsch zusammen. Gemessen im selben Korpus:
 Das CR am Zeilenende entfernt `akmesh.exe grep` anders als rg: auf beiden
 Plattformen ohne `\r`, also plattformunabhaengig richtig und anders als rg,
 das das CR stehen laesst.
+
+## grep -r Anzeigepfade: Punktverzeichnisse (22.11.2026, acmesh-6nl)
+
+Vorher (grep.go:505, doppeltes `strings.TrimPrefix`): `filepath.Walk` liefert
+bereits bereinigte Namen, also ass der Trim den Punkt von `.git` und der Lauf
+oeffnete `./git/HEAD`. Nachher `filepath.Rel` plus `filepath.ToSlash`, der
+Anzeigetrenner bleibt fest "/".
+
+Korpus (`$T` = frisches Verzeichnis mit `.git/HEAD` und `sub/b.txt`, `hit`):
+
+    Linux,  akmesh grep -r hit .
+      vorher:  grep: ./git/HEAD: No such file or directory   (exit 0)
+      nachher: ./.git/HEAD:hit  und  ./sub/b.txt:hit          (exit 0)
+    Windows, akmesh.exe grep -r hit C:\...\probe\.
+      vorher:  grep: ./git\HEAD: ... nicht gefunden
+      nachher: C:\...\probe\./.git/HEAD:hit, ./.git/HEAD:hit  (exit 0)
+    Windows, akmesh.exe grep -r hit C:\...\probe   (absolute Wurzel)
+      vorher:  <abs>/C:\...\probe\... , der Pfad doppelt
+      nachher: <abs>/.git/HEAD:hit, ohne Doppelung           (exit 0)
+    Windows, akmesh.exe grep -r hit C:\...\probe\sub
+      nachher: <abs>\sub/b.txt:hit, Anzeigetrenner "/"        (exit 0)
+
+Tests: TestRecursiveDotRootKeepsTheDotOfHiddenDirs und
+TestRecursiveRootsAgreeWithTheirOwnSpelling (rot vor dem Fix: stderr
+"grep: ./hidden/deep/h.txt: No such file or directory"). Gatter: go test ./...
+gruen, gofmt sauber, Batterie 211 Checks Linux und 189 Checks Windows,
+0 Fehler, help-audit --check exit 0.

@@ -4391,3 +4391,48 @@ meldet ehrlich "not supported on Windows (no PID 1; services belong to the SCM)"
 
 Batterie 211 Checks 0 Fehler, Hilfe-Audit Exit 0, init erscheint in der Gruppe
 Services.
+
+## crond: Zeitjobs im Container (23.11.2026, acmesh-qgf)
+
+Eigener Befehl internal/crond. Ausdruecke kommen von robfig/cron v3 (MIT, keine
+Transitives), alles andere ist unser Code: crontab-Dateien, Umgebung, Neustart per
+SIGHUP, Jobs starten und ihre Ausgabe.
+
+Format: Vixie/BusyBox - fuenf Zeitfelder, dann das Kommando, dazu @hourly,
+@daily, @weekly, @monthly, @yearly, @reboot und @every DAUER. Kein Sekundenfeld:
+"0 0 * * * 5 echo x" laesst sich nicht von einer Zeile mit Sekundenfeld
+unterscheiden, und Raten verschiebt Jobs stillschweigend. Subminuetig geht ueber
+"@every 10s", das der Ausdrucksparser versteht.
+
+Verhalten: Umgebung der crontab wird an den Job vererbt (auch das, was supercronic
+auszeichnet), Ausgabe geht unveraendert nach stdout/stderr, je Job eine Zeile
+"start" mit Zeit und Kommando und "end" mit Exit-Code. Ein Job, der noch laeuft,
+wird nicht doppelt gestartet. Ein falscher Ausdruck wird mit Datei und Zeile
+gemeldet und nicht still uebergangen. Jobs laufen durch unsere eigene Shell
+(<binary> sh -c ...), damit dieselbe crontab auch unter Windows gilt, wo es kein
+/bin/sh gibt. SIGTERM stoppt die Jobs (Prozessgruppe, 2 s Gnade), SIGHUP liest
+die Dateien neu - auch eine neu abgelegte Datei in /etc/cron.d.
+
+Gemessen im Image (akmesh:latest, 118 Namen):
+
+    crond: 3 job(s) from /etc/crontab and /etc/cron.d
+    /tmp/ticks nach 13 s        reboot, tick, tick   (@reboot einmal, @every 5s zweimal)
+    Log                         "start echo tick >> /tmp/ticks" / "end ... (exit 0)"
+    Datei job2 nach dem Start   + SIGHUP -> "crond: reloading", "3 job(s) after reload",
+                                Zaehler nachgeladen 2 -> 4
+    podman stop -t 10           154 ms, Container-Exit 0
+
+Beim ersten Anlauf war der Reload blind: die Dateiliste wurde beim Start
+festgehalten, eine neue Datei in /etc/cron.d wurde nie gesehen. Behoben (Dateien
+und Verzeichnis getrennt, Verzeichnis bei jedem Reload neu gelesen) und mit
+TestReloadSeesANewFileInTheDirectory festgenagelt; ein doppelter Pfad (-c zeigt
+in dasselbe Verzeichnis) wird entdoppelt, sonst liefe jeder Job zweimal.
+
+Tests (9): Parser mit Kommentaren, Variablen, Descriptors und Zeilennummern;
+Abweisungen; Trennung von Zeit und Kommando; Exit-Code und Start/End-Marker;
+vererbte Umgebung; falscher Ausdruck mit Zeile; @every wird terminiert; cron.d
+ueberspringt Punktdateien und Sicherungen; Reload sieht neue Dateien.
+
+Groessen: Linux statisch 17.5 MiB (18382972 Bytes), das sind +69632 Bytes gegen
+den Bau ohne crond (18313340); Windows 16.5 MiB (17310720 Bytes), +97280 Bytes.
+Beide gestrippt. Lizenzpruefung: 20 Module, alle verwendbar.

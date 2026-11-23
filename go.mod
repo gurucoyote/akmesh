@@ -10,6 +10,7 @@ require (
 	github.com/itchyny/gojq v0.12.20
 	github.com/phpdave11/gofpdf v1.4.3
 	github.com/refraction-networking/utls v1.8.2
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/rwtodd/Go.Sed v0.0.0-20250326002959-ba712dc84b62
 	github.com/stephenafamo/goldmark-pdf v0.4.2
 	github.com/yuin/goldmark v1.8.7

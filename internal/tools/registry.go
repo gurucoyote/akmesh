@@ -64,6 +64,7 @@ var Commands = map[string]Func{
 	"policy":    runPolicy,
 	"blkid":     runBlkid,
 	"init":      runInit,
+	"crond":     runCrond,
 	"ps":        runPS,
 	"pwd":       runPwd,
 	"sed":       runSed,

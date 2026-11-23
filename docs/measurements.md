@@ -4736,3 +4736,74 @@ Grenzen der Messung: sechs Sitzungen sind ein Ausschnitt, die Host-Historie ist 
 die Zielumgebung, und die Aufnahme eines u-root-Befehls ist noch kein Beweis, dass er
 sich wie BusyBox verhaelt. Die Zahlen sagen, wo nachzusehen ist - nicht, dass ein
 Befehl deswegen fehlen muss.
+
+## Drei Defekte aus der Bedarfsmessung behoben (23.11.2026)
+
+Alle drei kamen aus der Gegenprobe im Image (acmesh-y2o), nicht aus einer
+Vermutung. Jeder hat einen Test, der vorher fehlschlug.
+
+### kill im sh (acmesh-oxw)
+
+mvdan/sh fuehrt kill in seiner Builtin-Liste und antwortet dann "unsupported
+builtin"; weil es als Builtin gilt, sucht die Shell auch /bin/kill nicht. Ein
+Skript konnte also gar keinen Prozess beenden. Jetzt beantwortet
+internal/sh/kill_unix.go den Aufruf im Prozess: -s, -n, -SIGNAME, -9, -0, --,
+mehrere PIDs, kill -l mit und ohne Nummer, ESRCH-Meldung wie ash. Unter Windows
+sagt es "kill: not supported on Windows (no POSIX signals)".
+
+Beim Testen fiel ein eigener Fehler auf: "kill -0 PID" wurde als negatives
+PID-Argument gelesen, also als Prozessgruppe, und raeumte die Testgruppe mit
+SIGTERM ab. In kill bedeutet ein fuehrender Strich immer ein Signal; -0 ist
+Signal 0. Behoben, vier Tests.
+
+### $! liefert die PID (acmesh-tms)
+
+mvdan/sh vergibt virtuelle Jobs, $! antwortete "g1". Der Fork-Patch
+docs/design/patches/sh-bg-pid.patch traegt die Hintergrund-Anweisung ueber den
+Context zum Exec-Handler, der die echte PID nach dem Start in eine geteilte Zelle
+schreibt; $! wartet kurz darauf, damit "sleep 30 & echo $!" auch ohne sleep
+dazwischen stimmt. Zwei Fehler dabei gefunden: erst ging die PID verloren, weil
+bgProc als Wert in die Slice kopiert wird (jetzt Zeiger auf die Zelle), dann war
+$! zu frueh dran (jetzt Warten auf pidReady).
+
+### du mit kombinierten kurzen Flags (acmesh-7hg)
+
+internal/disk bekommt splitShortFlags: -sh wird wie bei getopt zu -s -h, -d2 zu
+-d 2, lange Optionen und "-" bleiben unangetastet. Auch fuer df und free
+eingehaengt, weil dort dieselbe Klasse zuschlaegt. Zwei Tests.
+
+### Belege
+
+Am Binary auf dem Host:
+
+    ./akmesh sh -c 'sleep 30 & echo "pid=[$!]"'      pid=[1395474]
+    ./akmesh sh -c 'sleep 30 & p=$!; sleep 0.2; kill $p'   kill ok, Prozess weg
+    ./akmesh sh -c 'kill -0 $$ && echo lebt'          lebt
+    ./akmesh du -sh /etc                              3.1M
+    ./akmesh du -s -h /etc                            3.1M   (vorher: unknown option "-sh")
+    ./akmesh du -s /etc                               3217   (1K-Bloecke wie BusyBox)
+
+Im gebauten Image (akmesh:latest):
+
+    $! = 7                    (PID im Container-Namensraum)
+    kill $! -> kill ok        und danach "ist weg"
+    kill -0 $$ -> lebt
+    kill -9 $! -> sigkill ok
+    kill -l                   alle 31 Signale, je 8 pro Zeile
+    du -sh /etc -> 248K, du -s -h -> 248K, du -s -> 248
+
+Windows (akmesh.exe): "kill: not supported on Windows (no POSIX signals)", der
+Bau ist gruen, die Batterie laeuft.
+
+### Zwei Umgebungsfehler, die dabei auffielen
+
+- Der Projekt-GOCACHE hatte einen kaputten Eintrag: "could not import
+  sync/atomic (open : no such file or directory)". `go clean -cache` reparieren,
+  dann baut dieselbe Quelle normal.
+- Der Go.Sed-Modulcache stand in einem Mischzustand (alte Datei regexp_akmesh.go
+  neben dem aktuellen Patch, Folge: "longestMatcher redeclared"). Modulverzeichnis
+  loeschen, `go mod download`, Patch einmal anwenden - danach ist die Suite gruen
+  (build-rc 0, alle Pakete ok).
+
+Groessen: dynamisch 18538723 Bytes, statisch 18477180 (+12288 gegen 18464892),
+Windows 17375232 (+4096 gegen 17370112); alle gestrippt. 122 Befehle.

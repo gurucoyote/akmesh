@@ -103,9 +103,11 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 		// status, does not stop at the first error and knows PS1.
 		opts = append(opts, interp.Interactive(true))
 	}
-	// umask is a builtin in ash and in every /etc/profile of this machine.
-	// mvdan/sh does not have one, so it is answered here, in-process.
-	opts = append(opts, interp.CallHandler(umaskCall(out, stderr)))
+	// Two builtins are answered here, in-process, because mvdan/sh lists them
+	// and then reports "unsupported builtin": umask (a builtin in ash and in
+	// every /etc/profile) and kill (acmesh-oxw). CallHandler holds one
+	// function, so they are chained.
+	opts = append(opts, interp.CallHandler(chainCall(killCall(out, stderr), umaskCall(out, stderr))))
 	runner, err := interp.New(opts...)
 	if err != nil {
 		fmt.Fprintf(stderr, "sh: %v\n", err)
@@ -139,6 +141,22 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 			return 1
 		}
 		return finish(runner, runSource(runner, string(data), "<stdin>"), stderr)
+	}
+}
+
+// chainCall runs the handlers in order until one of them rewrites the command.
+// A handler that answers a builtin returns another command ("true" or "false"),
+// so the next handler sees that and leaves it alone.
+func chainCall(handlers ...interp.CallHandlerFunc) interp.CallHandlerFunc {
+	return func(ctx context.Context, args []string) ([]string, error) {
+		for _, h := range handlers {
+			next, err := h(ctx, args)
+			if err != nil {
+				return next, err
+			}
+			args = next
+		}
+		return args, nil
 	}
 }
 

@@ -1,0 +1,132 @@
+# akmesh fork of mvdan.cc/sh: $! is the process id of the last background
+# command, not a job number ("g1"), so that `cmd & p=$!; kill $p` works - the
+# pattern every harness uses to stop what it started (acmesh-tms).
+#
+# Why a patch and not a copy: AGENTS.md forbids a copy of a foreign project's
+# source here. Apply with scripts/apply-sh-fork.sh.
+#
+# The interpreter starts a background statement in a goroutine, so the pid is
+# only known once the exec handler has started the child. The statement is
+# carried through the context (bgProcKey) and the handler stores the pid in a
+# cell shared by value copies; $! waits for that cell instead of answering a job
+# number, which keeps `sleep 30 & echo $!` correct without a sleep in between.
+--- a/interp/api.go
++++ b/interp/api.go
+@@ -23,6 +23,8 @@
+ 	"runtime"
+ 	"slices"
+ 	"strconv"
++	"sync"
++	"sync/atomic"
+ 	"time"
+ 
+ 	"mvdan.cc/sh/v3/expand"
+@@ -255,6 +257,36 @@
+ 	done chan struct{}
+ 
+ 	exit *exitStatus
++
++	// pid is the OS process id of the command this background statement
++	// started, so that $! can be a real pid instead of a job number. It is a
++	// pointer because bgProc values are copied into the runner's slice: the
++	// exec handler and the reader of $! must see the same cell.
++	pid *atomic.Int64
++
++	// pidReady is closed as soon as that pid is known. $!  must not answer
++	// before the process has been started: a shell that reads $!  right after
++	// "cmd &" would otherwise see the job number.
++	pidReady chan struct{}
++	pidOnce  *sync.Once
++}
++
++// bgProcKey carries the background statement through the context, so the exec
++// handler can report the pid it started.
++type bgProcKey struct{}
++
++// setBackgroundPID records the pid of a child started for a background
++// statement. It does nothing when the command was not started in the
++// background.
++func setBackgroundPID(ctx context.Context, pid int) {
++	bg, ok := ctx.Value(bgProcKey{}).(*bgProc)
++	if !ok || pid <= 0 || bg.pid == nil {
++		return
++	}
++	bg.pid.Store(int64(pid))
++	if bg.pidOnce != nil {
++		bg.pidOnce.Do(func() { close(bg.pidReady) })
++	}
+ }
+ 
+ type alias struct {
+--- a/interp/runner.go
++++ b/interp/runner.go
+@@ -21,6 +21,7 @@
+ 	"strconv"
+ 	"strings"
+ 	"sync"
++	"sync/atomic"
+ 	"time"
+ 
+ 	"mvdan.cc/sh/v3/expand"
+@@ -319,10 +320,14 @@
+ 		bg := bgProc{
+ 			done: make(chan struct{}),
+ 			exit: new(exitStatus),
++			pid:      new(atomic.Int64),
++			pidReady: make(chan struct{}),
++			pidOnce:  new(sync.Once),
+ 		}
+ 		r.bgProcs = append(r.bgProcs, bg)
++		bgCtx := context.WithValue(ctx, bgProcKey{}, &bg)
+ 		go func() {
+-			r2.Run(ctx, &st2)
++			r2.Run(bgCtx, &st2)
+ 			r2.exit.exiting = false // subshells don't exit the parent shell
+ 			*bg.exit = r2.exit
+ 			close(bg.done)
+--- a/interp/handler.go
++++ b/interp/handler.go
+@@ -182,6 +182,7 @@
+ 			return runScriptENOEXEC(ctx, hc, killTimeout, path, args)
+ 		}
+ 		if err == nil {
++			setBackgroundPID(ctx, cmd.Process.Pid)
+ 			err = cmd.Wait()
+ 		}
+ 
+--- a/interp/vars.go
++++ b/interp/vars.go
+@@ -14,6 +14,7 @@
+ 	"runtime"
+ 	"slices"
+ 	"strconv"
++	"time"
+ 	"strings"
+ 
+ 	"mvdan.cc/sh/v3/expand"
+@@ -168,8 +169,24 @@
+ 			vr.List = r.Params
+ 		}
+ 	case "!":
++		// $! is the pid of the last background command, as in ash and bash.
++		// mvdan/sh numbered background jobs instead ("g1"), which no script
++		// can kill, and the exec handler now reports the real pid.
+ 		if n := len(r.bgProcs); n > 0 {
+-			vr.Kind, vr.Str = expand.String, "g"+strconv.Itoa(n)
++			bg := r.bgProcs[n-1]
++			if bg.pid.Load() == 0 && bg.pidReady != nil {
++				// Starting the process is asynchronous: wait for the pid
++				// instead of handing out a job number.
++				select {
++				case <-bg.pidReady:
++				case <-time.After(2 * time.Second):
++				}
++			}
++			if pid := bg.pid.Load(); pid > 0 {
++				vr.Kind, vr.Str = expand.String, strconv.FormatInt(pid, 10)
++			} else {
++				vr.Kind, vr.Str = expand.String, "g"+strconv.Itoa(n)
++			}
+ 		}
+ 	case "?":
+ 		vr.Kind, vr.Str = expand.String, strconv.Itoa(int(r.lastExit.code))

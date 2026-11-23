@@ -43,6 +43,34 @@ func sizeFormatter(human bool, unit int64) func(int64) string {
 // parseUnitFlags reads the size switches shared by df, du and free.
 // It returns human=true for -h, or a unit in bytes for -k/-m/-g, and the
 // remaining arguments.
+// splitShortFlags expands combined short options the way getopt does, because
+// agents write -sh and -la without thinking: -sh becomes -s -h. A flag that
+// needs a value takes the rest of the cluster as that value (-d2 is -d 2,
+// -t ext4 is left as it is). Long options and a lone "-" stay untouched.
+func splitShortFlags(args []string, takesValue string) []string {
+	out := make([]string, 0, len(args))
+	for _, a := range args {
+		if len(a) < 3 || a[0] != '-' || a[1] == '-' {
+			out = append(out, a)
+			continue
+		}
+		cluster := a[1:]
+		for i := 0; i < len(cluster); i++ {
+			c := cluster[i]
+			if strings.IndexByte(takesValue, c) >= 0 {
+				if i+1 < len(cluster) {
+					out = append(out, "-"+string(c), cluster[i+1:])
+				} else {
+					out = append(out, "-"+string(c))
+				}
+				break
+			}
+			out = append(out, "-"+string(c))
+		}
+	}
+	return out
+}
+
 func parseUnitFlags(args []string) (human bool, unit int64, rest []string, err error) {
 	unit = 1024 // default is 1K blocks, as in df and du
 	for _, a := range args {
@@ -77,6 +105,7 @@ type memInfo struct {
 
 // runFree prints memory and swap usage.
 func runFree(args []string, stdin *os.File, stdout, stderr *os.File) int {
+	args = splitShortFlags(args, "")
 	total, wide := false, false
 	var kept []string
 	for _, a := range args {
@@ -164,7 +193,7 @@ type diskRow struct {
 // runDf prints file system usage. -h is what people ask for first, so it is
 // supported from the start.
 func runDf(args []string, stdin *os.File, stdout, stderr *os.File) int {
-	human, unit, rest, _ := parseUnitFlags(args)
+	human, unit, rest, _ := parseUnitFlags(splitShortFlags(args, "t"))
 	inodes, showType, posix := false, false, false
 	var paths []string
 	for _, a := range rest {
@@ -344,7 +373,8 @@ func filterFileSystems(rows []diskRow, paths []string) (out []diskRow, missing [
 //
 //	du [-h] [-s] [-a] [-c] [-k|-m|-g] [PATH...]
 func runDu(args []string, stdin *os.File, stdout, stderr *os.File) int {
-	human, unit, rest, _ := parseUnitFlags(args)
+	human, unit, rest, _ := parseUnitFlags(splitShortFlags(args, "d"))
+	rest = splitShortFlags(rest, "d")
 	summary := false
 	all := false
 	grandTotal := false

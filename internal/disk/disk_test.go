@@ -171,3 +171,36 @@ func TestDfAndFreeRejectUnknown(t *testing.T) {
 		}
 	}
 }
+
+// TestCombinedShortFlags: agents write -sh, not -s -h. A cluster must mean what
+// getopt means (acmesh-7hg).
+func TestCombinedShortFlags(t *testing.T) {
+	got := splitShortFlags([]string{"-sh", "-la", "-d2", "--max-depth=3", "-", "pfad"}, "d")
+	want := []string{"-s", "-h", "-l", "-a", "-d", "2", "--max-depth=3", "-", "pfad"}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+	}
+}
+
+// TestDuAcceptsCombinedFlags: the measured case, du -sh on a directory.
+func TestDuAcceptsCombinedFlags(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(dir+"/datei", make([]byte, 4096), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, code := capture(t, runDu, []string{"-sh", dir})
+	if code != 0 {
+		t.Fatalf("exit %d", code)
+	}
+	if strings.TrimSpace(out) == "" {
+		t.Fatalf("no output for -sh")
+	}
+	if !strings.Contains(out, "K") && !strings.Contains(out, "M") {
+		t.Fatalf("not human readable: %q", out)
+	}
+}

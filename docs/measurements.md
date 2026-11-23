@@ -4267,3 +4267,47 @@ Die Groesse bleibt gleich, weil `login` im Verhaeltnis zum Binary klein ist; die
 Wirkung ist die fehlende Strecke und die fehlende Zeile in der Liste, nicht die
 Groesse. Die vollen Groessen: Linux 17.4 MiB (18284668 Bytes) statisch, Windows
 16.4 MiB (17211392 Bytes), beide gestrippt.
+
+## Image-Bau: scripts/make-image.sh (23.11.2026, acmesh-35q)
+
+Ein Skript baut das Image, damit das Probe-Image nicht mehr von Hand entsteht.
+Statisch bauen, Symlink-Baum, tar, `podman import` - kein Dockerfile, weil die
+Befehlsliste dann ein zweites Mal dastehen wuerde.
+
+Eine Quelle fuer die Namen: das Binary druckt seine Befehle, wenn man es mit
+einem unbekannten Namen aufruft. Das Skript liest genau diese Liste (Waechter:
+bricht ab, wenn weniger als 50 Namen kommen) und legt fuer jeden einen Symlink
+auf /bin/akmesh. Ein neuer Befehl ist damit beim naechsten Lauf im Baum.
+
+Im Image: /bin/akmesh, 116 Symlinks, /etc/passwd, /etc/group, /etc/hosts,
+/etc/resolv.conf, /etc/profile, /etc/ssl/certs/ca-certificates.crt vom Host
+(oder eine Warnung), /tmp mit 1777, leere /proc /sys /dev /root /home. /dev und
+/proc fuellt die Laufzeit - mdev und udev gibt es in diesem Binary nicht. /run
+legt der Runtime an.
+
+Abnahme aus dem Ticket, woertlich:
+
+    $ podman run --rm akmesh:latest sh -c 'ls /; printf "b\na\n" | sort'
+    bin dev etc home proc root run sys tmp
+    a
+    b
+
+Keine Bind-Mounts, kein PATH-Gebastel: PATH=/bin steht als ENV im Image,
+CMD ist /bin/sh.
+
+Weitere Pruefungen aus dem Skript (alle Exit 0): uname -s -> Linux,
+head -1 /etc/passwd -> root:x:0:0:root:/root:/bin/sh, date -> 2026-11-23,
+awk -> 2, grep -c -> 1, `ps -e | wc -l` -> 4 (also sieht ps den eigenen Prozess).
+
+Zahlen:
+
+    Image                18.6 MB (localhost/akmesh:latest)
+    Binary im Image      17.4 MiB (18284668 Bytes), statisch, gestrippt
+    Symlinks in /bin     116
+    5 Container-Starts   400 ms je Start (Runtime enthalten, Wandeuhr, bash EPOCHREALTIME)
+    50 x /bin/true      16.45 ms je Ausfuehrung in EINEM Container
+                        (Seiten des 17.4-MiB-Binaries kommen dazu)
+
+Methode der beiden Zeiten: `EPOCHREALTIME` aus bash um die podman-Aufrufe; ohne
+bash ueberspringt das Skript die Messung, weil `date +%s%N` hier nur Sekunden
+gibt (busybox) und die frueheren "0 ms" genau daran lagen.

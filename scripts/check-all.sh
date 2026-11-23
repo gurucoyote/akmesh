@@ -15,6 +15,10 @@ echo "== go-sed fork"
 ./scripts/apply-go-sed-fork.sh
 ./scripts/apply-sh-fork.sh
 
+# The image script is shell; a syntax error there breaks the release path, not
+# the build, so it is checked here.
+sh -n ./scripts/make-image.sh
+
 echo "== check-licences"
 ./scripts/check-licences.sh
 

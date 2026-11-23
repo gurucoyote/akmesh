@@ -21,6 +21,11 @@ are English; documents meant for Martin are German.
 - `cmd/<name>/`: one tiny `main` per own command, so that the combined binary
   reaches it under its plain name (`akmesh sed`). Adding a command means: implement
   in `internal/tools`, register in the table, add `cmd/<name>`.
+- `scripts/make-image.sh`: the image. Builds statically, reads the command names
+  from the binary itself (it prints them when called with an unknown name), lays
+  out `/bin` with one symlink per name, tars the rootfs and `podman import`s it
+  as `akmesh:latest`. A name list written down here would drift; the binary is
+  the source. `--verify-only` re-runs the checks against the existing image.
 - `scripts/test-akmesh.sh`: the live battery, run against the built binary for
   either target (`./scripts/test-akmesh.sh ./akmesh.exe`).
 - `scripts/build-bb.sh` writes `.build/go.work` (both modules) and passes the

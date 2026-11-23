@@ -37,15 +37,21 @@ Unser `sh` war kein Login-faehiger Shell-Ersatz:
 Ohne diese Shell gibt es kein Login, und ohne Login greift keine Profildatei -
 auch nicht mit /etc/passwd und einem login-Befehl.
 
-## Stufe 0: Image-Bau als Skript (acmesh-35q)
+## Stufe 0: Image-Bau als Skript (acmesh-35q) - erledigt
 
 Ohne reproduzierbaren Bau bleibt jede Messung Handarbeit.
 
-- scripts/make-image.sh: statisch bauen, Applet-Symlinks aus scripts/cmds.txt
-  plus OURS_ALL erzeugen (eine Quelle), OCI-Image bauen, Tag aus dem
-  Produktnamen.
+- scripts/make-image.sh: statisch bauen, Symlinks fuer jeden Befehlsnamen
+  erzeugen (eine Quelle: das Binary druckt seine Namen selbst), OCI-Image
+  bauen, Tag aus dem Produktnamen.
 - Ende: `podman run <tag> sh -c 'ls /; printf "b\na\n" | sort'` antwortet ohne
   Bind-Mounts und ohne PATH-Gebastel.
+- Erledigt am 23.11.2026: `scripts/make-image.sh` baut statisch, liest die
+  Befehlsnamen aus dem Binary selbst, legt /bin mit einem Symlink je Name an,
+  tar und `podman import` als `akmesh:latest`. Abnahme laeuft: `podman run
+  akmesh:latest sh -c 'ls /; printf "b\na\n" | sort'` antwortet ohne
+  Bind-Mounts; Image 18.6 MB, Start 400 ms, Ausfuehrung 16.45 ms (Zahlen und
+  Methode in docs/measurements.md).
 
 ## Stufe 1: Login-faehige Shell, damit Profile greifen (acmesh-4g7, P1) - erledigt
 

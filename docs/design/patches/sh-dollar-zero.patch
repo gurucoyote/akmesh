@@ -1,0 +1,17 @@
+--- a/interp/vars.go
++++ b/interp/vars.go
+@@ -200,8 +200,14 @@
+ 		vr.Kind, vr.List = expand.Indexed, r.dirStack
+ 	case "0":
+ 		vr.Kind = expand.String
++		// akmesh: $0 is the name the shell was called with. The environment
++		// variable "0" carries it, so ash's "-sh" for a login shell works;
++		// without this the shell said "gosh" whatever it was called
++		// (acmesh-51b).
+ 		if r.filename != "" {
+ 			vr.Str = r.filename
++		} else if v := r.writeEnv.Get("0"); v.IsSet() {
++			vr.Str = v.Str
+ 		} else {
+ 			vr.Str = "gosh"
+ 		}

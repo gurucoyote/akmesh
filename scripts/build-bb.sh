@@ -87,6 +87,7 @@ MAKEBB_VERSION=v0.6.0
 # Same shape for Go.Sed: sed has to read a regexp the way GNU sed does
 # (acmesh-4ne), which the library's Go-flavoured engine does not.
 "$ROOT/scripts/apply-go-sed-fork.sh"
+"$ROOT/scripts/apply-sh-fork.sh"
 
 # rg runs on gripgrep, pinned. Its GitHub mirror ended at v0.17.0 while the
 # forge had v0.17.3, so the version is checked against the build list instead

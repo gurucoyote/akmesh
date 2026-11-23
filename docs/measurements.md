@@ -4108,3 +4108,39 @@ cmds/exp. Die Suche in beiden Verzeichnissen bleibt trotzdem nuetzlich.
 
 Gatter: Linux 17.4 MiB (18276476 Bytes) statisch und gestrippt, Windows 16.4 MiB
 (17200128 Bytes) gestrippt, Batterie 211 Checks 0 Fehler, Hilfe-Audit Exit 0.
+
+## sh: read in der Sitzung und $0 (23.11.2026, acmesh-51b)
+
+Beide Reste aus acmesh-4g7 sind behoben.
+
+1. `read` las in der Sitzung nichts. Die Ursache lag nicht im Interpreter, sondern
+   im Wrapper: mvdan/sh gibt jedem stdin, der keine *os.File ist, eine Pipe mit
+   einem io.Copy-Goroutinen-Helfer (interp/stdin_os.go, newStdinFile). Der Copier
+   liest voraus und nimmt der Zeilenschleife die Zeilen. Im Bau war das
+   unsichtbar, weil die Schleife selbst gepuffert las.
+   Jetzt: bei einem Datei-Deskriptor bekommt die Shell denselben Leser, und die
+   Schleife liest ungepuffert Byte fuer Byte (lineReader in internal/sh/sh.go).
+   Bei einem echten Terminal oder einer Pipe ist stdin ein *os.File, also der
+   Normalfall; ein Nicht-Datei-Leser (Tests) bekommt weiterhin einen leeren
+   Leser, sonst liest der Copier die Sitzung leer.
+
+2. `$0` war immer "gosh": mvdan/sh setzt das fest (interp/vars.go, Fall "0").
+   Deshalb ein Fork als Patch, nach dem Muster des Go.Sed-Forks: die Aenderung
+   liegt in docs/design/patches/sh-dollar-zero.patch, scripts/apply-sh-fork.sh
+   spielt sie idempotent in den Modul-Speicher, keine Kopie von Fremdcode.
+   Die Shell liest $0 jetzt aus der Umgebungsvariablen "0", die sh.RunAs setzt:
+   der Aufrufname, im Login-Fall mit fuehrendem Minus, wie ash es macht.
+
+Belege am gebauten Binary (Linux statisch, 17.4 MiB, gestrippt):
+
+    akmesh sh -c 'echo "0=$0"'          -> 0=sh
+    akmesh sh -l -c 'echo "0=$0"'       -> 0=-sh
+    printf 'hallo welt\n' | akmesh sh -c 'read a b; echo "A=$a B=$b"'
+                                        -> A=hallo B=welt
+    pty-Sitzung: "read x", dann "hallo du", dann "echo X=$x"
+                                        -> X=hallo du, kein Zeilenverlust,
+                                           danach weiter Prompt "# "
+    Container mit login -f tester       -> 0=-sh pwd=/home/tester
+
+Tests: TestDollarZeroIsTheInvokedName (sh und -sh) und TestReadReadsInTheSession
+(Pipe als *os.File) neu; 16 Tests in internal/sh gruen.

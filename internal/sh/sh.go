@@ -1,7 +1,6 @@
 package sh
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -61,13 +60,30 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 	bash := base == "bash" || base == "-bash"
 
 	out := &switchWriter{w: stdout}
-	in := &switchReader{r: stdin}
-	if inv.interactive {
-		// The session's input belongs to the line loop, never to the shell: a
-		// startup file that reads stdin would swallow the first line typed.
-		in.swap(strings.NewReader(""))
+	// The shell gets the session's input itself, not a wrapper: interp wraps any
+	// non-file reader in a pipe fed by io.Copy, and that copier reads ahead and
+	// steals the lines the session was supposed to type (acmesh-51b). A *os.File
+	// is used as it is, so the builtin `read` reads from the same place the
+	// line loop does.
+	shellIn := io.Reader(strings.NewReader(""))
+	if _, isFile := stdin.(*os.File); isFile {
+		// Only a file can be shared: anything else is wrapped in a pipe fed by
+		// a copier that reads ahead.
+		shellIn = stdin
+	}
+	if inv.command == "" && inv.scriptFile == "" && !inv.interactive {
+		// The script is stdin and is read below, so the shell must not read it.
+		shellIn = strings.NewReader("")
 	}
 	env := os.Environ()
+	// $0 is the name the shell was called with; ash marks a login shell by a
+	// leading dash. mvdan/sh takes $0 from the environment variable "0", which
+	// the dispatcher never sets, so it read "gosh" (acmesh-51b).
+	shellName := base
+	if login && !strings.HasPrefix(shellName, "-") {
+		shellName = "-" + shellName
+	}
+	env = append(env, "0="+shellName)
 	if inv.interactive {
 		// The parent process may export its own PS1; a shell must not inherit
 		// it. Start from the ash default, and let the profile override it.
@@ -75,7 +91,7 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 		env = append(env, "PS1="+defaultPrompt())
 	}
 	opts := []interp.RunnerOption{
-		interp.StdIO(in, out, stderr),
+		interp.StdIO(shellIn, out, stderr),
 		interp.Dir(workingDir()),
 		interp.Env(expand.ListEnviron(env...)),
 	}
@@ -115,9 +131,9 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 		}
 		return finish(runner, runSource(runner, string(data), inv.scriptFile), stderr)
 	case inv.interactive:
-		return interactiveLoop(runner, stdin, in, out, stderr)
+		return interactiveLoop(runner, stdin, out, stderr)
 	default:
-		data, err := io.ReadAll(in)
+		data, err := io.ReadAll(stdin)
 		if err != nil {
 			fmt.Fprintf(stderr, "sh: %v\n", err)
 			return 1
@@ -181,6 +197,8 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, "  -i           interactive: read one statement per line")
 	fmt.Fprintln(w, "  -l, --login  login shell: read /etc/profile, then the user profile")
 	fmt.Fprintln(w, "               (.profile; .bash_profile only when called as bash)")
+	fmt.Fprintln(w, "               $0 is -sh then; the dispatcher cannot call the shell as -sh,")
+	fmt.Fprintln(w, "               so -l/--login is the way to a login shell")
 }
 
 // startupFiles is the list of files a shell reads before its first command, in
@@ -234,14 +252,14 @@ func runStartup(r *interp.Runner, path string, stderr io.Writer) (int, bool) {
 // one and keeps the session alive after a failing command. It reads lines
 // itself instead of using the parser's sequence API: a test with a plain
 // strings.Reader has to behave exactly like a terminal.
-func interactiveLoop(r *interp.Runner, stdin io.Reader, in *switchReader, out *switchWriter, stderr io.Writer) int {
-	// The session's input belongs to this loop: the shell gets an empty reader,
-	// otherwise it buffers lines for its own commands and the session loses one.
-	reader := bufio.NewReader(stdin)
+func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stderr io.Writer) int {
+	// One byte at a time: a buffered reader would read past the line, and a
+	// command like `read` would find the input already eaten (acmesh-51b).
+	reader := &lineReader{r: stdin}
 	var pending strings.Builder
-	out.WriteString(promptString(r, in, out))
+	out.WriteString(promptString(r, out))
 	for {
-		line, readErr := reader.ReadString('\n')
+		line, readErr := reader.readLine()
 		if line == "" && readErr != nil {
 			return 0
 		}
@@ -258,7 +276,7 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, in *switchReader, out *s
 			}
 			fmt.Fprintf(stderr, "sh: %v\n", err)
 			pending.Reset()
-			out.WriteString(promptString(r, in, out))
+			out.WriteString(promptString(r, out))
 			if readErr != nil {
 				return 0
 			}
@@ -272,7 +290,7 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, in *switchReader, out *s
 		if runErr != nil {
 			fmt.Fprintf(stderr, "sh: %v\n", runErr)
 		}
-		out.WriteString(promptString(r, in, out))
+		out.WriteString(promptString(r, out))
 		if readErr != nil {
 			return 0
 		}
@@ -281,14 +299,12 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, in *switchReader, out *s
 
 // promptString is PS1 when the profile set one, otherwise the ash default. The
 // value is expanded by the shell itself, so a profile can use $USER or $PWD.
-func promptString(r *interp.Runner, in *switchReader, out *switchWriter) string {
+func promptString(r *interp.Runner, out *switchWriter) string {
 	var buf strings.Builder
 	prevOut := out.swap(&buf)
-	// The prompt is expanded without giving the shell the session input: an
-	// interactive runner may read ahead, and the session would lose a line.
-	prevIn := in.swap(strings.NewReader(""))
+	// printf writes to the buffer and reads no input, so the shell may keep the
+	// session's reader here.
 	_ = runSource(r, `printf '%s' "$PS1"`, "<prompt>")
-	in.swap(prevIn)
 	out.swap(prevOut)
 	if s := buf.String(); s != "" {
 		return expandPrompt(s)
@@ -467,6 +483,32 @@ func (s *switchWriter) swap(w io.Writer) io.Writer {
 	prev := s.w
 	s.w = w
 	return prev
+}
+
+// lineReader reads one line at a time and never past the newline, so the shell
+// and the session can share one input without either stealing from the other.
+type lineReader struct {
+	r io.Reader
+}
+
+func (l *lineReader) readLine() (string, error) {
+	var b strings.Builder
+	var one [1]byte
+	for {
+		n, err := l.r.Read(one[:])
+		if n > 0 {
+			if one[0] == '\n' {
+				return b.String(), nil
+			}
+			b.WriteByte(one[0])
+		}
+		if err != nil {
+			if b.Len() > 0 {
+				return b.String(), nil
+			}
+			return "", err
+		}
+	}
 }
 
 // switchReader does the same for input: the prompt needs the shell to run

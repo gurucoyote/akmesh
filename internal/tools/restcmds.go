@@ -2,6 +2,7 @@ package tools
 
 import (
 	"os"
+	"path/filepath"
 
 	"akmesh/internal/corecmd"
 	"akmesh/internal/diffpatch"
@@ -67,7 +68,14 @@ func runPatch(args []string, stdin *os.File, stdout, stderr *os.File) int {
 }
 
 func runSh(args []string, stdin *os.File, stdout, stderr *os.File) int {
-	return sh.Run(args, stdin, stdout, stderr)
+	// The shell answers $0 with the name it was called with, so the dispatcher's
+	// binary path must not leak into the session (acmesh-51b). "gosh" stays
+	// reachable under the name the old command list carried.
+	name := "sh"
+	if base := filepath.Base(os.Args[0]); base == "gosh" {
+		name = "gosh"
+	}
+	return sh.RunAs(name, args, stdin, stdout, stderr)
 }
 
 func runPolicy(args []string, stdin *os.File, stdout, stderr *os.File) int {

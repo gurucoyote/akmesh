@@ -235,3 +235,39 @@ func TestPromptEscapesAreExpanded(t *testing.T) {
 		t.Fatalf("readline markers kept: %q", got)
 	}
 }
+
+// TestDollarZeroIsTheInvokedName: the dispatcher sets argv[0] to the binary, so
+// $0 came out as "gosh" in every shell. ash uses the name it was called with
+// and marks a login shell with a leading dash (acmesh-51b).
+func TestDollarZeroIsTheInvokedName(t *testing.T) {
+	var out, errb strings.Builder
+	RunAs("sh", []string{"-c", `echo "$0"`}, strings.NewReader(""), &out, &errb)
+	if got := strings.TrimSpace(out.String()); got != "sh" {
+		t.Fatalf("$0 = %q, want sh", got)
+	}
+	out.Reset()
+	RunAs("-sh", []string{"-c", `echo "$0"`}, strings.NewReader(""), &out, &errb)
+	if got := strings.TrimSpace(out.String()); got != "-sh" {
+		t.Fatalf("login $0 = %q, want -sh", got)
+	}
+}
+
+// TestReadReadsInTheSession: read used to find nothing because the session and
+// the shell each had their own reader (acmesh-51b). A pipe is an *os.File, so
+// this is the same path a terminal takes.
+func TestReadReadsInTheSession(t *testing.T) {
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pr.Close()
+	if _, err := pw.WriteString("read a line\nhallo welt\necho A=$a line=$line\nexit\n"); err != nil {
+		t.Fatal(err)
+	}
+	pw.Close()
+	var out, errb strings.Builder
+	RunAs("sh", []string{"-i"}, pr, &out, &errb)
+	if got := out.String(); !strings.Contains(got, "A=hallo line=welt") {
+		t.Fatalf("read found nothing: %q (stderr %q)", got, errb.String())
+	}
+}

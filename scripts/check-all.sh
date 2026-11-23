@@ -13,6 +13,7 @@ echo "== goldmark-pdf fork"
 ./scripts/apply-goldmark-pdf-fork.sh
 echo "== go-sed fork"
 ./scripts/apply-go-sed-fork.sh
+./scripts/apply-sh-fork.sh
 
 echo "== check-licences"
 ./scripts/check-licences.sh

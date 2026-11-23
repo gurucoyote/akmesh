@@ -264,10 +264,19 @@ printf 'a\n' > dgu1.txt && printf 'b\n' > dgu2.txt
 check diff-u-header-stamp "$(run diff -u dgu1.txt dgu2.txt | tr -d '\r' | sed -n 1p | grep -c 'dgu1.txt	[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\.[0-9]\{9\} [+-][0-9]\{4\}')" "1"
 # sed -z (acmesh-d9e): NUL-getrennte Saetze rein und raus.
 printf 'a.txt\000b c.txt\000d.txt\000' > z.nul
+# awk gegen mawk 1.3.4 (acmesh-722).
+printf 'b:2:z\nA:1:y\na:3:x\nc:10:w\n' > c1.txt
+check awk-print "$(run awk '{print $1}' c1.txt | tr -d '\r' | tr '\n' '|')" "b:2:z|A:1:y|a:3:x|c:10:w|"
+check awk-field "$(run awk -F: '{print $2}' c1.txt | tr -d '\r' | tr '\n' '|')" "2|1|3|10|"
+check awk-nr "$(run awk '{print NR": "$0}' c1.txt | head -2 | tr -d '\r' | tr '\n' '|')" "1: b:2:z|2: A:1:y|"
+check awk-end "$(run awk 'END{print NR}' c1.txt | tr -d '\r')" "4"
+check awk-gsub "$(printf 'aab\n' | run awk '{n=gsub(/a/, "X"); print n, $0}' | tr -d '\r')" "2 XXb"
+check awk-printf "$(run awk 'BEGIN{printf "%05.2f|%s\n", 3.14159, "ok"}' | tr -d '\r')" "03.14|ok"
+check awk-array "$(run awk 'BEGIN{a["x"]=1; a["y"]=2; n=0; for (k in a) n++; print n}' | tr -d '\r')" "2"
+check awk-v "$(run awk -v n=2 'NR==n' c1.txt | tr -d '\r')" "A:1:y"
 # xargs gegen GNU findutils (acmesh-ji5). Auf Windows gibt es kein echo
 # als eigenes Programm, also laeuft die Gruppe nur auf dem Linux-Bau.
 if [ -z "$WINDOWS" ]; then
-# xargs gegen GNU findutils (acmesh-ji5).
 check xargs-n1 "$(printf 'a\nb\n' | run xargs -n1 echo | tr '\n' '|')" "a|b|"
 check xargs-replace "$(printf 'a\nb\n' | run xargs -I{} echo '[{}]' | tr '\n' '|')" "[a]|[b]|"
 check xargs-quotes "$(printf "'a b'\n" | run xargs -n1 echo)" "a b"

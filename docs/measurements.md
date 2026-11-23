@@ -5636,3 +5636,41 @@ Belege: sieben Batteriepruefungen (n1, -I, Quotes, -a, Optionen nach dem Befehl,
 Exit 123, -E) und sechs Go-Tests. Auf Windows bleibt die Gruppe aus, weil dort
 kein eigenes echo-Programm als Kind laeuft; die uebrigen Windows-Messungen
 bleiben unberuehrt. Batterie 350 Linux / 320 Windows, beide 0 Fehler.
+
+## awk gegen mawk 1.3.4 (23.11.2026, acmesh-722)
+
+Rahmen: scripts/gnu-probe.sh, scripts/probes/awk.probe, 87 Aufrufe. Referenz
+ist das awk des gepinnten Debian-Images: mawk 1.3.4 20250131 (mit
+`awk -W version` belegt), nicht gawk - das Image hat kein gawk.
+
+Ergebnis: 83 von 87 gleich. Unser awk ist goawk 1.31.0 (in go.mod gepinnt),
+also kein Eigenbau; die Abweichungen stammen alle aus dieser Bibliothek:
+
+    RSTART vor match       mawk: leer, goawk: 0. `print substr(...), RSTART`
+                           gibt bei mawk "bcd ", bei uns "bcd 0".
+    1/0                    mawk: +inf, Exit 0; goawk: "division by zero",
+                           Exit 2. gawk verhaelt sich wie goawk.
+    unbekannte Funktion    mawk "function xor never defined", goawk
+                           "parse error at 1:13: undefined function \"xor\"".
+    ** (Potenz)            mawk: Syntaxfehler; goawk rechnet 2**3 = 8. Eine
+                           Obermenge, nach der Regel unschaedlich.
+
+Alle drei echten Abweichungen stehen als Ticket acmesh-fl3 mit der Frage
+mawk folgen oder dokumentieren. Bewusst nicht gebaut: gawk-Erweiterungen wie
+BEGINFILE, --posix, -i inplace.
+
+Abgedeckt waren unter anderem: Muster und Aktionen, -F mit Zeichen und mit
+Tabulator, NF/NR/FNR/FILENAME, BEGIN/END, -v, -f progfile, printf in allen
+Formatbreiten, gsub/sub/match mit RSTART/RLENGTH, split, index, substr in allen
+Lagen (auch negativ), toupper/tolower, Arrays mit delete und length,
+Feldzuweisung und NF=, OFS/ORS/FS, getline aus Datei und aus Pipe, next,
+do-while, Funktionen mit Parametern, ENVIRON, die Mathefunktionen,
+Zahlenformate (1e3, .5, 07/08) und der Vergleich "10" gegen 9.
+
+Batterie: acht neue Pruefungen (print, -F, NR, END, gsub, printf, Array, -v).
+
+Zwei Fehler in meiner eigenen Batteriearbeit, beide beim Gegenpruefen gefunden:
+die awk-Pruefungen standen vor der Zeile, die c1.txt anlegt (leere Ausgabe statt
+Fehlerbild), und unter Windows schreibt goawk CRLF, weshalb jede awk-Pruefung
+jetzt vor dem Vergleich `tr -d '\r'` nutzt - so wie die uebrigen Pruefungen auch.
+Batterie 358 Linux / 328 Windows, beide 0 Fehler.

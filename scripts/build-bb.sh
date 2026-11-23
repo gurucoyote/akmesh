@@ -449,3 +449,49 @@ fi
 if [ "$SIZE" -gt 25000000 ]; then
 	echo "size: $OUT is $SIZE bytes, over the warning line of 25000000 (acmesh-94e.15, acmesh-m5j, acmesh-54s.1)" >&2
 fi
+
+# The size report a person reads (Martin, 23.11.2026): bytes are what the size
+# budget compares, but every report also says the size in MiB and whether the
+# binary is stripped, because a number without those two says little.
+# Stripped is measured, not assumed: `readelf`/`objdump` count the debug
+# sections, and the loader interpreter tells static from dynamic.
+human_size() {
+	awk -v b="$1" 'BEGIN {
+		if (b < 1024) { printf "%d B", b; exit }
+		split("KiB MiB GiB", u, " ")
+		v = b; i = 0
+		while (v >= 1024 && i < 3) { v /= 1024; i++ }
+		printf "%.1f %s", v, u[i]
+	}'
+}
+debug_sections() {
+	if readelf -S "$1" >/dev/null 2>&1; then
+		readelf -S "$1" | grep -c '\.debug_' || true
+	else
+		objdump -h "$1" 2>/dev/null | grep -c '\.debug_' || true
+	fi
+}
+report_size() {
+	f="$ROOT/$OUT"
+	[ -f "$f" ] || return 0
+	b=$(stat -c %s "$f" 2>/dev/null || stat -f %z "$f")
+	dbg=$(debug_sections "$f")
+	case "$dbg" in ''|*[!0-9]*) dbg=0 ;; esac
+	if [ "$dbg" -eq 0 ]; then
+		strip_word="stripped"
+	else
+		strip_word="not stripped ($dbg debug sections)"
+	fi
+	case "$GOOS" in
+	windows) kind="Windows PE" ;;
+	*)
+		if readelf -l "$f" 2>/dev/null | grep -q 'INTERP'; then
+			kind="dynamically linked"
+		else
+			kind="statically linked"
+		fi
+		;;
+	esac
+	echo "report: $OUT is $(human_size "$b") ($b bytes), $kind, $strip_word"
+}
+report_size

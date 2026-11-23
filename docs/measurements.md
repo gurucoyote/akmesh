@@ -2,6 +2,10 @@
 
 Jede Zahl mit dem Aufruf, der sie erzeugt hat. Ohne Aufruf keine Zahl.
 
+Groessen: seit 23.11.2026 immer in MiB und Bytes, mit Bindeart und Stripping,
+wie es die `report:`-Zeile des Baus druckt (Regel: AGENTS.md, Bau). Aeltere
+Abschnitte nennen nur Bytes; sie bleiben, wie sie gemessen wurden.
+
 ## Bestand (17.11.2026, u-root 869f00f, Go 1.27.4, WSL2 Alpine)
 
 Querkompilieren jedes Kandidaten, einer nach dem anderen:
@@ -4018,12 +4022,16 @@ vorher wurde blind `./cmds/core/$c` gebaut.
 
 Groesse (gemessen):
 
-- Linux dynamisch: 17195235 -> 18338019 Bytes, also +1142784 (1,14 MB). Das ist
-  der Preis von netlink; der Bau meldet die Zunahme selbst.
-- Linux statisch (CGO_ENABLED=0): 18276476 Bytes, statisch gelinkt (file:
-  "statically linked"). Nur dieser Bau laeuft im leeren Image.
-- Windows: 17200128 Bytes, unveraendert; `ip` und `dhclient` fehlen dort
-  (`./akmesh.exe gibtsnicht` nennt keinen der beiden Namen).
+Gemessen mit der `report:`-Zeile von scripts/build-bb.sh:
+
+- Linux dynamisch: 17.5 MiB (18338019 Bytes), dynamically linked, stripped.
+  Vorher 17195235 Bytes, also +1142784 Bytes (1,09 MiB); das ist der Preis von
+  netlink.
+- Linux statisch (CGO_ENABLED=0): 17.4 MiB (18276476 Bytes), statically linked,
+  stripped. Nur dieser Bau laeuft im leeren Image.
+- Windows: 16.4 MiB (17200128 Bytes), Windows PE, stripped; unveraendert, `ip`
+  und `dhclient` fehlen dort (`./akmesh.exe gibtsnicht` nennt keinen der beiden
+  Namen).
 
 Belege im leeren Image (localhost/local/empty, --privileged, /proc eingebunden,
 sonst keine Werkzeuge):

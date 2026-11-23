@@ -44,6 +44,11 @@ are English; documents meant for Martin are German.
   "akmesh" in the pinned checkout and rebuilds `makebb` when it still embeds the
   old text (go:embed). It fails instead of shipping the old wording.
 - Build artifacts (`akmesh`, `akmesh.exe`, `.cache/`, `.gopath/`) stay untracked.
+- Every size reported to Martin is human readable and names the linking and the
+  stripping, because a bare byte count says little: `17.4 MiB (18276476 bytes),
+  statically linked, stripped`. The build prints that line itself
+  (`report: ...`); take the numbers from there instead of writing your own.
+  Stripping is a fact to state, not an assumption: read it from the binary.
 
 ## Policy first
 

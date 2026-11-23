@@ -4644,3 +4644,95 @@ so gebauten Binary. Geprueft mit `--show-suppressed`: es sind genau diese zwei.
 Secrets: sauber (--scanners secret, 0 Funde). Groesse unveraendert 17.6 MiB
 statisch (18464892 Bytes); go1.27.4 kostet nichts, x/crypto ebenso wenig.
 Windows neu gebaut mit demselben Toolchain: 16.6 MiB (17370112 Bytes).
+
+## Bedarfsmessung: welche Werkzeuge fehlen wirklich (23.11.2026, acmesh-y2o)
+
+Gemessen, nicht geschaetzt. Quellen und Umfang, damit die Zahlen einordbar sind:
+
+- Hermes-Sitzungen mit cwd /root/akmesh: 6 Sitzungen, 3210 Nachrichten mit
+  Werkzeugaufrufen, davon 2532 terminal-Aufrufe (state.db, nur gelesen).
+- Shell-Historie des Hosts: 17589 Zeilen.
+- Skripte und Messungen dieses Repos.
+- Vergleichsliste: BusyBox 1.37.0, 405 Applets (`--entrypoint /bin/busybox --list`).
+
+Zaehlweise: jeder Aufruf wird an &&, ||, ;, |, $() und ` zerlegt, Heredoc-Koerper
+werden vorher entfernt (sonst zaehlt Python- und Go-Code als Befehl), Env-Zuweisungen
+und sudo/doas/time/nohup/exec/command abgestreift, nur Namen gezaehlt, die entweder
+im PATH liegen oder zu akmesh gehoeren. Shell-Builtins (cd, echo, printf, export,
+exit, ...) fallen raus. Ergebnis: 104 verschiedene Befehle, 10224 Vorkommen.
+
+Haeufig gebraucht und vorhanden (Vorkommen, Agent + Historie zusammen):
+
+    head 1727  grep 1422  tail 1180  sed 488  ls 384  cat 360  wc 141
+    tr 140    ps 114    cp 112    sleep 111  sh 110  timeout 100
+    awk 95    rm 83
+
+Damit ist der Kern bestaetigt: die Pipeline-Werkzeuge sind die, die wirklich laufen.
+
+Fehlend, aber gebraucht - und in BusyBox-Klasse (Kandidaten fuer akmesh):
+
+    Befehl      Agent  Historie  Aufwand  Weg
+    od             29        0    M        eigener Bau (hexdump existiert, anderes Format)
+    pgrep          16        0    S-M      eigener Bau (internal/proc ist da)
+    unzip          10       56    M        eigener Bau (archive/zip)
+    openssl        10        1    L        bewusst nicht; nur "passwd -6" ist der Bedarf
+    chown           8        5    M        eigener Bau (Login liest passwd/group)
+    netstat         5        0    S        u-root cmds/core, nur aufnehmen
+    pkill           5        1    S        mit pgrep zusammen
+    su              3       11    M        ueber internal/login
+    perl            3        0    L        bewusst nicht (Sprache, kein Werkzeug)
+    bash           52        3    L        bewusst nicht: GPL, wir haben sh (POSIX)
+    passwd          2        0    M        ueber vorhandene sha512-crypt-Krypto
+    udhcpc          2        0    -        bewusst nicht, wir haben dhclient
+    dpkg/apk        2/3   0/26    -        bewusst nicht: Paketmanager der Distribution
+    readelf         2        0    S        u-root cmds/exp, nur aufnehmen
+    mkfs.ext4       2        0    L        bewusst nicht (Dateisystem anlegen ist nicht Agentenalltag)
+    setsid          1        0    S        Syscall-Aufruf
+    sum             1        0    S        kleine Pruefsumme
+
+Fehlend, aber Host-Werkzeug, nicht Shell-Userland - bewusst nicht nachbauen:
+
+    git 923+573, bd 553+32, go 417+438, python3 378, podman 308, gofmt 256,
+    busybox 32, trivy 2.
+
+Ein Harness, das akmesh statt einer echten Shell gibt, muss fuer diese Werkzeuge
+entweder einen zweiten Weg anbieten oder die Aufgabe ablehnen - sie gehoeren nicht
+in die Binary.
+
+Gegen BusyBox gehalten: 91 Namen gemeinsam, 314 BusyBox-Applets fehlen, 31 Befehle
+hat akmesh zusaetzlich (die Dokument-Konverter, jq, rg, curl, wget, policy, verify).
+"91 gemeinsam" heisst nicht "91 gleich": die Semantik weicht ab (u-root find kennt
+kein -maxdepth, head kein -3), das steht in den jeweiligen Abschnitten.
+
+Vorhanden, aber nie gebraucht: 55 Befehle kamen in keiner der beiden Quellen vor.
+Nach Pruefung sind davon 14 keine echten Kandidaten (echo, pwd, true, false, kill,
+mv, ping, scp, tee, mktemp, wget, jq, yes, df sind Builtins oder anderswo benutzt),
+und die 12 Dokument-Konverter plus die fuenf Dienste (init, syslogd, logger, logread,
+policy) bleiben, weil ihr Zweck ausserhalb einer Shell-Sitzung liegt. Streichkandidaten
+mit Zahl statt Gefuehl: gosh, man, more, shuf, verify (Ticket acmesh-kpp).
+
+## Gegenprobe im Image: wo der Agent ausweicht
+
+Neun Aufgaben im gebauten Image, jede mit dem Befehl, den ein Agent tippen wuerde:
+
+    Aufgabe                              Ergebnis
+    Binaerdaten ansehen (od)             od fehlt -> hexdump -C zeigt die Bytes, anderes Layout
+    Prozess nach Namen (pgrep)           fehlt -> ps -e -o pid,comm | grep, funktioniert
+    Prozess beenden (pkill, kill)        kill <pid> im sh: "kill: unsupported builtin", Exit 2,
+                                         Prozess lebt weiter. /bin/kill <pid> geht (rc=0)
+    Hintergrund-PID ($!)                 echo $! gibt "g1" statt einer PID (mvdan/sh-Job-ID)
+    Rechte aendern (chown)               fehlt, kein Ersatz; chmod geht
+    Zip entpacken (unzip)                fehlt, kein Ersatz
+    Passwort-Hash (openssl passwd -6)    fehlt, kein Ersatz
+    Benutzerwechsel (su)                 fehlt -> login -f root funktioniert
+    Rekursive Suche (grep -r)            funktioniert
+    Groesse (du -sh)                     "du: unknown option -sh"; du -s -h liefert 248K
+
+Damit sind drei echte Defekte belegt, die keine Bedarfsfrage sind, sondern Fehler:
+kill im sh (acmesh-oxw), $! gibt eine Job-ID (acmesh-tms), du ohne kombinierte kurze
+Flags (acmesh-7hg). Die uebrigen Luecken sind Tickets der Klasse S bis M.
+
+Grenzen der Messung: sechs Sitzungen sind ein Ausschnitt, die Host-Historie ist nicht
+die Zielumgebung, und die Aufnahme eines u-root-Befehls ist noch kein Beweis, dass er
+sich wie BusyBox verhaelt. Die Zahlen sagen, wo nachzusehen ist - nicht, dass ein
+Befehl deswegen fehlen muss.

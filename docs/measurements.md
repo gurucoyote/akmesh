@@ -5603,3 +5603,36 @@ lautet "cat: can't open 'xac': No such file or directory", GNU "cat: xac: No
 such file or directory". Als Ticket notiert.
 
 Batterie: zwoelf neue Pruefungen (cut 6, comm 4, split 2, tee 2).
+
+## xargs gegen GNU findutils 4.9.0 (23.11.2026, acmesh-ji5)
+
+19 Aufrufe, zuerst 9 abweichend. xargs war schon ein Fork von u-root; die
+Fehler steckten in der Auswertung, nicht im Ablauf:
+
+    Optionen nach dem Befehl  "xargs sh -c 'exit 5'" wurde als xargs-Option -c
+                              gelesen: 127 statt der Kinderausfuehrung. Nun
+                              endet die Auswertung am ersten Wort, das keine
+                              Option ist (GNU liest Befehl und alles danach).
+    Anfuehrungszeichen         "'a b'" kam mit den Quotes an, GNU gibt "a b"
+                              als ein Argument. Eigener Zerleger: Blanks
+                              trennen, ' und " halten zusammen, \ nimmt das
+                              naechste Zeichen.
+    -a FILE                   fehlte.
+    -i[kurz]                  fehlte (veraltet, Synonym zu -I{}).
+    -L N / -l                 fehlte: eine Ausfuehrung je N Zeilen.
+    -E EOF / -e EOF           fehlte.
+    --max-args=1 usw.         die langen Schreibweisen fehlten ganz.
+    Exit 123                   folgte erst, wenn der Befehl wirklich lief.
+
+Dazu zeigte die Messung eine Reihenfolge-Falle bei -t: GNU druckt "echo a",
+dann a, dann "echo b", dann b; unsere Fassung druckte beide Spurzeilen zuerst,
+weil sie vor dem Belegen des freien Platzes schrieb. Der Platz wird jetzt zuerst
+genommen.
+
+Stand: 19 von 19 gleich. Das ist der erste Befehl dieser Reihe, dessen Ablauf
+stehen blieb und nur die Auswertung neu war.
+
+Belege: sieben Batteriepruefungen (n1, -I, Quotes, -a, Optionen nach dem Befehl,
+Exit 123, -E) und sechs Go-Tests. Auf Windows bleibt die Gruppe aus, weil dort
+kein eigenes echo-Programm als Kind laeuft; die uebrigen Windows-Messungen
+bleiben unberuehrt. Batterie 350 Linux / 320 Windows, beide 0 Fehler.

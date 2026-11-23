@@ -31,7 +31,7 @@ cd "$WORK" || exit 2
 # different behaviour). So the battery runs on a copy with a fresh path, which
 # is the same file.
 case "$BIN" in
-*.exe) cp "$BIN" "$WORK/acmesh-under-test.exe" && BIN="$WORK/acmesh-under-test.exe" ;;
+*.exe) cp "$BIN" "$WORK/acmesh-under-test.exe" && BIN="$WORK/acmesh-under-test.exe" && WINDOWS=1 ;;
 esac
 
 fails=0
@@ -264,6 +264,18 @@ printf 'a\n' > dgu1.txt && printf 'b\n' > dgu2.txt
 check diff-u-header-stamp "$(run diff -u dgu1.txt dgu2.txt | tr -d '\r' | sed -n 1p | grep -c 'dgu1.txt	[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\.[0-9]\{9\} [+-][0-9]\{4\}')" "1"
 # sed -z (acmesh-d9e): NUL-getrennte Saetze rein und raus.
 printf 'a.txt\000b c.txt\000d.txt\000' > z.nul
+# xargs gegen GNU findutils (acmesh-ji5). Auf Windows gibt es kein echo
+# als eigenes Programm, also laeuft die Gruppe nur auf dem Linux-Bau.
+if [ -z "$WINDOWS" ]; then
+# xargs gegen GNU findutils (acmesh-ji5).
+check xargs-n1 "$(printf 'a\nb\n' | run xargs -n1 echo | tr '\n' '|')" "a|b|"
+check xargs-replace "$(printf 'a\nb\n' | run xargs -I{} echo '[{}]' | tr '\n' '|')" "[a]|[b]|"
+check xargs-quotes "$(printf "'a b'\n" | run xargs -n1 echo)" "a b"
+check xargs-arg-file "$(printf 'a b\n' > xa.txt; run xargs -a xa.txt -n1 echo | tr '\n' '|')" "a|b|"
+check xargs-command-options "$(printf 'a\n' | run xargs sh -c 'echo $0')" "a"
+check xargs-exit-123 "$(printf 'a\n' | run xargs sh -c 'exit 5'; printf '%s' "$?")" "123"
+check xargs-eof "$(printf 'a\nSTOP\nb\n' | run xargs -E STOP -n1 echo | tr '\n' '|')" "a|"
+fi
 # cut, comm, split, tee gegen GNU (acmesh-y16).
 printf 'b:2:z\nA:1:y\na:3:x\nc:10:w\n' > c1.txt
 check cut-field "$(run cut -d: -f2 c1.txt | tr '\n' '|')" "2|1|3|10|"

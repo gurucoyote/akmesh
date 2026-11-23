@@ -1,0 +1,20 @@
+# xargs gegen GNU findutils 4.9.0 / coreutils-Ersatz
+xargs echo < words.txt
+printf 'a\nb\n' | xargs -n1 echo
+printf 'a b\nc\n' | xargs -n1 echo
+printf 'a b\n' | xargs -d ' ' -n1 echo
+xargs -a words.txt echo
+xargs -I{} echo '[{}]' < words.txt
+xargs -i echo '[{}]' < words.txt
+printf 'a\000b\000' | xargs -0 -n1 echo
+printf '' | xargs -r echo nichts
+printf '' | xargs echo leer
+printf "'a b'\nc\n" | xargs -n1 echo
+printf 'a\nb\n' | xargs -L1 echo zeile
+printf 'a\nb\n' | xargs -t -n1 echo 2>&1
+printf 'a\nSTOP\nb\n' | xargs -E STOP -n1 echo
+printf 'a\n' | xargs sh -c 'exit 5'; echo "rc=$?"
+printf 'a\nb\n' | xargs -n1 sh -c 'echo $0'
+xargs -n2 echo < words.txt
+xargs -n1 --max-args=1 echo < words.txt
+printf 'a\n\nb\n' | xargs -n1 echo

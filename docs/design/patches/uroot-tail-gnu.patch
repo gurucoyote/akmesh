@@ -157,10 +157,10 @@ index 15f9808..b1bb34f 100644
  }
 diff --git a/cmds/core/tail/tail_args.go b/cmds/core/tail/tail_args.go
 new file mode 100644
-index 0000000..ffee5b3
+index 0000000..f2d54ee
 --- /dev/null
 +++ b/cmds/core/tail/tail_args.go
-@@ -0,0 +1,213 @@
+@@ -0,0 +1,233 @@
 +package main
 +
 +// This file is part of akmesh's patch against u-root's tail: GNU accepts forms
@@ -178,6 +178,18 @@ index 0000000..ffee5b3
 +	"strings"
 +	"time"
 +)
++
++const tailUsage = `usage: tail [-f] [-c N] [-n N] [FILE...]
++
++  -f, --follow            keep reading as the file grows
++  -c, --bytes=N           print the last N bytes; +N starts at byte N
++  -n, --lines=N           print the last N lines (default 10); +N starts at line N
++  -q, --quiet             never print "==> FILE <==" headers
++  -v, --verbose           always print them
++  -h, --help              this text
++
++  tail -3 FILE            the last three lines, as in GNU tail
++`
 +
 +// tailOpts is the command line, after the GNU forms have been translated.
 +type tailOpts struct {
@@ -212,6 +224,14 @@ index 0000000..ffee5b3
 +// Go's flag package would reject it.
 +func parseTailArgs(args []string) (tailOpts, []string, error) {
 +	o := tailOpts{lines: 10, followEvery: 500 * time.Millisecond}
++	// --help has to answer with exit 0: the help gate rejects a command that
++	// reports an unknown option instead (scripts/help-audit.sh).
++	for _, a := range args {
++		if a == "-h" || a == "--help" {
++			fmt.Print(tailUsage)
++			os.Exit(0)
++		}
++	}
 +	var files []string
 +	linesSet, bytesSet := false, false
 +	// take a count value, either glued to the option or in the next argument

@@ -4998,3 +4998,41 @@ run()-Signatur als duenne Huelle erhalten.
 
 Batterie: 238 Checks Linux (vorher 232, sechs neue tail-Pruefungen), 0 Fehler.
 Groessen: dynamisch 18964707, Windows 17598976, beide gestrippt.
+
+## date in den GNU-Formen (23.11.2026, acmesh-xli)
+
+Befund: date -d, -I und --iso-8601 endeten mit "flag provided but not defined: -d",
+und der Formatierungsmap von u-root fehlte %s ganz ("date +%s" druckte "%s"), %m
+hatte keine fuehrende Null.
+
+Gefixt als Patch: docs/design/patches/uroot-date-gnu.patch (338 Zeilen), ueber
+scripts/patch-uroot.sh angewendet wie beim tail. Neu: cmds/core/date/date_parse.go
+mit einem Parser fuer die Formen, die in Skripten vorkommen.
+
+Was jetzt geht, gemessen gegen GNU coreutils 9.7 (22 Faelle, alle gleich):
+
+    date -d @0 +%s                    0
+    date -d 2020-01-02 +%s            1577923200
+    date -d 2020-01-02T03:04:05Z +%s  1577934245
+    date -d "2020-01-02 03:04" +%s    1577934240
+    date -d "2 days ago" / "+3 hours" / "last week" / "next monday"
+    date -I, date -Iseconds, --iso-8601=seconds
+    date -R                           Mon, 02 Jan 2006 15:04:05 +0000
+    date +%s, +%N, +%j, +%m/%d/%Y     wie GNU
+
+Was bewusst nicht geht: die ganze GNU-Sprache ("third friday", "2 fortnights").
+Jede nicht verstandene Zeichenkette endet mit "date: invalid date ..." und Exit
+1 - eine falsche Zeit waere schlimmer als eine ehrliche Absage.
+
+Zwei Eigenheiten, die dabei mit repariert wurden: %s fehlte (ohne %s ist -d fuer
+Zeitstempel nutzlos) und %m gab "1" statt "01", was "%Y-%m-%d" zu "1970-1-01"
+machte.
+
+Ein Fehler, den die Batterie gefunden hat: --help endete bei tail mit Exit 1,
+weil der eigene Argumentparser das Flag nicht kannte und das Hilfe-Gate jede
+Zeile ohne usage-Antwort ablehnt. Beides ist jetzt drin (eigener usage-Text,
+Exit 0), und das Gate ist wieder gruen.
+
+Batterie: 245 Checks Linux, 223 Windows (Stand vor dem letzten Windows-Lauf),
+0 Fehler; sieben neue date-Pruefungen. Groessen: dynamisch 18972899, Windows
+17610240, beide gestrippt.

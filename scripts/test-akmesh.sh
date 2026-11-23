@@ -549,6 +549,15 @@ PGNAME=${PGNAME%.exe}
 check pgrep-finds-own-name "ja" "$(run pgrep -x "$PGNAME" 2>/dev/null | tr -d '\r' | head -1 | grep -q '^[0-9][0-9]*$' && echo ja)"
 check pgrep-count "1" "$(run pgrep -c -x "$PGNAME" 2>/dev/null | tr -d '\r' | tr -dc '0-9' | grep -c .)"
 
+# date in den GNU-Formen (acmesh-xli)
+check date-epoch-zero "0" "$(run date -u -d @0 +%s 2>/dev/null | tr -d '\r')"
+check date-fixed "1577923200" "$(run date -u -d 2020-01-02 +%s 2>/dev/null | tr -d '\r')"
+check date-iso-date "2023-11-14" "$(run date -u -d @1699999999 +%F 2>/dev/null | tr -d '\r')"
+check date-rel-last-week "ja" "$(run date -u -d "last week" +%s 2>/dev/null | grep -qE '^[0-9]+$' && echo ja)"
+check date-rfc2822 "ja" "$(run date -u -R 2>/dev/null | grep -q '+0000' && echo ja)"
+check date-now-is-epoch "ja" "$(run date -u +%s 2>/dev/null | grep -qE '^[0-9]{10}$' && echo ja)"
+checkcode date-bad-string 1 "$(run date -d nonsense +%F >/dev/null 2>&1; echo $?)"
+
 # tail in den Formen, die Agents schreiben (acmesh-uzd)
 TDIR=$(mktemp -d 2>/dev/null || echo /tmp/akmesh-tail)
 mkdir -p "$TDIR"

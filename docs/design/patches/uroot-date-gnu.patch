@@ -1,0 +1,338 @@
+diff --git a/cmds/core/date/date.go b/cmds/core/date/date.go
+index 5d94ce9..74c7455 100644
+--- a/cmds/core/date/date.go
++++ b/cmds/core/date/date.go
+@@ -45,7 +45,7 @@ var (
+ 		"%e": "_2",
+ 		"%H": "15",
+ 		"%I": "03",
+-		"%m": "1",
++		"%m": "01",
+ 		"%M": "04",
+ 		"%p": "PM",
+ 		"%S": "05",
+@@ -57,6 +57,9 @@ var (
+ 	flags struct {
+ 		universal bool
+ 		reference string
++		display   string // -d: show this date instead of now
++		iso       string // -I / --iso-8601=VALUE
++		rfc2822   bool   // -R: RFC 2822 date, the form mail headers use
+ 	}
+ )
+ 
+@@ -70,6 +73,9 @@ func init() {
+ 	}
+ 	flag.BoolVar(&flags.universal, "u", false, "Coordinated Universal Time (UTC)")
+ 	flag.StringVar(&flags.reference, "r", "", "Display the last modification time of FILE")
++	flag.StringVar(&flags.display, "d", "", "Display the given date string instead of now (acmesh)")
++	flag.StringVar(&flags.iso, "I", "", "Output date/time in ISO 8601 format (date, hours, minutes, seconds, ns)")
++	flag.BoolVar(&flags.rfc2822, "R", false, "Output date/time in RFC 2822 format")
+ }
+ 
+ // regex search for +format POSIX patterns
+@@ -142,6 +148,14 @@ func dateMap(t time.Time, z *time.Location, format string) string {
+ 		case match == "%x":
+ 			// Locale's appropriate date representation.
+ 			toReplace = dateMap(t, z, "%m/%d/%y") // TODO: decision algorithm
++		case match == "%s":
++			// Seconds since the Epoch - the reason agents call date at all.
++			toReplace = strconv.FormatInt(d.Unix(), 10)
++		case match == "%N":
++			// Nanoseconds, zero padded to nine digits like GNU.
++			toReplace = fmt.Sprintf("%09d", d.Nanosecond())
++		case match == "%R":
++			toReplace = dateMap(t, z, "%H:%M")
+ 		case match == "%F":
+ 			// Date yyyy-mm-dd defined by GNU implementation
+ 			toReplace = dateMap(t, z, "%Y-%m-%d")
+@@ -223,6 +237,13 @@ func run(args []string, univ bool, ref string, clocksource Clock, w io.Writer) e
+ 	if univ {
+ 		z = time.UTC
+ 	}
++	if flags.display != "" {
++		parsed, err := parseDateString(flags.display, t, z)
++		if err != nil {
++			return err
++		}
++		t = parsed
++	}
+ 	if ref != "" {
+ 		stat, err := os.Stat(ref)
+ 		if err != nil {
+@@ -231,6 +252,23 @@ func run(args []string, univ bool, ref string, clocksource Clock, w io.Writer) e
+ 		t = stat.ModTime()
+ 	}
+ 
++	if (flags.iso != "" || flags.rfc2822) && len(args) == 1 && strings.HasPrefix(args[0], "+") {
++		return fmt.Errorf("multiple output formats specified")
++	}
++	if flags.rfc2822 {
++		fmt.Fprintf(w, "%v\n", t.In(z).Format("Mon, 02 Jan 2006 15:04:05 -0700"))
++		return nil
++	}
++	// -I wins over the default UnixDate.
++	if flags.iso != "" && len(args) <= 1 {
++		layout, err := isoFormat(flags.iso)
++		if err != nil {
++			return err
++		}
++		fmt.Fprintf(w, "%v\n", t.In(z).Format(layout))
++		return nil
++	}
++
+ 	switch len(args) {
+ 	case 0:
+ 		fmt.Fprintf(w, "%v\n", date(t, z))
+@@ -251,6 +289,18 @@ func run(args []string, univ bool, ref string, clocksource Clock, w io.Writer) e
+ }
+ 
+ func main() {
++	// -I takes an optional value: "-I" alone means the date only, and
++	// --iso-8601=seconds is GNU's long spelling (acmesh-xli).
++	for i, a := range os.Args[1:] {
++		switch {
++		case a == "-I":
++			os.Args[i+1] = "-I=date"
++		case strings.HasPrefix(a, "--iso-8601="):
++			os.Args[i+1] = "-I=" + strings.TrimPrefix(a, "--iso-8601=")
++		case a == "--iso-8601":
++			os.Args[i+1] = "-I=date"
++		}
++	}
+ 	flag.Parse()
+ 	rc := RealClock{}
+ 	if err := run(flag.Args(), flags.universal, flags.reference, rc, os.Stdout); err != nil {
+diff --git a/cmds/core/date/date_parse.go b/cmds/core/date/date_parse.go
+new file mode 100644
+index 0000000..2591fd2
+--- /dev/null
++++ b/cmds/core/date/date_parse.go
+@@ -0,0 +1,227 @@
++package main
++
++// This file is akmesh's addition to u-root's date: "-d DATE" and "-I", the two
++// forms an agent types when it converts timestamps (docs/abweichungen-gnu.md,
++// acmesh-xli). GNU accepts a whole language of date strings; this covers the
++// shapes that actually appear in scripts and answers every other shape with an
++// error instead of a wrong time.
++
++import (
++	"fmt"
++	"strconv"
++	"strings"
++	"time"
++)
++
++// parseDateString turns a GNU-style date string into a time. now is the
++// reference for relative forms.
++func parseDateString(s string, now time.Time, loc *time.Location) (time.Time, error) {
++	s = strings.TrimSpace(s)
++	if s == "" {
++		return time.Time{}, fmt.Errorf("no date string given")
++	}
++	// @EPOCH: seconds since 1970, optional fraction
++	if strings.HasPrefix(s, "@") {
++		rest := s[1:]
++		sec, frac, _ := strings.Cut(rest, ".")
++		n, err := strconv.ParseInt(sec, 10, 64)
++		if err != nil {
++			return time.Time{}, fmt.Errorf("invalid date %q", s)
++		}
++		ns := int64(0)
++		if frac != "" {
++			// pad or cut to nanoseconds
++			if len(frac) > 9 {
++				frac = frac[:9]
++			}
++			for len(frac) < 9 {
++				frac += "0"
++			}
++			if v, err := strconv.ParseInt(frac, 10, 64); err == nil {
++				ns = v
++			}
++		}
++		return time.Unix(n, ns).In(loc), nil
++	}
++	switch strings.ToLower(s) {
++	case "now":
++		return now.In(loc), nil
++	case "today":
++		y, m, d := now.In(loc).Date()
++		return time.Date(y, m, d, 0, 0, 0, 0, loc), nil
++	case "yesterday":
++		y, m, d := now.In(loc).Date()
++		return time.Date(y, m, d, 0, 0, 0, 0, loc).AddDate(0, 0, -1), nil
++	case "tomorrow":
++		y, m, d := now.In(loc).Date()
++		return time.Date(y, m, d, 0, 0, 0, 0, loc).AddDate(0, 0, 1), nil
++	}
++	// absolute forms
++	if t, ok := parseAbsolute(s, loc); ok {
++		return t, nil
++	}
++	// weekday words: "monday", "next monday", "last friday"
++	if t, ok := parseWeekday(s, now.In(loc)); ok {
++		return t, nil
++	}
++	// relative forms: "2 days ago", "+3 hours", "-1 week"
++	if t, ok := parseRelative(s, now.In(loc)); ok {
++		return t, nil
++	}
++	return time.Time{}, fmt.Errorf("invalid date %q", s)
++}
++
++// parseAbsolute reads the date shapes that appear in scripts: date only, date
++// and time, with or without seconds, with T or a space, with an explicit zone.
++func parseAbsolute(s string, loc *time.Location) (time.Time, bool) {
++	layouts := []string{
++		"2006-01-02T15:04:05Z07:00",
++		"2006-01-02T15:04:05",
++		"2006-01-02T15:04",
++		"2006-01-02 15:04:05",
++		"2006-01-02 15:04",
++		"2006-01-02",
++		"2006/01/02 15:04:05",
++		"2006/01/02 15:04",
++		"2006/01/02",
++		"02.01.2006 15:04",
++		"02.01.2006",
++	}
++	for _, l := range layouts {
++		var t time.Time
++		var err error
++		if strings.Contains(l, "Z07:00") {
++			t, err = time.Parse(l, s)
++		} else {
++			t, err = time.ParseInLocation(l, s, loc)
++		}
++		if err == nil {
++			return t, true
++		}
++	}
++	return time.Time{}, false
++}
++
++// parseRelative reads "N unit[s] [ago]" and "+N unit[s]" / "-N unit[s]".
++func parseRelative(s string, now time.Time) (time.Time, bool) {
++	// "last week", "next month", "this year": the word stands for one unit.
++	if fields := strings.Fields(strings.ToLower(s)); len(fields) == 2 {
++		if mult, ok := map[string]int{"last": -1, "previous": -1, "next": 1, "this": 0}[fields[0]]; ok {
++			switch strings.TrimSuffix(fields[1], "s") {
++			case "day":
++				return now.AddDate(0, 0, mult), true
++			case "week", "wk":
++				return now.AddDate(0, 0, 7*mult), true
++			case "month":
++				return now.AddDate(0, mult, 0), true
++			case "year":
++				return now.AddDate(mult, 0, 0), true
++			}
++		}
++	}
++	ago := false
++	if strings.HasSuffix(s, " ago") {
++		ago = true
++		s = strings.TrimSuffix(s, " ago")
++	}
++	fields := strings.Fields(s)
++	if len(fields) < 2 {
++		return time.Time{}, false
++	}
++	// "2 days" / "+2 days" / "-1 day"
++	numStr, unit := fields[0], fields[1]
++	sign := 1
++	if strings.HasPrefix(numStr, "+") {
++		numStr = numStr[1:]
++	} else if strings.HasPrefix(numStr, "-") {
++		sign = -1
++		numStr = numStr[1:]
++	}
++	n, err := strconv.Atoi(numStr)
++	if err != nil {
++		return time.Time{}, false
++	}
++	if ago {
++		sign = -sign
++	}
++	n *= sign
++	switch strings.TrimSuffix(strings.ToLower(unit), "s") {
++	case "second", "sec":
++		return now.Add(time.Duration(n) * time.Second), true
++	case "minute", "min":
++		return now.Add(time.Duration(n) * time.Minute), true
++	case "hour", "hr":
++		return now.Add(time.Duration(n) * time.Hour), true
++	case "day":
++		return now.AddDate(0, 0, n), true
++	case "week", "wk":
++		return now.AddDate(0, 0, 7*n), true
++	case "month":
++		return now.AddDate(0, n, 0), true
++	case "year":
++		return now.AddDate(n, 0, 0), true
++	}
++	return time.Time{}, false
++}
++
++// isoFormat maps the -I values onto their format strings, as GNU does.
++func isoFormat(v string) (string, error) {
++	switch v {
++	case "date":
++		return "2006-01-02", nil
++	case "hours":
++		return "2006-01-02T15%z", nil
++	case "minutes":
++		return "2006-01-02T15:04%z", nil
++	case "seconds":
++		return "2006-01-02T15:04:05%z", nil
++	case "ns":
++		return "2006-01-02T15:04:05,000000000%z", nil
++	}
++	return "", fmt.Errorf("unknown --iso-8601 value %q", v)
++}
++
++// parseWeekday reads "monday", "next monday" and "last friday", the shapes an
++// agent writes when it wants a report window. GNU means: "monday" is the coming
++// Monday (today, if it is Monday), "next monday" is the one after today, and
++// "last monday" is the one before.
++func parseWeekday(s string, now time.Time) (time.Time, bool) {
++	names := map[string]time.Weekday{
++		"sunday": time.Sunday, "monday": time.Monday, "tuesday": time.Tuesday,
++		"wednesday": time.Wednesday, "thursday": time.Thursday,
++		"friday": time.Friday, "saturday": time.Saturday,
++	}
++	fields := strings.Fields(strings.ToLower(s))
++	if len(fields) == 0 || len(fields) > 2 {
++		return time.Time{}, false
++	}
++	dir := 1 // forward, "next"
++	day := fields[len(fields)-1]
++	if len(fields) == 2 {
++		switch fields[0] {
++		case "next":
++			dir = 1
++		case "last", "previous":
++			dir = -1
++		default:
++			return time.Time{}, false
++		}
++	}
++	want, ok := names[day]
++	if !ok {
++		return time.Time{}, false
++	}
++	cur := now.Weekday()
++	diff := (int(want) - int(cur) + 7) % 7
++	if dir < 0 {
++		if diff == 0 {
++			diff = 7
++		}
++		return now.AddDate(0, 0, -(7 - diff)), true
++	}
++	if len(fields) == 2 && diff == 0 {
++		// "next monday" on a Monday is a week later
++		diff = 7
++	}
++	return now.AddDate(0, 0, diff), true
++}

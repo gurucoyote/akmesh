@@ -67,7 +67,10 @@ sechs neue Batteriepruefungen.
 
 `-c -l -n -v -o -E -i -r -A -B -q -F -w -h` gehen.
 
-### date (u-root, cmds/core/date)
+### date (u-root, cmds/core/date) - erledigt am 23.11.2026 (acmesh-xli)
+
+-d, -I, --iso-8601, -R und %s/%N/%m gehen jetzt; Patch
+docs/design/patches/uroot-date-gnu.patch, 22 Faelle gegen GNU geprueft.
 
     date -d 2020-01-02 +%s        flag provided but not defined: -d
     date -u -d @0 +%F             flag provided but not defined: -d
@@ -145,7 +148,7 @@ truncate, iconv, grep (-c -l -n -v -o -E -i -r -A -B -q -F -w -h).
     acmesh-x7f  find: Praedikate, -maxdepth 0, -exec ohne ./
     acmesh-uzd  tail: -N, -c, -q, -v
     acmesh-v6r  grep: -m, -x, -H, -a, -P, -z, --include, --exclude
-    acmesh-xli  date: -d, -I
+    acmesh-xli  date: -d, -I      erledigt
     acmesh-vc3  tar: -O und Archiv im gepackten Verzeichnis
     acmesh-yd7  du: Verzeichnisbloecke, -b als Bytes, -x
     acmesh-d9e  sed: -z

@@ -36,6 +36,11 @@ patch_diff() {
 			return 0
 		fi
 		;;
+	uroot-date-gnu.patch)
+		if grep -q "func parseDateString" "$UROOT_DIR/cmds/core/date/date_parse.go" 2>/dev/null; then
+			return 0
+		fi
+		;;
 	esac
 	if git -C "$UROOT_DIR" apply --check "$file" 2>/dev/null; then
 		git -C "$UROOT_DIR" apply "$file"
@@ -380,3 +385,5 @@ echo "u-root commands patched: losetup (-f)"
 # absolut, weil git apply den Pfad relativ zur Repo-Wurzel aufloest
 PATCH_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 patch_diff "$PATCH_ROOT/docs/design/patches/uroot-tail-gnu.patch"
+# date: -d, -I, -R, %s, %N und die relativen Formen (acmesh-xli).
+patch_diff "$PATCH_ROOT/docs/design/patches/uroot-date-gnu.patch"

@@ -4553,3 +4553,52 @@ ein Tippfehler abgelehnt.
 Groessen: Linux statisch 17.6 MiB (18440316 Bytes, +16384 gegen g7n 18423932),
 Windows 16.5 MiB (17348608, +12800), gestrippt. Batterie 211/0, Hilfe-Audit 0,
 Lizenzpruefung 20/20, 121 Befehle Linux / 114 Windows.
+
+## getty: Login auf der Konsole (23.11.2026, acmesh-bu1)
+
+internal/getty oeffnet das Terminal, druckt /etc/issue, fragt nach dem Namen und
+uebergibt die Sitzung an internal/login im selben Prozess (kein exec auf
+/bin/login, damit dieselbe Policy gilt und das Image keine zweite Datei braucht).
+Eine Sitzung pro Lauf, wie agetty und BusyBox: nach dem Logout endet getty, und
+init startet es per respawn neu. Eine getty, die in sich selbst schleift, wuerde
+ein kaputtes Terminal ewig behalten.
+
+Issue-Escapes: \n Hostname, \l Terminalname, \t Uhrzeit, \d Datum, \\ Backslash;
+ein unbekannter Escape bleibt sichtbar stehen, damit ein Tippfehler auffaellt.
+Ohne -f wird /etc/issue gelesen, ein fehlendes Issue ist kein Fehler. -t TTY oeffnet
+ein Geraet (Fehler, wenn es nicht aufgeht - kein stiller Rueckfall auf stdin);
+ohne -t wird stdin genommen, wenn es ein Terminal ist.
+
+Beweis im Image (Testkonto root mit openssl passwd -6 gehasht, /etc/passwd und
+/etc/shadow per Bind-Mount):
+
+    printf 'root\ngeheim\nid -un; pwd\nexit\n' | podman run -i -t --rm ... /bin/getty
+    17415ab10872 (akmesh) tty        <- Issue aus dem Image, \n und \l ersetzt
+    17415ab10872 login: root
+    Password:                        <- kein Echo
+    # root
+    /root
+
+    falsches Passwort:
+    Password:
+    login: incorrect name or password
+    logout (exit 1)
+
+    unter init mit 'g::respawn:/bin/getty' und stdin /dev/null (Terminal sofort zu):
+    init-Log zeigt fuenfmal "/bin/getty exited with 0" in 3 Sekunden, also
+    startet init getty nach jedem Ende neu (mit Backoff).
+
+Windows: "getty: not supported on Windows (no console login to own)" - eine
+Konsolenanmeldung gehoert dem Sitzungsmanager des Hosts, und den fasst dieses
+Projekt nicht an.
+
+Tests (4): Issue-Escapes inkl. unbekanntem Escape, Frage nach dem Namen mit
+verworfener Leerzeile und Uebergabe an login, Ende bei geschlossenem Terminal mit
+Exit 0, nicht oeffenbares TTY ist ein Fehler.
+
+Im Image neu: /etc/issue mit "\n (akmesh) \l", damit ein Login-Prompt zeigt, wo
+man ist.
+
+Groessen: Linux statisch 17.6 MiB (18448508 Bytes, +8192 gegen 17s 18440316),
+Windows 16.5 MiB (17351168, +2560), gestrippt. Befehle: 122 Linux / 115 Windows.
+Batterie 211/0, Hilfe-Audit 0, Lizenzpruefung 20/20.

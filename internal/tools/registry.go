@@ -65,6 +65,7 @@ var Commands = map[string]Func{
 	"blkid":     runBlkid,
 	"init":      runInit,
 	"crond":     runCrond,
+	"getty":     runGetty,
 	"syslogd":   runSyslogd,
 	"logger":    runLogger,
 	"logread":   runLogread,

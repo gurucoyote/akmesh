@@ -10,7 +10,7 @@
 # What lands in the image:
 #   /bin/<name>          symlinks to /bin/akmesh (argv[0] is the dispatcher)
 #   /bin/akmesh          the static build, stripped
-#   /etc/passwd, /etc/group, /etc/hosts, /etc/resolv.conf, /etc/profile
+#   /etc/passwd, /etc/group, /etc/hosts, /etc/resolv.conf, /etc/profile, /etc/issue
 #   /etc/ssl/certs/ca-certificates.crt   copied from the host, so curl and wget
 #                        can speak TLS; skipped with a note when absent
 #   /tmp (1777), /proc, /sys, /dev, /root, /home  as empty directories
@@ -84,6 +84,13 @@ EOF
 cat > "$ROOTFS/etc/group" <<'EOF'
 root:x:0:
 nobody:x:65534:
+EOF
+# The console banner getty prints before the login prompt: \n is the host name,
+# \l the terminal. Without this file a login prompt would show nothing about
+# where one is (acmesh-bu1).
+cat > "$ROOTFS/etc/issue" <<'EOF'
+\n (akmesh) \l
+
 EOF
 cat > "$ROOTFS/etc/hosts" <<'EOF'
 127.0.0.1	localhost

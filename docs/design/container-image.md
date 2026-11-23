@@ -140,6 +140,8 @@ wsl.exe die Shell direkt.
 ## Stufe 6: Groesse (Vorarbeit acmesh-y2o)
 
 - Profil `image` in scripts/profiles/ mit keep-Liste; die Mechanik gibt es.
+- Wer die Dienste nicht will, schreibt `exclude-group services` ins Profil:
+  damit fallen login, getty, crond und syslogd in einer Zeile aus dem Bau.
 - Ende: Image unter 10 MB, das die Batterie in einem kleineren Umfang besteht;
   Zahl in docs/measurements.md.
 

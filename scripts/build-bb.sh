@@ -289,15 +289,30 @@ fi
 TAGS=""
 PROFILE_EXCLUDE=""
 PROFILE_KEEP=""
+PROFILE_EXCLUDE_GROUPS=""
 while read -r key value; do
 	case "$key" in
 	''|'#'*) continue ;;
 	tags) TAGS="$value" ;;
 	exclude) PROFILE_EXCLUDE="$PROFILE_EXCLUDE $value" ;;
 	keep) PROFILE_KEEP="$PROFILE_KEEP $value" ;;
+	exclude-group) PROFILE_EXCLUDE_GROUPS="$PROFILE_EXCLUDE_GROUPS $value" ;;
 	*) echo "profile $PROFILE: unknown line '$key'" >&2; exit 2 ;;
 	esac
 done < "$PROFILE_FILE"
+
+# A whole block can be dropped by name (acmesh-17s): "exclude-group services"
+# takes the names from the one table in internal/cmdlist, so the daemons do not
+# leave a stale list behind here. The tool exits 2 on an unknown id, which fails
+# the build instead of excluding nothing.
+GROUP_EXCLUDES=""
+if [ -n "$PROFILE_EXCLUDE_GROUPS" ]; then
+	GROUP_EXCLUDES=$(cd "$ROOT" && GOWORK=off go run ./internal/cmdlist/cmdlisttool $PROFILE_EXCLUDE_GROUPS) || {
+		echo "profile $PROFILE: unknown exclude-group in '$PROFILE_EXCLUDE_GROUPS'" >&2
+		exit 2
+	}
+	echo "profile $PROFILE: excluding groups$PROFILE_EXCLUDE_GROUPS"
+fi
 
 # "keep" is the short way to a small binary: everything that is not named is
 # excluded, ours and u-root's alike (acmesh-94e.11).
@@ -326,6 +341,10 @@ NAMES=$(awk -v goos="$GOOS" '
 	}' "$ROOT/scripts/cmds.txt")
 for c in $PROFILE_EXCLUDE; do
 	NAMES=$(echo "$NAMES" | grep -v "^$c$" || true)
+done
+for c in $GROUP_EXCLUDES; do
+	NAMES=$(echo "$NAMES" | grep -v "^$c$" || true)
+	OURS_ALL=$(echo $OURS_ALL | tr ' ' '\n' | grep -v "^$c$" | tr '\n' ' ' || true)
 done
 if [ -n "$PROFILE_KEEP" ]; then
 	KEPTNAMES=""

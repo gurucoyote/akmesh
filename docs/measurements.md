@@ -4232,3 +4232,38 @@ Gemessen in einem eigenen Proberaum, jeweils statisch mit `-s -w` (Bytes):
 Dazu in der Modulgraphen von supercronic: prometheus, sentry, fsnotify - sie
 landen im Bau der Pakete cronexpr und crontab nicht im Binary (nur logrus),
 sie sind aber im Modulgraphen.
+
+## Gruppen im Bau ausschliessen: exclude-group (23.11.2026, acmesh-17s)
+
+Die Befehlsliste hatte schon Gruppen (Documents, Files, System, Network, Shell,
+Other) und Profile kannten `exclude` und `keep` je Name. Neu: eine ganze Gruppe
+laesst sich in einer Zeile streichen.
+
+    # scripts/profiles/services-off.txt
+    exclude-group services
+
+Die Namen dafuer stehen nicht im Shell-Skript, sondern kommen aus der Tabelle
+selbst: `internal/cmdlist/cmdlisttool <id>` druckt sie (Namen aus
+`internal/cmdlist.cmdlist.go`), `scripts/build-bb.sh` zieht sie von `NAMES` und
+`OURS_ALL` ab. Eine unbekannte ID bricht den Bau. Die Dienste (heute `login`,
+spaeter getty, crond, syslogd/logger/logread) haben dafuer eine eigene Gruppe
+`Services` neben `System`.
+
+Gemessen:
+
+    go run ./internal/cmdlist/cmdlisttool services      -> login
+    go run ./internal/cmdlist/cmdlisttool dienste       -> unbekannte Gruppe, Exit 2
+    ./scripts/build-bb.sh linux services-off
+      -> "profile services-off: excluding groups services"
+      -> report: akmesh-services-off is 17.4 MiB (18284668 bytes), statically linked, stripped
+    ./akmesh-services-off login    -> command is not present in akmesh: login
+    ./akmesh-services-off          -> Ueberschriften ohne "Services"
+    ./akmesh                       -> " - login" steht in der Liste
+    ./akmesh                       -> Batterie 211 Checks, 0 Fehler
+    akmesh.exe                     -> 109 Befehle (unveraendert), login meldet
+                                      "not supported on Windows"
+
+Die Groesse bleibt gleich, weil `login` im Verhaeltnis zum Binary klein ist; die
+Wirkung ist die fehlende Strecke und die fehlende Zeile in der Liste, nicht die
+Groesse. Die vollen Groessen: Linux 17.4 MiB (18284668 Bytes) statisch, Windows
+16.4 MiB (17211392 Bytes), beide gestrippt.

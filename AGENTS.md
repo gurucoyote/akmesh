@@ -44,6 +44,14 @@ are English; documents meant for Martin are German.
   "akmesh" in the pinned checkout and rebuilds `makebb` when it still embeds the
   old text (go:embed). It fails instead of shipping the old wording.
 - Build artifacts (`akmesh`, `akmesh.exe`, `.cache/`, `.gopath/`) stay untracked.
+- A profile can drop a whole block of the command list by its id instead of
+  naming every command: `exclude-group services` in `scripts/profiles/<name>.txt`.
+  The names come from the one table in `internal/cmdlist`
+  (`internal/cmdlist/cmdlisttool` prints them), so a new daemon is excluded
+  automatically and the profile cannot drift from the real list. An unknown id
+  fails the build. This is why the daemons live in their own block: a harness
+  that only wants file and text tools must be able to leave login, getty, crond
+  and syslogd out in one line.
 - Every size reported to Martin is human readable and names the linking and the
   stripping, because a bare byte count says little: `17.4 MiB (18276476 bytes),
   statically linked, stripped`. The build prints that line itself

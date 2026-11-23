@@ -1,0 +1,4 @@
+# A tool kit without the daemons: the whole Services block is dropped by id
+# (acmesh-17s). The names come from internal/cmdlist, so this file cannot drift
+# from the real table - a renamed daemon is excluded with no edit here.
+exclude-group services

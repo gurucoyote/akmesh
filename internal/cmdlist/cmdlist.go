@@ -26,13 +26,18 @@ const (
 	Documents = "Documents (any2md reads PDF, docx, EPUB, RTF or HTML by its bytes; the *2md names are the same reader with the format fixed):"
 	Files     = "Files and text:"
 	System    = "System:"
-	Network   = "Network:"
-	Shell     = "Shell:"
-	Other     = "Other:"
+	// Services is the block for a booted system: console login now, and later
+	// getty, crond, syslogd with logger and logread. It is separate from System
+	// on purpose: a build that only needs a file-and-text tool kit must be able
+	// to drop the whole daemon block in one go (acmesh-17s, Martin 23.11.2026).
+	Services = "Services (a booted system: console login, cron, syslog):"
+	Network  = "Network:"
+	Shell    = "Shell:"
+	Other    = "Other:"
 )
 
 // order is the order of the blocks in the output.
-var order = []string{Documents, Files, System, Network, Shell, Other}
+var order = []string{Documents, Files, System, Services, Network, Shell, Other}
 
 // groups maps a command name to its block. Adding a command means adding a line
 // here; forgetting it fails TestEveryCommandIsPlaced.
@@ -131,7 +136,7 @@ var groups = map[string]string{
 	"id":        System,
 	"kill":      System,
 	"killall":   System,
-	"login":     System,
+	"login":     Services,
 	"losetup":   System,
 	"man":       System,
 	"mkcert":    System,
@@ -196,6 +201,49 @@ func ByGroup(names []string) (titles []string, blocks [][]string) {
 // Print writes the whole list: one line per name, a blank line between blocks,
 // so that a screenreader reads a block as one thing and does not run the
 // commands together.
+// ids names each block for the build, so a profile can exclude a whole group
+// without repeating its command names ("exclude-group services"). The id is the
+// stable thing; the printed title may be reworded.
+var ids = map[string]string{
+	Documents: "documents",
+	Files:     "files",
+	System:    "system",
+	Services:  "services",
+	Network:   "network",
+	Shell:     "shell",
+	Other:     "other",
+}
+
+// GroupID returns the id of a block, or "" for an unknown title.
+func GroupID(title string) string { return ids[title] }
+
+// KnownGroupID tells whether id names a block. The build reads it so that a
+// typo in a profile fails there instead of silently excluding nothing.
+func KnownGroupID(id string) bool {
+	for _, v := range ids {
+		if v == id {
+			return true
+		}
+	}
+	return false
+}
+
+// NamesIn returns the commands of one block, sorted, in the form profiles and
+// the build can subtract them.
+func NamesIn(id string) ([]string, bool) {
+	if !KnownGroupID(id) {
+		return nil, false
+	}
+	var out []string
+	for name, title := range groups {
+		if ids[title] == id {
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out, true
+}
+
 func Print(w io.Writer, names []string) error {
 	titles, blocks := ByGroup(names)
 	if _, err := fmt.Fprintln(w, "Supported commands are:"); err != nil {

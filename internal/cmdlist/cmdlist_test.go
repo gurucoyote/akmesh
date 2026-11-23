@@ -96,3 +96,44 @@ func readOursAll(t *testing.T) []string {
 	}
 	return strings.Fields(string(m[1]))
 }
+
+// TestGroupIDsAndNamesIn pins the build side of the table: a profile drops a
+// whole block by id, and an id that is not in the table must be refused
+// (acmesh-17s).
+func TestGroupIDsAndNamesIn(t *testing.T) {
+	seen := map[string]bool{}
+	for _, title := range order {
+		id := GroupID(title)
+		if id == "" {
+			t.Errorf("no id for %q", title)
+			continue
+		}
+		if seen[id] {
+			t.Errorf("duplicate id %q", id)
+		}
+		seen[id] = true
+		if !KnownGroupID(id) {
+			t.Errorf("%q is not known", id)
+		}
+	}
+
+	names, ok := NamesIn("services")
+	if !ok {
+		t.Fatal("services is not a known group")
+	}
+	found := false
+	for _, n := range names {
+		if n == "login" {
+			found = true
+		}
+		if groups[n] != Services {
+			t.Errorf("%q is listed under services but sits in %q", n, groups[n])
+		}
+	}
+	if !found {
+		t.Fatalf("services = %v, login is missing", names)
+	}
+	if _, ok := NamesIn("no-such-group"); ok {
+		t.Fatal("an unknown group must be refused")
+	}
+}

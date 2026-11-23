@@ -4043,10 +4043,21 @@ dhclient:
   (`dhclient -timeout 3 lo` im Container).
 - schreibt /etc/resolv.conf: die Pfadkonstante ist ResolvConfPath =
   "/etc/resolv.conf", geschrieben in pkg/dhclient.WriteDNSSettings (0o644).
-- Ein echter Lease ist NICHT belegt: der Testaufbau mit einem DHCP-Server im
-  Testnetz brauchte eine Freigabe und lief nicht. Offen und so im Ticket vermerkt.
-- Befund: ohne Lease endet dhclient mit Exit 0. Ein Skript, das auf den Exitcode
-  schaut, haelt das fuer Erfolg. Als Abweichung notiert (acmesh-er3).
+- Echter Lease, gemessen in einem eigenen podman-Netz (10.89.5.0/24,
+  --disable-dns, dnsmasq als DHCP-Server in einem Nebenkontainer):
+
+      /akmesh dhclient eth0   (im leeren Image, --cap-add NET_ADMIN NET_RAW)
+      -> "Configured eth0 with IPv4 DHCP Lease IP 10.89.5.127/24"
+      -> ip addr show eth0: inet 10.89.5.127/24
+      -> /etc/resolv.conf:  "nameserver 10.89.5.2"
+
+  Damit ist auch der resolv.conf-Teil von Stufe 3 im leeren Image belegt.
+- Befund 1: ohne Lease endet dhclient mit Exit 0. Ein Skript, das auf den
+  Exitcode schaut, haelt das fuer Erfolg.
+- Befund 2: nach einem Lease laeuft dhclient weiter (Erneuerung, wie dhclient -d)
+  und endet nicht von selbst; `-timeout 10` hat ihn nicht beendet, erst ein
+  aeusseres `timeout 12` tat es. Ein Skript, das dhclient direkt aufruft,
+  blockiert also. Beide Befunde in acmesh-er3.
 
 Weitere Abweichung gegen iproute2: u-root druckt bei fehlender Angabe `<nil>`,
 zum Beispiel `brd <nil>` in addr show und `src <nil>` in route show.

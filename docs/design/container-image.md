@@ -93,9 +93,9 @@ eines in cmds/exp, es startet eine Shell ohne Nutzerwechsel.
 
 Stand 23.11.2026: `ip` (u-root, netlink) und `dhclient` sind im Bau, beide mit
 dem Praefix `linux:` in scripts/cmds.txt. `ip link/addr/route` und `link set`
-sind im leeren Image belegt, dhclient startet und schreibt /etc/resolv.conf laut
-Quelltext. Ein echter DHCP-Lease ist nicht gemessen; die zwei gemessenen Abweichungen
-stehen in acmesh-er3.
+sind im leeren Image belegt. Ein echter DHCP-Lease ist gemessen (eigenes
+podman-Netz mit dnsmasq): Lease 10.89.5.127/24 auf eth0 und /etc/resolv.conf mit
+"nameserver 10.89.5.2". Die drei gemessenen Abweichungen stehen in acmesh-er3.
 
 - ip (u-root, netlink) und dhclient aufnehmen, beide mit dem Praefix `linux:`
   in scripts/cmds.txt.

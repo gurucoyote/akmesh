@@ -4942,3 +4942,20 @@ naechste Zeile schon gepuffert haben; am Terminal (getty) tritt das nicht auf.
 Groessen, alle gestrippt: dynamisch 18956515, statisch 18894972, Windows 17589248.
 134 Namen im Image (vorher 124). Batterie 232 Checks Linux, 210 Windows, beide
 ohne Fehler; 13 Pruefungen sind neu. Hilfe-Audit 0, Lizenzen 20/20.
+
+## Abgleich gegen GNU: 179 Aufrufe, 67 Abweichungen (23.11.2026)
+
+Methode: dieselben Aufrufe im gepinnten Referenz-Image
+(debian:stable-slim @ sha256:cd9f2189b62dc5ce003b22ad8cb109bbc3cef8ddcc8bc13771472a6edeb16980,
+coreutils 9.7, sed 4.9, grep 3.11, tar 1.35) und gegen ./akmesh, gleiches
+Verzeichnis, gleiche Testdateien; verglichen Exitcode, stdout und ob stderr leer
+ist. Sonde: scripts/deviation-probe.py, Testdaten erzeugt sie selbst.
+Ergebnis: 132 Aufrufe im ersten und zweiten Durchgang, 47 im dritten, insgesamt
+179; davon 67 abweichend. Zeitstempel-Unterschiede (Container UTC, Host CET) sind
+abgezogen.
+
+Ohne Befund: head (alle geprueften Formen), sort (11 Formen), cut (7), tr (5),
+sed (10), cp/mv/rm/mkdir/ln/chmod/touch (Ergebnisbaum), stat, xargs, timeout,
+split, nl, truncate, iconv, grep (-c -l -n -v -o -E -i -r -A -B -q -F -w -h).
+
+Mit Befund, aufgeschluesselt nach Werkzeug und Ticket: docs/abweichungen-gnu.md.

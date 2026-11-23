@@ -4209,3 +4209,26 @@ Superblocks; kein Loop-Geraet und kein Root noetig.
 
 Groesse: Linux 17.4 MiB (18284668 Bytes) statisch, gestrippt; Windows 16.4 MiB
 (17211392 Bytes), gestrippt. Batterie 211 Checks 0 Fehler, Hilfe-Audit Exit 0.
+
+## cron: gibt es das in unseren Upstreams? (23.11.2026, Vorarbeit zu acmesh-8v3)
+
+Geprueft im gepinnten u-root-Checkout (869f00f): `find . -iname '*cron*'` liefert
+nichts, kein Treffer auf "crontab" im ganzen Baum - u-root hat keinen cron.
+qiangli/coreutils, das wir fuer einzelne coreutils-Schalter nutzen, ist eine
+coreutils-Portierung ohne cron. In go.mod und im Modulcache steht nichts mit cron.
+
+Supercronic (aptible/supercronic, der Container-Cron, den Martin meinte):
+Go, MIT, `go 1.27.3`. Brauchbare Pakete: `cronexpr` (Ausdruecke parsen, auch mit
+Sekundenaufloesung) und `crontab` (crontab-Dateien lesen). Das Paket `cron` ist
+kein allgemeiner Scheduler, sondern ein Laeufer an `crontab.Context` gebunden.
+
+Gemessen in einem eigenen Proberaum, jeweils statisch mit `-s -w` (Bytes):
+
+    leeres Programm mit fmt.Println           1523872   (Grundlast)
+    + robfig/cron v3 (MIT, keine Transitives) 1708192   (+184320)
+    + supercronic/cronexpr                    1912992   (+389120, zieht logrus)
+    + supercronic/cronexpr und crontab        2228384   (+704512)
+
+Dazu in der Modulgraphen von supercronic: prometheus, sentry, fsnotify - sie
+landen im Bau der Pakete cronexpr und crontab nicht im Binary (nur logrus),
+sie sind aber im Modulgraphen.

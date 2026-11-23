@@ -4311,3 +4311,44 @@ Zahlen:
 Methode der beiden Zeiten: `EPOCHREALTIME` aus bash um die podman-Aufrufe; ohne
 bash ueberspringt das Skript die Messung, weil `date +%s%N` hier nur Sekunden
 gibt (busybox) und die frueheren "0 ms" genau daran lagen.
+
+## Batterie gegen akmesh.exe (23.11.2026, acmesh-696)
+
+Die Batterie lief erstmals gegen das Windows-Binary, aus der WSL-Shell, ohne
+wine:
+
+    ./scripts/test-akmesh.sh ./akmesh.exe    -> 189 checks, 0 failures
+    ./scripts/test-akmesh.sh ./akmesh        -> 211 checks, 0 failures
+
+Der Unterschied sind 22 Checks, die fuer .exe uebersprungen werden. Um das nicht
+zu schaetzen, wurde eine Kopie des Skripts instrumentiert (jeder Check schreibt
+seinen Namen in eine Datei), beide Ziele liefen und die Namenslisten wurden
+verglichen. Klassen der uebersprungenen Checks:
+
+- Rechte-Bits (6): chmod-plusx-bit, chmod-recursive-mode, chmod-verbose,
+  cp-archive-mode, stat-mode, touch-stamp-year. Windows hat ACLs statt
+  POSIX-Modi; `stat -c %a` und `ls -ld` zeigen dort nichts Vergleichbares.
+- Landlock-Policy (13): policy-active, -read-inside, -write-inside,
+  -write-only-inside-allowed, -blocks-read, -blocks-write, -blocks-network,
+  -no-outside-file, -write-only-outside-denied, -check-denied, -shows-source,
+  -network-message, -broken-refused. Statt ihrer laeuft auf Windows ein Check,
+  der prueft, dass die Policy ehrlich abgelehnt wird (policy-refused).
+- tracedeps (3 Linux, 1 Windows): ptrace gibt es nur unter Linux/amd64; auf
+  Windows prueft tracedeps-says-no-windows die ehrliche Meldung.
+- sh-pipe (1): der Check pipet sort, uniq und wc ueber PATH; ein
+  Windows-Prozess wuerde dort die Windows-Werkzeuge nehmen. Absolut aufrufen
+  geht nicht, weil ein .exe die POSIX-Pfade der Batterie nicht aufloest.
+
+Nebenbefund, behoben: scripts/test-akmesh.sh hatte keinen Shebang. Aus einer
+Shell gestartet ging es trotzdem (die Shell faellt bei ENOEXEC auf sh zurueck),
+aber `timeout ./scripts/test-akmesh.sh ...` endete mit "Exec format error".
+Jetzt steht `#!/bin/sh` in Zeile 1, und der Aufruf ueber timeout laeuft
+(211 checks, 0 failures).
+
+Zaehlweise: 211 ist die Zahl der Check-Aufrufe, policy-check-allowed steht
+zweimal im Skript (zwei Zustaende, ein Name), deshalb 210 verschiedene Namen.
+
+Kein Produktdefekt gefunden: alle Abweichungen sind Plattformgrenzen, die das
+Skript schon benennt. Fuer Windows sind es 109 statt 116 Befehle (dhclient, ip,
+losetup, mknod, mount, strace, umount fehlen), und login/blkid melden dort
+ehrlich "not supported".

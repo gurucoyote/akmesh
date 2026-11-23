@@ -1,3 +1,4 @@
+#!/bin/sh
 BIN=${1:-./akmesh}
 # The checks run inside a scratch directory, so the binary path must be
 # absolute before we change directory.

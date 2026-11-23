@@ -112,6 +112,8 @@ wsl.exe die Shell direkt.
 
 - Der u-root-init hat weder SIGCHLD-Handling noch wait4 (Quelltextpruefung
   22.11.). Forken oder bewusst nicht PID 1 werden.
+- Zwei Dienste haengen an diesem Ticket, weil sie einen Wiederstarter brauchen:
+  acmesh-bu1 (getty) und acmesh-qgf (crond, eigener Befehl mit robfig/cron).
 - Was fehlt, in der Reihenfolge, in der es weh tut: (1) Zombies waehrend des
   Laufs ernten (SIGCHLD + wait4-Schleife; u-root ruft WaitOrphans nur beim
   eigenen Ende), (2) Signale an die Kinder weitergeben, sonst ignoriert PID 1

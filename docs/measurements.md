@@ -4807,3 +4807,62 @@ Bau ist gruen, die Batterie laeuft.
 
 Groessen: dynamisch 18538723 Bytes, statisch 18477180 (+12288 gegen 18464892),
 Windows 17375232 (+4096 gegen 17370112); alle gestrippt. 122 Befehle.
+
+## pgrep, pkill und killall (23.11.2026, acmesh-2qr)
+
+Bedarfsmessung: pgrep 16 Aufrufe, pkill 5. killall gab es schon (internal/proc),
+aber ohne -w und -l. Neu in internal/proc/pgrep.go, alle drei teilen die
+vorhandene /proc-Auswertung aus ps.go (acmesh-mq1: ein Prozessmodell).
+
+Was gebaut ist
+
+- pgrep: -f (ganze Kommandozeile), -x (Muster muss den Namen ganz abdecken),
+  -u (Name oder Zahl), -P (Eltern-PID), -n/-o (jüngster/ältester Treffer),
+  -l, -a, -c, -d SEP. Muster ist ein regulaerer Ausdruck, Exit 1 heisst "nichts
+  gefunden".
+- pkill: dieselben Suchschalter, Signal als -SIGNAL, -s SIGNAL oder -9,
+  Vorgabe TERM. Der aufrufende Prozess wird nie signalisiert.
+- killall: -w wartet, bis der Prozess wirklich weg ist (Grenze 30 s, damit kein
+  Agent haengt), -l listet die Signalnamen wie kill -l.
+
+Drei Entscheidungen, die von procps abweichen und warum
+
+- "pgrep -P 123" und "pgrep -u root" ohne Muster gelten und listen alles, was
+  der Filter trifft; ein nacktes "pgrep" bleibt ein Fehler (Exit 2). Grund: das
+  sind die Formen, die Agents schreiben, und ein Fehler dort kostet mehr als
+  eine breitere Antwort.
+- -x sieht durch die Endung .exe, weil Windows den Prozess akmesh.exe nennt und
+  der Agent akmesh tippt (wie killall es schon machte).
+- -u loest eine Zahl ueber die Benutzertabelle auf: pgrep -u 0 und pgrep -u root
+  sind dasselbe. Belegt: Host 25 Prozesse fuer beide, im Image 2 fuer beide.
+
+Probe im Image (akmesh:latest, 124 Namen in /bin)
+
+    pgrep -P $$              -> 7 8 (ohne Muster, vorher Fehlermeldung)
+    pgrep -u 0 / -u root     -> je 2
+    pgrep                    -> "no pattern given", Exit 2
+    sleep 30 & pgrep -f "sleep 30"   -> drei Treffer (auch die Shells, deren
+                              Kommandozeile das Muster enthaelt - das ist -f)
+    pgrep -l -x sleep        -> 32 sleep
+    pkill -x sleep           -> Exit 0, danach findet pgrep nichts mehr
+    pkill -9 -f "sleep 31"   -> Exit 0
+    killall -w sleep         -> Exit 0, danach 0 Prozesse
+    killall slee             -> "no process found", Exit 1 (Teiltreffer trifft nicht)
+
+Gefahr, die dokumentiert ist: -f trifft jede Kommandozeile, die das Muster
+enthaelt, also auch die Shell, die pkill aufruft. Beim Bau ist genau das
+passiert: ein Testlauf mit "pkill -9 -f ..." hat die eigene Prozessgruppe
+abgeraeumt. pkill ueberspringt nur sich selbst (wie procps). Die Hilfe von
+pkill sagt das jetzt und raet, vorher mit denselben Schaltern pgrep zu benutzen.
+
+Zwei Fallen in der Batterie (beide behoben)
+
+- Unter Windows startet die Batterie eine Kopie namens acmesh-under-test.exe;
+  eine Pruefung auf "pgrep -x akmesh" kann dort nicht treffen. Der Name kommt
+  jetzt aus $BIN.
+- Windows-Ausgaben enden auf CRLF; zwei Pruefungen brauchten tr -d '\r'.
+
+Groessen: dynamisch 18559203 (+20480), statisch 18497660 (+20480), Windows
+17398272 (+23040), alle gestrippt. 124 Befehle Linux und Windows.
+Batterie 219 Checks Linux, 197 Windows, beide ohne Fehler; Hilfe-Audit 0;
+Lizenzen 20/20.

@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // runKill sends a signal to one or more processes:
@@ -115,6 +116,7 @@ func runKillall(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	sigName := "TERM"
 	quiet := false
 	interactive := false
+	wait := false
 	var names []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -123,6 +125,11 @@ func runKillall(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			quiet = true
 		case a == "-i" || a == "--interactive":
 			interactive = true
+		case a == "-w" || a == "--wait":
+			wait = true
+		case a == "-l" || a == "--list":
+			// BusyBox has -l here as well: list the signal names.
+			return runKillList(args[i+1:], stdout, stderr)
 		case a == "-s" || a == "--signal":
 			if i+1 >= len(args) {
 				fmt.Fprintln(stderr, "killall: -s needs a signal")
@@ -137,7 +144,7 @@ func runKillall(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		}
 	}
 	if len(names) == 0 {
-		fmt.Fprintln(stderr, "usage: killall [-i] [-q] [-SIGNAL] NAME...")
+		fmt.Fprintln(stderr, "usage: killall [-l] [-i] [-q] [-w] [-SIGNAL] NAME...")
 		return 2
 	}
 	sig, err := normaliseSignal(sigName)
@@ -175,6 +182,11 @@ func runKillall(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			continue
 		}
 		killed++
+		if wait && !waitGone(p.PID, 30*time.Second) {
+			if !quiet {
+				fmt.Fprintf(stderr, "killall: %s(%d) did not exit within 30s\n", p.Comm, p.PID)
+			}
+		}
 	}
 	if killed == 0 {
 		if !quiet {

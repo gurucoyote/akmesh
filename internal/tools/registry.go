@@ -57,6 +57,8 @@ var Commands = map[string]Func{
 	"ls":        runLs,
 	"kill":      runKill,
 	"killall":   runKillall,
+	"pgrep":     runPgrep,
+	"pkill":     runPkill,
 	"md5sum":    runSum("md5"),
 	"mkcert":    runMkcert,
 	"nl":        runNl,

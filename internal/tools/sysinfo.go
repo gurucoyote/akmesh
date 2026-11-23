@@ -37,6 +37,14 @@ func runKillall(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	return proc.Run("killall", args, stdin, stdout, stderr)
 }
 
+func runPgrep(args []string, stdin *os.File, stdout, stderr *os.File) int {
+	return proc.Run("pgrep", args, stdin, stdout, stderr)
+}
+
+func runPkill(args []string, stdin *os.File, stdout, stderr *os.File) int {
+	return proc.Run("pkill", args, stdin, stdout, stderr)
+}
+
 func runTimeout(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	return timeout.Run(args, stdin, stdout, stderr)
 }

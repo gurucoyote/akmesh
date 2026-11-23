@@ -534,6 +534,20 @@ check ps-unknown-field "2" "$(run ps -eo bogus >/dev/null 2>&1; echo $?)"
 checkcode kill-bad-signal 2 "$(run kill -NOSUCHSIGNAL 1 >/dev/null 2>&1; echo $?)"
 checkcode kill-bad-pid 2 "$(run kill keinpid >/dev/null 2>&1; echo $?)"
 checkcode killall-no-match 1 "$(run killall gibtsnicht 2>/dev/null; echo $?)"
+check killall-list-term "1" "$(run killall -l 2>&1 | grep -c '^TERM$')"
+checkcode killall-list-exit 0 "$(run killall -l >/dev/null 2>&1; echo $?)"
+
+# pgrep and pkill (acmesh-2qr): the pair every script uses to look before killing
+checkcode pgrep-no-match 1 "$(run pgrep -x akmesh-gibtsnicht 2>/dev/null; echo $?)"
+checkcode pgrep-no-pattern 2 "$(run pgrep >/dev/null 2>&1; echo $?)"
+check pgrep-help-exit "0" "$(run pgrep --help >/dev/null 2>&1; echo $?)"
+check pkill-help-exit "0" "$(run pkill --help >/dev/null 2>&1; echo $?)"
+# pgrep sees the process it runs in. The name comes from the binary, not from
+# "akmesh": on Windows the battery runs a copy called acmesh-under-test.exe.
+PGNAME=$(basename "$BIN")
+PGNAME=${PGNAME%.exe}
+check pgrep-finds-own-name "ja" "$(run pgrep -x "$PGNAME" 2>/dev/null | tr -d '\r' | head -1 | grep -q '^[0-9][0-9]*$' && echo ja)"
+check pgrep-count "1" "$(run pgrep -c -x "$PGNAME" 2>/dev/null | tr -d '\r' | tr -dc '0-9' | grep -c .)"
 
 # unknown command: the dispatcher names akmesh, not u-root's busybox
 checkcode unknown-command-exit 1 "$(run gibtsnicht >/dev/null 2>&1; echo $?)"

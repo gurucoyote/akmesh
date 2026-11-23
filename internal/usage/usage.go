@@ -211,10 +211,43 @@ var Texts = map[string]Entry{
 			"  A signal may also be written as -SIGNAL or -NUMBER.",
 	},
 	"killall": {
-		"[-SIGNAL | -s SIGNAL] [-i] [-q] NAME...",
+		"[-SIGNAL | -s SIGNAL] [-i] [-q] [-w] [-l] NAME...",
 		"  -s SIGNAL     the signal to send by name or number\n" +
 			"  -i            ask before killing\n" +
-			"  -q, --quiet   print nothing on success",
+			"  -q, --quiet   print nothing on success\n" +
+			"  -w, --wait    wait until the process has really exited (30s limit)\n" +
+			"  -l, --list    list the signal names\n" +
+			"  The name is compared exactly and without .exe, so killall sleep never\n" +
+			"  catches mysleep.",
+	},
+	"pgrep": {
+		"[-flxanc] [-u USER] [-P PPID] [-d SEP] PATTERN",
+		"  -f, --full        match against the whole command line\n" +
+			"  -x, --exact       the pattern has to cover the whole name\n" +
+			"  -u USER           only processes owned by this user\n" +
+			"  -P PPID           only children of this process\n" +
+			"  -n, --newest      only the youngest match\n" +
+			"  -o, --oldest      only the oldest match\n" +
+			"  -l, --list-name   print the process name after the pid\n" +
+			"  -a, --list-full   print the full command line after the pid\n" +
+			"  -c, --count       print only the number of matches\n" +
+			"  -d SEP            separator between two pids, default a newline\n" +
+			"  PATTERN is a regular expression and may be left out when -u or -P\n" +
+			"  already says which processes are meant; exit 1 means nothing matched.",
+	},
+	"pkill": {
+		"[-SIGNAL | -s SIGNAL] [-f] [-x] [-u USER] [-P PPID] PATTERN",
+		"  -f, --full    match against the whole command line\n" +
+			"  -x, --exact   the pattern has to cover the whole name\n" +
+			"  -u USER       only processes owned by this user\n" +
+			"  -P PPID       only children of this process\n" +
+			"  -s SIGNAL     the signal to send by name or number; -TERM or -9\n" +
+			"                work as they do for kill. Default TERM.\n" +
+			"  -n NEWEST     only the youngest match, -o OLDEST only the oldest\n" +
+			"  The calling process is never signalled; exit 1 means nothing matched.\n" +
+			"  -f matches the whole command line, so it can also match the shell that\n" +
+			"  called pkill when that shell has the pattern in its arguments: run\n" +
+			"  pgrep with the same flags first.",
 	},
 	"mkcert": {
 		"-host NAME[,NAME...] [-days N] [-key-type ecdsa|rsa|ed25519] [-out BASE] [-ca BASE] [-ca-domains SUFFIX] [-org NAME]",

@@ -4436,3 +4436,59 @@ ueberspringt Punktdateien und Sicherungen; Reload sieht neue Dateien.
 Groessen: Linux statisch 17.5 MiB (18382972 Bytes), das sind +69632 Bytes gegen
 den Bau ohne crond (18313340); Windows 16.5 MiB (17310720 Bytes), +97280 Bytes.
 Beide gestrippt. Lizenzpruefung: 20 Module, alle verwendbar.
+
+## syslogd, logger, logread (23.11.2026, acmesh-g7n)
+
+Drei Befehle, eine Umsetzung (internal/syslog, je Befehl ein duennes Paket und
+cmd-Einstieg). Format RFC 3164, wie BusyBox und jeder /dev/log-Schreiber es
+erzeugt. syslogd legt die Zeile so ab, wie sie ankam - was logread zeigt, ist
+das, was das Programm geschickt hat.
+
+- syslogd: unixgram-Socket (Standard /dev/log, 0666), Datei -O (Standard
+  /var/log/messages), Rotation bei -s Bytes nach NAME.0 (eine Sicherung, wie
+  BusyBox' -s), uebriggebliebene Socket-Datei wird entfernt, aber nur wenn sie
+  wirklich ein Socket ist; SIGTERM raeumt Socket und Datei auf.
+- logger: -t TAG, -p FACILITY.LEVEL (auch Level allein oder Zahl), -s (zusaetzlich
+  stderr), -S SOCKET; ohne Argument gehen die Zeilen von stdin raus, eine je
+  Zeile.
+- logread: -O FILE, -n ANZAHL, -f folgt; mit -f kommt erst der Bestand, dann die
+  neuen Zeilen - das ist, was BusyBox' logread -f tut.
+- Windows: kein /dev/log, also keine Socket-Fassade. logger schreibt mit -O FILE
+  direkt in eine lokale Datei, logread liest sie, syslogd meldet ehrlich
+  "not supported on Windows (no /dev/log; use logger -O FILE)". Nichts wird beim
+  Host registriert.
+
+Beweis im Image:
+
+    /bin/syslogd -O /tmp/log/messages -s 2048 & ... logger -t probe -p local0.info "hallo welt"
+    logread -O /tmp/log/messages
+    <134>Nov 23 12:29:52 probe[20]: hallo welt
+    <27>Nov 23 12:29:52 probe[25]: fehler text      (daemon.err = 3*8+3)
+
+    Rotation, 120 Zeilen bei -s 2048:  messages 912 Bytes, messages.0 2033 Bytes
+    (je Rotation eine Sicherung), logread -n 1 zeigt die letzte Zeile.
+
+    logread -f:  erst "alt  vor dem folgen", dann "live  waehrend des folgens"
+    - also Bestand plus Nachlauf, wie bei tail -f.
+
+    Unter init (Inittab: syslogd und ein Ticker als respawn): ps zeigt init,
+    syslogd und den Ticker, logread -n 3 gibt drei ticker-Zeilen im 2-Sekunden-Takt,
+    podman stop -t 10: 210 ms, Container-Exit 0.
+
+    Windows: akmesh.exe logger -O /tmp/winlog.txt -t wintest -p local0.warning
+    "hallo von windows" -> <132>Nov 23 13:32:26 wintest[10028]: hallo von windows,
+    logread liest sie, syslogd verweigert, logger ohne -O verweigert mit Hinweis.
+
+Bewusste Abweichung zu BusyBox: logread liest die Datei, nicht den
+Shared-Memory-Ring. BusyBox' Ring lebt nur, solange syslogd laeuft; eine Datei
+ueberlebt einen Neustart und ist mit jedem Werkzeug lesbar.
+
+Tests (7): Prioritaeten (Namen, Zahlen, Fehlerfaelle), Format (Tag, PID,
+Leerzeichen vor Tageszahl, kein Umbruch in der Zeile), normalizeLine, Rotation
+(Datei bleibt unter der Grenze, Inhalt in .0), logger ueber einen echten Socket
+(Prioritaet, Tag, PID im Datagramm), logger liest stdin zeilenweise, logread -n.
+
+Groessen: Linux statisch 17.6 MiB (18423932 Bytes, +40960 gegen den Bau mit crond
+18382972), dynamisch 17.6 MiB (18485475), Windows 16.5 MiB (17335808, +25088).
+Alle gestrippt. Befehle: Linux 121, Windows 114. Batterie 211/0, Hilfe-Audit 0,
+Lizenzpruefung 20/20.

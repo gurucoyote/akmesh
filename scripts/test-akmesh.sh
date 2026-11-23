@@ -245,6 +245,27 @@ check shuf-range "1 2 3" "$(run shuf -i 1-3 | tr -d '\r' | sort | tr '\n' ' ' | 
 # What stays: -exec spawning the built binary itself, which is the per-target case.
 mkdir -p fdir/sub && printf 'x\n' > fdir/a.txt && printf 'y\n' > fdir/sub/b.txt
 check find-exec "a.txt" "$(cd fdir && run find . -maxdepth 1 -name 'a.txt' -exec "$BIN" echo {} \; | tr -d '\r' | sed 's|^\./||')"
+# Ausdrucksbaum, Aktionen und Fehlerfaelle (acmesh-x7f, acmesh-kgi):
+#   -o, Klammern, !              -> TestOrAndParentheses, TestNotAndEmpty
+#   -printf, -delete             -> TestPrintfAndDelete
+#   Exit 2 auf kaputten Ausdruck -> TestBrokenExpressionIsUsageError
+# Nur der Aufruf am gebauten Binary bleibt hier: die Klammern sind Shell-Sache.
+check find-or "$(cd fdir && run find . -maxdepth 1 -name 'a.txt' -o -name 'zzz' | tr -d '\r' | sort | tr '\n' ' ')" "./a.txt "
+check find-not-dirs "$(cd fdir && run find . -maxdepth 1 ! -type d | tr -d '\r' | grep -c 'a.txt')" "1"
+check find-delete "$(cd fdir && cp a.txt gone.txt && run find . -maxdepth 1 -name 'gone.txt' -delete; printf '%s' "$?")" "0"
+check find-delete-gone "weg" "$(if [ -e fdir/gone.txt ]; then echo da; else echo weg; fi)"
+check find-broken-expr "$(cd fdir && run find . -name 2>/dev/null; printf '%s' "$?")" "2"
+check find-unknown-predicate "$(cd fdir && run find . -bogus x 2>/dev/null; printf '%s' "$?")" "2"
+# rg mit PCRE2 (acmesh-4v0): -P, --engine=pcre2, --engine=auto, und der Fehler
+# ohne -P. Die Engine selbst pruefen TestPCREEngine und TestPCREWordAndCase.
+printf 'beta alpha\nalpha\n' > fdir/r.txt
+check rg-pcre-lookahead "$(cd fdir && run rg -P 'beta(?= alpha)' r.txt | tr -d '\r')" "beta alpha"
+check rg-pcre-lookbehind "$(cd fdir && run rg --engine=pcre2 '(?<=beta )alpha' r.txt | tr -d '\r')" "beta alpha"
+check rg-pcre-auto "$(cd fdir && run rg --engine=auto 'alpha\K' r.txt | tr -d '\r' | head -1)" "beta alpha"
+check rg-re2-rejects "$(cd fdir && run rg 'beta(?= alpha)' r.txt 2>/dev/null; printf '%s' "$?")" "2"
+check rg-engine-default-rejects "$(cd fdir && run rg --engine=default 'beta(?= alpha)' r.txt 2>/dev/null; printf '%s' "$?")" "2"
+check rg-bad-engine "$(cd fdir && run rg --engine=nope alpha r.txt 2>/dev/null; printf '%s' "$?")" "2"
+check rg-pcre-word "$(cd fdir && run rg -Pw 'beta' r.txt | tr -d '\r')" "beta alpha"
 # grep behaviour lives in Go since acmesh-4aj (internal/forked/grep):
 #   -E, -w, -i            -> TestExtendedRegexpAndWordMatch, TestIgnoreCaseIsAbsolute
 #   -A/-B/-C mit "--"     -> TestContextGroupsAreSeparatedByDashes, TestAdjacentWindowsAreOneGroup

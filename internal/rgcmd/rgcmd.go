@@ -93,13 +93,37 @@ func buildMatcher(cfg config) (match.Matcher, error) {
 	case cfg.ignoreCase:
 		cm = match.CaseInsensitive
 	}
-	return match.New(match.Config{
+	mc := match.Config{
 		Patterns:   cfg.patterns,
 		CaseMode:   cm,
 		Word:       cfg.word,
 		Fixed:      cfg.fixed,
 		LineRegexp: cfg.lineRegexp,
-	})
+	}
+	switch engineFor(cfg.pcre, cfg.engine) {
+	case "pcre2":
+		if cfg.fixed {
+			// -F wins over -P in ripgrep: a fixed string needs no engine.
+			return match.New(mc)
+		}
+		return newPCREMatcher(mc)
+	case "auto":
+		m, err := match.New(mc)
+		if err == nil {
+			// A pattern the default engine accepts is answered by it; only a
+			// pattern it rejects goes to PCRE2, which is ripgrep's --engine=auto.
+			if _, cerr := match.New(mc); cerr == nil {
+				return m, nil
+			}
+		}
+		for _, pat := range cfg.patterns {
+			if looksLikePCREOnly(pat) {
+				return newPCREMatcher(mc)
+			}
+		}
+		return m, err
+	}
+	return match.New(mc)
 }
 
 // buildGlobs turns -g/--iglob into the walk's override set. The polarity is

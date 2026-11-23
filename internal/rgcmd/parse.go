@@ -22,10 +22,12 @@ type config struct {
 	lineNumbers bool
 	noFilename  bool
 
-	filesWithMatches bool // -l
-	count            bool // -c
-	onlyMatching     bool // -o
-	files            bool // --files
+	filesWithMatches bool   // -l
+	count            bool   // -c
+	onlyMatching     bool   // -o
+	files            bool   // --files
+	pcre             bool   // -P, --pcre2
+	engine           string // --engine default|pcre2|auto
 
 	before   int
 	after    int
@@ -116,6 +118,18 @@ func parse(args []string) (config, error) {
 				cfg.onlyMatching = true
 			case "files":
 				cfg.files = true
+			case "pcre2":
+				cfg.pcre = true
+			case "engine":
+				var v string
+				if v, err = value(); err == nil {
+					switch v {
+					case "default", "pcre2", "auto":
+						cfg.engine = v
+					default:
+						err = fmt.Errorf("invalid value %q for --engine: expected default, pcre2 or auto", v)
+					}
+				}
 			case "hidden":
 				cfg.hidden = true
 			case "no-ignore":
@@ -208,6 +222,10 @@ func parse(args []string) (config, error) {
 					cfg.smartCase = true
 				case 'F':
 					cfg.fixed = true
+				case 'P':
+					// -P/--pcre2: search with PCRE2, which ripgrep only does
+					// with the pcre2 feature compiled in.
+					cfg.pcre = true
 				case 'w':
 					cfg.word = true
 				case 'x':

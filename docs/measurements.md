@@ -5211,3 +5211,62 @@ Auf Windows fiel dabei noch auf: ein Laufwerksbuchstabe landete im Archivnamen
 ("C:/Users/..."），jetzt wird er entfernt wie der fuehrende Schraegstrich; und ein
 Dateimodus, den Go tar nicht kodieren kann, brach das ganze Archiv ab, jetzt wird
 die Datei mit Meldung uebersprungen.
+
+## find: Ausdrucksbaum gegen GNU find 4.9 (23.11.2026, acmesh-x7f, acmesh-kgi)
+
+Der u-root-Fork kannte nur eine flache Liste von Matchern: kein -o, keine
+Klammern, keine Negation, kein Ausdrucksbaum. Damit fehlten genau die Formen,
+die ein Agent schreibt. Neu gebaut (internal/forked/find): Praezedenz
+! > -a > -o, Klammern, Aktionen, Default -print nur bei wahrem Ausdruck.
+
+Neu dazu: -iname, -ipath, -size (c/w/b/k/M/G), -empty, -newer, -mtime, -mmin,
+-user, -group, -perm (auch symbolisch wie -u+x), -printf, -delete, -quit,
+-exec ... +, -print0, -xdev, -follow.
+
+Gemessen mit scripts/find-probe.sh (beide Seiten durch "sh -c", sortiert
+verglichen, weil die Reihenfolge von readdir kommt) auf /tmp/ffx
+(a.txt 3 B, empty.txt 0 B, b.log 3 B, sub/c.txt, sub/deep):
+
+    Aufrufe                          31
+    gleich                           31
+    abweichend                        0
+
+Darunter: "( -name *.txt -o -name *.log ) -size -5c", "! -type d",
+"-maxdepth 0" (nur der Startpfad), "-mindepth 1 -maxdepth 1",
+"-type f -printf '%p %s\n'", "-exec echo HIT {} ;" (ein Aufruf pro Treffer),
+"-perm -u+x", "-user root", "-mmin -1", "-regex", "-print0".
+
+Reihenfolge: GNU gibt die readdir-Reihenfolge aus, nicht sortiert. Der Fork
+sortiert nicht mehr, damit "-maxdepth 1" dieselbe Folge liefert (acmesh-kgi).
+
+Fehlerfaelle: unbekanntes Praedikat, fehlender Operand und offene Klammer
+enden mit Exit 2 samt Usage-Zeile, wie GNU.
+
+Batterie: sechs neue Pruefungen (find-or, find-not-dirs, find-delete,
+find-delete-gone, find-broken-expr, find-unknown-predicate).
+
+## rg: PCRE2 ueber -P und --engine (23.11.2026, acmesh-4v0)
+
+ripgrep nimmt -P/--pcre2 und --engine default|pcre2|auto nur mit dem
+Cargo-Feature pcre2. akmesh haengt die Engine an internal/pcre (derselbe
+Wrapper wie grep -P, mit Schritt-, Tiefen-, Heap- und Zeitlimit).
+Neu: internal/rgcmd/pcrematcher.go (match.Matcher auf PCRE2, NonMatchingLineTerm
+false, damit der Sucher zeilenweise arbeitet), --engine in parse.go.
+
+Gemessen mit scripts/rg-probe.sh auf /tmp/ffx:
+
+    rg -P 'a(?=a)' .              -> ./a.txt:aa   Exit 0
+    rg -P 'a\Ka' .                -> ./a.txt:aa   Exit 0
+    rg -P 'a++' .                 -> ./a.txt:aa   Exit 0
+    rg --engine=pcre2 '(?<=b)b' . -> ./b.log:bb   Exit 0
+    rg --engine=auto 'a(?=a)' .   -> ./a.txt:aa   Exit 0
+    rg -Pw 'aa' .                 -> ./a.txt:aa   Exit 0
+    rg 'a(?=a)' .                 -> "invalid or unsupported Perl syntax: `(?=`"  Exit 2
+    rg --engine=bogus x .         -> "invalid value \"bogus\" for --engine"       Exit 2
+
+Die Engine laeuft unter einem Mutex: der PCRE-Wrapper haelt einen MatchContext
+je Muster, und ripgrep teilt einen Matcher zwischen Walk-Workern. Das ist
+korrekt und langsam; gemessen wurde es nicht, weil die Aufrufe oben klein sind.
+
+Batterie: sieben neue Pruefungen (rg-pcre-lookahead, -lookbehind, -auto,
+rg-re2-rejects, rg-engine-default-rejects, rg-bad-engine, rg-pcre-word).

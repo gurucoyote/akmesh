@@ -106,6 +106,16 @@ func (r *Regexp) FindAll(s string, n int) ([]string, error) {
 	return out, nil
 }
 
+// Find returns the byte offsets of the first match in s, and ok=false when the
+// pattern does not match. Start and end are byte positions, like RE2's.
+func (r *Regexp) Find(s string) (start, end int, ok bool, err error) {
+	start, end, err = r.match(s)
+	if err != nil || start < 0 {
+		return -1, -1, false, err
+	}
+	return start, end, true, nil
+}
+
 // match returns the start and end offset of the first match in s, or -1 when
 // there is none.
 func (r *Regexp) match(s string) (int, int, error) {

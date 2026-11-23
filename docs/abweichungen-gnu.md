@@ -24,7 +24,7 @@ zaehlen nicht als Abweichung.
 
 ## A. Fehlende Schalter, ueber die ein Agent stolpert
 
-### find (u-root, cmds/core/find)
+### find (u-root, cmds/core/find) - erledigt am 23.11.2026 (acmesh-x7f)
 
     find . -name '*.log' -o -name '*.txt'   find: unknown predicate "-o"
     find . -size +1c                        find: unknown predicate "-size"
@@ -35,9 +35,10 @@ zaehlen nicht als Abweichung.
     find . -user root                       find: unknown predicate "-user"
     find . -mtime -1                        find: unknown predicate "-mtime"
 
-`-maxdepth` gibt es inzwischen (die alte Doku-Zeile ist ueberholt), aber
-`-maxdepth 0` liefert alles statt nur ".".
-`-exec echo {} ;` setzt "a.txt" statt "./a.txt" ein, GNU setzt "./a.txt".
+`-maxdepth 0` lieferte alles statt nur ".", `-exec echo {} ;` setzte "a.txt"
+statt "./a.txt" ein. Alles drei behoben, indem find im eigenen Fork einen
+Ausdrucksbaum bekam; 31 von 31 Messaufrufen sind jetzt gleich GNU
+(docs/measurements.md, Abschnitt find).
 
 ### tail (u-root, cmds/core/tail) - erledigt am 23.11.2026 (acmesh-uzd)
 

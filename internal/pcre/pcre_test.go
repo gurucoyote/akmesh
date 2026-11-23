@@ -139,3 +139,21 @@ func TestBacktrackingIsBounded(t *testing.T) {
 		t.Fatal("Match did not return; the limit is not applied")
 	}
 }
+
+// TestFindReportsOffsets: rg needs the byte bounds, not just a yes.
+func TestFindReportsOffsets(t *testing.T) {
+	re, err := Compile(`b(c+)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	start, end, ok, err := re.Find("aabccc")
+	if err != nil || !ok {
+		t.Fatalf("Find: %v %v", ok, err)
+	}
+	if start != 2 || end != 6 {
+		t.Fatalf("Find = [%d,%d), want [2,6)", start, end)
+	}
+	if _, _, ok, err := re.Find("nothing"); ok || err != nil {
+		t.Fatalf("Find on a miss = %v %v", ok, err)
+	}
+}

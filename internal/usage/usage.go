@@ -371,13 +371,18 @@ var Texts = map[string]Entry{
 		"Print the current working directory.",
 	},
 	"rg": {
-		"[-i] [-F] [-w] [-n] [-l] [-c] [-o] [-A N] [-B N] [-C N] [-g GLOB] [-t TYPE] PATTERN [PATH...]",
+		"[-i] [-F] [-P] [-w] [-n] [-l] [-c] [-o] [-A N] [-B N] [-C N] [-g GLOB] [-t TYPE] [--engine E] PATTERN [PATH...]",
 		"Recursive, gitignore-aware search over text files; no -r needed.\n" +
 			"Exit 0 on a match, 1 on none, 2 on an error.\n" +
 			"  -e PATTERN          add a pattern (repeatable)\n" +
 			"  -i, --ignore-case   case-insensitive\n" +
 			"  -S, --smart-case    case-insensitive unless the pattern has uppercase\n" +
 			"  -F, --fixed-strings PATTERN is literal, not a regexp\n" +
+			"  -P, --pcre2         search with PCRE2, the way grep -P does\n" +
+			"                      (lookahead, lookbehind, \\K, a++)\n" +
+			"                      lookbehind, \\K, possessive quantifiers\n" +
+			"      --engine E      default, pcre2 or auto (auto falls back to PCRE2\n" +
+			"                      when the pattern needs it)\n" +
 			"  -w, --word-regexp   match whole words only\n" +
 			"  -x, --line-regexp   match whole lines only\n" +
 			"  -v, --invert-match  print non-matching lines\n" +
@@ -401,7 +406,7 @@ var Texts = map[string]Entry{
 			"                      the converted text, not to the original file.\n" +
 			"      --pre-glob GLOB which files go through --pre (default: the any2md\n" +
 			"                      suffixes); everything else is searched raw\n" +
-			"Not built (unlike ripgrep): PCRE2, --type-add/--type-clear, --encoding,\n" +
+			"Not built (unlike ripgrep): --type-add/--type-clear, --encoding,\n" +
 			"and the global gitignore file (core.excludesFile).",
 	},
 	"sed": {

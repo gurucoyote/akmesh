@@ -249,9 +249,18 @@ func runDf(args []string, stdin *os.File, stdout, stderr *os.File) int {
 
 	// Column titles follow GNU: -P renames the size column to 1024-blocks and
 	// the percentage to Capacity, -i switches the whole table to inodes.
+	// A human-readable size column is called "Size" and a block column carries
+	// its unit in the name, the way GNU labels them (acmesh-jag).
 	sizeLabel := "1K-blocks"
-	if posix {
+	switch {
+	case posix:
 		sizeLabel = "1024-blocks"
+	case human:
+		sizeLabel = "Size"
+	}
+	availLabel := "Available"
+	if human && !posix {
+		availLabel = "Avail"
 	}
 	header := []string{"Filesystem"}
 	if showType {
@@ -260,13 +269,13 @@ func runDf(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	if inodes {
 		header = append(header, "Inodes", "IUsed", "IFree", "IUse%")
 	} else if posix {
-		header = append(header, sizeLabel, "Used", "Available", "Capacity")
+		header = append(header, sizeLabel, "Used", availLabel, "Capacity")
 	} else {
-		header = append(header, sizeLabel, "Used", "Avail", "Use%")
+		header = append(header, sizeLabel, "Used", availLabel, "Use%")
 	}
 	header = append(header, "Mounted on")
-	printDfRow(stdout, header, true)
 
+	var table [][]string
 	for _, r := range rows {
 		cells := []string{r.Filesystem}
 		if showType {
@@ -285,8 +294,9 @@ func runDf(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			cells = append(cells, blockCells(r, format, false)...)
 		}
 		cells = append(cells, r.MountedOn)
-		printDfRow(stdout, cells, false)
+		table = append(table, cells)
 	}
+	printDfTable(stdout, header, table)
 	if len(missing) > 0 {
 		// A caller that asked for a path must not read an empty table as an
 		// empty disk.
@@ -309,20 +319,51 @@ func blockCells(r diskRow, format func(int64) string, posix bool) []string {
 	return []string{format(r.Size), format(r.Used), format(r.Avail), fmt.Sprintf("%d%%", r.UsePercent)}
 }
 
-func printDfRow(stdout *os.File, cells []string, header bool) {
-	if len(cells) == 0 {
+// printDfTable lays the table out the way GNU does (measured 23.11.2026,
+// acmesh-jag): the file system name stands left-aligned in a column of width 14
+// or the longest name, whichever is wider, one space follows it, and every
+// number column is right-aligned to the width of its own header or its longest
+// value. A fixed 24/9 grid used to shift every number and made awk read the
+// wrong column.
+func printDfTable(stdout *os.File, header []string, table [][]string) {
+	if len(header) == 0 {
 		return
 	}
-	line := fmt.Sprintf("%-24s", cells[0])
-	for i, c := range cells[1:] {
-		last := i == len(cells)-2
-		if last {
-			line += " " + c
-			continue
+	nameWidth := 14
+	for _, row := range append([][]string{header}, table...) {
+		if len(row) > 0 && len(row[0]) > nameWidth {
+			nameWidth = len(row[0])
 		}
-		line += fmt.Sprintf(" %9s", c)
 	}
-	fmt.Fprintln(stdout, line)
+	widths := make([]int, len(header))
+	for i, h := range header {
+		widths[i] = 0
+		if i > 0 {
+			widths[i] = len(h)
+		}
+	}
+	for _, row := range table {
+		for i, c := range row {
+			if i > 0 && i < len(widths) && len(c) > widths[i] {
+				widths[i] = len(c)
+			}
+		}
+	}
+	write := func(cells []string) {
+		line := fmt.Sprintf("%-*s", nameWidth, cells[0])
+		for i, c := range cells[1:] {
+			if i == len(cells)-2 {
+				line += " " + c
+				continue
+			}
+			line += fmt.Sprintf(" %*s", widths[i+1], c)
+		}
+		fmt.Fprintln(stdout, line)
+	}
+	write(header)
+	for _, row := range table {
+		write(row)
+	}
 }
 
 func countOrDash(n int64) string {

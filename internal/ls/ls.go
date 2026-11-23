@@ -261,9 +261,12 @@ func (l lister) sort(entries []entry) {
 		}
 	case l.o.byTime:
 		less = func(i, j int) bool {
-			// Whole seconds, like GNU: two files written in the same second are
-			// a tie, and then the name decides.
-			ti, tj := l.sortTime(entries[i]).Truncate(time.Second), l.sortTime(entries[j]).Truncate(time.Second)
+			// The whole timestamp, nanoseconds included. Truncating to the
+			// second made two files written in one second a tie and let the
+			// name decide, which picks the wrong "newest" (acmesh-fgu,
+			// measured against GNU ls 9.7: y.txt 0.605 s before x.tgz 0.299 s
+			// before x.tar 0.001 s). A true tie still falls back to the name.
+			ti, tj := l.sortTime(entries[i]), l.sortTime(entries[j])
 			if !ti.Equal(tj) {
 				return ti.After(tj)
 			}

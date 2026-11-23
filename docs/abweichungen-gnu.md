@@ -132,12 +132,12 @@ Verzeichnisreihenfolge, wie acmesh-kgi bei find).
 
 ## B. Schalter vorhanden, Ergebnis weicht ab
 
-### ls -t
+### ls -t - erledigt am 23.11.2026 (acmesh-fgu)
 
     akmesh ls -t    out.txt x.tar x.tgz ...   (innerhalb derselben Sekunde nach Name)
     GNU ls -t       out.txt x.tgz x.tar ...   (nach echter mtime, Nanosekunden)
 
-### df -h
+### df -h - erledigt am 23.11.2026 (acmesh-jag)
 
 Zahlen stimmen, die Kopfzeile nicht: akmesh schreibt "1K-blocks" und "Use%",
 GNU "Size", "Used", "Avail", "Use%". Ein Skript, das die Spalte "Size" sucht,

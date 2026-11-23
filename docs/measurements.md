@@ -5314,3 +5314,47 @@ Dazu zwei Regeln, die die Messung nebenbei klaerte:
 11 Aufrufe byte-gleich gegen GNU (od -c verglichen). Batterie: fuenf
 Pruefungen (base64-w0-no-newline, -decode-unpadded, -decode-unpadded-status,
 -decode-space-is-garbage, -decode-ignore-space).
+
+## ls -t: Nanosekunden statt Sekunden gegen GNU ls 9.7 (23.11.2026, acmesh-fgu)
+
+Der Vergleich kuerzte die mtime auf ganze Sekunden, also waren zwei Dateien aus
+derselben Sekunde ein Gleichstand und der Name entschied - bei "x.tar, x.tgz,
+y.txt" in dieser Sekunde also die falsche Reihenfolge.
+
+Gemessen (GNU ls im Container auf eigenem Dateisystem, dort bleiben die
+Nanosekunden erhalten):
+
+    x.tar  .001   x.tgz  .299   y.txt  .605
+    GNU ls -t   -> y.txt  x.tgz  x.tar
+    vorher      -> x.tar  x.tgz  y.txt   (Name)
+    jetzt       -> y.txt  x.tgz  x.tar
+
+Ein echter Gleichstand faellt weiter auf den Namen zurueck. Ein Messversuch
+ueber den /tmp-Mount des Containers taugte nicht: dort gehen die Nanosekunden
+beim Binden verloren, beide Seiten zeigten dieselbe (falsche) Reihenfolge. Der
+Beleg kommt deshalb aus dem Container-Dateisystem selbst und aus
+TestSortByTimeComparesNanoseconds.
+
+Batterie: zwei Pruefungen (ls-t-nanoseconds, ls-tr-nanoseconds).
+
+## df: Kopfzeile und Spalten gegen GNU df 9.7 (23.11.2026, acmesh-jag)
+
+Kopfzeile war "1K-blocks ... Avail ..." auch bei -h. GNU nennt die Spalte bei -h
+"Size", sonst nach der Einheit, und "Avail" nur bei -h:
+
+    df -h        Filesystem      Size  Used Avail Use% Mounted on
+    df           Filesystem      1K-blocks      Used Available Use% Mounted on
+    df -P        Filesystem     1024-blocks      Used Available Capacity Mounted on
+
+Dazu die Breiten, die vorher ein starres 24/9-Raster waren: der Name steht
+linksbuendig in Breite 14 oder der Breite des laengsten Namens, danach ein
+Leerzeichen, und jede Zahlenspalte ist rechtsbuendig auf die Breite ihrer
+eigenen Kopfzeile oder ihres laengsten Werts. Damit liest awk dieselbe Spalte
+wie bei GNU.
+
+Nicht vergleichbar war die ganze Tabelle: der Container und WSL haben andere
+Mounts. Verglichen wurden Kopfzeilen und das Spaltenraster an einzelnen Mounts
+(df -h /, df -h /proc, df -h /usr/src), wo beide Seiten dieselbe Zeile zeigen.
+
+Batterie: fuenf Pruefungen (df-h-size-header, df-blocks-header, df-posix-header,
+df-posix-capacity, df-fields-in-columns).

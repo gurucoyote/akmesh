@@ -136,6 +136,35 @@ func TestSortByTimeIsNewestFirst(t *testing.T) {
 	}
 }
 
+// TestSortByTimeComparesNanoseconds: two files written in the same second are
+// not a tie. GNU ls compares the whole timestamp (measured 23.11.2026 against
+// ls 9.7: x.tar at .001, x.tgz at .299, y.txt at .605 sit in that order), and
+// the name only decides on a real tie - otherwise -t picks the wrong "newest"
+// (acmesh-fgu).
+func TestSortByTimeComparesNanoseconds(t *testing.T) {
+	dir := t.TempDir()
+	// Names deliberately ordered against the times: a name tie-break would
+	// print x.tar first, the timestamps demand y.txt first.
+	for name, ns := range map[string]int{"x.tar": 1, "x.tgz": 299, "y.txt": 605} {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		ts := time.Date(2021, 1, 1, 0, 0, 0, ns*int(time.Millisecond), time.Local)
+		if err := os.Chtimes(path, ts, ts); err != nil {
+			t.Fatal(err)
+		}
+	}
+	out, _, _ := run(t, "-t", dir)
+	if got := strings.Join(lines(out), ","); got != "y.txt,x.tgz,x.tar" {
+		t.Fatalf("-t: %s", got)
+	}
+	out, _, _ = run(t, "-tr", dir)
+	if got := strings.Join(lines(out), ","); got != "x.tar,x.tgz,y.txt" {
+		t.Fatalf("-tr: %s", got)
+	}
+}
+
 // TestLongFormatFields: the long form shows mode, links, owner, group, size, the
 // date rule and the symlink target.
 func TestLongFormatFields(t *testing.T) {

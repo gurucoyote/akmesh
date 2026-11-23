@@ -256,6 +256,22 @@ check find-delete "$(cd fdir && cp a.txt gone.txt && run find . -maxdepth 1 -nam
 check find-delete-gone "weg" "$(if [ -e fdir/gone.txt ]; then echo da; else echo weg; fi)"
 check find-broken-expr "$(cd fdir && run find . -name 2>/dev/null; printf '%s' "$?")" "2"
 check find-unknown-predicate "$(cd fdir && run find . -bogus x 2>/dev/null; printf '%s' "$?")" "2"
+# df-Kopfzeile (acmesh-jag): GNU nennt die Spalte bei -h "Size", sonst nach der
+# Einheit, und "Avail" nur bei -h; die Zahlen stehen rechtsbuendig.
+check df-h-size-header "$(run df -h | tr -d '\r' | head -1 | tr -s ' ' | cut -d' ' -f2)" "Size"
+check df-blocks-header "$(run df | tr -d '\r' | head -1 | tr -s ' ' | cut -d' ' -f2)" "1K-blocks"
+check df-posix-header "$(run df -P | tr -d '\r' | head -1 | tr -s ' ' | cut -d' ' -f2)" "1024-blocks"
+check df-posix-capacity "$(run df -P | tr -d '\r' | head -1 | tr -s ' ' | cut -d' ' -f5)" "Capacity"
+# Ein fester Pfad wie "/" gibt es auf Windows nicht; dort zaehlt die erste Zeile.
+case "$BIN" in
+*.exe) check df-fields-in-columns "$(run df -h | tr -d '\r' | sed -n 2p | awk '{print NF}')" "6" ;;
+*) check df-fields-in-columns "$(run df -h / | tr -d '\r' | tail -1 | awk '{print NF}')" "6" ;;
+esac
+# ls -t mit Nanosekunden (acmesh-fgu): drei Dateien in derselben Sekunde, die
+# Reihenfolge widerspricht dem Namen.
+mkdir -p lstdir && (printf x > lstdir/x.tar; sleep 0.3; printf y > lstdir/x.tgz; sleep 0.3; printf z > lstdir/y.txt)
+check ls-t-nanoseconds "$(run ls -t lstdir | tr -d '\r' | head -1)" "y.txt"
+check ls-tr-nanoseconds "$(run ls -tr lstdir | tr -d '\r' | head -1)" "x.tar"
 # rg mit PCRE2 (acmesh-4v0): -P, --engine=pcre2, --engine=auto, und der Fehler
 # ohne -P. Die Engine selbst pruefen TestPCREEngine und TestPCREWordAndCase.
 printf 'beta alpha\nalpha\n' > fdir/r.txt

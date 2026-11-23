@@ -146,16 +146,17 @@ var Texts = map[string]Entry{
 			"  -w, --wide            wide output",
 	},
 	"grep": {
-		"[-E] [-F] [-i] [-v] [-w] [-c] [-l] [-n] [-q] [-o] [-r] [-A N] [-B N] [-C N] [-e PATTERN] [PATTERN] [FILE...]",
+		"[-E] [-F] [-P] [-i] [-v] [-w] [-c] [-l] [-n] [-h] [-q] [-o] [-r] [-A N] [-B N] [-C N] [-e PATTERN] [PATTERN] [FILE...]",
 		"  -E, --extended-regexp   PATTERN is an extended regular expression\n" +
 			"  -F, --fixed-strings     PATTERN is a literal string\n" +
+			"  -P, --perl-regexp       PATTERN is a Perl/PCRE2 regular expression\n" +
 			"  -i, --ignore-case       ignore case\n" +
 			"  -v, --invert-match      select non-matching lines\n" +
 			"  -w, --word-regexp       match whole words only\n" +
 			"  -c, --count             print a count of matches per file\n" +
 			"  -l, --files-with-matches  only the names of matching files\n" +
 			"  -n, --line-number       prefix each line with its line number\n" +
-			"  -H, --no-filename       never print the file name\n" +
+			"  -h, --no-filename       never print the file name\n" +
 			"  -q, --quiet             no output, only the exit status\n" +
 			"  -o, --only-matching     print only the matching part\n" +
 			"  -r, --recursive         search directories recursively\n" +

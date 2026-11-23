@@ -7,6 +7,7 @@ require (
 	github.com/benhoyt/goawk v1.31.0
 	github.com/bluekeyes/go-gitdiff v0.9.0
 	github.com/go-opentype/fonts v0.14.0
+	github.com/go-regexp/pcre2 v0.1.0
 	github.com/itchyny/gojq v0.12.20
 	github.com/phpdave11/gofpdf v1.4.3
 	github.com/refraction-networking/utls v1.8.2

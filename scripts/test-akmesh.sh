@@ -549,6 +549,19 @@ PGNAME=${PGNAME%.exe}
 check pgrep-finds-own-name "ja" "$(run pgrep -x "$PGNAME" 2>/dev/null | tr -d '\r' | head -1 | grep -q '^[0-9][0-9]*$' && echo ja)"
 check pgrep-count "1" "$(run pgrep -c -x "$PGNAME" 2>/dev/null | tr -d '\r' | tr -dc '0-9' | grep -c .)"
 
+# grep -P: PCRE2 hinter dem Schalter (acmesh-b87)
+TDIR=$(mktemp -d 2>/dev/null || echo /tmp/akmesh-pcre)
+mkdir -p "$TDIR"
+printf 'foobar\nfoobaz\n' > "$TDIR/p.txt"
+check grep-pcre-lookahead "foobar" "$(run grep -P 'foo(?=bar)' "$TDIR/p.txt" 2>/dev/null | tr -d '\r')"
+printf 'xab\n' > "$TDIR/k.txt"
+check grep-pcre-k "b" "$(run grep -P -o 'a\Kb' "$TDIR/k.txt" 2>/dev/null | head -n 1 | tr -d '\r')"
+printf 'aaab\n' > "$TDIR/poss.txt"
+check grep-pcre-possessive "ja" "$(run grep -P 'a++b' "$TDIR/poss.txt" 2>/dev/null | grep -q aaab && echo ja)"
+checkcode grep-pcre-bad-pattern 2 "$(run grep -P 'a(b' "$TDIR/p.txt" >/dev/null 2>&1; echo $?)"
+check grep-re2-rejects-lookahead "ja" "$(run grep '(?=x)' "$TDIR/p.txt" >/dev/null 2>&1 || echo ja)"
+rm -rf "$TDIR"
+
 # date in den GNU-Formen (acmesh-xli)
 check date-epoch-zero "0" "$(run date -u -d @0 +%s 2>/dev/null | tr -d '\r')"
 check date-fixed "1577923200" "$(run date -u -d 2020-01-02 +%s 2>/dev/null | tr -d '\r')"

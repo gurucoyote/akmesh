@@ -348,8 +348,15 @@ BSD-3-Clause fuer mvdan/sh, u-root und gobusybox, auch fuer die nach
 internal/forked kopierten Befehle (der Copyright-Kopf bleibt dort stehen).
 Ebenso BSD-3-Clause: internal/winmode, uebernommen aus der Gabel qiangli/sh
 (Copyright Daniel Marti), unveraendert bis auf das Paketverzeichnis - die
-Copyright-Kopfzeilen der fuenf Dateien bleiben stehen. Ein
-ausgeliefertes Binary
+Copyright-Kopfzeilen der fuenf Dateien bleiben stehen.
+
+Neu dazugekommen (23.11.2026): github.com/go-regexp/pcre2, eine reine
+Go-Portierung von PCRE2 10.44, BSD-3-Clause, mit einer zweiten Datei
+LICENSE-PCRE2 fuer das Original (PCRE2 selbst steht unter einer
+BSD-aehnlichen Lizenz der University of Cambridge). Beide Hinweise gehoeren in
+dasselbe NOTICE-Dokument, weil die Portierung den Originalcode abbildet.
+
+Ein ausgeliefertes Binary
 muss die Hinweise mitfuehren; dazu gehoert ein NOTICE-Dokument im Repo, bevor
 das erste Binary das Haus verlaesst.
 

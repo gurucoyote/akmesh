@@ -469,3 +469,43 @@ func TestFilesWithMatchesOnAStreamAndOnAMiss(t *testing.T) {
 		t.Fatalf("grep -l miss = %d, %q, want 1 and no output", code, out)
 	}
 }
+
+// TestPerlRegexp: -P has to reach PCRE, not RE2. These three patterns are the
+// ones RE2 refuses and GNU grep -P accepts (docs/pcre-recherche.md).
+func TestPerlRegexp(t *testing.T) {
+	cases := []struct {
+		name, pattern, input, want string
+	}{
+		{"lookahead", `foo(?=bar)`, "foobar\nfoobaz\n", "foobar\n"},
+		{"k-reset", `a\Kb`, "xab\n", "xab\n"},
+		{"possessive", `a++b`, "aaab\n", "aaab\n"},
+	}
+	for _, c := range cases {
+		out, _, code := runGrep(t, []string{"-P", c.pattern}, c.input)
+		if code != 0 || out != c.want {
+			t.Errorf("-P %q (%s) = %d, %q, want %q", c.pattern, c.name, code, out, c.want)
+		}
+	}
+	// Without -P the same lookahead must be an error, exactly as RE2 behaves.
+	_, errOut, code := runGrep(t, []string{`foo(?=bar)`}, "foobar\n")
+	if code != 2 || !strings.Contains(errOut, "invalid or unsupported") && !strings.Contains(errOut, "missing") && !strings.Contains(errOut, "error parsing") {
+		t.Errorf("lookahead without -P = %d, %q; want exit 2 with a pattern error", code, errOut)
+	}
+}
+
+// TestPerlRegexpOnlyMatch: -o with -P prints the PCRE match, including the part
+// \K moved the start of.
+func TestPerlRegexpOnlyMatch(t *testing.T) {
+	out, _, code := runGrep(t, []string{"-P", "-o", `a\Kb`}, "xab yab\n")
+	if code != 0 || out != "b\nb\n" {
+		t.Fatalf("grep -P -o = %d, %q", code, out)
+	}
+}
+
+// TestPerlRegexpBadPattern: a broken PCRE pattern is exit 2, like GNU.
+func TestPerlRegexpBadPattern(t *testing.T) {
+	_, errOut, code := runGrep(t, []string{"-P", "a(b"}, "ab\n")
+	if code != 2 || errOut == "" {
+		t.Fatalf("grep -P a(b = %d, %q; want exit 2 and a message", code, errOut)
+	}
+}

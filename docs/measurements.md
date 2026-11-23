@@ -5036,3 +5036,41 @@ Exit 0), und das Gate ist wieder gruen.
 Batterie: 245 Checks Linux, 223 Windows (Stand vor dem letzten Windows-Lauf),
 0 Fehler; sieben neue date-Pruefungen. Groessen: dynamisch 18972899, Windows
 17610240, beide gestrippt.
+
+## grep -P ueber eine PCRE2-Portierung (23.11.2026, acmesh-b87)
+
+Entscheidung Martins: die treuere Engine, nicht die kleinere.
+
+Neu: internal/pcre mit Compile, Match, FindAll, hinter der genau eine
+Abhaengigkeit steht (github.com/go-regexp/pcre2 v0.1.0, BSD-3).
+internal/forked/grep kennt jetzt -P/--perl-regexp; die Scan-Schleife spricht ein
+matcher-Interface, das beide Engines erfuellen, damit der Unterschied eine Zeile
+bleibt. -i und -w wirken auch unter -P (sie setzen (?i) und \b(?:...)\b vor das
+Muster).
+
+Sicherungen in internal/pcre, weil eine Shell, die haengt, schlimmer ist als eine,
+die ablehnt: matchLimit 10.000.000 Schritte, depthLimit 10.000, heapLimit
+20.000.000. Ueberschreitung endet mit "match limit exceeded" und Exit 2, nicht mit
+einer Endlosschleife. Nachgemessen: (a+)+$ gegen 40 a und ein b endet nach 0,35 s
+mit dem Limitfehler.
+
+Gemessen gegen GNU grep -P (coreutils/grep 3.11 im Referenz-Image), neun Faelle:
+sieben gleich, zwei mit Begruendung:
+
+    \p{Greek}     GNU ohne Locale rc 1, mit LANG=C.UTF-8 rc 0; akmesh verhaelt
+                   sich immer wie UTF-8, weil es keinen Locale-Begriff hat.
+                   \p{L} stimmt in beiden Faellen.
+    (?=x) ohne -P  GNU liest BRE (Literal), akmesh ERE und meldet einen Fehler.
+                   Siehe eigenes Ticket acmesh-4gi, das ist der groessere Fund.
+
+Der zweite Fund wiegt schwerer als der Anlass: beim Pruefen fiel auf, dass unser
+grep das Standardmuster als ERE liest, GNU aber als BRE. "grep 'a+b'" trifft bei
+uns "aab", bei GNU nichts; "grep 'a\(a\)b'" trifft bei GNU, bei uns nichts.
+Ticket acmesh-4gi mit beiden Messungen.
+
+Groesse: dynamisch 18972899 -> 19456227 Bytes (+483.328, 2,5 Prozent).
+Windows: 18095104 Bytes. Beide gestrippt. Der Zuwachs ist groesser als die
+208 KiB aus der Einzelmessung, weil dort der Linker ungenutzte Teile wegwarf;
+gemessen ist der echte Binary-Zuwachs.
+
+Batterie: 250 Checks Linux, 209 Windows, sieben neue grep--P-Pruefungen.

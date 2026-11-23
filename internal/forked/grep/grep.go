@@ -34,6 +34,7 @@ import (
 	"strconv"
 	"strings"
 
+	"akmesh/internal/pcre"
 	akusage "akmesh/internal/usage"
 )
 
@@ -50,6 +51,7 @@ type params struct {
 	count           bool // -c
 	number          bool // -n
 	noFilename      bool // -h
+	pcreEngine      bool // -P: PCRE2 instead of RE2 (\K, lookbehind, a++)
 	wordMatch       bool // -w
 	onlyMatch       bool // -o
 	before, after   int
@@ -57,7 +59,7 @@ type params struct {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "usage: grep [-E] [-F] [-i] [-v] [-c] [-n] [-l] [-q] [-h] [-r] [-R]")
+	fmt.Fprintln(w, "usage: grep [-E] [-F] [-P] [-i] [-v] [-c] [-n] [-l] [-q] [-h] [-r] [-R]")
 	fmt.Fprintln(w, "            [-w] [-o] [-A NUM] [-B NUM] [-C NUM] [-e PATTERN] PATTERN [FILE...]")
 }
 
@@ -182,6 +184,8 @@ func parse(args []string) (*params, error) {
 				p.wordMatch = true
 			case "--only-matching":
 				p.onlyMatch = true
+			case "--perl-regexp":
+				p.pcreEngine = true
 			case "--extended-regexp", "--basic-regexp":
 				// Go's regexp is extended already; accepted for the same reason
 				// as sed -E: command lines carry it.
@@ -217,6 +221,8 @@ func parse(args []string) (*params, error) {
 					if rest[j] == 'F' {
 						p.fixed = true
 					}
+				case 'P':
+					p.pcreEngine = true
 				case 'w':
 					p.wordMatch = true
 				case 'o':
@@ -264,9 +270,35 @@ func parse(args []string) (*params, error) {
 	return p, nil
 }
 
+// matcher is what grep needs from a regex engine: does this line match, and
+// which parts of it match. Both engines below satisfy it, so the scan loop does
+// not care which one the command line asked for.
+type matcher interface {
+	Match(string) (bool, error)
+	FindAll(string, int) ([]string, error)
+}
+
+// reMatcher is Go's RE2 engine, the default and the fast path.
+type reMatcher struct{ re *regexp.Regexp }
+
+func (m reMatcher) Match(s string) (bool, error) { return m.re.MatchString(s), nil }
+func (m reMatcher) FindAll(s string, n int) ([]string, error) {
+	return m.re.FindAllString(s, n), nil
+}
+
+// pcreMatcher is PCRE2 behind -P. It is slower and can backtrack, which is why
+// it is never the default (docs/pcre-recherche.md).
+type pcreMatcher struct{ re *pcre.Regexp }
+
+func (m pcreMatcher) Match(s string) (bool, error) { return m.re.Match(s) }
+func (m pcreMatcher) FindAll(s string, n int) ([]string, error) {
+	return m.re.FindAll(s, n)
+}
+
 // compile turns the patterns into one matcher. -w wraps each pattern in word
-// boundaries, -i adds the case flag, -F uses plain substring search.
-func (p *params) compile() (*regexp.Regexp, error) {
+// boundaries, -i adds the case flag, -F uses plain substring search, -P switches
+// to PCRE2.
+func (p *params) compile() (matcher, error) {
 	if p.fixed {
 		quoted := make([]string, len(p.patterns))
 		for i, pattern := range p.patterns {
@@ -279,7 +311,11 @@ func (p *params) compile() (*regexp.Regexp, error) {
 		if p.caseInsensitive {
 			expr = "(?i)" + expr
 		}
-		return regexp.Compile(expr)
+		re, err := regexp.Compile(expr)
+		if err != nil {
+			return nil, err
+		}
+		return reMatcher{re}, nil
 	}
 	expr := strings.Join(p.patterns, "|")
 	if p.wordMatch {
@@ -288,13 +324,24 @@ func (p *params) compile() (*regexp.Regexp, error) {
 	if p.caseInsensitive {
 		expr = "(?i)" + expr
 	}
-	return regexp.Compile(expr)
+	if p.pcreEngine {
+		re, err := pcre.Compile(expr)
+		if err != nil {
+			return nil, err
+		}
+		return pcreMatcher{re}, nil
+	}
+	re, err := regexp.Compile(expr)
+	if err != nil {
+		return nil, err
+	}
+	return reMatcher{re}, nil
 }
 
 // printer writes the matches of one input.
 type printer struct {
 	p      *params
-	re     *regexp.Regexp
+	re     matcher
 	out    *bufio.Writer
 	name   string
 	show   bool
@@ -342,7 +389,11 @@ func (pr *printer) scan(r io.Reader) error {
 	for sc.Scan() {
 		num++
 		line := sc.Text()
-		match := pr.re.MatchString(line) != pr.p.invert
+		hit, err := pr.re.Match(line)
+		if err != nil {
+			return err
+		}
+		match := hit != pr.p.invert
 		if !match {
 			if pr.after > 0 {
 				// Inside the after-context of an earlier match.
@@ -389,7 +440,11 @@ func (pr *printer) scan(r io.Reader) error {
 		pr.before = pr.before[:0]
 		pr.after = pr.p.after
 		if pr.p.onlyMatch {
-			for _, m := range pr.re.FindAllString(line, -1) {
+			matches, err := pr.re.FindAll(line, -1)
+			if err != nil {
+				return err
+			}
+			for _, m := range matches {
 				pr.prefix(num, false)
 				pr.out.WriteString(m)
 				pr.out.WriteByte('\n')

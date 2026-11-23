@@ -54,7 +54,13 @@ sechs neue Batteriepruefungen.
 
 `-n 3` und `-f` gehen. `tail -3` ist die Form, die Agents schreiben.
 
-### grep (u-root, cmds/core/grep)
+### grep (eigener Fork, internal/forked/grep) - -P erledigt am 23.11.2026 (acmesh-b87)
+
+-P/--perl-regexp geht jetzt ueber eine reine Go-Portierung von PCRE2 10.44
+(internal/pcre), inklusive \K, Lookbehind und possessiven Quantoren. Die uebrigen
+sieben Schalter dieses Abschnitts bleiben offen (acmesh-v6r).
+
+Neuer Fund beim Pruefen: das Standardmuster ist ERE, GNU liest BRE (acmesh-4gi).
 
     grep -m1 a a.txt                  grep: unknown option "-m"
     grep -x alpha a.txt               grep: unknown option "-x"

@@ -1,0 +1,18 @@
+# tail, Grenzfaelle gegen GNU coreutils 9.7
+tail -1 words.txt
+tail -2 words.txt
+tail -n2 words.txt
+tail --lines=2 words.txt
+tail -n0 words.txt
+tail -n +2 words.txt
+tail -n +1 words.txt
+tail -c 3 words.txt
+tail -c +3 words.txt
+tail -q words.txt colon.txt
+tail words.txt colon.txt
+tail -v words.txt
+tail -n1 NoNewline.txt
+tail -n 2 empty.txt
+tail -z -n1 z.nul | od -c | head -2
+tail -n 99 words.txt | tr '\n' '|'
+tail -5 words.txt

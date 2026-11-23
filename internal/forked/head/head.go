@@ -26,7 +26,7 @@ import (
 	"strings"
 )
 
-func run(stdin io.Reader, stdout, stderr io.Writer, header int, printBytes bool, bytes, count int, files ...string) error {
+func run(stdin io.Reader, stdout, stderr io.Writer, header int, printBytes, zero bool, bytes, count int, files ...string) error {
 	var buffer []byte
 	if printBytes && bytes > 0 {
 		// Only the positive byte count reads in blocks; -c -N needs the end.
@@ -94,25 +94,42 @@ func run(stdin io.Reader, stdout, stderr io.Writer, header int, printBytes bool,
 					break
 				}
 			}
-		} else if count < 0 {
-			// -n -N: everything but the last N lines, so the ring holds N.
-			want := -count
-			ring := make([]string, 0, want)
-			scanner := bufio.NewScanner(r)
-			for scanner.Scan() {
-				if len(ring) == want {
-					fmt.Fprintln(stdout, ring[0])
-					ring = ring[1:]
-				}
-				ring = append(ring, scanner.Text())
-			}
 		} else {
-			var c int
-			scanner := bufio.NewScanner(r)
-			for scanner.Scan() {
-				fmt.Fprintln(stdout, scanner.Text())
-				c++
-				if c == count {
+			// Records go out exactly as they were read: a last line without a
+			// newline stays without one and a NUL record keeps its NUL. The old
+			// scanner printed every record with Fprintln, so it appended a
+			// newline that was not in the file (measured 24.11.2026, acmesh-fqj).
+			delim := byte('\n')
+			if zero {
+				delim = 0
+			}
+			br := bufio.NewReaderSize(r, 64*1024)
+			next := func() (string, error) { return br.ReadString(delim) }
+			if count < 0 {
+				// -n -N: everything but the last N records, so the ring holds N.
+				want := -count
+				ring := make([]string, 0, want)
+				for {
+					rec, err := next()
+					if rec != "" {
+						if len(ring) == want {
+							io.WriteString(stdout, ring[0])
+							ring = ring[1:]
+						}
+						ring = append(ring, rec)
+					}
+					if err != nil {
+						break
+					}
+				}
+				return nil
+			}
+			for c := 0; c < count; c++ {
+				rec, err := next()
+				if rec != "" {
+					io.WriteString(stdout, rec)
+				}
+				if err != nil {
 					break
 				}
 			}
@@ -173,13 +190,13 @@ func parseCount(s string) (int, error) {
 }
 
 func usage(stderr io.Writer) {
-	fmt.Fprintln(stderr, "usage: head [-n NUM] [-c NUM] [-q] [-v] [FILE...]")
+	fmt.Fprintln(stderr, "usage: head [-n NUM] [-c NUM] [-z] [-q] [-v] [FILE...]")
 }
 
 // Run implements head for the akmesh dispatcher.
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	var bytes, count int
-	byBytes, byLines := false, false
+	byBytes, byLines, zero := false, false, false
 	header := -1 // -1 unset, 0 from -q, 1 from -v
 	var files []string
 
@@ -205,6 +222,8 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			header = 0
 		case a == "-v" || a == "--verbose":
 			header = 1
+		case a == "-z" || a == "--zero-terminated":
+			zero = true
 		case a == "-n" || a == "--lines":
 			if i+1 >= len(args) {
 				usage(stderr)
@@ -276,7 +295,7 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if !byBytes && !byLines {
 		count = 10
 	}
-	if err := run(stdin, stdout, stderr, header, byBytes, bytes, count, files...); err != nil {
+	if err := run(stdin, stdout, stderr, header, byBytes, zero, bytes, count, files...); err != nil {
 		return 1
 	}
 	return 0

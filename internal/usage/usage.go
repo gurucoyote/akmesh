@@ -186,9 +186,11 @@ var Texts = map[string]Entry{
 			"  --exclude=GLOB          skip files whose name matches GLOB",
 	},
 	"head": {
-		"[-n N] [-c N] [-q] [-v] [FILE...]",
-		"  -n N, --lines=N   print the first N lines (default 10)\n" +
-			"  -c N, --bytes=N   print the first N bytes\n" +
+		"[-n N] [-c N] [-z] [-q] [-v] [FILE...]",
+		"  -n N, --lines=N   print the first N lines (default 10; -n -N leaves\n" +
+			"                    the last N lines out)\n" +
+			"  -c N, --bytes=N   print the first N bytes (-c -N leaves the last N out)\n" +
+			"  -z, --zero-terminated  records end at NUL (pair to find -print0)\n" +
 			"  -q, --quiet       never print a file name header\n" +
 			"  -v, --verbose     always print a file name header",
 	},

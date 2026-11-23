@@ -264,6 +264,22 @@ printf 'a\n' > dgu1.txt && printf 'b\n' > dgu2.txt
 check diff-u-header-stamp "$(run diff -u dgu1.txt dgu2.txt | tr -d '\r' | sed -n 1p | grep -c 'dgu1.txt	[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\.[0-9]\{9\} [+-][0-9]\{4\}')" "1"
 # sed -z (acmesh-d9e): NUL-getrennte Saetze rein und raus.
 printf 'a.txt\000b c.txt\000d.txt\000' > z.nul
+# head und tail, Grenzfaelle (acmesh-fqj).
+printf 'a\nb\nc\nd\ne\n' > h1.txt
+printf 'x\ny' > h2.txt
+printf 'a.txt\000b c.txt\000d.txt\000' > h3.nul
+check head-last-nonl "$(run head -n 2 h2.txt | od -c | head -1)" "0000000   x  \\n   y"
+check head-minus-one "$(run head -n -1 h1.txt | tr -d '\r' | tr '\n' '|')" "a|b|c|d|"
+check head-minus-bytes "$(run head -c -3 h1.txt | tr -d '\r' | tr '\n' '|')" "a|b|c|d"
+check head-zero "$(run head -n0 h1.txt | wc -c | tr -d ' ')" "0"
+check head-old-form "$(run head -2 h1.txt | tr -d '\r' | tr '\n' '|')" "a|b|"
+check head-zero-term "$(run head -z -n1 h3.nul | tr '\0' '|')" "a.txt|"
+check head-header "$(run head -q -n1 h1.txt h2.txt | tr -d '\r' | tr '\n' '|')" "a|x|"
+check head-header-name "$(run head -n1 h1.txt h2.txt | head -1 | tr -d '\r')" "==> h1.txt <=="
+check tail-plus-two "$(run tail -n +2 h1.txt | tr -d '\r' | tr '\n' '|')" "b|c|d|e|"
+check tail-last-nonl "$(run tail -n 1 h2.txt | od -c | head -1)" "0000000   y"
+check tail-minus-bytes "$(run tail -c +3 h1.txt | tr -d '\r' | head -c 2)" "b"
+check tail-more-than-lines "$(run tail -n 99 h1.txt | tr -d '\r' | tr '\n' '|')" "a|b|c|d|e|"
 # awk gegen mawk 1.3.4 (acmesh-722).
 printf 'b:2:z\nA:1:y\na:3:x\nc:10:w\n' > c1.txt
 check awk-print "$(run awk '{print $1}' c1.txt | tr -d '\r' | tr '\n' '|')" "b:2:z|A:1:y|a:3:x|c:10:w|"

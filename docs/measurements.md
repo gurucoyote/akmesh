@@ -5674,3 +5674,40 @@ die awk-Pruefungen standen vor der Zeile, die c1.txt anlegt (leere Ausgabe statt
 Fehlerbild), und unter Windows schreibt goawk CRLF, weshalb jede awk-Pruefung
 jetzt vor dem Vergleich `tr -d '\r'` nutzt - so wie die uebrigen Pruefungen auch.
 Batterie 358 Linux / 328 Windows, beide 0 Fehler.
+
+## head und tail, Grenzfaelle gegen GNU (24.11.2026, acmesh-fqj)
+
+Erst ein eigener Fehler: die erste Aufrufdatei mischte head und tail. Der Rahmen
+scripts/gnu-probe.sh legt nur EINEN Namen in den PATH, also liefen die
+tail-Aufrufe gegen das tail des Hosts (BusyBox 1.37.0, an seiner Meldung
+erkannt). Getrennt in scripts/probes/head.probe (20 Aufrufe) und tail.probe
+(17 Aufrufe).
+
+head: 18 von 20 gleich, zwei Fehler, beide gebaut:
+    -z           fehlte ganz; GNU liest damit NUL-getrennte Saetze
+                 (head -z -n1 z.nul gibt "a.txt\0").
+    Zeilenende   unser head druckte jeden Satz mit einem angehaengten Umbruch.
+                 Bei einer Datei, die ohne Umbruch endet, kam so ein Zeichen
+                 mehr heraus als bei GNU (gemessen an z.nul mit od -c: GNU endet
+                 nach dem letzten \0, wir hatten ein \n dazu). Jetzt gehen die
+                 Saetze roh hinaus, so wie sie gelesen wurden.
+Jetzt 20 von 20 gleich.
+
+tail: 16 von 17 gleich, die einzige Abweichung ist -z. Dazu faellt bei der
+Meldung auf, dass u-root sie ueber log.Fatalf ausgibt: "2026/11/24 00:10:56
+tail: invalid option -- 'z'". Ein Datum vor einer Fehlermeldung kennt kein
+GNU-Werkzeug. Beides als Ticket: tail -z mit der Frage Fork oder Patch (P2) und
+der Zeitstempel als eigene Sache (P3), weil er in zwoelf u-root-Befehlen der
+Liste steckt (cat, more, tail, tee, mv, rm, ln, mktemp, realpath, cpio, gzip,
+readelf).
+
+Was sonst gleich war: -n in allen Schreibweisen (-2, -n2, -n 2, --lines=2,
+-n0, -n -1), +N bei tail, -c in Bytes und mit negativem Wert, -q und -v,
+Koepfe bei zwei Dateien, leere Datei, letzte Zeile ohne Umbruch, stdin,
+mehr Zeilen als die Datei hat, --help.
+
+Batterie: elf neue Pruefungen (head 8, tail 3).
+
+Batterie 370 Linux / 340 Windows, beide 0 Fehler, help-audit gruen.
+Groessen: 19534051 Bytes Linux dynamisch, 18176000 Bytes Windows, beide
+gestrippt (head hat nichts gekostet, der Umbau ist gleich gross).

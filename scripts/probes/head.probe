@@ -1,0 +1,21 @@
+# head, Grenzfaelle gegen GNU coreutils 9.7
+head -1 words.txt
+head -2 words.txt
+head -n2 words.txt
+head -n 2 words.txt
+head --lines=2 words.txt
+head -n0 words.txt
+head -n -1 words.txt
+head -c 3 words.txt
+head -c -3 words.txt
+head -q words.txt colon.txt
+head words.txt colon.txt
+head -v words.txt
+head -n1 NoNewline.txt
+head -c1 NoNewline.txt
+head -n 2 empty.txt
+head -z -n1 z.nul | od -c | head -2
+head -n 2 z.nul | od -c | head -2
+head -n 99 words.txt | tr '\n' '|'
+head -5 words.txt
+head --help >/dev/null; echo "rc=$?"

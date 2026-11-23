@@ -38,10 +38,10 @@ func TestLabelsNameTheirOwnFile(t *testing.T) {
 	if len(lines) < 2 {
 		t.Fatalf("no head in %q", string(data))
 	}
-	if lines[0] != "--- "+a {
+	if !strings.HasPrefix(lines[0], "--- "+a+"\t") {
 		t.Errorf("first label: want %q, got %q", "--- "+a, lines[0])
 	}
-	if lines[1] != "+++ "+b {
+	if !strings.HasPrefix(lines[1], "+++ "+b+"\t") {
 		t.Errorf("second label: want %q, got %q", "+++ "+b, lines[1])
 	}
 }

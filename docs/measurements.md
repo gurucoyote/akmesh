@@ -5358,3 +5358,25 @@ Mounts. Verglichen wurden Kopfzeilen und das Spaltenraster an einzelnen Mounts
 
 Batterie: fuenf Pruefungen (df-h-size-header, df-blocks-header, df-posix-header,
 df-posix-capacity, df-fields-in-columns).
+
+## diff -u: Zeitstempel in der Kopfzeile gegen GNU diffutils (23.11.2026, acmesh-5ug)
+
+GNU schreibt hinter jeden Namen in der Kopfzeile einen Tabulator und die mtime:
+
+    --- d1.txt<TAB>2026-11-23 19:44:46.581456399 +0000
+    +++ d2.txt<TAB>2026-11-23 19:44:46.785086680 +0000
+
+Nachgemessen bei uns (gleiche Dateien, lokale Zone):
+
+    --- d1.txt<TAB>2026-11-23 20:44:46.581456399 +0100
+    +++ d2.txt<TAB>2026-11-23 20:44:46.785086680 +0100
+
+Form, Tabulator und die neun Nachkommastellen sind gleich; nur die Zone
+unterscheidet sich, weil der Container in UTC laeuft. Eine Seite, die nur durch
+-N entsteht, bekommt wie bei GNU die Epoche (1970-01-01 00:00:00.000000000
++0000). Der Patch selbst bleibt unveraendert; patch -p0 findet die Datei jetzt
+auch ohne -i.
+
+Batterie: zwei Pruefungen (diff-u-header-stamp, diff-u-plus-line).
+
+Gesamtstand nach dieser Runde: 308 Pruefungen Linux, 283 Windows, 0 Fehler.

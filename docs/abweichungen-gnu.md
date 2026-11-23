@@ -151,6 +151,8 @@ findet sie nicht.
   dem groessten Wert aller Zaehler einschliesslich der Summenzeile.
 - tar schreibt "." wo GNU "./" schreibt.
 - diff -u ohne Zeitstempel in den Kopfzeilen; der Patch selbst ist gleich.
+  Behoben am 23.11.2026 (acmesh-5ug): Tabulator und mtime wie GNU, fehlende
+  Seite bekommt die Epoche.
 - ls -l zeigt die Zeit in der lokalen Zone des Prozesses, im Container also UTC.
 
 ## D. Zusaetzlich in akmesh, kein GNU-Gegenstueck

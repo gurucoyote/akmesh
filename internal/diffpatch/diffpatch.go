@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
 )
@@ -142,6 +143,16 @@ func runDiff(args []string, stdin *os.File, stdout, stderr *os.File) int {
 
 // diffFiles compares one pair and returns the GNU exit status: 0 same, 1
 // different, 2 trouble.
+// stamp is the timestamp column of a unified diff header. A file that does not
+// exist is the epoch, which is what GNU prints for a side that only -N invented.
+func stamp(name string) string {
+	when := time.Unix(0, 0).UTC()
+	if info, err := os.Stat(name); err == nil {
+		when = info.ModTime()
+	}
+	return when.Format("2006-01-02 15:04:05.000000000 -0700")
+}
+
 func diffFiles(nameA, nameB, labelA, labelB string, opts diffOptions, stdout, stderr *os.File) int {
 	a, err := readLinesNoNL(nameA)
 	if err != nil && !(opts.newFile && os.IsNotExist(err)) {
@@ -178,7 +189,10 @@ func diffFiles(nameA, nameB, labelA, labelB string, opts diffOptions, stdout, st
 		}
 		fmt.Fprintf(stdout, "%s %s %s\n", flags, nameA, nameB)
 	}
-	fmt.Fprintf(stdout, "--- %s\n+++ %s\n", labelA, labelB)
+	// GNU puts the file's timestamp behind the name, separated by a tab, so
+	// patch -p0 can find the file without being told its name (measured
+	// 23.11.2026: "--- d1.txt\t2026-11-23 19:44:46.581456399 +0000").
+	fmt.Fprintf(stdout, "--- %s\t%s\n+++ %s\t%s\n", labelA, stamp(nameA), labelB, stamp(nameB))
 	for _, h := range hs {
 		fmt.Fprintf(stdout, "@@ -%d,%d +%d,%d @@\n", h.aStart, h.aCount, h.bStart, h.bCount)
 		for _, line := range h.lines {

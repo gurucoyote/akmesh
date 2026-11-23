@@ -258,6 +258,11 @@ check find-broken-expr "$(cd fdir && run find . -name 2>/dev/null; printf '%s' "
 check find-unknown-predicate "$(cd fdir && run find . -bogus x 2>/dev/null; printf '%s' "$?")" "2"
 # df-Kopfzeile (acmesh-jag): GNU nennt die Spalte bei -h "Size", sonst nach der
 # Einheit, und "Avail" nur bei -h; die Zahlen stehen rechtsbuendig.
+# diff -u setzt den Zeitstempel hinter den Namen (acmesh-5ug), sonst findet
+# patch -p0 die Datei nur mit -i.
+printf 'a\n' > dgu1.txt && printf 'b\n' > dgu2.txt
+check diff-u-header-stamp "$(run diff -u dgu1.txt dgu2.txt | tr -d '\r' | sed -n 1p | grep -c 'dgu1.txt	[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\.[0-9]\{9\} [+-][0-9]\{4\}')" "1"
+check diff-u-plus-line "$(run diff -u dgu1.txt dgu2.txt | tr -d '\r' | sed -n 2p | grep -c '^+++ dgu2.txt	')" "1"
 check df-h-size-header "$(run df -h | tr -d '\r' | head -1 | tr -s ' ' | cut -d' ' -f2)" "Size"
 check df-blocks-header "$(run df | tr -d '\r' | head -1 | tr -s ' ' | cut -d' ' -f2)" "1K-blocks"
 check df-posix-header "$(run df -P | tr -d '\r' | head -1 | tr -s ' ' | cut -d' ' -f2)" "1024-blocks"

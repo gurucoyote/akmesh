@@ -1,0 +1,18 @@
+# uniq gegen GNU (coreutils 9.7)
+uniq words.txt
+uniq -c words.txt
+uniq -d words.txt
+uniq -u words.txt
+uniq -i mixed.txt
+uniq -c -i mixed.txt
+uniq -c blank.txt
+uniq -f 1 colon.txt
+uniq -s 2 words.txt
+uniq -w 1 words.txt
+uniq -c -d words.txt
+uniq -z words.txt
+uniq empty.txt
+uniq NoNewline.txt
+uniq -i umlaut.txt
+uniq -c words.txt out.txt && cat out.txt
+uniq -c blank.txt out.txt && cat out.txt

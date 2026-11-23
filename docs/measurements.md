@@ -5503,3 +5503,68 @@ Lauf ohne gelesene Aufrufe endet mit 2 statt mit "0 gleich".
 
 Zuschnitt und Regeln stehen in docs/design/messreihe-textwerkzeuge.md, die
 Einzel-Tickets in acmesh-efg (Dach) und sechs Geschwister.
+
+## sort und uniq gegen GNU (23.11.2026, acmesh-6bq)
+
+Rahmen: scripts/gnu-probe.sh, Fixture scripts/gnufix.sh.
+
+sort: 25 Aufrufe, alle gleich GNU coreutils 9.7. Abgedeckt: Grundsortierung,
+-r, -k2, -k2,2 mit -t:, -t: -k3, -u, -n, -nr, -n -k1, -f, -d, -s, -b auf
+Leerzeilen, leere Datei, letzte Zeile ohne Umbruch, Umlaute, -c (Exit bei
+unsortierter und sortierter Datei), -V, -h, -k2n, -u -k1,1, Eingabe von stdin,
+-z, --version-sort. sort war schon unser eigenes Paket; die Messung hat nichts
+zu reparieren gefunden.
+
+uniq: 8 von 16 Aufrufen wichen ab, das war u-roots Fassung. Vier Fehler, alle
+gebaut (jetzt internal/forked/uniq, mit u-roots Copyright):
+
+    -c        GNU druckt die Zahl in sieben Spalten und dann ein Leerzeichen
+              ("      1 b"), u-root druckte "1<TAB>b".
+    -f N      fehlte ganz: die ersten N Blaetter und Felder ignorieren.
+    -s N      fehlte ganz: die ersten N Zeichen ignorieren, nach -f.
+    -w N      fehlte ganz: hoechstens N Zeichen vergleichen.
+    -z        fehlte ganz: NUL-getrennte Saetze, das Gegenstueck zu find -print0.
+    --lang    die langen Schreibweisen (--count, --repeated, --unique,
+              --ignore-case, --skip-fields, --skip-chars, --check-chars,
+              --zero-terminated) und zusammengesetzte Flags wie -ci.
+
+Dazu ein Fund, der beim Messen selbst passierte: GNU uniq nimmt INPUT [OUTPUT],
+kein Verzeichnis von Eingaben. "uniq -c words.txt colon.txt" schreibt das
+Ergebnis nach colon.txt und gibt nichts aus - mein erster Entwurf las mehrere
+Dateien als einen Strom, was das Fixture zerstoerte. Jetzt wie GNU, mit
+Exit 1 bei einem dritten Operanden.
+
+Belege: sort 25/25 gleich, uniq 17/17 gleich, drei Go-Tests
+(TestGNUBehaviour mit 12 Faellen, TestZeroTerminated, TestBadOptionIsStatusTwo)
+und acht Batteriepruefungen. Batterie 329 Linux / 306 Windows, help-audit gruen.
+
+Zwei Probe-Aufrufe mussten umgeschrieben werden, weil sie das Fixture
+beschrieben (uniq mit zwei Operanden). Der Ersatz laeuft ueber eine
+Ausgabedatei und "cat", damit beide Seiten dasselbe messen.
+
+## ugrep als Vorbild für Archive: Semantik gemessen (23.11.2026, acmesh-5nn)
+
+Anlass: Plan in docs/design/rg-archive.md. ugrep 7.8.5 ist auf diesem Host aus
+dem Alpine-Repo installiert (`apk add ugrep`), Auskunft von `ugrep --version`:
+`+avx2; -P:pcre2jit; -z:zlib,bzip2,lzma,lz4,zstd,brotli,bzip3,7z,tar/pax/cpio/zip`.
+Fixtures mit 7z gebaut (zip), tar czf für .tar.gz, alle in einem Quellordner
+`src/` mit a.txt, b.zip{inner.txt}, nested.zip{deep.zip{deep.txt}},
+c.tar.gz{doc.txt}, doc.txt.
+
+- `ugrep -z -n 'hallo' src` (Default --zmax=1): Treffer in a.txt, b.zip{inner.txt},
+  c.tar.gz{doc.txt}; für das Archiv im Archiv kommt
+  `Binary file src/nested.zip{deep.zip} matches` - also NICHT still
+  übersprungen, sondern als binär gesucht und gemeldet.
+- `ugrep -z --zmax=2 -n 'hallo' src`: zusätzlich
+  `src/nested.zip{deep.zip:deep.txt}:1:hallo tief`. Die Ebenen trennt ein
+  DOPPELPUNKT, keine zweite Klammer.
+- Drei Ebenen, Archiv als Argument: `ugrep -z --zmax=3 -n 'hallo' lvl1.zip`
+  -> `{lvl2.zip:lvl3.zip:three.txt}:1:hallo drei`. Das äußerste Archiv steht
+  nicht in den Klammern.
+- zip{tar{}}: `ugrep -z --zmax=2 -n 'hallo' mix.zip` ->
+  `{inner.tar:intar.txt}:1:hallo im tar`.
+- `-l` und `-c` nennen dieselben Etiketten (`src/b.zip{inner.txt}`), auch die
+  binäre Meldung wird als Datei gezählt.
+- Ohne Treffer: Exit 1. Ohne `-z`: keine Treffer, Exit 1, kein Hinweis.
+- Kaputtes zip (`PK\x03\x04murks`): `ugrep: cannot decompress kaputt.zip: an
+  error was detected in the zip compressed data`, Exit 1.

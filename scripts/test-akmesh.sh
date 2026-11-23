@@ -264,6 +264,17 @@ printf 'a\n' > dgu1.txt && printf 'b\n' > dgu2.txt
 check diff-u-header-stamp "$(run diff -u dgu1.txt dgu2.txt | tr -d '\r' | sed -n 1p | grep -c 'dgu1.txt	[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\.[0-9]\{9\} [+-][0-9]\{4\}')" "1"
 # sed -z (acmesh-d9e): NUL-getrennte Saetze rein und raus.
 printf 'a.txt\000b c.txt\000d.txt\000' > z.nul
+# uniq gegen GNU (acmesh-6bq): Zaehlbreite, -d, -u, -f, -s, -w, -z.
+printf 'a\na\nb\n' > u1.txt
+printf 'x one\ny one\nz two\n' > u2.txt
+check uniq-count-width "$(run uniq -c u1.txt | tr -d '\r' | sed 's/$/|/' | tr -d '\n')" "      2 a|      1 b|"
+check uniq-repeated "$(run uniq -d u1.txt | tr -d '\r' | tr '\n' '|')" "a|"
+check uniq-unique "$(run uniq -u u1.txt | tr -d '\r' | tr '\n' '|')" "b|"
+check uniq-skip-fields "$(run uniq -f 1 u2.txt | tr -d '\r' | tr '\n' '|')" "x one|z two|"
+check uniq-skip-chars "$(run uniq -s 2 u1.txt | tr -d '\r' | tr '\n' '|')" "a|"
+check uniq-check-chars "$(printf 'abcdef\nabcxyz\n' | run uniq -w 3 | tr -d '\r' | tr '\n' '|')" "abcdef|"
+check uniq-zero "$(printf 'a\000a\000b\000' | run uniq -z | tr '\0' '|')" "a|b|"
+check uniq-bad-option "$(run uniq -Q < u1.txt >/dev/null 2>&1; printf '%s' "$?")" "2"
 # grep und Binaerdateien (acmesh-bde): Meldung auf stderr, kein Zeilenausdruck.
 printf 'X\000ABC\n' > gbin.bin
 check grep-binary-message "$(run grep ABC gbin.bin 2>&1 >/dev/null | tr -d '\r' | sed 's/.*: //')" "binary file matches"

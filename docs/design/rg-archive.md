@@ -1,7 +1,9 @@
 # rg: Archive durchsuchen wie ugrep
 
 Status: Entwurf, beschlossen als Vorhaben (Ticket acmesh-5nn, Stufe 1). Kein
-Code vorhanden.
+Code vorhanden. Die Semantik ist am 23.11.2026 gegen ein installiertes ugrep
+7.8.5 (alpine, mit zlib/bzip2/lzma/lz4/zstd/brotli/bzip3/7z/tar/cpio/zip)
+gemessen, nicht nur aus der Manpage gelesen; Messungen in docs/measurements.md.
 
 ## Anlass
 
@@ -62,10 +64,24 @@ den Archivnamen (`pre.applies(name)` bekommt den Mitgliedsnamen).
 ## Semantik, die wir übernehmen
 
 - Default `--zmax=1`: nur unkomprimierte Dateien in Archiven. Komprimierte
-  Dateien darin gelten als binär und werden übersprungen, wie bei ugrep.
+  Dateien darin gelten als binär (Details und die gemessene Meldung im Punkt
+  darunter).
 - `--zmax=2` zusätzlich komprimierte Dateien und Archive im Archiv.
 - Etikett in geschweiften Klammern, Pfad im Archiv mit `/` auch unter Windows
-  (`filepath.ToSlash`, wie beim tar-Schreiber schon Regel).
+  (`filepath.ToSlash`, wie beim tar-Schreiber schon Regel). GEMESSEN: die Ebenen
+  werden mit DOPPELPUNKT getrennt, nicht mit weiteren Klammern -
+  `nested.zip{deep.zip:deep.txt}`, drei Ebenen `lvl1.zip{...}` -> 
+  `{lvl2.zip:lvl3.zip:three.txt}`. Ist das Archiv selbst das Argument auf der
+  Kommandozeile, steht es NICHT in den Klammern; die Klammer beginnt beim ersten
+  Mitglied.
+- GEMESSEN, entgegen der Manpage-Formulierung: bei `--zmax=1` wird ein
+  komprimiertes Mitglied nicht still uebersprungen, sondern als binaer gesucht
+  und mit `Binary file src/nested.zip{deep.zip} matches` gemeldet (auch -l und
+  -c zaehlen es). Ein Treffer auf gepackten Bytes ist ein Zufallstreffer.
+- GEMESSEN: Fehler im Archiv melden `ugrep: cannot decompress ...` und enden mit
+  Exit 1. Wir nehmen Exit 2, weil das der Vertrag von ripgrep ist (0 Treffer,
+  1 keiner, 2 Fehler); die Abweichung gehoert in die Doku, nicht in die
+  Ausgabe.
 - Binärbehandlung wie bei gefundenen Dateien: `BinaryQuit`, bei auf der
   Kommandozeile genannter Datei `BinaryConvert`.
 
@@ -101,10 +117,11 @@ sinnvoll; cpio wäre mit `archive/tar`-artigem Eigenparser machbar, 7z nicht.
   Grenzen greifen (Mitglied zu groß, zu viele Mitglieder).
 - Zusammenspiel: `vertrag.pdf` in `akte.zip` mit `--pre any2md` gefunden, ohne
   `--pre` nicht - dieselbe Beweisführung wie bei acmesh-idv.
-- Golden gegen das Original: ugrep ist auf diesem Host nicht installiert
-  (nur unzip und 7z). Der Vergleichstest überspringt sich mit Meldung, wenn
-  `ugrep` fehlt, und läuft in einem podman-Image, sobald eines mit ugrep
-  gepinnt ist - nie still grün.
+- Golden gegen das Original: ugrep 7.8.5 ist seit 23.11.2026 auf diesem Host
+  installiert (`/usr/bin/ugrep`, aus dem Alpine-Repo). Der Vergleichstest
+  vergleicht Etiketten und Exitcodes gegen diese Version und überspringt sich
+  mit Meldung, wenn `ugrep` fehlt (andere Rechner) - nie still grün.
+  Vorlage sind die gemessenen Fälle aus docs/measurements.md.
 - Batterie (`scripts/test-akmesh.sh`): ein Fall mit `tar`-Fixture (akmesh hat
   tar an Bord), zip nur im Go-Test, weil wir keinen zip-Schreiber haben.
 
@@ -123,7 +140,9 @@ sinnvoll; cpio wäre mit `archive/tar`-artigem Eigenparser machbar, 7z nicht.
 3. `--zmax` Default 1 wie ugrep oder 2, weil ein Archiv im Archiv heute der
    häufigste Fall ist? Vorschlag: ugrep folgen und den Default in der Hilfe
    nennen.
-4. Ein eigener Schalter `--archive-types` analog zu `--filter`? Nicht jetzt.
+4. Exitcode bei kaputtem Archiv: ugrep endet gemessen mit 1, wir wollen 2
+   (rg-Vertrag). Das ist eine bewusste Abweichung und steht in der Hilfe.
+5. Ein eigener Schalter `--archive-types` analog zu `--filter`? Nicht jetzt.
 
 ## Reihenfolge für den Fall, dass gebaut wird
 

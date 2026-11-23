@@ -477,6 +477,18 @@ var Texts = map[string]Entry{
 			"  -s, --squeeze-repeats      squeeze repeated characters\n" +
 			"  Ranges like a-z, octal escapes and [:class:] are understood.",
 	},
+	"uniq": {
+		"[-c|-d|-u] [-i] [-f N] [-s N] [-w N] [-z] [FILE...]",
+		"  -c, --count              prefix the count in seven columns\n" +
+			"  -d, --repeated           print only lines that repeat\n" +
+			"  -u, --unique             print only lines that do not repeat\n" +
+			"  -i, --ignore-case        compare case insensitively\n" +
+			"  -f N, --skip-fields=N    ignore the first N blanks and fields\n" +
+			"  -s N, --skip-chars=N     ignore the first N characters after -f\n" +
+			"  -w N, --check-chars=N    compare at most N characters\n" +
+			"  -z, --zero-terminated    records end at NUL (pair to find -print0)\n" +
+			"  Several FILEs are read as one stream.",
+	},
 	"touch": {
 		"[-a] [-m] [-c] [-t STAMP] [-d STRING] [-r FILE] FILE...",
 		"  -a                 change only the access time\n" +

@@ -263,3 +263,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 23.11.2026: sed -z (NUL-getrennte Saetze) im Wrapper gebaut, gegen GNU gemessen; Batterie 314 Linux / 291 Windows gruen.
 23.11.2026: grep erkennt Binaerdateien wie GNU (Meldung, -a, -I, --binary-files, dazu -L); Batterie 321 Linux / 298 Windows gruen.
 23.11.2026: Image neu gebaut (statisch 19456124 Bytes, 134 Namen, trivy 0), im Container mit fuenf Stichproben belegt; od -c und tr \0 fehlen (Tickets); Messreihe Textwerkzeuge vorbereitet: gnu-probe.sh, gnufix.sh, Plan, sechs Tickets.
+23.11.2026: sort 25/25 gleich GNU; uniq als Fork neu gebaut (zaehlbreite, -f/-s/-w/-z, INPUT [OUTPUT]), 17/17 gleich; Batterie 329 Linux / 306 Windows.

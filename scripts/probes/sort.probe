@@ -1,5 +1,26 @@
-# sort, erste Messreihe (siehe scripts/gnu-probe.sh)
+# sort gegen GNU (coreutils 9.7), siehe docs/design/messreihe-textwerkzeuge.md
 sort colon.txt
 sort -r colon.txt
 sort -k2 -t: colon.txt
+sort -k2,2 -t: colon.txt
+sort -t: -k3 colon.txt
 sort -u words.txt
+sort -n num.txt
+sort -nr num.txt
+sort -n -k1 num.txt
+sort -f mixed.txt
+sort -d mixed.txt
+sort -s -t: -k1,1 colon.txt
+sort -b blank.txt
+sort empty.txt
+sort NoNewline.txt
+sort umlaut.txt
+sort -c words.txt
+sort -c num.txt
+sort -V num.txt
+sort -h num.txt
+sort -t: -k2n colon.txt
+sort -u -k1,1 -t: colon.txt
+sort < words.txt
+sort -z words.txt
+sort --version-sort num.txt

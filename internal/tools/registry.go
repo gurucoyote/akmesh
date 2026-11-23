@@ -96,6 +96,7 @@ var Commands = map[string]Func{
 	"tar":       runTar,
 	"touch":     runTouch,
 	"tr":        runTr,
+	"uniq":      runUniq,
 	"uname":     runUname,
 	"verify":    runVerify,
 	"id":        runID,

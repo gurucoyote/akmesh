@@ -136,6 +136,7 @@ var groups = map[string]string{
 	"id":        System,
 	"kill":      System,
 	"killall":   System,
+	"init":      Services,
 	"login":     Services,
 	"losetup":   System,
 	"man":       System,

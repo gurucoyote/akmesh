@@ -111,13 +111,16 @@ podman-Netz mit dnsmasq): Lease 10.89.5.127/24 auf eth0 und /etc/resolv.conf mit
 - Ende: `curl https://example.com` im Image Exit 0, `ip addr` zeigt die Adresse
   von dhclient.
 
-## Stufe 4: init als PID 1 (acmesh-b97)
+## Stufe 4: init als PID 1 (acmesh-b97) - erledigt
 
 Nur fuer Docker noetig: in WSL ist PID 1 der Windows-Init, dort startet
 wsl.exe die Shell direkt.
 
-- Der u-root-init hat weder SIGCHLD-Handling noch wait4 (Quelltextpruefung
-  22.11.). Forken oder bewusst nicht PID 1 werden.
+- Erledigt am 23.11.2026: eigener init (internal/akinit), kein Fork. Inittab mit
+  sysinit/wait/once/respawn/shutdown, Reaping per SIGCHLD + Wait4, Signale an die
+  Prozessgruppe, 3 s Grace dann SIGKILL, respawn mit Backoff. Im Image gemessen:
+  keine Z-Zeile nach drei endenden Kindern, Stop in 167 ms und Exit 0 - ohne
+  init 10133 ms und Exit 137. Zahlen in docs/measurements.md.
 - Drei Dienste haengen an diesem Ticket, weil sie einen Wiederstarter brauchen:
   acmesh-bu1 (getty), acmesh-qgf (crond, eigener Befehl mit robfig/cron) und
   acmesh-g7n (syslogd, logger und logread).

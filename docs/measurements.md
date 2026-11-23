@@ -4352,3 +4352,42 @@ Kein Produktdefekt gefunden: alle Abweichungen sind Plattformgrenzen, die das
 Skript schon benennt. Fuer Windows sind es 109 statt 116 Befehle (dhclient, ip,
 losetup, mknod, mount, strace, umount fehlen), und login/blkid melden dort
 ehrlich "not supported".
+
+## init als PID 1 (23.11.2026, acmesh-b97)
+
+Eigener Befehl internal/akinit (kein u-root-Fork: dessen init startet eine Liste
+einmal, erntet nur beim eigenen Ende und ignoriert SIGTERM wie jeder PID 1).
+Inittab im BusyBox-Format `id:runlevels:action:command` mit den Aktionen
+sysinit, wait, once, respawn, shutdown; unbekannte Aktion oder leeres Kommando
+brechen mit Zeilennummer ab. Reaping per SIGCHLD + Wait4(-1, WNOHANG), Signale
+werden an die Prozessgruppe der Kinder weitergegeben, nach 3 s Grace SIGKILL,
+respawn mit wachsender Pause (100 ms bis 5 s), damit ein sterbender Dienst keine
+Fork-Bombe wird. Ohne /etc/inittab laeuft der uebergebene Befehl einmal und sein
+Status ist der Exit-Code.
+
+Beweis im Image (static build, 117 Namen, /etc/inittab per Bind-Mount):
+
+    podman run -d -v inittab:/etc/inittab:ro akmesh:latest /bin/init
+    /proc/1/comm                        -> init
+    ps -e                               -> 1 init, sh, ps, sh, sleep; keine Z-Zeile
+    Zombies (Z-Zeilen)                  -> 0          (drei once-Dienste endeten vorher)
+    respawn-Zaehler /tmp/runs           -> 5 Laeufe in 3 s bei sleep 0.3
+    podman logs                         -> init-start, "exited with 0" je Dienst, init-stop
+    podman stop -t 10 (unser init)      -> 167 ms, Container-Exit 0
+    podman stop -t 10 (busybox sleep    -> 10133 ms, Container-Exit 137
+      als PID 1, ohne init)
+
+Die letzte Zeile ist der Punkt des Tickets: ohne Init laeuft jeder Stop in die
+10-Sekunden-Frist und endet mit SIGKILL; mit init ist es ein sauberes Ende in
+unter einer Sekunde (Vorgabe war "unter einer Sekunde").
+
+Tests (7, alle gruen): Inittab-Parser samt Abweisungen, Exit-Code-Durchreichung,
+sysinit vor den Diensten, respawn startet neu, drei endende Kinder hinterlassen
+keine Z-Zeile (direkt aus /proc gezaehlt), Backoff wartet bei Dauersterben.
+
+Groessen: Linux dynamisch 17.5 MiB (18374883 Bytes), statisch 17.5 MiB
+(18313340 Bytes), Windows 16.4 MiB (17213440 Bytes), alle gestrippt. Windows
+meldet ehrlich "not supported on Windows (no PID 1; services belong to the SCM)".
+
+Batterie 211 Checks 0 Fehler, Hilfe-Audit Exit 0, init erscheint in der Gruppe
+Services.

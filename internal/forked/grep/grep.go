@@ -51,6 +51,7 @@ type params struct {
 	count           bool // -c
 	number          bool // -n
 	noFilename      bool // -h
+	extended        bool // -E: the pattern is an ERE already
 	pcreEngine      bool // -P: PCRE2 instead of RE2 (\K, lookbehind, a++)
 	wordMatch       bool // -w
 	onlyMatch       bool // -o
@@ -186,9 +187,10 @@ func parse(args []string) (*params, error) {
 				p.onlyMatch = true
 			case "--perl-regexp":
 				p.pcreEngine = true
-			case "--extended-regexp", "--basic-regexp":
-				// Go's regexp is extended already; accepted for the same reason
-				// as sed -E: command lines carry it.
+			case "--extended-regexp":
+				p.extended = true
+			case "--basic-regexp":
+				// the default; explicit -G is the same as nothing
 			default:
 				return nil, unknownOption{a}
 			}
@@ -228,6 +230,9 @@ func parse(args []string) (*params, error) {
 				case 'o':
 					p.onlyMatch = true
 				case 'E', 'e':
+					if rest[j] == 'E' {
+						p.extended = true
+					}
 					// -e takes the rest of the token or the next argument.
 					if j+1 < len(rest) {
 						p.patterns = append(p.patterns, rest[j+1:])
@@ -317,7 +322,17 @@ func (p *params) compile() (matcher, error) {
 		}
 		return reMatcher{re}, nil
 	}
-	expr := strings.Join(p.patterns, "|")
+	// Each pattern is its own BRE in GNU, so the rewrite happens per pattern;
+	// the alternation that joins them is ERE either way.
+	pats := p.patterns
+	if !p.extended && !p.pcreEngine {
+		// -E says ERE and -P is Perl, which is neither (acmesh-4gi).
+		pats = make([]string, len(p.patterns))
+		for i, pattern := range p.patterns {
+			pats[i] = toERE(pattern)
+		}
+	}
+	expr := strings.Join(pats, "|")
 	if p.wordMatch {
 		expr = `\b(?:` + expr + `)\b`
 	}

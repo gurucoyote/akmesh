@@ -549,6 +549,19 @@ PGNAME=${PGNAME%.exe}
 check pgrep-finds-own-name "ja" "$(run pgrep -x "$PGNAME" 2>/dev/null | tr -d '\r' | head -1 | grep -q '^[0-9][0-9]*$' && echo ja)"
 check pgrep-count "1" "$(run pgrep -c -x "$PGNAME" 2>/dev/null | tr -d '\r' | tr -dc '0-9' | grep -c .)"
 
+# grep ohne -E ist BRE wie bei GNU (acmesh-4gi)
+TDIR=$(mktemp -d 2>/dev/null || echo /tmp/akmesh-bre)
+mkdir -p "$TDIR"
+printf 'aab\naxb\n' > "$TDIR/b.txt"
+check grep-bre-literal-plus "ja" "$(run grep 'a+b' "$TDIR/b.txt" >/dev/null 2>&1 || echo ja)"
+check grep-bre-quantified "aab" "$(run grep 'a\+b' "$TDIR/b.txt" 2>/dev/null | head -n 1 | tr -d '\r')"
+check grep-bre-group "aab" "$(run grep 'a\(a\)b' "$TDIR/b.txt" 2>/dev/null | head -n 1 | tr -d '\r')"
+check grep-bre-alternation "2" "$(run grep -c 'a\|b' "$TDIR/b.txt" 2>/dev/null | tr -d '\r')"
+check grep-bre-interval "aab" "$(run grep 'a\{2\}' "$TDIR/b.txt" 2>/dev/null | head -n 1 | tr -d '\r')"
+checkcode grep-bre-unclosed-bracket 2 "$(run grep '[' "$TDIR/b.txt" >/dev/null 2>&1; echo $?)"
+check grep-ere-still-ere "aab" "$(run grep -E 'a+b' "$TDIR/b.txt" 2>/dev/null | head -n 1 | tr -d '\r')"
+rm -rf "$TDIR"
+
 # grep -P: PCRE2 hinter dem Schalter (acmesh-b87)
 TDIR=$(mktemp -d 2>/dev/null || echo /tmp/akmesh-pcre)
 mkdir -p "$TDIR"

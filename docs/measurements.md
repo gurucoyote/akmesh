@@ -5074,3 +5074,32 @@ Windows: 18095104 Bytes. Beide gestrippt. Der Zuwachs ist groesser als die
 gemessen ist der echte Binary-Zuwachs.
 
 Batterie: 250 Checks Linux, 209 Windows, sieben neue grep--P-Pruefungen.
+
+## grep: Standardmuster ist BRE wie bei GNU (23.11.2026, acmesh-4gi)
+
+Der Fund kam beim Pruefen von -P: unser grep uebersetzte jedes Muster als ERE,
+GNU liest ohne -E eine BRE. Gemessen vorher und nachher, gleiche Fixture:
+
+    Muster          vorher (akmesh)      GNU / jetzt
+    a+b             Treffer "aab"        nichts, Exit 1
+    a\+b            nichts               "aab"
+    a\(a\)b        nichts               "aab"
+    a\|b            nichts               beide Zeilen
+    a\{2\}         nichts               "aab"
+    (               Fehler, Exit 2       Literal, Exit 1
+    [               Fehler, Exit 2       Fehler, Exit 2
+
+Umgesetzt in internal/forked/grep/bre.go: eine Umschrift auf dem Mustertext,
+rund 80 Zeilen. Jedes Muster wird einzeln umgeschrieben, dann mit | verbunden -
+in GNU ist jedes -e sein eigenes BRE. -E und -P bleiben unangetastet, -F ohnehin.
+
+Regeln der Umschrift: \( \) \| \+ \? \{ \} werden zu ihren ERE-Zeichen,
+nackte ( ) | + ? { } werden maskiert, \< und \> werden zu \b (GNU-Wortgrenzen),
+ein fuehrender * wird maskiert, Zeichenklassen werden unveraendert kopiert.
+
+Gegen GNU im Referenz-Image: 12 Aufrufe, alle gleich (a+b, a\+b, a\(a\)b,
+a\|b, a\{2\}, (, [, \<axb\>, dazu -E, -F, -P und -c auf denselben Fixture).
+
+Batterie: sieben neue BRE-Pruefungen; Go-Tests decken die Umschrift-Tabelle und
+die gemessenen Faelle ab. Groesse: 19460323 Bytes dynamisch (vorher 19456227,
+also 4096 mehr fuer die Umschrift).

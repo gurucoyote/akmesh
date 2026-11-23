@@ -60,8 +60,16 @@ func TestExitStatus(t *testing.T) {
 	if _, _, code := runGrep(t, []string{"nope"}, "a\nb\n"); code != 1 {
 		t.Fatalf("no match exit %d, want 1", code)
 	}
-	if _, errOut, code := runGrep(t, []string{"("}, "a\n"); code != 2 || !strings.Contains(errOut, "grep:") {
+	// "( " alone is a literal in BRE and matches nothing (rc 1); an unclosed
+	// bracket is the broken pattern (rc 2), as GNU reports it.
+	if _, _, code := runGrep(t, []string{"("}, "a\n"); code != 1 {
+		t.Fatalf("literal ( exit %d, want 1", code)
+	}
+	if _, errOut, code := runGrep(t, []string{"["}, "a\n"); code != 2 || !strings.Contains(errOut, "grep:") {
 		t.Fatalf("bad pattern exit %d, stderr %q; want 2 with a message", code, errOut)
+	}
+	if _, errOut, code := runGrep(t, []string{`\(`}, "a\n"); code != 2 || !strings.Contains(errOut, "grep:") {
+		t.Fatalf("unmatched \\( exit %d, stderr %q; want 2", code, errOut)
 	}
 }
 
@@ -486,10 +494,11 @@ func TestPerlRegexp(t *testing.T) {
 			t.Errorf("-P %q (%s) = %d, %q, want %q", c.pattern, c.name, code, out, c.want)
 		}
 	}
-	// Without -P the same lookahead must be an error, exactly as RE2 behaves.
+	// Without -P the pattern is a BRE: "(?=x)" is the literal text, so GNU finds
+	// nothing and exits 1 (measured, docs/abweichungen-gnu.md).
 	_, errOut, code := runGrep(t, []string{`foo(?=bar)`}, "foobar\n")
-	if code != 2 || !strings.Contains(errOut, "invalid or unsupported") && !strings.Contains(errOut, "missing") && !strings.Contains(errOut, "error parsing") {
-		t.Errorf("lookahead without -P = %d, %q; want exit 2 with a pattern error", code, errOut)
+	if code != 1 || errOut != "" {
+		t.Errorf("lookahead without -P = %d, %q; want exit 1 without a message", code, errOut)
 	}
 }
 

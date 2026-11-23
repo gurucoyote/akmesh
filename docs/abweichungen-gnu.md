@@ -60,7 +60,9 @@ sechs neue Batteriepruefungen.
 (internal/pcre), inklusive \K, Lookbehind und possessiven Quantoren. Die uebrigen
 sieben Schalter dieses Abschnitts bleiben offen (acmesh-v6r).
 
-Neuer Fund beim Pruefen: das Standardmuster ist ERE, GNU liest BRE (acmesh-4gi).
+Neuer Fund beim Pruefen (erledigt am 23.11.2026, acmesh-4gi): das Standardmuster
+war ERE, GNU liest BRE. Jetzt umgeschrieben in internal/forked/grep/bre.go,
+12 Aufrufe gegen GNU gleich.
 
     grep -m1 a a.txt                  grep: unknown option "-m"
     grep -x alpha a.txt               grep: unknown option "-x"

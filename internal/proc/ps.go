@@ -1,6 +1,8 @@
 package proc
 
 import (
+	"akmesh/internal/shared"
+
 	"fmt"
 	"os"
 	"strconv"
@@ -77,6 +79,12 @@ var (
 	}}
 	auxCommand = psField{"cmd", "COMMAND", false, func(p procInfo) string {
 		return orDash(p.command())
+	}}
+	// cmdComm is CMD as the default layout prints it: the command name, not the
+	// whole command line. procps shows "sh" there and the full line only under
+	// -f, -o cmd or aux (acmesh-rmx).
+	cmdComm = psField{"cmd", "CMD", false, func(p procInfo) string {
+		return orDash(p.Comm)
 	}}
 )
 
@@ -201,6 +209,10 @@ type psRequest struct {
 	fields   []psField
 	pidOnly  []int
 	hasPID   bool
+	users    []string // -u: user names or numeric uids
+	ppids    []int    // --ppid: parents
+	hasPPID  bool
+	comms    []string // -C: command names, exact like procps
 	defaults bool
 }
 
@@ -227,7 +239,16 @@ func (r psRequest) columnsFor() []psField {
 		// UID PID PPID C STIME TTY TIME CMD, as ps -f and ps -ef.
 		return byName("uid", "pid", "ppid", "c", "stime", "tty", "time", "cmd")
 	}
-	return byName("pid", "tty", "time", "cmd")
+	// procps prints the command NAME in the default layout, and the full
+	// command line only in -f, -o cmd and aux.
+	return []psField{psFieldByNameOr("pid"), psFieldByNameOr("tty"), psFieldByNameOr("time"), cmdComm}
+}
+
+// psFieldByNameOr is psFieldByName for the fixed layouts, where a missing name
+// would be a programming error rather than user input.
+func psFieldByNameOr(name string) psField {
+	f, _ := psFieldByName(name)
+	return f
 }
 
 func psFieldByName(name string) (psField, bool) {
@@ -300,6 +321,50 @@ func parsePS(args []string) (psRequest, error) {
 			}
 			req.pidOnly = append(req.pidOnly, pids...)
 			req.hasPID, req.defaults = true, false
+		case a == "-u" || a == "-U" || a == "--user":
+			if i+1 >= len(args) {
+				return req, fmt.Errorf("%s needs a user name or uid", a)
+			}
+			i++
+			req.users = append(req.users, splitList(args[i])...)
+			req.defaults = false
+		case strings.HasPrefix(a, "--user="):
+			req.users = append(req.users, splitList(strings.TrimPrefix(a, "--user="))...)
+			req.defaults = false
+		case strings.HasPrefix(a, "-u") && len(a) > 2:
+			req.users = append(req.users, splitList(a[2:])...)
+			req.defaults = false
+		case strings.HasPrefix(a, "-U") && len(a) > 2:
+			req.users = append(req.users, splitList(a[2:])...)
+			req.defaults = false
+		case a == "--ppid":
+			if i+1 >= len(args) {
+				return req, fmt.Errorf("%s needs a pid", a)
+			}
+			i++
+			pids, err := parsePIDs(args[i])
+			if err != nil {
+				return req, err
+			}
+			req.ppids = append(req.ppids, pids...)
+			req.hasPPID, req.defaults = true, false
+		case strings.HasPrefix(a, "--ppid="):
+			pids, err := parsePIDs(strings.TrimPrefix(a, "--ppid="))
+			if err != nil {
+				return req, err
+			}
+			req.ppids = append(req.ppids, pids...)
+			req.hasPPID, req.defaults = true, false
+		case a == "-C":
+			if i+1 >= len(args) {
+				return req, fmt.Errorf("%s needs a command name", a)
+			}
+			i++
+			req.comms = append(req.comms, splitList(args[i])...)
+			req.defaults = false
+		case strings.HasPrefix(a, "-C") && len(a) > 2:
+			req.comms = append(req.comms, splitList(a[2:])...)
+			req.defaults = false
 		case a == "-x":
 			// BSD style without the aux columns; the long command line is what
 			// matters here, and we always print it when the platform has it.
@@ -320,7 +385,7 @@ func parsePS(args []string) (psRequest, error) {
 }
 
 func unknownPSFlag(a string) error {
-	return fmt.Errorf("unsupported option %q (supported: -e, -A, -f, -ef, aux, -eo FIELDS, -p PID)", a)
+	return fmt.Errorf("unsupported option %q (supported: -e, -A, -f, -ef, aux, -eo FIELDS, -p PID, -u USER, --ppid PID, -C NAME)", a)
 }
 
 func parsePIDs(s string) ([]int, error) {
@@ -345,11 +410,16 @@ func parsePIDs(s string) ([]int, error) {
 func parseFieldList(s string) ([]psField, error) {
 	var out []psField
 	for _, name := range strings.FieldsFunc(s, func(r rune) bool { return r == ',' || r == ' ' }) {
-		// accept the header= form, e.g. pid=PID
+		// The header= form names the column: -o pid,comm=MEINKOPF (acmesh-rmx).
+		header, hasHeader := "", false
 		if idx := strings.Index(name, "="); idx >= 0 {
+			header, hasHeader = name[idx+1:], true
 			name = name[:idx]
 		}
 		f, ok := psFieldByName(name)
+		if ok && hasHeader {
+			f.header = header
+		}
 		if !ok {
 			return nil, fmt.Errorf("unknown field %q (supported: pid, ppid, user, uid, stat, time, etime, tty, comm, cmd, pcpu, pmem, vsz, rss, start, stime, c)", name)
 		}
@@ -366,7 +436,7 @@ func parseFieldList(s string) ([]psField, error) {
 // both platforms.
 func runPS(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	if len(args) == 1 && (args[0] == "-h" || args[0] == "--help") {
-		fmt.Fprintln(stdout, "usage: ps [-e|-A|-f|-ef|aux|-x] [-eo FIELDS] [-p PID[,PID]]")
+		fmt.Fprintln(stdout, "usage: ps [-e|-A|-f|-ef|aux|-x] [-eo FIELDS] [-p PID[,PID]] [-u USER] [--ppid PID] [-C NAME]")
 		fmt.Fprintln(stdout, "fields: pid ppid user uid stat time etime tty comm cmd pcpu pmem vsz rss start stime c")
 		return 0
 	}
@@ -385,23 +455,76 @@ func runPS(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	return 0
 }
 
-// selectProcs applies the filters of the request.
+// splitList splits a comma separated list the way procps takes -u and -C.
+func splitList(s string) []string {
+	var out []string
+	for _, part := range strings.Split(s, ",") {
+		if part = strings.TrimSpace(part); part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
+}
+
+// userWanted tells whether a process belongs to one of the requested users. A
+// number is matched as a uid, a name as a name; procps accepts both in -u.
+func userWanted(p procInfo, users []string, byUID map[string]string) bool {
+	for _, want := range users {
+		if p.User == want {
+			return true
+		}
+		if name, ok := byUID[want]; ok && p.User == name {
+			return true
+		}
+	}
+	return false
+}
+
+// commWanted matches -C: the command name exactly, as procps does.
+func commWanted(p procInfo, comms []string) bool {
+	for _, want := range comms {
+		if p.Comm == want {
+			return true
+		}
+	}
+	return false
+}
+
+// selectProcs applies the filters of the request; several selectors at once are
+// combined with AND, as procps does.
 func selectProcs(procs []procInfo, req psRequest) []procInfo {
-	if req.hasPID {
+	// -e/-A selects everything and wins over a filter, as in procps: "ps -e -u
+	// root" lists all processes, not root's only (acmesh-rmx).
+	if req.all {
+		return procs
+	}
+	if req.hasPID || len(req.users) > 0 || req.hasPPID || len(req.comms) > 0 {
 		want := map[int]bool{}
 		for _, pid := range req.pidOnly {
 			want[pid] = true
 		}
+		parents := map[int]bool{}
+		for _, pid := range req.ppids {
+			parents[pid] = true
+		}
+		byUID := shared.ReadPasswd()
 		var out []procInfo
 		for _, p := range procs {
-			if want[p.PID] {
-				out = append(out, p)
+			if req.hasPID && !want[p.PID] {
+				continue
 			}
+			if len(req.users) > 0 && !userWanted(p, req.users, byUID) {
+				continue
+			}
+			if req.hasPPID && !parents[p.PPID] {
+				continue
+			}
+			if len(req.comms) > 0 && !commWanted(p, req.comms) {
+				continue
+			}
+			out = append(out, p)
 		}
 		return out
-	}
-	if req.all {
-		return procs
 	}
 	// Without a selector, procps shows the processes of the current terminal.
 	// We show those of the current user, which is the useful subset in a
@@ -462,10 +585,17 @@ func printTable(stdout *os.File, fields []psField, procs []procInfo) {
 		fmt.Fprintln(stdout, b.String())
 	}
 	header := make([]string, len(fields))
+	anyHeader := false
 	for i, f := range fields {
 		header[i] = f.header
+		if f.header != "" {
+			anyHeader = true
+		}
 	}
-	writeRow(header)
+	// -o pid= asks for no header at all (acmesh-rmx).
+	if anyHeader {
+		writeRow(header)
+	}
 	for _, row := range rows {
 		writeRow(row)
 	}

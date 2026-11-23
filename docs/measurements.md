@@ -4144,3 +4144,32 @@ Belege am gebauten Binary (Linux statisch, 17.4 MiB, gestrippt):
 
 Tests: TestDollarZeroIsTheInvokedName (sh und -sh) und TestReadReadsInTheSession
 (Pipe als *os.File) neu; 16 Tests in internal/sh gruen.
+
+## ps: -u, --ppid, -C und eigene Spaltenkoepfe (23.11.2026, acmesh-rmx)
+
+Neu in internal/proc: Auswahl nach Nutzer (-u/--user, Name oder numerische uid),
+nach Elternprozess (--ppid PID[,PID]), nach Kommandonamen (-C NAME, exakt wie
+procps, auch als Liste) und eigene Spaltenkoepfe in -o/-eo (feld=KOPF, feld=
+laesst den Kopf weg). Mehrere Auswaehler werden mit AND verknuepft; -e/-A
+gewinnt gegen einen Filter, wie procps es macht ("ps -e -u root" listet alles).
+
+Dabei aufgefallen und mit korrigiert: die CMD-Spalte der Standardansicht zeigte
+die ganze Befehlszeile. procps zeigt dort den Kommandonamen ("sh"), die volle
+Zeile nur unter -f, -o cmd und in aux. akmesh folgt jetzt procps.
+
+Vergleich im gepinnten Referenz-Image (debian:stable-slim, procps-ng 4.0.4),
+beide mit --pid=host auf demselben /proc:
+
+    Aufruf           procps  akmesh
+    ps -u root          39      39      Zeilen ohne Kopf
+    ps --ppid 1          5       5
+    ps -C sh             4       4
+    ps -C nosuchproc     0       0
+    Koepfe: "PID TTY TIME CMD" und "PID MEINKOPF" bei beiden gleich benannt
+
+Zwei bewusst gemessene Unterschiede: die Spaltenbreiten sind bei uns enger
+(procps polstert PID und TIME breiter), und fuer eine tty, deren Geraet im
+Container fehlt, druckt procps "?", wir "pts/0".
+
+Tests: TestSelectByUserPpidAndComm (Name, uid, --ppid, -C, AND-Verknuepfung,
+-e gewinnt) und TestCustomHeaderFromO (Kopf ersetzen, Kopf weglassen).

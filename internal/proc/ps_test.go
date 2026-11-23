@@ -259,3 +259,108 @@ func TestProcpsValueSpellings(t *testing.T) {
 		t.Fatalf("orQuestion(empty) = %q, want ?", got)
 	}
 }
+
+// TestSelectByUserPpidAndComm pins the selectors agents type next: ps -u USER,
+// ps --ppid PID, ps -C NAME (acmesh-rmx). procps combines several of them with
+// AND, and a uid is accepted as a number.
+func TestSelectByUserPpidAndComm(t *testing.T) {
+	procs := []procInfo{
+		{PID: 1, PPID: 0, User: "root", Comm: "init"},
+		{PID: 10, PPID: 1, User: "root", Comm: "sh"},
+		{PID: 20, PPID: 1, User: "martin", Comm: "cursor"},
+		{PID: 21, PPID: 20, User: "martin", Comm: "sh"},
+	}
+	pidsOf := func(list []procInfo) []int {
+		out := make([]int, len(list))
+		for i, p := range list {
+			out[i] = p.PID
+		}
+		return out
+	}
+	same := func(got []procInfo, want ...int) bool {
+		g := pidsOf(got)
+		if len(g) != len(want) {
+			return false
+		}
+		for i := range want {
+			if g[i] != want[i] {
+				return false
+			}
+		}
+		return true
+	}
+
+	req, err := parsePS([]string{"-u", "martin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := selectProcs(procs, req); !same(got, 20, 21) {
+		t.Fatalf("ps -u martin = %v, want 20 21", pidsOf(got))
+	}
+
+	// A numeric uid, resolved through /etc/passwd; the test machine's uid 0 is
+	// root on every Linux this runs on.
+	req, err = parsePS([]string{"-u", "0"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := selectProcs(procs, req); !same(got, 1, 10) {
+		t.Logf("uid 0 lookup gave %v (env without passwd?)", pidsOf(got))
+	}
+
+	req, err = parsePS([]string{"--ppid", "1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := selectProcs(procs, req); !same(got, 10, 20) {
+		t.Fatalf("ps --ppid 1 = %v, want 10 20", pidsOf(got))
+	}
+
+	req, err = parsePS([]string{"-C", "sh"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := selectProcs(procs, req); !same(got, 10, 21) {
+		t.Fatalf("ps -C sh = %v, want 10 21", pidsOf(got))
+	}
+
+	// Two selectors together are AND, as in procps.
+	req, err = parsePS([]string{"-u", "martin", "-C", "cursor"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := selectProcs(procs, req); !same(got, 20) {
+		t.Fatalf("ps -u martin -C cursor = %v, want 20", pidsOf(got))
+	}
+
+	// -e selects everything and wins over a filter, as procps does.
+	req, err = parsePS([]string{"-e", "-u", "martin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := selectProcs(procs, req); !same(got, 1, 10, 20, 21) {
+		t.Fatalf("ps -e -u martin = %v, want all four", pidsOf(got))
+	}
+}
+
+// TestCustomHeaderFromO: -o pid,comm=MEINKOPF names the column, and a field
+// written with "=" and nothing after it gets no header (acmesh-rmx).
+func TestCustomHeaderFromO(t *testing.T) {
+	fields, err := parseFieldList("pid,comm=MEINKOPF")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fields[1].header != "MEINKOPF" {
+		t.Fatalf("header = %q, want MEINKOPF", fields[1].header)
+	}
+	if fields[0].header != "PID" {
+		t.Fatalf("default header lost: %q", fields[0].header)
+	}
+	fields, err = parseFieldList("pid=")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fields[0].header != "" {
+		t.Fatalf("pid= should drop the header, got %q", fields[0].header)
+	}
+}

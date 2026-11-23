@@ -410,12 +410,15 @@ var Texts = map[string]Entry{
 			"and the global gitignore file (core.excludesFile).",
 	},
 	"sed": {
-		"[-n] [-i] [-E] (-e SCRIPT | SCRIPT) [FILE...]",
+		"[-n] [-i] [-E] [-z] (-e SCRIPT | SCRIPT) [FILE...]",
 		"  -e, --expression=SCRIPT  add SCRIPT (repeatable)\n" +
 			"  -f, --file=FILE          read the script from FILE\n" +
 			"  -n, --quiet, --silent    print nothing unless asked with p\n" +
 			"  -i, --in-place           edit the files in place\n" +
-			"  -E, -r, --regexp-extended  extended regular expressions",
+			"  -z, --zero-terminated    records end at NUL and are written with NUL\n" +
+			"                    instead of a line break (for find -print0)\n" +
+			"  -E, -r, --regexp-extended  extended regular expressions\n" +
+			"  Short flags may be glued: -zn, -nE.",
 	},
 	"split": {
 		"[-l N] [-b SIZE] [-n N] [-a N] [-d] [--additional-suffix=SUF] [FILE [PREFIX]]",

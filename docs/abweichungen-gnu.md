@@ -119,6 +119,10 @@ Verzeichnisreihenfolge, wie acmesh-kgi bei find).
 ### sed (u-root, cmds/exp/sed bzw. go-sed)
 
     sed -z 's/a/X/' a.txt    flag provided but not defined: -z
+                             erledigt am 23.11.2026 (acmesh-d9e): -z liest und
+                             schreibt NUL-getrennt, neun von zehn Aufrufen gleich
+                             GNU; ein Zeilenumbruch im Muster innerhalb eines
+                             Satzes sieht die Codierung (siehe measurements.md)
 
 ### wc - erledigt am 23.11.2026 (acmesh-j66, acmesh-154)
 

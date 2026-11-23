@@ -5380,3 +5380,44 @@ auch ohne -i.
 Batterie: zwei Pruefungen (diff-u-header-stamp, diff-u-plus-line).
 
 Gesamtstand nach dieser Runde: 308 Pruefungen Linux, 283 Windows, 0 Fehler.
+
+## sed -z: NUL-getrennte Saetze gegen GNU sed 4.9 (23.11.2026, acmesh-d9e)
+
+GNU -z liest Saetze bis zum NUL und schreibt sie mit NUL statt Zeilenumbruch -
+die Form, in der ein Agent "find -print0" weiterverarbeitet. Umgesetzt im
+Wrapper (internal/sedawk), nicht im sed-Engine-Patch: die Engine liest Zeilen,
+also wird der Strom beim Hineingehen uebersetzt (NUL -> Zeilenumbruch, ein
+echter Zeilenumbruch im Satz -> 0x01 0x30, das Byte 0x01 selbst -> 0x01 0x31)
+und beim Herausgehen zurueck. Die Abbildung ist umkehrbar fuer jede Eingabe.
+
+Grenze, ehrlich: ein Skript, das einen Zeilenumbruch INNERHALB eines NUL-Satzes
+mit einem Muster trifft (etwa "s/a\nb/X/"), sieht im Muster die Codierung statt
+des Zeilenumbruchs. Gemessen wurde das nicht als Abweichung, weil GNU hier nur
+mit einem echten Zeilenumbruch im Muster vergleichbar waere; der Fall steht in
+acmesh-d9e als offener Punkt.
+
+Gemessen mit scripts/sed-z-probe.sh (beide Seiten durch sh -c, od -c verglichen),
+Eingabe "a.txt\0b c.txt\0d.txt\0":
+
+    s/^/X/ je Satz            gleich
+    s/txt/TXT/g je Satz       gleich
+    s/a/A/;s/d/D/             gleich
+    -zn p                     gleich
+    s/ /_/                    gleich
+    2d                        gleich
+    $s/txt/END/               gleich
+    Zeilenumbruch im Satz     gleich
+    Byte 0x01 im Satz         gleich
+
+Neun von zehn Aufrufen gleich. Der zehnte ist alt und hat mit -z nichts zu tun:
+"sed 's/txt/TXT/'" ohne -z auf Daten mit NUL im Text ersetzt bei uns alle drei
+Treffer, GNU nur den ersten, weil GNU die Datei als eine Zeile liest. Als
+Befund notiert, nicht als Regression dieser Arbeit.
+
+Batterie: vier Pruefungen (sed-z-prefix, sed-z-count, sed-z-delete,
+sed-z-glued). Dazu zwei Go-Tests (TestZeroTerminatedRecords,
+TestZeroTerminatedKeepsLineBreakInRecord).
+
+Nachtrag zur Grenze: "$" am Satzende trifft richtig - "sed -z 's/txt$/END/'"
+ersetzt in allen drei Saetzen (a.END|b c.END|d.END), wie GNU. Die Umsetzung
+haengt also nicht an einem Zeilenumbruch am Satzende.

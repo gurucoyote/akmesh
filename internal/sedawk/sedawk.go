@@ -1,6 +1,7 @@
 package sedawk
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -25,6 +26,7 @@ func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	quiet := false
 	extended := false
 	inPlace := false
+	zeroTerminated := false
 	var files []string
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
@@ -53,7 +55,34 @@ func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			quiet = true
 		case "-i", "--in-place":
 			inPlace = true
+		case "-z", "--zero-terminated", "--null-data":
+			// GNU -z: records end at NUL instead of a line break, and the
+			// output is separated by NUL too (acmesh-d9e).
+			zeroTerminated = true
 		default:
+			if strings.HasPrefix(args[i], "-") && args[i] != "-" && !strings.HasPrefix(args[i], "--") && len(args[i]) > 2 {
+				// Glued short flags, as an agent writes them: -zn, -nE, -Ez.
+				bad := false
+				for _, letter := range args[i][1:] {
+					switch letter {
+					case 'n':
+						quiet = true
+					case 'E', 'r':
+						extended = true
+					case 'z':
+						zeroTerminated = true
+					case 'i':
+						inPlace = true
+					default:
+						bad = true
+					}
+				}
+				if bad {
+					fmt.Fprintf(stderr, "sed: unknown option %q\n", args[i])
+					return 2
+				}
+				continue
+			}
 			if strings.HasPrefix(args[i], "-") && args[i] != "-" {
 				fmt.Fprintf(stderr, "sed: unknown option %q\n", args[i])
 				return 2
@@ -86,8 +115,21 @@ func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		fmt.Fprintf(stderr, "sed: %v\n", err)
 		return 1
 	}
+	// The engine reads records by line break, so -z translates the stream on
+	// the way in and back on the way out: NUL becomes a line break (the record
+	// separator the engine knows) and a literal line break inside a record
+	// becomes 0x01 0x30; the byte 0x01 itself is stuffed as 0x01 0x31, which
+	// keeps the mapping reversible for every input. Limitation, stated in
+	// docs/measurements.md: a script that matches a line break inside a NUL
+	// record sees the escape instead.
+	var in io.Reader = stdin
+	var out io.Writer = stdout
+	if zeroTerminated {
+		in = nulToLines(stdin)
+		out = linesToNul(stdout)
+	}
 	if len(files) == 0 {
-		if _, err := io.Copy(stdout, eng.Wrap(stdin)); err != nil {
+		if _, err := io.Copy(out, eng.Wrap(in)); err != nil {
 			fmt.Fprintf(stderr, "sed: %v\n", err)
 			return 1
 		}
@@ -96,7 +138,7 @@ func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	code := 0
 	for _, name := range files {
 		if name == "-" {
-			io.Copy(stdout, eng.Wrap(stdin))
+			io.Copy(out, eng.Wrap(in))
 			continue
 		}
 		f, err := os.Open(name)
@@ -105,8 +147,12 @@ func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			code = 1
 			continue
 		}
+		var fin io.Reader = f
+		if zeroTerminated {
+			fin = nulToLines(f)
+		}
 		if !inPlace {
-			if _, err := io.Copy(stdout, eng.Wrap(f)); err != nil {
+			if _, err := io.Copy(out, eng.Wrap(fin)); err != nil {
 				fmt.Fprintf(stderr, "sed: %v\n", err)
 				code = 1
 			}
@@ -114,7 +160,7 @@ func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			continue
 		}
 		var sb strings.Builder
-		if _, err := io.Copy(&sb, eng.Wrap(f)); err != nil {
+		if _, err := io.Copy(&sb, eng.Wrap(fin)); err != nil {
 			fmt.Fprintf(stderr, "sed: %v\n", err)
 			f.Close()
 			code = 1
@@ -132,6 +178,86 @@ func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		}
 	}
 	return code
+}
+
+// nulToLines turns a NUL-separated stream into the line-separated one the sed
+// engine wants, escaping the bytes that would be ambiguous.
+func nulToLines(r io.Reader) io.Reader {
+	pr, pw := io.Pipe()
+	go func() {
+		br := bufio.NewReaderSize(r, 64*1024)
+		buf := make([]byte, 0, 64*1024)
+		for {
+			chunk, err := br.ReadBytes(0)
+			body := []byte(strings.TrimSuffix(string(chunk), "\x00"))
+			for _, b := range body {
+				switch b {
+				case '\n':
+					buf = append(buf, 0x01, 0x30)
+				case 0x01:
+					buf = append(buf, 0x01, 0x31)
+				default:
+					buf = append(buf, b)
+				}
+			}
+			if len(chunk) > 0 && chunk[len(chunk)-1] == 0 {
+				buf = append(buf, '\n')
+			}
+			if _, werr := pw.Write(buf); werr != nil {
+				return
+			}
+			buf = buf[:0]
+			if err != nil {
+				pw.Close()
+				return
+			}
+		}
+	}()
+	return pr
+}
+
+// linesToNul is the way back: a line break is the record separator again, and
+// the escapes become the bytes they stood for.
+func linesToNul(w io.Writer) io.Writer {
+	return &nulWriter{w: w}
+}
+
+type nulWriter struct {
+	w    io.Writer
+	last byte // the previous byte, for the two-byte escapes
+	held bool
+}
+
+func (n *nulWriter) Write(p []byte) (int, error) {
+	out := make([]byte, 0, len(p))
+	for _, b := range p {
+		if n.held {
+			n.held = false
+			switch b {
+			case 0x30:
+				out = append(out, '\n')
+			case 0x31:
+				out = append(out, 0x01)
+			default:
+				out = append(out, 0x01, b)
+			}
+			continue
+		}
+		switch b {
+		case 0x01:
+			n.held = true
+		case '\n':
+			out = append(out, 0)
+		default:
+			out = append(out, b)
+		}
+	}
+	if len(out) > 0 {
+		if _, err := n.w.Write(out); err != nil {
+			return 0, err
+		}
+	}
+	return len(p), nil
 }
 
 // runAwk implements awk through goawk: -F, -v, -f, program and files.

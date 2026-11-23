@@ -112,6 +112,14 @@ wsl.exe die Shell direkt.
 
 - Der u-root-init hat weder SIGCHLD-Handling noch wait4 (Quelltextpruefung
   22.11.). Forken oder bewusst nicht PID 1 werden.
+- Was fehlt, in der Reihenfolge, in der es weh tut: (1) Zombies waehrend des
+  Laufs ernten (SIGCHLD + wait4-Schleife; u-root ruft WaitOrphans nur beim
+  eigenen Ende), (2) Signale an die Kinder weitergeben, sonst ignoriert PID 1
+  ein SIGTERM und `docker stop` wartet die 10-Sekunden-Frist ab, (3) Dienste
+  nach dem Ende neu starten - das ist der Grund, warum acmesh-bu1 (getty)
+  von diesem Ticket abhaengt, (4) eine Konfiguration statt einer
+  Kommandozeilenliste, (5) Reihenfolge beim Start (proc, sys, dev, dann
+  Dienste), (6) Exit-Code und Verhalten, wenn alle Dienste enden.
 - Ende: drei Kinder, die sofort enden, hinterlassen keine Z-Zeile in `ps -e`;
   SIGTERM an PID 1 beendet den Container in unter einer Sekunde.
 

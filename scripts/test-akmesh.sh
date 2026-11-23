@@ -549,6 +549,18 @@ PGNAME=${PGNAME%.exe}
 check pgrep-finds-own-name "ja" "$(run pgrep -x "$PGNAME" 2>/dev/null | tr -d '\r' | head -1 | grep -q '^[0-9][0-9]*$' && echo ja)"
 check pgrep-count "1" "$(run pgrep -c -x "$PGNAME" 2>/dev/null | tr -d '\r' | tr -dc '0-9' | grep -c .)"
 
+# tail in den Formen, die Agents schreiben (acmesh-uzd)
+TDIR=$(mktemp -d 2>/dev/null || echo /tmp/akmesh-tail)
+mkdir -p "$TDIR"
+printf 'alpha\nbeta\ngamma\n' > "$TDIR/a.txt"
+printf 'x\ny\n' > "$TDIR/b.txt"
+check tail-dash3 "gamma" "$(run tail -3 "$TDIR/a.txt" 2>/dev/null | tail -n 1 | tr -d '\r')"
+check tail-c "amma" "$(run tail -c 5 "$TDIR/a.txt" 2>/dev/null | tr -d '\r')"
+check tail-cplus "gamma" "$(run tail -c +12 "$TDIR/a.txt" 2>/dev/null | tr -d '\r')"
+check tail-nplus "beta" "$(run tail -n +2 "$TDIR/a.txt" 2>/dev/null | head -n 1 | tr -d '\r')"
+check tail-quiet "beta" "$(run tail -q -2 "$TDIR/a.txt" "$TDIR/b.txt" 2>/dev/null | head -n 1 | tr -d '\r')"
+check tail-header "==> " "$(run tail -v -1 "$TDIR/a.txt" 2>/dev/null | head -n 1 | cut -c1-4 | tr -d '\r')"
+rm -rf "$TDIR"
 # chown, od, sum, unzip, setsid, su, passwd, mkpasswd (acmesh-6p8, 2yc, vgr, f1e, a4d)
 checkcode chown-help 0 "$(run chown --help >/dev/null 2>&1; echo $?)"
 check od-hex-bytes " 41 42" "$(printf 'AB' | run od -An -tx1 | tr -d '\r')"

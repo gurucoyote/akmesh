@@ -39,7 +39,11 @@ zaehlen nicht als Abweichung.
 `-maxdepth 0` liefert alles statt nur ".".
 `-exec echo {} ;` setzt "a.txt" statt "./a.txt" ein, GNU setzt "./a.txt".
 
-### tail (u-root, cmds/core/tail)
+### tail (u-root, cmds/core/tail) - erledigt am 23.11.2026 (acmesh-uzd)
+
+Alle Formen unten gehen jetzt; der Patch liegt als
+docs/design/patches/uroot-tail-gnu.patch bei, gemessen gegen GNU in 13 Faellen,
+sechs neue Batteriepruefungen.
 
     tail -3 a.txt        flag provided but not defined: -3
     tail -1 a.txt        flag provided but not defined: -1
@@ -152,3 +156,37 @@ truncate, iconv, grep (-c -l -n -v -o -E -i -r -A -B -q -F -w -h).
 
 Reihenfolge, in der ich sie abarbeiten wuerde: tail (haeufigster Aufruf, kleinster
 Eingriff), dann date -d, grep, find, du, tar, sed -z, wc -L, base64, ls -t, df.
+
+## Bauaufwand je Ticket (geschaetzt an den Quellen, 23.11.2026)
+
+Gemessen an den Dateien im u-root-Checkout (cmds/core/tail 316 Zeilen, date 259,
+find 212, du 175, tar 170, grep 263; go-sed separat):
+
+    klein (unter einer Stunde, ein Patch):
+      acmesh-uzd tail        erledigt
+      acmesh-j66 wc -L       eine Option, eine Schleife
+      acmesh-449 base64      Umbruchbedingung und Auffuellung
+      acmesh-fgu ls -t       mtime mit Nanosekunden vergleichen
+      acmesh-jag df          Kopfzeile
+      acmesh-9e7 tar ./      Praefix im Writer
+      acmesh-5ug diff        Zeitstempel in der Kopfzeile
+      acmesh-154 wc Spalten  Breite der groessten Zahl
+
+    mittel (ein halber Tag, Parser- oder Strukturarbeit):
+      acmesh-xli date -d     eigener Parser fuer @EPOCHE, YYYY-MM-DD, +-N Tage
+      acmesh-v6r grep        acht Optionen; -P nur, soweit Go regexp reicht
+      acmesh-yd7 du          Blockzaehlung der Verzeichnisse, -b, -x
+
+    gross (eigene Implementierung noetig, nicht nur ein Patch):
+      acmesh-x7f find        u-root-find hat eine flache Praedikatkette; -o
+                             verlangt einen Ausdrucksbaum mit und/oder/klammern.
+                             Entweder find neu schreiben (etwa 400 Zeilen) oder
+                             den Parser im Patch ersetzen - der Patch waere dann
+                             groesser als das Original.
+      acmesh-d9e sed -z      der Satztrenner steckt im go-sed-Fork; ohne Lesen
+                             des Fork-Innenlebens nicht abzuschaetzen, vermutlich
+                             mittel bis gross.
+
+    nur Entscheidung, kein Bau:
+      acmesh-kgi find-Reihenfolge, acmesh-9e7 tar-Praefix (wenn wir es lassen
+      wollen), acmesh-5ug diff-Zeitstempel

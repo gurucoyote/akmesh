@@ -1,0 +1,376 @@
+diff --git a/cmds/core/tail/tail.go b/cmds/core/tail/tail.go
+index 15f9808..b1bb34f 100644
+--- a/cmds/core/tail/tail.go
++++ b/cmds/core/tail/tail.go
+@@ -22,7 +22,6 @@ package main
+ 
+ import (
+ 	"bytes"
+-	"flag"
+ 	"fmt"
+ 	"io"
+ 	"log"
+@@ -32,11 +31,6 @@ import (
+ 	"time"
+ )
+ 
+-var (
+-	flagFollow   = flag.Bool("f", false, "follow the end of the file")
+-	flagNumLines = flag.Int("n", 10, "specify the number of lines to show")
+-)
+-
+ type readAtSeeker interface {
+ 	io.ReaderAt
+ 	io.Seeker
+@@ -50,6 +44,12 @@ type tailConfig struct {
+ 	// specifies the number of lines to print (-n)
+ 	numLines int
+ 
++	// -c N: bytes instead of lines; 0 means the line mode
++	bytes int64
++
++	// a count with a leading "+": start at that line or byte, not at the end
++	fromStart bool
++
+ 	// time to wait for new write in follow mode
+ 	followDuration time.Duration
+ }
+@@ -207,6 +207,13 @@ func isTruncated(file *os.File) (bool, error) {
+ // tail reads the last N lines from the input File and writes them to the Writer.
+ // The tailConfig object allows to specify the precise behaviour.
+ func tail(inFile *os.File, writer io.Writer, config tailConfig) error {
++	// -c and "+N" are separate modes; both are akmesh additions (acmesh-uzd).
++	if config.bytes > 0 {
++		return tailBytes(inFile, writer, config.bytes, config.fromStart)
++	}
++	if config.fromStart {
++		return tailFromLine(inFile, writer, config.numLines)
++	}
+ 	// try reading from the end of the file
+ 	retryFromBeginning := false
+ 	err := readLastLinesBackwards(inFile, writer, config.numLines)
+@@ -262,55 +269,73 @@ func tail(inFile *os.File, writer io.Writer, config tailConfig) error {
+ 	return nil
+ }
+ 
++// run is u-root's original entry point, kept so the upstream tests still
++// compile and run against the patched command (acmesh-uzd).
+ func run(reader *os.File, writer io.Writer, follow bool, numLines int, followDuration time.Duration, args []string) error {
+-	var (
+-		inFile *os.File
+-		err    error
+-	)
+-
+-	// TODO: add support for parsing + (from beginning of the file)
+-	// negative sign is the same as none
+ 	if numLines < 0 {
+-		numLines = -1 * numLines
++		// u-root's own tests pass a negative count and expect its absolute value
++		numLines = -numLines
++	}
++	return runOpts(reader, writer, tailOpts{
++		follow:      follow,
++		lines:       numLines,
++		followEvery: followDuration,
++	}, args)
++}
++
++func runOpts(reader *os.File, writer io.Writer, opts tailOpts, args []string) error {
++	config := tailConfig{
++		follow:         opts.follow,
++		numLines:       opts.lines,
++		bytes:          opts.bytes,
++		fromStart:      opts.fromStart,
++		followDuration: opts.followEvery,
+ 	}
+-	config := tailConfig{follow: follow, numLines: numLines, followDuration: followDuration}
+ 
+-	switch len(args) {
+-	case 0:
++	if len(args) == 0 {
+ 		return tail(reader, writer, config)
+-	case 1:
+-	default:
+-		if follow {
+-			return fmt.Errorf("tail: can only read one file at a time if follow true")
+-		}
++	}
++	if opts.follow && len(args) > 1 {
++		return fmt.Errorf("tail: can only read one file at a time if follow true")
+ 	}
+ 
+-	for i, file := range args {
+-		if len(args) > 1 {
+-			fmt.Fprintf(writer, "==> %s <==\n", file)
++	// Headers: GNU prints them for more than one file, with -v always and with
++	// -q never (acmesh-uzd).
++	header := (len(args) > 1 && !opts.quiet) || opts.verbose
++	for i, name := range args {
++		var inFile *os.File
++		var err error
++		if name == "-" {
++			inFile = reader
++		} else {
++			inFile, err = os.Open(name)
++			if err != nil {
++				return err
++			}
+ 		}
+-
+-		inFile, err = os.Open(file)
+-		if err != nil {
+-			return err
++		if header {
++			if i > 0 {
++				fmt.Fprintln(writer)
++			}
++			fmt.Fprintf(writer, "==> %s <==\n", name)
++		}
++		err = tail(inFile, writer, config)
++		if inFile != reader {
++			inFile.Close()
+ 		}
+-
+-		err := tail(inFile, writer, config)
+ 		if err != nil {
+ 			return err
+ 		}
+-
+-		if len(args) > 1 && i < len(args)-1 {
+-			fmt.Fprintln(writer)
+-		}
+ 	}
+-
+ 	return nil
+ }
+ 
+ func main() {
+-	flag.Parse()
+-	if err := run(os.Stdin, os.Stdout, *flagFollow, *flagNumLines, 500*time.Millisecond, flag.Args()); err != nil {
++	opts, files, err := parseTailArgs(os.Args[1:])
++	if err != nil {
++		log.Fatalf("tail: %v", err)
++	}
++	if err := runOpts(os.Stdin, os.Stdout, opts, files); err != nil {
+ 		log.Fatalf("tail: %v", err)
+ 	}
+ }
+diff --git a/cmds/core/tail/tail_args.go b/cmds/core/tail/tail_args.go
+new file mode 100644
+index 0000000..ffee5b3
+--- /dev/null
++++ b/cmds/core/tail/tail_args.go
+@@ -0,0 +1,213 @@
++package main
++
++// This file is part of akmesh's patch against u-root's tail: GNU accepts forms
++// that Go's flag package cannot parse ("tail -3"), and it knows -c, -q and -v,
++// which agents type constantly. See docs/abweichungen-gnu.md, acmesh-uzd.
++//
++// Nothing here changes u-root's reading logic; it only translates the command
++// line and adds the byte mode and the starting-position form ("tail -n +2").
++
++import (
++	"fmt"
++	"io"
++	"os"
++	"strconv"
++	"strings"
++	"time"
++)
++
++// tailOpts is the command line, after the GNU forms have been translated.
++type tailOpts struct {
++	follow    bool
++	headless  bool  // "-f" without a count prints the last ten lines first
++	lines     int   // -n N, default 10
++	bytes     int64 // -c N, 0 when the line mode is meant
++	fromStart bool  // "+N": start at line or byte N instead of at the end
++	omitLast  int   // a negative -n: all but the last N lines
++	quiet     bool  // -q: no "==> file <==" headers
++	verbose   bool  // -v: headers even for a single file
++
++	// how long -f waits between reads; zero means 500 ms
++	followEvery time.Duration
++}
++
++// isNumber reports whether s is a plain decimal number.
++func isNumber(s string) bool {
++	if s == "" {
++		return false
++	}
++	for _, r := range s {
++		if r < '0' || r > '9' {
++			return false
++		}
++	}
++	return true
++}
++
++// parseTailArgs reads the command line the way GNU tail does. A leading dash
++// followed by digits is a line count ("-3"), which is the form an agent writes;
++// Go's flag package would reject it.
++func parseTailArgs(args []string) (tailOpts, []string, error) {
++	o := tailOpts{lines: 10, followEvery: 500 * time.Millisecond}
++	var files []string
++	linesSet, bytesSet := false, false
++	// take a count value, either glued to the option or in the next argument
++	take := func(i *int, glued string, opt string) (string, error) {
++		if glued != "" {
++			return glued, nil
++		}
++		*i++
++		if *i >= len(args) {
++			return "", fmt.Errorf("option requires an argument -- '%s'", opt)
++		}
++		return args[*i], nil
++	}
++	// setCount handles a value that may carry a leading "+" (start at N).
++	setCount := func(raw string, isBytes bool) error {
++		v := raw
++		from := strings.HasPrefix(v, "+")
++		v = strings.TrimPrefix(v, "+")
++		v = strings.TrimPrefix(v, "-")
++		hadMinus := strings.HasPrefix(raw, "-")
++		if !isNumber(v) {
++			return fmt.Errorf("invalid number of %s: '%s'", map[bool]string{true: "bytes", false: "lines"}[isBytes], v)
++		}
++		n, err := strconv.ParseInt(v, 10, 64)
++		if err != nil {
++			return err
++		}
++		// GNU reads a negative count the same as a positive one: "tail -n -2"
++		// and "tail --lines=-2" both mean the last two lines, and "tail -n -2"
++		// with a separate argument is the obsolete "-2" form. Omitting lines
++		// from the end is not a GNU mode, so there is nothing to keep apart.
++		_ = hadMinus
++		if isBytes {
++			o.bytes, o.fromStart, bytesSet = n, from, true
++		} else {
++			o.lines, o.fromStart, linesSet = int(n), from, true
++		}
++		return nil
++	}
++	for i := 0; i < len(args); i++ {
++		a := args[i]
++		switch {
++		case a == "--":
++			files = append(files, args[i+1:]...)
++			i = len(args)
++		case a == "-f" || a == "--follow":
++			o.follow = true
++		case a == "-q" || a == "--quiet" || a == "--silent":
++			o.quiet = true
++		case a == "-v" || a == "--verbose":
++			o.verbose = true
++		case a == "-n" || a == "--lines":
++			v, err := take(&i, "", "n")
++			if err != nil {
++				return o, nil, err
++			}
++			if err := setCount(v, false); err != nil {
++				return o, nil, err
++			}
++		case strings.HasPrefix(a, "-n"):
++			if err := setCount(strings.TrimPrefix(a, "-n"), false); err != nil {
++				return o, nil, err
++			}
++		case strings.HasPrefix(a, "--lines="):
++			if err := setCount(strings.TrimPrefix(a, "--lines="), false); err != nil {
++				return o, nil, err
++			}
++		case a == "-c" || a == "--bytes":
++			v, err := take(&i, "", "c")
++			if err != nil {
++				return o, nil, err
++			}
++			if err := setCount(v, true); err != nil {
++				return o, nil, err
++			}
++		case strings.HasPrefix(a, "-c"):
++			if err := setCount(strings.TrimPrefix(a, "-c"), true); err != nil {
++				return o, nil, err
++			}
++		case strings.HasPrefix(a, "--bytes="):
++			if err := setCount(strings.TrimPrefix(a, "--bytes="), true); err != nil {
++				return o, nil, err
++			}
++		case len(a) > 1 && a[0] == '-' && isNumber(a[1:]):
++			// tail -3: the short form GNU accepts and every agent writes
++			if err := setCount(a[1:], false); err != nil {
++				return o, nil, err
++			}
++		case len(a) > 1 && a[0] == '-' && !strings.HasPrefix(a, "--"):
++			return o, nil, fmt.Errorf("invalid option -- '%s'", strings.TrimPrefix(a, "-"))
++		case a == "-":
++			files = append(files, a)
++		default:
++			files = append(files, a)
++		}
++	}
++	// The last count wins, as in GNU; a byte count turns the line mode off.
++	if linesSet && bytesSet && !o.fromStart {
++		// both given: the later option wins, which the loop already decided
++	}
++	return o, files, nil
++}
++
++// tailBytes writes the last N bytes, or from byte N when the count had a "+".
++func tailBytes(f *os.File, w io.Writer, n int64, fromStart bool) error {
++	if fromStart {
++		if n < 1 {
++			n = 1
++		}
++		if _, err := f.Seek(n-1, io.SeekStart); err != nil {
++			return err
++		}
++		_, err := io.Copy(w, f)
++		return err
++	}
++	size, err := f.Seek(0, io.SeekEnd)
++	if err != nil {
++		// not seekable (a pipe): read everything and keep the last N bytes
++		data, rerr := io.ReadAll(f)
++		if rerr != nil {
++			return rerr
++		}
++		if int64(len(data)) > n {
++			data = data[int64(len(data))-n:]
++		}
++		_, werr := w.Write(data)
++		return werr
++	}
++	if n > size {
++		n = size
++	}
++	if _, err := f.Seek(size-n, io.SeekStart); err != nil {
++		return err
++	}
++	_, err = io.Copy(w, f)
++	return err
++}
++
++// tailFromLine writes everything from line N on, which is "tail -n +N".
++func tailFromLine(f *os.File, w io.Writer, n int) error {
++	if n < 1 {
++		n = 1
++	}
++	data, err := io.ReadAll(f)
++	if err != nil {
++		return err
++	}
++	skipped := 1
++	for i := 0; i < len(data); i++ {
++		if skipped == n {
++			_, err := w.Write(data[i:])
++			return err
++		}
++		if data[i] == '\n' {
++			skipped++
++		}
++	}
++	if skipped == n {
++		return nil // the file ended right before the wanted line
++	}
++	return nil
++}

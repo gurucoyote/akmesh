@@ -4959,3 +4959,42 @@ sed (10), cp/mv/rm/mkdir/ln/chmod/touch (Ergebnisbaum), stat, xargs, timeout,
 split, nl, truncate, iconv, grep (-c -l -n -v -o -E -i -r -A -B -q -F -w -h).
 
 Mit Befund, aufgeschluesselt nach Werkzeug und Ticket: docs/abweichungen-gnu.md.
+
+## tail in den GNU-Formen (23.11.2026, acmesh-uzd)
+
+Der Befund aus docs/abweichungen-gnu.md: tail -3, -1, -c, -q und -v endeten mit
+"flag provided but not defined", weil u-root tail die Go-flag-Bibliothek benutzt
+und Go -3 nicht als Zahl liest.
+
+Gefixt als Patch gegen u-root: docs/design/patches/uroot-tail-gnu.patch, 376
+Zeilen, angewendet von scripts/patch-uroot.sh (neue Funktion patch_diff, die
+einen Diff idempotent anwendet). Die Lese-Logik von u-root bleibt unberuehrt; neu
+sind ein eigener Argumentparser (cmds/core/tail/tail_args.go) und drei Zweige in
+tail(): Bytes, von-vorne und die bisherige Zeilenlogik.
+
+Was jetzt geht, gemessen gegen GNU coreutils 9.7 im Referenz-Image, 13 Faelle,
+12 vorher abweichend, jetzt alle gleich:
+
+    tail -3 a.txt              alpha beta gamma
+    tail -1 a.txt              gamma
+    tail -n 3 / -n2            wie GNU
+    tail -n +2 a.txt           ab Zeile 2
+    tail -c 5 a.txt            letzte 5 Bytes
+    tail -c +12 a.txt          ab Byte 12
+    tail -q -2 a b             ohne Kopfzeilen
+    tail -v -1 a.txt           mit Kopfzeile
+    tail -n 0 a.txt            nichts
+    tail a.txt b.log           Kopfzeilen wie GNU
+    tail -n -2 a.txt           wie GNU: die letzten zwei Zeilen
+
+Eine Eigenheit, die bewusst mitgemacht wird: GNU liest eine negative Zahl wie
+eine positive, "tail --lines=-2" heisst also die letzten zwei Zeilen, nicht
+"alles ausser den letzten zwei". Akmesh macht das genauso, weil ein Agent, der
+die Zahl negativ schreibt, die letzten Zeilen meint.
+
+u-root bringt eigene Tests mit (tail_test.go); sie laufen mit dem Patch weiter
+("ok github.com/u-root/u-root/cmds/core/tail"). Dafuer bleibt die alte
+run()-Signatur als duenne Huelle erhalten.
+
+Batterie: 238 Checks Linux (vorher 232, sechs neue tail-Pruefungen), 0 Fehler.
+Groessen: dynamisch 18964707, Windows 17598976, beide gestrippt.

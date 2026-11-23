@@ -17,6 +17,35 @@ set -eu
 
 UROOT_DIR=${1:?usage: patch-uroot.sh <u-root checkout>}
 
+# patch_diff applies a unified diff recorded under docs/design/patches, for
+# changes that add a file or touch several places at once. It is idempotent: a
+# diff that is already applied is skipped, and one that applies neither way
+# stops the build instead of shipping an unpatched command.
+patch_diff() {
+	file=$1
+	if [ ! -f "$file" ]; then
+		echo "patch-uroot: $file is missing" >&2
+		exit 1
+	fi
+	# Already applied? A diff that creates a file cannot be probed with
+	# --reverse once gofmt has touched the copy, so the mark is a symbol the
+	# patch introduces.
+	case "$(basename "$file")" in
+	uroot-tail-gnu.patch)
+		if grep -q "func parseTailArgs" "$UROOT_DIR/cmds/core/tail/tail_args.go" 2>/dev/null; then
+			return 0
+		fi
+		;;
+	esac
+	if git -C "$UROOT_DIR" apply --check "$file" 2>/dev/null; then
+		git -C "$UROOT_DIR" apply "$file"
+		echo "patch-uroot: $(basename "$file") applied"
+		return 0
+	fi
+	echo "patch-uroot: $(basename "$file") applies neither forward nor backward" >&2
+	exit 1
+}
+
 patch_file() {
 	file=$1
 	oldfile=$2
@@ -346,3 +375,8 @@ EOF
 patch_file "$UROOT_DIR/cmds/core/losetup/losetup_linux.go" "$TMP/losetup-import.old" "$TMP/losetup-import.new"
 
 echo "u-root commands patched: losetup (-f)"
+
+# tail: -N, -c, -q, -v und die "+N"-Formen, so wie GNU sie liest (acmesh-uzd).
+# absolut, weil git apply den Pfad relativ zur Repo-Wurzel aufloest
+PATCH_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+patch_diff "$PATCH_ROOT/docs/design/patches/uroot-tail-gnu.patch"

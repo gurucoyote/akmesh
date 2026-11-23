@@ -1,16 +1,19 @@
 diff --git a/cmds/core/tail/tail.go b/cmds/core/tail/tail.go
-index 15f9808..b1bb34f 100644
+index 15f9808..d0f0cd7 100644
 --- a/cmds/core/tail/tail.go
 +++ b/cmds/core/tail/tail.go
-@@ -22,7 +22,6 @@ package main
+@@ -22,21 +22,15 @@ package main
  
  import (
  	"bytes"
 -	"flag"
++	"errors"
  	"fmt"
  	"io"
- 	"log"
-@@ -32,11 +31,6 @@ import (
+-	"log"
+ 	"os"
+ 	"slices"
+ 	"syscall"
  	"time"
  )
  
@@ -22,12 +25,15 @@ index 15f9808..b1bb34f 100644
  type readAtSeeker interface {
  	io.ReaderAt
  	io.Seeker
-@@ -50,6 +44,12 @@ type tailConfig struct {
+@@ -50,6 +44,15 @@ type tailConfig struct {
  	// specifies the number of lines to print (-n)
  	numLines int
  
 +	// -c N: bytes instead of lines; 0 means the line mode
 +	bytes int64
++
++	// delim ends a record: '\n' by default, NUL with -z
++	delim byte
 +
 +	// a count with a leading "+": start at that line or byte, not at the end
 +	fromStart bool
@@ -35,7 +41,81 @@ index 15f9808..b1bb34f 100644
  	// time to wait for new write in follow mode
  	followDuration time.Duration
  }
-@@ -207,6 +207,13 @@ func isTruncated(file *os.File) (bool, error) {
+@@ -66,12 +69,12 @@ func getBlockSize(numLines int) int64 {
+ // lastNLines finds the n-th-to-last line in `buf`, and returns a new slice
+ // containing only the last `n` lines. If less lines are found, the input slice
+ // is returned unmodified.
+-func lastNLines(buf []byte, n int) []byte {
++func lastNLines(buf []byte, n int, delim byte) []byte {
+ 	slice := buf
+ 	// `data` contains up to `n` lines of the file
+ 	var data []byte
+ 	if len(slice) != 0 {
+-		if slice[len(slice)-1] == '\n' {
++		if slice[len(slice)-1] == delim {
+ 			// don't consider the last new line for the line count
+ 			slice = slice[:len(slice)-1]
+ 		}
+@@ -81,13 +84,13 @@ func lastNLines(buf []byte, n int) []byte {
+ 		)
+ 		for foundLines < n {
+ 			// find newlines backwards from the end of `slice`
+-			idx = bytes.LastIndexByte(slice, '\n')
++			idx = bytes.LastIndexByte(slice, delim)
+ 			if idx == -1 {
+ 				// there are less than `n` lines
+ 				break
+ 			}
+ 			foundLines++
+-			if len(slice) > 1 && slice[idx-1] == '\n' {
++			if len(slice) > 1 && slice[idx-1] == delim {
+ 				slice = slice[:idx]
+ 			} else {
+ 				slice = slice[:idx-1]
+@@ -109,7 +112,7 @@ func lastNLines(buf []byte, n int) []byte {
+ // on stdin). For non-seekable files see readLastLinesFromBeginning.
+ // It returns an error, if any. If no error is encountered, the File object's
+ // offset is positioned after the last read location.
+-func readLastLinesBackwards(input readAtSeeker, writer io.Writer, numLines int) error {
++func readLastLinesBackwards(input readAtSeeker, writer io.Writer, numLines int, delim byte) error {
+ 	blkSize := getBlockSize(numLines)
+ 	// go to the end of the file
+ 	lastPos, err := input.Seek(0, io.SeekEnd)
+@@ -135,13 +138,13 @@ func readLastLinesBackwards(input readAtSeeker, writer io.Writer, numLines int)
+ 		readData = slices.Concat(buf[:n], readData)
+ 		// count how many lines we have so far, and stop reading if we have
+ 		// enough
+-		foundLines += bytes.Count(buf[:n], []byte{'\n'})
++		foundLines += bytes.Count(buf[:n], []byte{delim})
+ 		if foundLines >= numLines {
+ 			break
+ 		}
+ 	}
+ 	// find the start of the n-th to last line
+-	data := lastNLines(readData, numLines)
++	data := lastNLines(readData, numLines, delim)
+ 	// write the requested lines to the writer
+ 	if _, err = writer.Write(data); err != nil {
+ 		return err
+@@ -159,7 +162,7 @@ func readLastLinesBackwards(input readAtSeeker, writer io.Writer, numLines int)
+ // readLastLinesBackwards.
+ // It returns an error, if any. If no error is encountered, the File object's
+ // offset is positioned after the last read location.
+-func readLastLinesFromBeginning(input io.ReadSeeker, writer io.Writer, numLines int) error {
++func readLastLinesFromBeginning(input io.ReadSeeker, writer io.Writer, numLines int, delim byte) error {
+ 	blkSize := getBlockSize(numLines)
+ 	// read block by block until EOF and store a reference to the last lines
+ 	buf := make([]byte, blkSize)
+@@ -182,7 +185,7 @@ func readLastLinesFromBeginning(input io.ReadSeeker, writer io.Writer, numLines
+ 		foundLines += bytes.Count(buf[:n], []byte{'\n'})
+ 		slice = append(slice, buf[:n]...) // this is the slice that points to the wanted lines
+ 		// process the current slice
+-		slice = lastNLines(slice, numLines)
++		slice = lastNLines(slice, numLines, delim)
+ 	}
+ 	if _, err := writer.Write(slice); err != nil {
+ 		return err
+@@ -207,9 +210,16 @@ func isTruncated(file *os.File) (bool, error) {
  // tail reads the last N lines from the input File and writes them to the Writer.
  // The tailConfig object allows to specify the precise behaviour.
  func tail(inFile *os.File, writer io.Writer, config tailConfig) error {
@@ -44,25 +124,54 @@ index 15f9808..b1bb34f 100644
 +		return tailBytes(inFile, writer, config.bytes, config.fromStart)
 +	}
 +	if config.fromStart {
-+		return tailFromLine(inFile, writer, config.numLines)
++		return tailFromLine(inFile, writer, config.numLines, config.delim)
 +	}
  	// try reading from the end of the file
  	retryFromBeginning := false
- 	err := readLastLinesBackwards(inFile, writer, config.numLines)
-@@ -262,55 +269,73 @@ func tail(inFile *os.File, writer io.Writer, config tailConfig) error {
+-	err := readLastLinesBackwards(inFile, writer, config.numLines)
++	err := readLastLinesBackwards(inFile, writer, config.numLines, config.delim)
+ 	if err != nil {
+ 		// if it failed because it couldn't seek, mark it for retry reading from
+ 		// the beginning
+@@ -222,7 +232,7 @@ func tail(inFile *os.File, writer io.Writer, config tailConfig) error {
+ 	// if reading backwards failed because the file is not seekable,
+ 	// retry from the beginning
+ 	if retryFromBeginning {
+-		if err = readLastLinesFromBeginning(inFile, writer, config.numLines); err != nil {
++		if err = readLastLinesFromBeginning(inFile, writer, config.numLines, config.delim); err != nil {
+ 			return err
+ 		}
+ 	}
+@@ -262,55 +272,101 @@ func tail(inFile *os.File, writer io.Writer, config tailConfig) error {
  	return nil
  }
  
-+// run is u-root's original entry point, kept so the upstream tests still
-+// compile and run against the patched command (acmesh-uzd).
- func run(reader *os.File, writer io.Writer, follow bool, numLines int, followDuration time.Duration, args []string) error {
+-func run(reader *os.File, writer io.Writer, follow bool, numLines int, followDuration time.Duration, args []string) error {
 -	var (
 -		inFile *os.File
 -		err    error
 -	)
--
++// unwrapOpenErr turns the open error into the sentence GNU prints after the
++// colon: "No such file or directory", "Permission denied".
++func unwrapOpenErr(err error) string {
++	var pe *os.PathError
++	if errors.As(err, &pe) {
++		err = pe.Err
++	}
++	// glibc writes "No such file or directory" with a capital, Go's errno
++	// string is lower case; GNU's sentence is the one an agent knows.
++	msg := err.Error()
++	if msg != "" && msg[0] >= 'a' && msg[0] <= 'z' {
++		msg = string(msg[0]-32) + msg[1:]
++	}
++	return msg
++}
+ 
 -	// TODO: add support for parsing + (from beginning of the file)
 -	// negative sign is the same as none
++// run is u-root's original entry point, kept so the upstream tests still
++// compile and run against the patched command (acmesh-uzd).
++func run(reader *os.File, writer io.Writer, follow bool, numLines int, followDuration time.Duration, args []string) error {
  	if numLines < 0 {
 -		numLines = -1 * numLines
 +		// u-root's own tests pass a negative count and expect its absolute value
@@ -76,7 +185,12 @@ index 15f9808..b1bb34f 100644
 +}
 +
 +func runOpts(reader *os.File, writer io.Writer, opts tailOpts, args []string) error {
++	delim := byte('\n')
++	if opts.zero {
++		delim = 0
++	}
 +	config := tailConfig{
++		delim:          delim,
 +		follow:         opts.follow,
 +		numLines:       opts.lines,
 +		bytes:          opts.bytes,
@@ -113,7 +227,9 @@ index 15f9808..b1bb34f 100644
 +		} else {
 +			inFile, err = os.Open(name)
 +			if err != nil {
-+				return err
++				// GNU's wording, so an agent reads the same sentence as on Linux
++				// (acmesh-bmr): "tail: cannot open 'x' for reading: ...".
++				return fmt.Errorf("cannot open '%s' for reading: %s", name, unwrapOpenErr(err))
 +			}
  		}
 -
@@ -147,20 +263,26 @@ index 15f9808..b1bb34f 100644
  func main() {
 -	flag.Parse()
 -	if err := run(os.Stdin, os.Stdout, *flagFollow, *flagNumLines, 500*time.Millisecond, flag.Args()); err != nil {
+-		log.Fatalf("tail: %v", err)
 +	opts, files, err := parseTailArgs(os.Args[1:])
 +	if err != nil {
-+		log.Fatalf("tail: %v", err)
++		// No log.Fatalf: it prefixes the date and time, which no GNU tool does
++		// and which an agent reading the message does not expect
++		// (acmesh-jlk4, measured 24.11.2026).
++		fmt.Fprintf(os.Stderr, "tail: %v\n", err)
++		os.Exit(1)
 +	}
 +	if err := runOpts(os.Stdin, os.Stdout, opts, files); err != nil {
- 		log.Fatalf("tail: %v", err)
++		fmt.Fprintf(os.Stderr, "tail: %v\n", err)
++		os.Exit(1)
  	}
  }
 diff --git a/cmds/core/tail/tail_args.go b/cmds/core/tail/tail_args.go
 new file mode 100644
-index 0000000..f2d54ee
+index 0000000..f1f7302
 --- /dev/null
 +++ b/cmds/core/tail/tail_args.go
-@@ -0,0 +1,233 @@
+@@ -0,0 +1,238 @@
 +package main
 +
 +// This file is part of akmesh's patch against u-root's tail: GNU accepts forms
@@ -199,6 +321,7 @@ index 0000000..f2d54ee
 +	bytes     int64 // -c N, 0 when the line mode is meant
 +	fromStart bool  // "+N": start at line or byte N instead of at the end
 +	omitLast  int   // a negative -n: all but the last N lines
++	zero      bool  // -z: records end at NUL, not at a newline
 +	quiet     bool  // -q: no "==> file <==" headers
 +	verbose   bool  // -v: headers even for a single file
 +
@@ -279,6 +402,10 @@ index 0000000..f2d54ee
 +			i = len(args)
 +		case a == "-f" || a == "--follow":
 +			o.follow = true
++		case a == "-z" || a == "--zero-terminated":
++			// GNU tail -z: a record ends at a NUL byte, the pair to
++			// "find -print0" (acmesh-bmr).
++			o.zero = true
 +		case a == "-q" || a == "--quiet" || a == "--silent":
 +			o.quiet = true
 +		case a == "-v" || a == "--verbose":
@@ -371,7 +498,7 @@ index 0000000..f2d54ee
 +}
 +
 +// tailFromLine writes everything from line N on, which is "tail -n +N".
-+func tailFromLine(f *os.File, w io.Writer, n int) error {
++func tailFromLine(f *os.File, w io.Writer, n int, delim byte) error {
 +	if n < 1 {
 +		n = 1
 +	}
@@ -385,7 +512,7 @@ index 0000000..f2d54ee
 +			_, err := w.Write(data[i:])
 +			return err
 +		}
-+		if data[i] == '\n' {
++		if data[i] == delim {
 +			skipped++
 +		}
 +	}
@@ -394,3 +521,34 @@ index 0000000..f2d54ee
 +	}
 +	return nil
 +}
+diff --git a/cmds/core/tail/tail_test.go b/cmds/core/tail/tail_test.go
+index b820ab6..1685b25 100644
+--- a/cmds/core/tail/tail_test.go
++++ b/cmds/core/tail/tail_test.go
+@@ -35,7 +35,7 @@ func TestTailReadBackwards(t *testing.T) {
+ 		t.Error(err)
+ 	}
+ 	output := &bytes.Buffer{}
+-	err = readLastLinesBackwards(input, output, 2)
++	err = readLastLinesBackwards(input, output, 2, '\n')
+ 	if err != nil {
+ 		t.Error(err)
+ 	}
+@@ -61,7 +61,7 @@ func TestTailReadFromBeginning(t *testing.T) {
+ 		t.Error(err)
+ 	}
+ 	output := &bytes.Buffer{}
+-	err = readLastLinesFromBeginning(input, output, 3)
++	err = readLastLinesFromBeginning(input, output, 3, '\n')
+ 	if err != nil {
+ 		t.Error(err)
+ 	}
+@@ -228,7 +228,7 @@ func TestLastNLines(t *testing.T) {
+ 	}
+ 
+ 	for _, test := range tests {
+-		r := lastNLines(test.input, test.n)
++		r := lastNLines(test.input, test.n, '\n')
+ 		if !bytes.Equal(r, test.output) {
+ 			t.Errorf("want: %q, got: %q", string(test.output), string(r))
+ 		}

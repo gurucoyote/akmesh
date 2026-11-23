@@ -5754,3 +5754,27 @@ aus dem Imagebau erledigt: od -c (acmesh-4b7) und tr \0 (acmesh-bly).
 Batterie 382 Linux / 352 Windows, beide 0 Fehler, help-audit gruen.
 Groessen: 19538147 Bytes Linux dynamisch, 18181120 Bytes Windows, beide
 gestrippt (+8192 Linux und +5120 Windows gegen den Stand vor diesem Block).
+
+## tail -z und die Meldung beim Oeffnen (24.11.2026, acmesh-bmr)
+
+Das Image wurde vorher neu gebaut: 19.8 MB, akmesh:latest, trivy 0 (bin/akmesh,
+keine Funde, keine Secrets). Der Stand davor stammte von vor grep -P, uniq,
+comm, xargs, awk, head, tr und od.
+
+tail: die Probe hatte 17 Aufrufe, und der einzige Abweichler war -z. Gebaut ist
+    -z            ein Satz endet am NUL, wie bei GNU (tail -z -n2 auf
+                  "a\0b\0c\0d\0" gibt "c\0d\0"; Trennzeichen geht durch alle
+                  Modi: Rueckwaertslesen, Vorwaertslesen, +N).
+    Meldungen     u-root schrieb sie ueber log.Fatalf, also mit Datum und
+                  Uhrzeit davor. Jetzt "tail: invalid option -- 'Y'" und
+                  "tail: cannot open 'nofile.txt' for reading: No such file or
+                  directory", Exit 1. Der Text nach dem Doppelpunkt ist der des
+                  Systems: unter Windows steht dort der deutsche Satz, deshalb
+                  vergleicht die Batterie ihn nur unter Linux.
+Der Leser meldet unabhaengig davon die deutsche Systemmeldung - das ist Go und
+kein Fehler des Programms.
+
+Der Patch liegt in docs/design/patches/uroot-tail-gnu.patch (jetzt 535 Zeilen)
+und wurde gegen den Pin 869f00f in einer frischen Kopie als anwendbar geprueft.
+Vier neue Batteriepruefungen (tail -z zwei Faelle, unbekannter Schalter,
+fehlende Datei).

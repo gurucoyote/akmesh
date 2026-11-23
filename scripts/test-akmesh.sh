@@ -264,6 +264,15 @@ printf 'a\n' > dgu1.txt && printf 'b\n' > dgu2.txt
 check diff-u-header-stamp "$(run diff -u dgu1.txt dgu2.txt | tr -d '\r' | sed -n 1p | grep -c 'dgu1.txt	[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\.[0-9]\{9\} [+-][0-9]\{4\}')" "1"
 # sed -z (acmesh-d9e): NUL-getrennte Saetze rein und raus.
 printf 'a.txt\000b c.txt\000d.txt\000' > z.nul
+# tail -z und Fehlermeldungen ohne Zeitstempel (acmesh-bmr).
+check tail-zero "$(printf 'a\000b\000c\000d\000' > t4.nul; run tail -z -n2 t4.nul | od -c | head -1 | tr -d '\r')" "0000000   c  \\0   d  \\0"
+check tail-zero-in-head "$(printf 'a\000b\000c\000' > t4.nul; run tail -z -n1 t4.nul | od -c | head -1 | tr -d '\r')" "0000000   c  \\0"
+check tail-bad-option "$(run tail -Y 2>&1 | tr -d '\r')" "tail: invalid option -- 'Y'"
+# The text after the colon is the system's own, German on this Windows, so the
+# sentence is only compared where GNU's English is the reference.
+if [ -z "$WINDOWS" ]; then
+check tail-missing-file "$(run tail nofile.txt 2>&1 | tr -d '\r')" "tail: cannot open 'nofile.txt' for reading: No such file or directory"
+fi
 # tr und od gegen GNU (acmesh-3qy, acmesh-bly, acmesh-4b7).
 check tr-octal-nul "$(printf 'x\000y\n' | run tr '\0' '@' | od -c | head -1)" "0000000   x   @   y  \\n"
 check tr-delete-nul "$(printf 'x\000y\n' | run tr -d '\0' | od -c | head -1)" "0000000   x   y  \\n"

@@ -27,6 +27,8 @@ mkdir -p "$FIX"
 cd "$FIX"
 
 printf 'b\nA\na\nc\n' > words.txt
+# NUL-getrennte Saetze fuer head -z und tail -z (acmesh-fqj, acmesh-bmr)
+printf 'a.txt\000b c.txt\000d.txt\000' > z.nul
 printf 'b:2:z\nA:1:y\na:3:x\nc:10:w\n' > colon.txt
 printf 'b\t2\tz\nA\t1\ty\na\t3\tx\n' > tsv.txt
 printf 'Banane\napfel\nApfel\nbirne\nzebra\nZebra\n' > mixed.txt

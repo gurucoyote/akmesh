@@ -112,8 +112,9 @@ wsl.exe die Shell direkt.
 
 - Der u-root-init hat weder SIGCHLD-Handling noch wait4 (Quelltextpruefung
   22.11.). Forken oder bewusst nicht PID 1 werden.
-- Zwei Dienste haengen an diesem Ticket, weil sie einen Wiederstarter brauchen:
-  acmesh-bu1 (getty) und acmesh-qgf (crond, eigener Befehl mit robfig/cron).
+- Drei Dienste haengen an diesem Ticket, weil sie einen Wiederstarter brauchen:
+  acmesh-bu1 (getty), acmesh-qgf (crond, eigener Befehl mit robfig/cron) und
+  acmesh-g7n (syslogd, logger und logread).
 - Was fehlt, in der Reihenfolge, in der es weh tut: (1) Zombies waehrend des
   Laufs ernten (SIGCHLD + wait4-Schleife; u-root ruft WaitOrphans nur beim
   eigenen Ende), (2) Signale an die Kinder weitergeben, sonst ignoriert PID 1
@@ -160,5 +161,6 @@ wsl.exe die Shell direkt.
   Grenze und gehoert in die Hilfe.
 - Kein mdev und kein udev: /dev muss die Laufzeit liefern (Docker: der Daemon,
   WSL: Windows).
-- cron, syslog und passwortbasierter Login entscheidet acmesh-8v3, nicht diese
-  Roadmap.
+- cron, syslog und passwortbasierter Login waren acmesh-8v3; entschieden am
+  23.11.2026: Login gebaut (acmesh-7tx), cron als acmesh-qgf, syslog als
+  acmesh-g7n. Alle drei brauchen init (acmesh-b97) als Wiederstarter.

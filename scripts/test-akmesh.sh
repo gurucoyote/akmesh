@@ -266,6 +266,22 @@ check rg-re2-rejects "$(cd fdir && run rg 'beta(?= alpha)' r.txt 2>/dev/null; pr
 check rg-engine-default-rejects "$(cd fdir && run rg --engine=default 'beta(?= alpha)' r.txt 2>/dev/null; printf '%s' "$?")" "2"
 check rg-bad-engine "$(cd fdir && run rg --engine=nope alpha r.txt 2>/dev/null; printf '%s' "$?")" "2"
 check rg-pcre-word "$(cd fdir && run rg -Pw 'beta' r.txt | tr -d '\r')" "beta alpha"
+# wc: -L und die Spaltenbreite (acmesh-j66, acmesh-154). Fuer die Breite sorgt
+# eine Datei mit vielen Bytes und wenigen Zeilen: GNU richtet dann auch die
+# Zeilenspalte an deren Breite aus.
+printf 'a\nbb\nccc\n' > wdir_a.txt
+head -c 5000 /dev/zero | tr '\0' 'z' > wdir_z.txt
+check wc-max-line "$(run wc -L wdir_a.txt | tr -d '\r' | awk '{print $1}')" "3"
+check wc-longest-from-stdin "$(printf 'abcde' | run wc -L | tr -d '\r')" "5"
+check wc-columns "$(run wc -l wdir_a.txt wdir_z.txt | tr -d '\r' | head -1 | cut -c1-4)" "   3"
+check wc-total-row "$(run wc -l wdir_a.txt wdir_z.txt | tr -d '\r' | tail -1 | awk '{print $1}')" "3"
+check wc-single-no-pad "$(run wc -l wdir_a.txt | tr -d '\r' | cut -c1)" "3"
+# base64: -w0 ohne Umbruch und -d ohne Auffuellung (acmesh-449).
+check base64-w0-no-newline "$(printf 'hello world' | run base64 -w0 | od -c | head -1 | grep -c '\\n')" "0"
+check base64-decode-unpadded "$(printf 'aGVsbG8' > b64_p.txt && run base64 -d b64_p.txt)" "hello"
+check base64-decode-unpadded-status "$(printf 'aGVsbG8' > b64_p.txt && run base64 -d b64_p.txt >/dev/null; printf '%s' "$?")" "0"
+check base64-decode-space-is-garbage "$(printf 'aGVs bG8' > b64_s.txt && run base64 -d b64_s.txt 2>/dev/null >/dev/null; printf '%s' "$?")" "1"
+check base64-decode-ignore-space "$(printf 'aGVs bG8' | run base64 -di)" "hello"
 # grep behaviour lives in Go since acmesh-4aj (internal/forked/grep):
 #   -E, -w, -i            -> TestExtendedRegexpAndWordMatch, TestIgnoreCaseIsAbsolute
 #   -A/-B/-C mit "--"     -> TestContextGroupsAreSeparatedByDashes, TestAdjacentWindowsAreOneGroup

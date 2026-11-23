@@ -64,6 +64,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -85,11 +86,12 @@ func files0From(path string) ([]string, error) {
 }
 
 type params struct {
-	lines  bool
-	words  bool
-	runes  bool
-	broken bool
-	chars  bool
+	lines   bool
+	words   bool
+	runes   bool
+	broken  bool
+	chars   bool
+	maxLine bool
 }
 
 type cmd struct {
@@ -110,19 +112,26 @@ func command(stdin io.Reader, stdout io.Writer, stderr io.Writer, p params, args
 	}
 }
 
+// row is one output line: a file's counts and the name to print after them.
+type row struct {
+	c    cnt
+	name string
+}
+
 func (c *cmd) run() error {
 	var totals cnt
-	if !c.lines && !c.words && !c.runes && !c.broken && !c.chars {
+	if !c.lines && !c.words && !c.runes && !c.broken && !c.chars && !c.maxLine {
 		c.lines, c.words, c.chars = true, true, true
 	}
 
 	if len(c.args) == 0 {
 		res := c.count(c.stdin, "")
-		c.report(res, "")
+		c.report([]row{{res, ""}})
 		return nil
 	}
 
 	var errs error
+	var rows []row
 
 	for _, v := range c.args {
 		f, err := os.Open(v)
@@ -131,21 +140,29 @@ func (c *cmd) run() error {
 			continue
 		}
 		res := c.count(f, v)
+		f.Close()
 		totals.lines += res.lines
 		totals.words += res.words
 		totals.runes += res.runes
 		totals.badRunes += res.badRunes
 		totals.chars += res.chars
-		c.report(res, v)
+		if res.maxLine > totals.maxLine {
+			totals.maxLine = res.maxLine
+		}
+		rows = append(rows, row{res, v})
 	}
 	if len(c.args) > 1 {
-		c.report(totals, "total")
+		rows = append(rows, row{totals, "total"})
+	} else if len(rows) == 0 {
+		// Every file failed: GNU prints nothing but the error.
+		return errs
 	}
+	c.report(rows)
 	return errs
 }
 
 type cnt struct {
-	lines, words, runes, badRunes, chars int64
+	lines, words, runes, badRunes, chars, maxLine int64
 }
 
 // A modified version of utf8.Valid()
@@ -185,6 +202,9 @@ func (c *cmd) count(in io.Reader, fname string) cnt {
 		if !counted {
 			count.lines++
 		}
+		if w := displayWidth(line); w > count.maxLine {
+			count.maxLine = w
+		}
 		count.words += int64(len(bytes.Fields(line)))
 		count.runes += int64(utf8.RuneCount(line))
 		count.chars += int64(len(line))
@@ -193,28 +213,63 @@ func (c *cmd) count(in io.Reader, fname string) cnt {
 	return count
 }
 
-func (c *cmd) report(count cnt, fname string) {
-	fields := []string{}
-	if c.lines {
-		fields = append(fields, fmt.Sprintf("%d", count.lines))
+// report prints the collected rows. GNU pads every number column to one width,
+// and that width is taken from the largest of all counters across all files and
+// the total row, not only from the counters this call prints: measured
+// 23.11.2026, "wc -l a.txt z5k.txt" pads the line column to 4 because z5k.txt
+// has 5000 bytes (acmesh-154). A single input shows no padding.
+func (c *cmd) report(rows []row) {
+	cols := []struct {
+		on  bool
+		get func(cnt) int64
+	}{
+		{c.lines, func(n cnt) int64 { return n.lines }},
+		{c.words, func(n cnt) int64 { return n.words }},
+		{c.runes, func(n cnt) int64 { return n.runes }},
+		{c.broken, func(n cnt) int64 { return n.badRunes }},
+		{c.chars, func(n cnt) int64 { return n.chars }},
+		{c.maxLine, func(n cnt) int64 { return n.maxLine }},
 	}
-	if c.words {
-		fields = append(fields, fmt.Sprintf("%d", count.words))
+	wide := 1
+	for _, r := range rows {
+		for _, v := range []int64{r.c.lines, r.c.words, r.c.runes, r.c.badRunes, r.c.chars, r.c.maxLine} {
+			if w := len(strconv.FormatInt(v, 10)); w > wide {
+				wide = w
+			}
+		}
 	}
-	if c.runes {
-		fields = append(fields, fmt.Sprintf("%d", count.runes))
+	for _, r := range rows {
+		fields := make([]string, 0, len(cols)+1)
+		for _, col := range cols {
+			if !col.on {
+				continue
+			}
+			fields = append(fields, fmt.Sprintf("%*d", wide, col.get(r.c)))
+		}
+		if r.name != "" {
+			fields = append(fields, r.name)
+		}
+		fmt.Fprintln(c.stdout, strings.Join(fields, " "))
 	}
-	if c.broken {
-		fields = append(fields, fmt.Sprintf("%d", count.badRunes))
-	}
-	if c.chars {
-		fields = append(fields, fmt.Sprintf("%d", count.chars))
-	}
-	if fname != "" {
-		fields = append(fields, fname)
-	}
+}
 
-	fmt.Fprintln(c.stdout, strings.Join(fields, " "))
+// displayWidth is the width of a line the way GNU wc -L counts it: tabs advance
+// to the next multiple of 8, and one rune is one column. The C locale counts
+// non-ASCII bytes as zero and would report 0 for a German word; akmesh always
+// reads UTF-8, so the UTF-8 locale's answer is the honest one.
+func displayWidth(line []byte) int64 {
+	var w int64
+	for _, r := range string(bytes.TrimRight(line, "\n")) {
+		if r == '\t' {
+			w += 8 - w%8
+			continue
+		}
+		if r < 0x20 || r == 0x7f {
+			continue
+		}
+		w++
+	}
+	return w
 }
 
 // Run implements wc for the akmesh dispatcher.
@@ -236,6 +291,8 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			p.runes = true
 		case a == "--bytes":
 			p.chars = true
+		case a == "--max-line-length":
+			p.maxLine = true
 		case strings.HasPrefix(a, "--files0-from="):
 			files0 = strings.TrimPrefix(a, "--files0-from=")
 		case a == "--files0-from":
@@ -264,6 +321,8 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 					p.chars = true
 				case 'b':
 					p.broken = true
+				case 'L':
+					p.maxLine = true
 				default:
 					fmt.Fprintf(stderr, "wc: unknown option %q\n", "-"+string(a[1+j]))
 					return 1

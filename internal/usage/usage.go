@@ -525,14 +525,18 @@ var Texts = map[string]Entry{
 			"  the missing name and exits 1.",
 	},
 	"wc": {
-		"[-l] [-w] [-c] [-m] [-b] [--files0-from=FILE] [FILE...]",
+		"[-l] [-w] [-c] [-m] [-L] [-b] [--files0-from=FILE] [FILE...]",
 		"  -l, --lines       count lines\n" +
 			"  -w, --words       count words\n" +
 			"  -c, --bytes       count bytes\n" +
 			"  -m, --chars       count characters\n" +
+			"  -L, --max-line-length  print the longest line (tabs count to the\n" +
+			"                    next multiple of 8, as GNU counts them)\n" +
 			"  -b                count broken UTF-8 codes\n" +
 			"      --files0-from=FILE  read NUL-separated file names from FILE\n" +
-			"  With no letter, lines, words and bytes are reported.",
+			"  With no letter, lines, words and bytes are reported. Numbers are\n" +
+			"  right-aligned to one width, like GNU, and a total line follows two\n" +
+			"  or more files.",
 	},
 }
 

@@ -5270,3 +5270,47 @@ korrekt und langsam; gemessen wurde es nicht, weil die Aufrufe oben klein sind.
 
 Batterie: sieben neue Pruefungen (rg-pcre-lookahead, -lookbehind, -auto,
 rg-re2-rejects, rg-engine-default-rejects, rg-bad-engine, rg-pcre-word).
+
+## wc: -L und die Spaltenbreite gegen GNU wc 9.7 (23.11.2026, acmesh-j66, acmesh-154)
+
+-L fehlte ganz, und die Zahlen standen ohne Auffuellung nebeneinander. Beides
+im eigenen Fork (internal/forked/wc) gebaut.
+
+Die Breite folgt einer Regel, die erst die Messung zeigte: GNU nimmt fuer ALLE
+Zahlenspalten eine Breite, und zwar aus dem groessten Wert aller Zaehler
+(Zeilen, Woerter, Zeichen, Bytes, laengste Zeile) ueber alle Dateien und die
+Summenzeile - nicht nur aus den Spalten, die dieser Aufruf druckt:
+
+    wc -l a.txt z5k.txt     a.txt: 3 Zeilen, 9 Bytes; z5k.txt: 0 Zeilen, 5000 Bytes
+    GNU                     "   3 a.txt" und "   0 z5k.txt"  (Breite 4!)
+
+-L zaehlt wie GNU in der UTF-8-Locale: ein Zeichen ist eine Spalte, ein
+Tabulator rueckt auf das naechste Vielfache von 8. Gemessen:
+
+    wc -L a.txt       3        (drei Zeilen, laengste 3)
+    wc -L tab.txt     9        ("x<TAB>y" = 9 Spalten)
+    wc -L u.txt       3        ("äöü"; die C-Locale sagt hier 0)
+    printf 'abcde' | wc -L    5   (ohne Zeilenende)
+    wc -L a.txt tab.txt u.txt  mit Summenzeile 9
+
+14 Aufrufe gegen GNU verglichen, alle gleich (Breite, Inhalt, Summenzeile,
+einfache Datei ohne Auffuellung). Batterie: fuenf Pruefungen (wc-max-line,
+wc-longest-from-stdin, wc-columns, wc-total-row, wc-single-no-pad).
+
+## base64: -w0 und -d ohne Auffuellung gegen GNU base64 9.7 (23.11.2026, acmesh-449)
+
+Zwei Stolpersteine, beide gemessen und behoben:
+
+    base64 -w0 b.txt          GNU: kein Umbruch am Ende
+    printf aGVsbG8 | base64 -d  GNU: "hello", Exit 0 (ohne "=")
+
+Dazu zwei Regeln, die die Messung nebenbei klaerte:
+
+    Leerzeichen ist Muell, kein Format: "aGVs bG8" -> GNU schreibt "hel" und
+    endet mit "invalid input", Exit 1. Nur Zeilenumbruch und CR sind erlaubt.
+    Mit -i verschwindet der Muell: "aGVs bG8" -> "hello", Exit 0.
+    Eine Gruppe aus drei Zeichen ohne "=" dekodiert auch mit -i (Exit 0).
+
+11 Aufrufe byte-gleich gegen GNU (od -c verglichen). Batterie: fuenf
+Pruefungen (base64-w0-no-newline, -decode-unpadded, -decode-unpadded-status,
+-decode-space-is-garbage, -decode-ignore-space).

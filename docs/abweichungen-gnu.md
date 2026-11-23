@@ -120,11 +120,11 @@ Verzeichnisreihenfolge, wie acmesh-kgi bei find).
 
     sed -z 's/a/X/' a.txt    flag provided but not defined: -z
 
-### wc
+### wc - erledigt am 23.11.2026 (acmesh-j66, acmesh-154)
 
     wc -L a.txt      wc: unknown option "-L"
 
-### base64
+### base64 - erledigt am 23.11.2026 (acmesh-449)
 
     base64 -w0 a.txt     schreibt einen Zeilenumbruch, GNU nicht
     base64 -d auf unpadded Eingabe ("aGVsbG8")   akmesh: Exit 1 "invalid input",
@@ -147,6 +147,8 @@ findet sie nicht.
 
 - find gibt die Treffer sortiert aus, GNU in Verzeichnisreihenfolge.
 - wc richtet Zahlen linksbuendig aus, GNU rechtsbuendig (" 3  3 17" gegen "3 3 17").
+  Behoben am 23.11.2026 (acmesh-154): eine Breite fuer alle Spalten, genommen aus
+  dem groessten Wert aller Zaehler einschliesslich der Summenzeile.
 - tar schreibt "." wo GNU "./" schreibt.
 - diff -u ohne Zeitstempel in den Kopfzeilen; der Patch selbst ist gleich.
 - ls -l zeigt die Zeit in der lokalen Zone des Prozesses, im Container also UTC.

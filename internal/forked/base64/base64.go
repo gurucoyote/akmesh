@@ -63,42 +63,76 @@ type unknownOption struct{ opt string }
 
 func (e unknownOption) Error() string { return "unrecognized option '" + e.opt + "'" }
 
-func decodeone(stdin io.Reader, stdout io.Writer) error {
+// decodeone decodes the stream the way GNU does (measured 23.11.2026,
+// acmesh-449):
+//   - a line break or CR is part of the format and is skipped anywhere;
+//   - a space or tab is garbage: without -i the complete groups before it are
+//     written and the run ends with "invalid input"; with -i it is dropped;
+//   - a last group of two or three characters has no padding and decodes
+//     without an error, because a hash or token is often copied without "=";
+//   - a last group of one character is invalid.
+func decodeone(stdin io.Reader, stdout io.Writer, ignore bool) error {
 	data, err := io.ReadAll(stdin)
 	if err != nil {
 		return err
 	}
-	// Whitespace is part of the format: GNU accepts wrapped input.
-	clean := make([]byte, 0, len(data))
-	for _, b := range data {
-		switch b {
-		case '\n', '\r', ' ', '\t':
-		default:
-			clean = append(clean, b)
-		}
-	}
-	out := make([]byte, 0, len(clean)/4*3)
+	out := make([]byte, 0, len(data)/4*3)
+	var group []byte
 	invalid := false
-	for len(clean) >= 4 {
+	flush := func(partial bool) bool {
+		if len(group) == 0 {
+			return true
+		}
 		var dst [3]byte
-		n, derr := base64.StdEncoding.Decode(dst[:], clean[:4])
+		var n int
+		var derr error
+		if partial {
+			n, derr = base64.RawStdEncoding.Decode(dst[:], group)
+		} else {
+			n, derr = base64.StdEncoding.Decode(dst[:], group)
+		}
 		if derr != nil {
-			invalid = true
-			break
+			return false
 		}
 		out = append(out, dst[:n]...)
-		clean = clean[4:]
+		group = group[:0]
+		return true
 	}
-	if !invalid && len(clean) > 0 {
-		// A last group of two or three characters has no padding. GNU decodes
-		// it and still reports invalid input, instead of throwing the tail
-		// away - the loss of that last block was the bug of 18.11.
-		var dst [3]byte
-		n, derr := base64.RawStdEncoding.Decode(dst[:], clean)
-		if derr != nil {
+	for _, b := range data {
+		switch {
+		case b == '\n' || b == '\r':
+			continue
+		case b == ' ' || b == '\t':
+			if ignore {
+				continue
+			}
 			invalid = true
-		} else {
-			out = append(out, dst[:n]...)
+		case b >= 'A' && b <= 'Z', b >= 'a' && b <= 'z', b >= '0' && b <= '9', b == '+', b == '/', b == '=':
+			group = append(group, b)
+			if len(group) == 4 {
+				if !flush(false) {
+					invalid = true
+				}
+			}
+			continue
+		default:
+			if ignore {
+				continue
+			}
+			invalid = true
+		}
+		break
+	}
+	if !invalid && len(group) > 0 {
+		// Padding in a short group means it was cut; GNU calls that invalid.
+		for _, b := range group {
+			if b == '=' {
+				invalid = true
+			}
+		}
+		if len(group) == 1 {
+			invalid = true
+		} else if !invalid && !flush(true) {
 			invalid = true
 		}
 	}
@@ -114,10 +148,9 @@ func decodeone(stdin io.Reader, stdout io.Writer) error {
 // wrap writes text in lines of the given width; 0 means one single line.
 func wrap(stdout io.Writer, data []byte, width int) error {
 	if width <= 0 {
-		if _, err := stdout.Write(data); err != nil {
-			return err
-		}
-		_, err := fmt.Fprintln(stdout)
+		// GNU appends nothing here: "-w0" is the form a script puts into a
+		// variable, and a trailing newline breaks it (acmesh-449).
+		_, err := stdout.Write(data)
 		return err
 	}
 	for len(data) > 0 {
@@ -148,27 +181,6 @@ func encodeone(stdin io.Reader, stdout io.Writer, width int) error {
 		return fmt.Errorf("closing encoder: %w", err)
 	}
 	return wrap(stdout, buf.Bytes(), width)
-}
-
-// decodeIgnoring drops every byte outside the base64 alphabet and the padding,
-// which is what "base64 -i" does.
-func decodeIgnoring(stdin io.Reader, stdout io.Writer) error {
-	data, err := io.ReadAll(stdin)
-	if err != nil {
-		return err
-	}
-	kept := make([]byte, 0, len(data))
-	for _, b := range data {
-		if b >= 'A' && b <= 'Z' || b >= 'a' && b <= 'z' || b >= '0' && b <= '9' || b == '+' || b == '/' || b == '=' {
-			kept = append(kept, b)
-		}
-	}
-	decoded, err := base64.StdEncoding.DecodeString(string(kept))
-	if err != nil {
-		return errInvalidInput
-	}
-	_, err = stdout.Write(decoded)
-	return err
 }
 
 // parse reads -d, -w and -i, also glued together as -dw 0.
@@ -273,14 +285,7 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		stdin = f
 	}
 	if p.decode {
-		if p.ignore {
-			if err := decodeIgnoring(stdin, stdout); err != nil {
-				fmt.Fprintf(stderr, "base64: %v\n", err)
-				return 1
-			}
-			return 0
-		}
-		if err := decodeone(stdin, stdout); err != nil {
+		if err := decodeone(stdin, stdout, p.ignore); err != nil {
 			fmt.Fprintf(stderr, "base64: %v\n", err)
 			return 1
 		}

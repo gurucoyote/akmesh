@@ -4173,3 +4173,39 @@ Container fehlt, druckt procps "?", wir "pts/0".
 
 Tests: TestSelectByUserPpidAndComm (Name, uid, --ppid, -C, AND-Verknuepfung,
 -e gewinnt) und TestCustomHeaderFromO (Kopf ersetzen, Kopf weglassen).
+
+## mknod, blkid und losetup wie BusyBox (23.11.2026, acmesh-u38)
+
+Drei Abweichungen aus acmesh-hdb, alle behoben. Gemessen gegen BusyBox 1.37.0 in
+Alpine, auf derselben Maschine, im selben Lauf:
+
+    mknod /tmp/x c 1 3     busybox: crw-r--r--   akmesh vorher: crw-r-----
+                           akmesh jetzt: crw-r--r--
+    losetup -f             busybox: /dev/loop0   akmesh vorher: Exit 2
+                           akmesh jetzt: /dev/loop0
+    blkid /dev/loop0       busybox: /dev/loop0: UUID="11112222-3333-4444-5555-666677778888" TYPE="ext4"
+    (8 MiB ext4, mkfs.ext4)akmesh jetzt: dieselbe Zeile
+
+Was dafuer gemacht wurde:
+
+- mknod: Patch in scripts/patch-uroot.sh, 0660 -> 0666 (BusyBox nimmt 0666 ohne
+  Umask weg); ein Geraeteknoten ist damit auch fuer Nicht-root lesbar.
+- losetup: Patch ebenso, -f druckt das erste freie Loop-Geraet. Den Weg dorthin
+  gibt es in u-root schon (pkg/mount/loop.FindDevice, das der Ein-Argument-Aufruf
+  nutzt); es fehlte nur der Schalter.
+- blkid: eigener Befehl in internal/blkid statt des u-root-Stubs. Der Stub druckte
+  den Pfad und nur dann UUID und TYPE, wenn pkg/mount/block sie zufaellig kannte -
+  auf einem gewoehnlichen Geraet also nie. Der eigene Leser prueft die Superblocks
+  von ext2/ext3/ext4 (Magic 0xEF53, Unterscheidung ueber EXTENTS/64BIT/HAS_JOURNAL),
+  XFS ("XFSB"), vfat (FAT12/16/32-Signatur, Seriennummer als 1234-ABCD) und swap
+  ("SWAPSPACE2"), druckt Pfad: UUID="..." TYPE="..." und laesst unbekannte
+  Dateisysteme als nackten Pfad stehen. Ein nicht lesbares Geraet gibt Exit 2,
+  wie BusyBox. Ohne Argument listet er /sys/class/block.
+  Windows meldet ehrlich "not supported on Windows".
+
+Tests: sieben Faelle in internal/blkid (ext2, ext3, ext4, xfs, vfat, swap,
+unbekannt, Zeilenformat, Exit 2 bei fehlendem Geraet) mit kuenstlichen
+Superblocks; kein Loop-Geraet und kein Root noetig.
+
+Groesse: Linux 17.4 MiB (18284668 Bytes) statisch, gestrippt; Windows 16.4 MiB
+(17211392 Bytes), gestrippt. Batterie 211 Checks 0 Fehler, Hilfe-Audit Exit 0.

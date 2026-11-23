@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"akmesh/internal/blkid"
 	"os"
 
 	"akmesh/internal/hostname"
@@ -18,6 +19,10 @@ func runUname(args []string, stdin *os.File, stdout, stderr *os.File) int {
 
 func runHostname(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	return hostname.Run(args, stdin, stdout, stderr)
+}
+
+func runBlkid(args []string, stdin *os.File, stdout, stderr *os.File) int {
+	return blkid.Run("blkid", args, stdout, stderr)
 }
 
 func runPS(args []string, stdin *os.File, stdout, stderr *os.File) int {

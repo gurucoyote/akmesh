@@ -17,7 +17,7 @@ cpio gzip md5sum shasum dd strings
 date time uptime sleep printenv which man
 
 # filesystems and devices, from u-root; they only build for Linux (acmesh-hdb)
-linux: mount umount mknod blkid losetup
+linux: mount umount mknod losetup
 
 # network
 ping netcat

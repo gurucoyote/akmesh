@@ -276,3 +276,73 @@ EOF
 patch_file "$UROOT_DIR/cmds/core/dhclient/dhclient.go" "$TMP/dh-ok.old" "$TMP/dh-ok.new"
 
 echo "u-root commands patched: dhclient (-4/-6, exit 2 without a lease)"
+
+# 5. mknod: u-root creates device nodes with 0660, BusyBox with 0666 (minus the
+#    umask). A script that creates /dev/null and then reads it as a non-root user
+#    works under BusyBox and fails here (acmesh-u38).
+git -C "$UROOT_DIR" checkout -- cmds/core/mknod/mknod_linux.go 2>/dev/null || true
+
+cat > "$TMP/mknod-perm.old" <<'EOF'
+const defaultPerms = 0o660
+EOF
+cat > "$TMP/mknod-perm.new" <<'EOF'
+// akmesh: BusyBox uses 0666 (less the umask), u-root had 0660, so a device node
+// was not readable for a non-root user (acmesh-u38).
+const defaultPerms = 0o666
+EOF
+patch_file "$UROOT_DIR/cmds/core/mknod/mknod_linux.go" "$TMP/mknod-perm.old" "$TMP/mknod-perm.new"
+
+echo "u-root commands patched: mknod (0666)"
+
+# 6. losetup: BusyBox prints the first free loop device for -f; u-root has no
+#    such flag and exited 2 (acmesh-u38).
+git -C "$UROOT_DIR" checkout -- cmds/core/losetup/losetup_linux.go 2>/dev/null || true
+
+cat > "$TMP/losetup-var.old" <<'EOF'
+var detach = flag.Bool("d", false, "Detach the device")
+EOF
+cat > "$TMP/losetup-var.new" <<'EOF'
+var (
+	detach = flag.Bool("d", false, "Detach the device")
+	// akmesh: BusyBox's -f prints the first free loop device (acmesh-u38).
+	findFree = flag.Bool("f", false, "Print the first free loop device")
+)
+EOF
+patch_file "$UROOT_DIR/cmds/core/losetup/losetup_linux.go" "$TMP/losetup-var.old" "$TMP/losetup-var.new"
+
+cat > "$TMP/losetup-main.old" <<'EOF'
+	flag.Parse()
+	args := flag.Args()
+	if *detach {
+EOF
+cat > "$TMP/losetup-main.new" <<'EOF'
+	flag.Parse()
+	args := flag.Args()
+	if *findFree {
+		device, err := loop.FindDevice()
+		if err != nil {
+			log.Fatalf("losetup: no free loop device: %v", err)
+		}
+		fmt.Println(device)
+		os.Exit(0)
+	}
+	if *detach {
+EOF
+patch_file "$UROOT_DIR/cmds/core/losetup/losetup_linux.go" "$TMP/losetup-main.old" "$TMP/losetup-main.new"
+
+cat > "$TMP/losetup-import.old" <<'EOF'
+import (
+	"flag"
+	"log"
+	"os"
+EOF
+cat > "$TMP/losetup-import.new" <<'EOF'
+import (
+	"flag"
+	"fmt"
+	"log"
+	"os"
+EOF
+patch_file "$UROOT_DIR/cmds/core/losetup/losetup_linux.go" "$TMP/losetup-import.old" "$TMP/losetup-import.new"
+
+echo "u-root commands patched: losetup (-f)"

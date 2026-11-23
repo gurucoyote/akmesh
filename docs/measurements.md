@@ -4073,3 +4073,38 @@ zum Beispiel `brd <nil>` in addr show und `src <nil>` in route show.
 Gatter: go build und go vet gruen, `internal/cmdlist` gruen (ip und dhclient in
 der Gruppe Network), Hilfe-Audit Exit 0 (`ip -h` und `dhclient -h` antworten),
 Batterie 211 Checks 0 Fehler.
+
+## u-root-Abweichungen behoben: ip und dhclient (23.11.2026, acmesh-er3)
+
+Drei Abweichungen, alle als Patches in scripts/patch-uroot.sh (gleiche zwei
+Waechter wie bei chmod: neuer Text schon da -> Schritt faellt aus, alter Text
+fehlt -> Bau bricht ab).
+
+1. ip druckte fehlende Angaben als `<nil>`: `brd <nil>` in addr show,
+   `src <nil>` in route show und `via <nil>` bei einer Default-Route ohne
+   Gateway. Jetzt entfaellt das Feld wie bei iproute2.
+2. dhclient endete ohne Lease mit Exit 0. Jetzt Exit 2, wie GNU dhclient
+   ("no working leases"). Gemessen im leeren Image ohne DHCP-Server:
+
+       /akmesh dhclient -4 -timeout 3 -retry 1 eth0
+       -> "Could not configure eth0 for IPv4: ... no matching response packet"
+       -> rc=2
+
+3. dhclient kannte -4 und -6 nicht (iproute2 schon), und ein Aufruf ohne sie
+   wartete zusaetzlich auf DHCPv6, was wie ein Haenger aussah. Beide Flags sind
+   jetzt da; mit -4 kehrt der Aufruf zurueck, sobald der IPv4-Lease steht.
+
+Beleg mit echtem Lease (eigenes podman-Netz, dnsmasq als Server):
+
+    /akmesh dhclient -4 eth0   -> rc=0, "Configured eth0 with IPv4 DHCP Lease
+                                  IP 10.89.5.102/24"
+    /akmesh ip addr show eth0  -> inet 10.89.5.102/24, kein <nil> in der Ausgabe
+    /akmesh cat /etc/resolv.conf -> nameserver 10.89.5.2
+
+Der gesamte Containeraluf (dhclient, ip, cat) brauchte 3,5 s.
+
+Nebenbei richtiggestellt: dhclient liegt in u-root unter cmds/core, nicht in
+cmds/exp. Die Suche in beiden Verzeichnissen bleibt trotzdem nuetzlich.
+
+Gatter: Linux 17.4 MiB (18276476 Bytes) statisch und gestrippt, Windows 16.4 MiB
+(17200128 Bytes) gestrippt, Batterie 211 Checks 0 Fehler, Hilfe-Audit Exit 0.

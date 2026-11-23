@@ -5711,3 +5711,46 @@ Batterie: elf neue Pruefungen (head 8, tail 3).
 Batterie 370 Linux / 340 Windows, beide 0 Fehler, help-audit gruen.
 Groessen: 19534051 Bytes Linux dynamisch, 18176000 Bytes Windows, beide
 gestrippt (head hat nichts gekostet, der Umbau ist gleich gross).
+
+## tr und od gegen GNU (24.11.2026, acmesh-3qy / bly / 4b7)
+
+Referenz GNU coreutils 9.7 im gepinnten Image. tr 22 Aufrufe, od 20 Aufrufe.
+
+tr: zuerst 3 Abweichungen, alle gebaut.
+    \0            "unknown escape sequence '\0'": unser tr kannte nur die
+                  benannten Escapes. Jetzt liest es oktal wie GNU (\0 NUL,
+                  \12 Zeilenumbruch, \101 das A), bis zu drei Stellen, Wert
+                  modulo 256. Damit gehen "tr '\0' '@'" und "tr -d '\0'".
+    [:class:]     eine Klasse zaehlte nur, wenn sie den ganzen Satz ausmachte.
+                  "tr '[:upper:][:digit:]' 'a'" blieb deshalb wirkungslos; GNU
+                  bildet das A und die 1 auf "a" ab. Jetzt werden Klassen
+                  ueberall im Satz aufgeloest, in aufsteigender Reihenfolge.
+Stand 22 von 22 gleich.
+
+od: zuerst 6 von 20, dann 18, jetzt 20 von 20. Drei Ursachen.
+    Kurzformen    -c, -b, -x, -o, -d, -s und -a fehlten ganz ("unrecognized
+                  option '-c'", Exit 1). Jetzt sind sie eine Abkuerzung fuer
+                  -t c, o1, x2, o2, u2, d2 und a, und sie lassen sich buendeln:
+                  -An -tc, -cd, -w4.
+    Spaltenbreiten "od -t u1" druckte vier Spalten statt drei. Gemessen sind
+                  die Breiten von GNU: u 3/5/10/20, d 4/6/11/20, o 3/6/11/22,
+                  x 2/4/8/16, Buchstaben und Zeichen je 3. Die Adresse ist bei
+                  o und d siebenstellig, bei x sechsstellig ("000008").
+    Mehrere Typen "-t x1o1" gab je Typ eine eigene Adresse aus. GNU setzt die
+                  Adresse einmal je Block und rueckt die folgenden Zeilen um
+                  ihre Breite ein; ausserdem richtet es die Spalten ueber alle
+                  Typen an der breitesten aus. Beides ist gebaut.
+    -w            Bytes je Zeile fehlte, jetzt vorhanden.
+
+Nebenbei zwei Messfehler meinerseits: "-A n" schien die erste Spalte nicht
+aufzufuellen, bis ich die GNU-Ausgabe byteweise mit od -tx1 gelesen habe (drei
+Leerzeichen, dann das Zeichen) - die Annahme war falsch und ist verworfen.
+Ebenso war "tr '\101' 'Z'" auf "a" als Eingabe eine falsche Erwartung: \101 ist
+das A.
+
+Batterie: zwoelf neue Pruefungen (tr 5, od 7). Damit sind die beiden P2-Tickets
+aus dem Imagebau erledigt: od -c (acmesh-4b7) und tr \0 (acmesh-bly).
+
+Batterie 382 Linux / 352 Windows, beide 0 Fehler, help-audit gruen.
+Groessen: 19538147 Bytes Linux dynamisch, 18181120 Bytes Windows, beide
+gestrippt (+8192 Linux und +5120 Windows gegen den Stand vor diesem Block).

@@ -264,6 +264,19 @@ printf 'a\n' > dgu1.txt && printf 'b\n' > dgu2.txt
 check diff-u-header-stamp "$(run diff -u dgu1.txt dgu2.txt | tr -d '\r' | sed -n 1p | grep -c 'dgu1.txt	[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\.[0-9]\{9\} [+-][0-9]\{4\}')" "1"
 # sed -z (acmesh-d9e): NUL-getrennte Saetze rein und raus.
 printf 'a.txt\000b c.txt\000d.txt\000' > z.nul
+# tr und od gegen GNU (acmesh-3qy, acmesh-bly, acmesh-4b7).
+check tr-octal-nul "$(printf 'x\000y\n' | run tr '\0' '@' | od -c | head -1)" "0000000   x   @   y  \\n"
+check tr-delete-nul "$(printf 'x\000y\n' | run tr -d '\0' | od -c | head -1)" "0000000   x   y  \\n"
+check tr-octal-101 "$(printf 'A\n' | run tr '\101' 'Z')" "Z"
+check tr-two-classes "$(printf 'A1b\n' | run tr '[:upper:][:digit:]' 'a')" "aab"
+check tr-class-range "$(printf 'abc\n' | run tr 'a-c' 'x-z')" "xyz"
+check od-c "$(printf 'a\n' > o1.bin; run od -c o1.bin | tr -d '\r' | tr '\n' '|')" "0000000   a  \\n|0000002|"
+check od-b "$(printf 'a\n' > o1.bin; run od -b o1.bin | tr -d '\r' | sed -n 1p)" "0000000 141 012"
+check od-x "$(printf 'a\n' > o1.bin; run od -x o1.bin | tr -d '\r' | sed -n 1p)" "0000000 0a61"
+check od-u1 "$(printf 'a\n' > o1.bin; run od -t u1 o1.bin | tr -d '\r' | sed -n 1p)" "0000000  97  10"
+check od-An "$(printf 'a\n' > o1.bin; run od -An -tc o1.bin | tr -d '\r' | sed -n 1p)" "   a  \\n"
+check od-Ax "$(printf 'a\n' > o1.bin; run od -A x -c o1.bin | tr -d '\r' | tail -1)" "000002"
+check od-N "$(printf 'abc\n' > o2.bin; run od -c -N 2 o2.bin | tr -d '\r' | sed -n 1p)" "0000000   a   b"
 # head und tail, Grenzfaelle (acmesh-fqj).
 printf 'a\nb\nc\nd\ne\n' > h1.txt
 printf 'x\ny' > h2.txt

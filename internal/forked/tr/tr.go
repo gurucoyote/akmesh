@@ -280,6 +280,10 @@ func parse(args []string, p params) (*transformer, error) {
 	if err != nil {
 		return nil, err
 	}
+	arg1, err = expandClasses(arg1)
+	if err != nil {
+		return nil, err
+	}
 	arg1 = expandRanges(arg1)
 
 	var set2 Set
@@ -306,6 +310,10 @@ func parse(args []string, p params) (*transformer, error) {
 	}
 
 	arg2, err := unescape(set2)
+	if err != nil {
+		return nil, err
+	}
+	arg2, err = expandClasses(arg2)
 	if err != nil {
 		return nil, err
 	}
@@ -428,25 +436,84 @@ func expandRanges(in []rune) []rune {
 }
 
 func unescape(s Set) ([]rune, error) {
+	rs := []rune(s)
 	var out []rune
-	var escape bool
-	for _, r := range s {
-		if escape {
-			v, ok := escapeChars[r]
-			if !ok {
-				return nil, fmt.Errorf("unknown escape sequence '\\%c'", r)
+	for i := 0; i < len(rs); i++ {
+		r := rs[i]
+		if r != '\\' {
+			out = append(out, r)
+			continue
+		}
+		i++
+		if i >= len(rs) {
+			// A lone backslash at the end stands for itself, as in GNU.
+			out = append(out, '\\')
+			break
+		}
+		c := rs[i]
+		if c >= '0' && c <= '7' {
+			// An octal escape: \0 is a NUL byte, \12 a newline, \101 an "A".
+			// GNU reads up to three digits; the value is taken modulo 256
+			// (measured 24.11.2026, acmesh-bly: "tr '\0' '@'" replaces NUL).
+			v := int(c - '0')
+			for k := 0; k < 2 && i+1 < len(rs) && rs[i+1] >= '0' && rs[i+1] <= '7'; k++ {
+				i++
+				v = v*8 + int(rs[i]-'0')
 			}
-			out = append(out, v)
-			escape = false
+			out = append(out, rune(byte(v)))
 			continue
 		}
-
-		if r == '\\' {
-			escape = true
-			continue
+		v, ok := escapeChars[c]
+		if !ok {
+			return nil, fmt.Errorf("unknown escape sequence '\\%c'", c)
 		}
+		out = append(out, v)
+	}
+	return out, nil
+}
 
-		out = append(out, r)
+// classChars returns the characters of a named class in ascending order.
+func classChars(name Set) ([]rune, bool) {
+	f, ok := sets[name]
+	if !ok {
+		return nil, false
+	}
+	var out []rune
+	for r := rune(0); r < 256; r++ {
+		if f(r) {
+			out = append(out, r)
+		}
+	}
+	return out, true
+}
+
+// expandClasses replaces every [:name:] inside a set with that class's
+// characters. GNU honours a class wherever it appears, not only when the whole
+// set is one class: "tr '[:upper:][:digit:]' 'a'" turns both A and 1 into "a"
+// (measured 24.11.2026, acmesh-3qy).
+func expandClasses(in []rune) ([]rune, error) {
+	var out []rune
+	for i := 0; i < len(in); i++ {
+		if in[i] == '[' && i+1 < len(in) && in[i+1] == ':' {
+			end := -1
+			for j := i + 2; j+1 < len(in); j++ {
+				if in[j] == ':' && in[j+1] == ']' {
+					end = j
+					break
+				}
+			}
+			if end > 0 {
+				name := Set(string(in[i : end+2]))
+				chars, ok := classChars(name)
+				if !ok {
+					return nil, fmt.Errorf("invalid character class '%s'", string(in[i:end+2]))
+				}
+				out = append(out, chars...)
+				i = end + 1
+				continue
+			}
+		}
+		out = append(out, in[i])
 	}
 	return out, nil
 }

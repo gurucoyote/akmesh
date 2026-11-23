@@ -268,3 +268,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 23.11.2026: xargs gegen GNU, 9 von 19 abweichend - Optionen endeten nicht am Befehl, Quotes, -a/-i/-L/-E/-lang fehlten; jetzt 19/19 gleich, Batterie 350 Linux / 320 Windows.
 23.11.2026: awk gegen mawk 1.3.4, 83 von 87 gleich - Rest sind goawk-Eigenheiten (RSTART, 1/0, Fehlertext), Ticket acmesh-fl3; Batterie 358 Linux / 328 Windows.
 24.11.2026: head/tail-Grenzfaelle - head 20/20 nach -z und rohem Satzausgang, tail 16/17 (nur -z), Zeitstempel in u-root-Meldungen als eigenes Ticket; Batterie 370 Linux / 340 Windows.
+24.11.2026: tr und od gegen GNU - tr 22/22 nach oktalen Escapes und Klassen, od 20/20 nach Kurzformen (-c/-b/-x), Breiten, -w und mehreren Typen; acmesh-3qy, bly und 4b7 geschlossen; Batterie 382 Linux / 352 Windows.

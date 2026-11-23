@@ -1,0 +1,23 @@
+# tr gegen GNU coreutils 9.7
+printf 'abc\n' | tr 'a-c' 'x-z'
+printf 'abc\n' | tr 'abc' 'xy'
+printf 'abc\n' | tr -d 'b'
+printf 'aabb\n' | tr -s 'a'
+printf 'a  b\n' | tr -s ' '
+printf 'a\nb\n' | tr '\n' ' '
+printf 'abc\n' | tr 'a-z' 'A-Z'
+printf 'abc\n' | tr '[:lower:]' '[:upper:]'
+printf 'a1b2\n' | tr -d '[:digit:]'
+printf 'abc\n' | tr -cd 'a'
+printf 'abc\n' | tr -c 'a' 'X'
+printf 'a\tb\n' | tr '\t' ' '
+printf 'a\nb\n' | tr -s '\n'
+printf 'abc\n' | tr '[:alpha:]' 'X'
+printf 'abc\n' | tr 'a' 'xyz'
+printf 'abc\n' | tr --complement 'a' 'X'
+printf 'aaab\n' | tr -s 'a' 'b'
+printf 'x\000y\n' | tr '\0' '@' | od -c | head -1
+printf 'x\000y\n' | tr -d '\0' | od -c | head -1
+printf 'abc' | tr 'a-c' 'x-z'
+printf 'abc\n' | tr 'a-c' 'x'
+printf 'A1b\n' | tr '[:upper:][:digit:]' 'a'

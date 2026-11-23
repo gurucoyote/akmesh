@@ -243,9 +243,13 @@ var Texts = map[string]Entry{
 			"  Without PASSWORD the password is read from standard input.",
 	},
 	"od": {
-		"[-A RADIX] [-t TYPE]... [-N BYTES] [-j BYTES] [-v] [FILE]",
+		"[-A RADIX] [-t TYPE]... [-N BYTES] [-j BYTES] [-w BYTES] [-v] [FILE]",
 		"  -A d|o|x|n   address radix: decimal, octal (default), hex or none\n" +
-			"  -t TYPE      a, c, dN, oN, uN, xN or f4/f8; repeatable, one line per type\n" +
+			"  -t TYPE      a, c, dN, oN, uN, xN or f4/f8; repeatable (x1o1) and one\n" +
+			"               line per type\n" +
+			"  -c, -b, -x, -o, -d, -s, -a  the historical shorthands for -t c, o1, x2,\n" +
+			"               o2, u2, d2 and a; they cluster (-cd, -An -tc)\n" +
+			"  -w BYTES     bytes per line (default 16)\n" +
 			"  -N BYTES     stop after this many bytes\n" +
 			"  -j BYTES     skip this many bytes first\n" +
 			"  -v           print repeated blocks instead of a *\n" +
@@ -485,7 +489,8 @@ var Texts = map[string]Entry{
 		"  -c, -C, --complement       use the complement of SET1\n" +
 			"  -d, --delete               delete characters in SET1\n" +
 			"  -s, --squeeze-repeats      squeeze repeated characters\n" +
-			"  Ranges like a-z, octal escapes and [:class:] are understood.",
+			"  Ranges like a-z, octal escapes (\\0 is NUL, \\101 is A) and\n" +
+			"  [:class:] anywhere in a set are understood.",
 	},
 	"uniq": {
 		"[-c|-d|-u] [-i] [-f N] [-s N] [-w N] [-z] [FILE...]",

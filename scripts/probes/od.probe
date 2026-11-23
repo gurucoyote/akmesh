@@ -1,0 +1,21 @@
+# od gegen GNU coreutils 9.7
+od words.txt
+od -c words.txt
+od -b words.txt
+od -x words.txt
+od -t x1 words.txt
+od -t c words.txt
+od -A d -c words.txt
+od -A x -c words.txt
+od -A n -c words.txt
+od -v words.txt
+od -c -N 4 words.txt
+od -c -j 2 words.txt
+od -c empty.txt
+od -t o1 words.txt
+od -t u1 words.txt
+od -c NoNewline.txt
+od -An -tc words.txt
+od -w4 -c words.txt
+printf 'ä\n' | od -c | head -2
+od --help >/dev/null; echo "rc=$?"

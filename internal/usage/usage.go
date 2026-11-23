@@ -204,6 +204,68 @@ var Texts = map[string]Entry{
 			"  -c                    drop characters that cannot be converted\n" +
 			"  -l, --list            list the known encodings",
 	},
+	"chown": {
+		"[-R] [-h] [-v] [-c] OWNER[:GROUP] FILE...",
+		"  -R, --recursive       change directories and everything inside them\n" +
+			"  -h, --no-dereference  change a symbolic link itself, not its target\n" +
+			"  -v, --verbose         name every file that was changed\n" +
+			"  -c, --changes         name only the files whose owner really changed\n" +
+			"  OWNER is a name from /etc/passwd or a number; \":GROUP\", \"OWNER.GROUP\"\n" +
+			"  and a bare \":GROUP\" work as in coreutils. Not supported on Windows.",
+	},
+	"mkpasswd": {
+		"[-m sha-512|sha-256] [-s SALT] [PASSWORD]",
+		"  -m METHOD   sha-512 (default) or sha-256; the crypt hash in /etc/shadow\n" +
+			"  -s SALT     use this salt instead of a random one\n" +
+			"  Without PASSWORD the password is read from standard input.",
+	},
+	"od": {
+		"[-A RADIX] [-t TYPE]... [-N BYTES] [-j BYTES] [-v] [FILE]",
+		"  -A d|o|x|n   address radix: decimal, octal (default), hex or none\n" +
+			"  -t TYPE      a, c, dN, oN, uN, xN or f4/f8; repeatable, one line per type\n" +
+			"  -N BYTES     stop after this many bytes\n" +
+			"  -j BYTES     skip this many bytes first\n" +
+			"  -v           print repeated blocks instead of a *\n" +
+			"  The form agents type, \"od -An -tx1\", works: hex bytes, no address.",
+	},
+	"passwd": {
+		"[USER]",
+		"  Sets a password: asks for it twice, hashes it with SHA-512 crypt and\n" +
+			"  rewrites the line in /etc/shadow. Without USER the own account is meant.\n" +
+			"  Changing another account needs root. Not supported on Windows.",
+	},
+	"setsid": {
+		"[-w] [-f] PROGRAM [ARGS...]",
+		"  -w, --wait   wait for the program and return its exit code (default)\n" +
+			"  -f, --fork   start it and return at once\n" +
+			"  The program runs in its own session, so it survives the terminal.\n" +
+			"  Not supported on Windows, where a process does not die with its console.",
+	},
+	"su": {
+		"[-] [-c COMMAND] [USER]",
+		"  -c COMMAND   run this command through the user's shell instead of starting it\n" +
+			"  -            a login shell: the user's home and environment\n" +
+			"  Without root the target user's password is asked for. Not supported on\n" +
+			"  Windows, which has no setuid.",
+	},
+	"sum": {
+		"[-r] [-s] [FILE...]",
+		"  -r, --bsd    the BSD rotating checksum, the default\n" +
+			"  -s, --sysv   the System V 16 bit checksum\n" +
+			"  Prints the checksum, the size in 1K blocks and the name. For real\n" +
+			"  integrity checks use md5sum or sha256sum.",
+	},
+	"unzip": {
+		"[-l] [-o] [-q] [-d DIR] FILE [MEMBER...]",
+		"  -l, --list        list the entries instead of extracting\n" +
+			"  -d DIR            extract into DIR\n" +
+			"  -o, --overwrite   replace files that already exist; without it they are\n" +
+			"                    reported and left alone\n" +
+			"  -q, --quiet       print nothing per file\n" +
+			"  -p                write one member to standard output\n" +
+			"  Members stay inside DIR: \"../\" in an archive is stripped. Encrypted\n" +
+			"  entries cannot be read.",
+	},
 	"kill": {
 		"[-SIGNAL | -s SIGNAL] PID...\n       kill -l [SIGNAL]",
 		"  -l, --list        list the signal names\n" +

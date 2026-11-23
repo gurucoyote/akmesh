@@ -81,6 +81,16 @@ cat > "$ROOTFS/etc/passwd" <<'EOF'
 root:x:0:0:root:/root:/bin/sh
 nobody:x:65534:65534:nobody:/nonexistent:/bin/sh
 EOF
+
+# /etc/shadow: without it login cannot check a password and passwd cannot write
+# one - the file is not optional for a system that offers a console login. Root is
+# locked ("!") unless AKMESH_ROOT_HASH carries a hash, e.g. from
+# "akmesh mkpasswd -m sha-512"; a locked root is honest, login says so instead of
+# failing on a missing file (acmesh-a4d).
+cat > "$ROOTFS/etc/shadow" <<SHADOW
+root:${AKMESH_ROOT_HASH:-!}:19000:0:99999:7:::
+SHADOW
+chmod 0400 "$ROOTFS/etc/shadow"
 cat > "$ROOTFS/etc/group" <<'EOF'
 root:x:0:
 nobody:x:65534:

@@ -4866,3 +4866,79 @@ Groessen: dynamisch 18559203 (+20480), statisch 18497660 (+20480), Windows
 17398272 (+23040), alle gestrippt. 124 Befehle Linux und Windows.
 Batterie 219 Checks Linux, 197 Windows, beide ohne Fehler; Hilfe-Audit 0;
 Lizenzen 20/20.
+
+## Fuenf Luecken aus der Bedarfsmessung geschlossen (23.11.2026)
+
+Alle in einem Zug gebaut, jeder mit eigenen Tests. Die Pruefungen liefen am Ende
+gegen beide Ziele und im Image.
+
+### acmesh-vgr: netstat, readelf, setsid, sum
+
+netstat (cmds/core) und readelf (cmds/exp) kommen aus u-root, Aufnahme kostet nur
+die Zeile in scripts/cmds.txt; netstat ist linux: nur, weil es die Kernel-Tabellen
+liest.
+setsid ist eigen (internal/setsid): SysProcAttr{Setsid:true}, Exitcode wird
+durchgereicht; unter Windows die ehrliche Absage, weil dort ein Prozess nicht mit
+seiner Konsole stirbt.
+sum ist eigen (internal/bsdsum): BSD-Rotationssumme als Vorgabe, System-V mit -s.
+Die Zahlen sind gegen BusyBox 1.37.0 festgeschrieben: "hello
+" ergibt 36979 im
+BSD-Modus und 542 mit -s, "abc" 16556 und 294.
+readelf zeigt eine Besonderheit von u-root: es druckt JSON und kennt -h/-a nicht
+(Usage of readelf: bei -h). Das ist eine Upstream-Eigenschaft, keine Luecke hier.
+
+### acmesh-6p8: chown
+
+-R, -h (Symlink selbst), -v, -c, Benutzer und Gruppe als Name oder Zahl, Formen
+user:group, user.group, :group. Namen kommen aus /etc/passwd und /etc/group.
+Windows: "not supported (no POSIX ownership; access is controlled by ACLs)".
+Belegt im Image: chown 12345:12345 setzt beide Zahlen, chown -R :777 setzt nur die
+Gruppe und laesst den Besitzer stehen.
+
+### acmesh-2yc: od
+
+-A (d/o/x/n), -t (a, c, dN, oN, uN, xN, f4/f8), -N, -j, -v, Sprungzeile als *.
+Zwei eigene Fehler hat der Test gefunden: Hex und Oktal waren nicht mit Nullen
+aufgefuellt ("a" statt "0a") und die Adresse hatte Leerzeichen statt Nullen.
+Nach dem Fix ist die Ausgabe zeichengenau wie GNU:
+
+    printf "hello\n" | od         0000000 062550 066154 005157 / 0000006
+    printf "AB" | od -An -tx1      41 42
+
+### acmesh-f1e: unzip
+
+-l, -d, -o, -q, -p, einzelne Member. Zip-Slip wird entschaerft ("../" wird
+entfernt), Rechte und Zeiten bleiben erhalten, verschluesselte Eintraege werden
+gemeldet statt halb ausgepackt. Belegt im Image: Liste zeigt Groesse, Datum und
+Name, Auspacken liefert "hi" aus hi.txt.
+
+### acmesh-a4d: su, passwd, mkpasswd
+
+su prueft das Kennwort ueber den vorhandenen login-Code, wechselt die IDs und
+kann -c; der Exitcode kommt durch (su -c "exit 5" -> 5, su -c "id -u" root -> 0).
+passwd fragt zweimal, hasht mit SHA-512 und ersetzt nur das Hash-Feld der
+Shadow-Zeile; die neue Datei entsteht daneben und wird umbenannt, damit kein
+halbes Shadow-File entstehen kann. mkpasswd erzeugt $6$ und $5$.
+
+Der Hash ist gegen openssl geprueft, zeichengenau:
+
+    mkpasswd -m sha-512 -s salz geheim  =  openssl passwd -6 -salt salz geheim
+    mkpasswd -m sha-256 -s salz geheim  =  openssl passwd -5 -salt salz geheim
+
+Zwei Fehler unterwegs, beide behoben und mit Test festgehalten:
+
+- passwd las die beiden Zeilen mit zwei bufio-Readern; bei einer Pipe frass der
+  erste die zweite Zeile und passwd endete mit "passwd: EOF". Jetzt ein Reader
+  fuer beides, und auf einem Terminal term.ReadPassword.
+- Das Image hatte gar kein /etc/shadow. login konnte dort nie pruefen und passwd
+  nie schreiben. scripts/make-image.sh legt die Datei jetzt an, Modus 0400, root
+  gesperrt ("!"), ein echter Hash kommt ueber AKMESH_ROOT_HASH (z.B. aus
+  "akmesh mkpasswd -m sha-512"). Belegt im Image: Datei da, passwd root setzt
+  "$6$...", falsches Kennwort ergibt "login: incorrect name or password".
+
+Bekannte Grenze: speist man login ueber eine Pipe, kann der Kennwort-Leser die
+naechste Zeile schon gepuffert haben; am Terminal (getty) tritt das nicht auf.
+
+Groessen, alle gestrippt: dynamisch 18956515, statisch 18894972, Windows 17589248.
+134 Namen im Image (vorher 124). Batterie 232 Checks Linux, 210 Windows, beide
+ohne Fehler; 13 Pruefungen sind neu. Hilfe-Audit 0, Lizenzen 20/20.

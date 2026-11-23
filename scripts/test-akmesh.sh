@@ -549,6 +549,26 @@ PGNAME=${PGNAME%.exe}
 check pgrep-finds-own-name "ja" "$(run pgrep -x "$PGNAME" 2>/dev/null | tr -d '\r' | head -1 | grep -q '^[0-9][0-9]*$' && echo ja)"
 check pgrep-count "1" "$(run pgrep -c -x "$PGNAME" 2>/dev/null | tr -d '\r' | tr -dc '0-9' | grep -c .)"
 
+# chown, od, sum, unzip, setsid, su, passwd, mkpasswd (acmesh-6p8, 2yc, vgr, f1e, a4d)
+checkcode chown-help 0 "$(run chown --help >/dev/null 2>&1; echo $?)"
+check od-hex-bytes " 41 42" "$(printf 'AB' | run od -An -tx1 | tr -d '\r')"
+check od-address "0000000" "$(printf 'AB' | run od | tr -d '\r' | head -1 | cut -c1-7)"
+check od-end-address "0000002" "$(printf 'AB' | run od | tr -d '\r' | tail -1)"
+check sum-bsd "36979     1 -" "$(printf 'hello\n' | run sum | tr -d '\r' | sed 's/ *$//')"
+check sum-sysv "542 1 -" "$(printf 'hello\n' | run sum -s | tr -d '\r' | sed 's/ *$//')"
+ZIP_DIR=$(mktemp -d 2>/dev/null || echo /tmp/akmesh-zip)
+mkdir -p "$ZIP_DIR"
+mkdir -p "$ZIP_DIR/out"
+printf '%s' 'UEsDBBQAAAAIALuGd116em/tBQAAAAMAAAAGAAAAaGkudHh0y8jkAgBQSwECFAMUAAAACAC7hnddenpv7QUAAAADAAAABgAAAAAAAAAAAAAAgAEAAAAAaGkudHh0UEsFBgAAAAABAAEANAAAACkAAAAAAA==' | run base64 -d > "$ZIP_DIR/t.zip" 2>/dev/null
+check unzip-extracts "hi" "$(run unzip -q -d "$ZIP_DIR/out" "$ZIP_DIR/t.zip" >/dev/null 2>&1; cat "$ZIP_DIR/out/hi.txt" 2>/dev/null | tr -d '\r' | tr -d '\n')"
+check unzip-list "1" "$(run unzip -l "$ZIP_DIR/t.zip" 2>/dev/null | tr -d '\r' | grep -c hi.txt)"
+checkcode setsid-help 0 "$(run setsid --help >/dev/null 2>&1; echo $?)"
+checkcode su-help 0 "$(run su --help >/dev/null 2>&1; echo $?)"
+checkcode passwd-help 0 "$(run passwd --help >/dev/null 2>&1; echo $?)"
+check mkpasswd-sha512 "ja" "$(run mkpasswd -m sha-512 -s salz geheim 2>/dev/null | grep -q '^\$6\$salz\$' && echo ja)"
+check mkpasswd-sha256 "ja" "$(run mkpasswd -m sha-256 -s salz geheim 2>/dev/null | grep -q '^\$5\$salz\$' && echo ja)"
+rm -rf "$ZIP_DIR"
+
 # unknown command: the dispatcher names akmesh, not u-root's busybox
 checkcode unknown-command-exit 1 "$(run gibtsnicht >/dev/null 2>&1; echo $?)"
 check unknown-command-message "ja" "$(run gibtsnicht 2>&1 | grep -q 'not present in akmesh' && echo ja)"

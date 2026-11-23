@@ -1,12 +1,13 @@
 package crond
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"akmesh/internal/supervise"
 	"strconv"
 	"strings"
 	"sync"
@@ -37,6 +38,10 @@ type daemon struct {
 	// Self is the binary that runs the jobs; jobs go through its own sh so the
 	// same crontab works on Linux and Windows without /bin/sh existing.
 	Self string
+	// Mode and Sink override the supervisor settings (tests, and a caller that
+	// wants its own log file).
+	Mode supervise.Mode
+	Sink supervise.Sink
 	// Shell builds the argument list for one job; tests replace it.
 	Shell func(command string) []string
 
@@ -148,31 +153,57 @@ func (d *daemon) runJob(j Job) {
 	words := d.shellWords(j.Command)
 	cmd := exec.Command(words[0], words[1:]...)
 	cmd.Env = append(os.Environ(), j.Env...)
-	cmd.Stdout = d.Stdout
-	cmd.Stderr = d.Stderr
 	cmd.SysProcAttr = jobProcAttr()
-	if err := cmd.Start(); err != nil {
+	sess, err := supervise.Start(cmd, supervise.Config{
+		Mode: d.mode(), Sink: d.sink(), Tag: jobTag(j.Command), Out: d.Stdout, Err: d.Stderr,
+	})
+	if err != nil {
 		fmt.Fprintf(d.Stderr, "crond: cannot start %q: %v\n", j.Command, err)
 		return
 	}
 	d.mu.Lock()
 	d.pids[cmd.Process.Pid] = true
 	d.mu.Unlock()
-	err := cmd.Wait()
+	code, dropped := sess.Wait()
 	d.mu.Lock()
 	delete(d.pids, cmd.Process.Pid)
 	d.mu.Unlock()
-	code := 0
-	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			code = exitErr.ExitCode()
-		} else {
-			fmt.Fprintf(d.Stderr, "crond: running %q: %v\n", j.Command, err)
-			code = 1
-		}
+	if dropped > 0 {
+		fmt.Fprintf(d.Stderr, "crond: %d line(s) of %q not forwarded to syslog\n", dropped, j.Command)
 	}
 	fmt.Fprintf(d.Stdout, "crond: %s end %s (exit %d)\n", d.Now().Format("2006-01-02 15:04:05"), j.Command, code)
+}
+
+// mode and sink keep the supervisor settings in one place, read once.
+func (d *daemon) mode() supervise.Mode {
+	if d.Mode != 0 {
+		return d.Mode
+	}
+	m, err := supervise.ModeFromEnv()
+	if err != nil {
+		fmt.Fprintf(d.Stderr, "crond: %v; using dup\n", err)
+	}
+	return m
+}
+
+func (d *daemon) sink() supervise.Sink {
+	if d.Sink != nil {
+		return d.Sink
+	}
+	// Always created: the connection is made on the first line, so a syslogd
+	// that starts later is still reached.
+	s := supervise.NewSyslogSink("/dev/log", "crond", 1024)
+	_ = s.Start()
+	return s
+}
+
+// jobTag is the tag a job's output carries: the program it runs.
+func jobTag(command string) string {
+	fields := strings.Fields(command)
+	if len(fields) == 0 {
+		return "job"
+	}
+	return filepath.Base(fields[0])
 }
 
 // stopJobs asks the running jobs to end and kills them when they do not.

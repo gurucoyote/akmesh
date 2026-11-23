@@ -4492,3 +4492,64 @@ Groessen: Linux statisch 17.6 MiB (18423932 Bytes, +40960 gegen den Bau mit cron
 18382972), dynamisch 17.6 MiB (18485475), Windows 16.5 MiB (17335808, +25088).
 Alle gestrippt. Befehle: Linux 121, Windows 114. Batterie 211/0, Hilfe-Audit 0,
 Lizenzpruefung 20/20.
+
+## Aufpasser-Logging (23.11.2026, acmesh-17s)
+
+internal/supervise haengt sich zwischen Dienst und seine Ausgabe: es reicht jede
+Zeile unveraendert an das eigene stdout bzw. stderr weiter (podman logs und die
+Konsole sehen alles) und schickt sie zusaetzlich nach syslog. stdout geht als
+info (PRI 14), stderr als err (PRI 11) raus, damit logread Daten nicht als Fehler
+zeigt. Tag ist das Programm des Dienstes: kind.sh, ticker, selbst.
+
+Drei Modi, geschaltet mit AKMESH_SUPERVISE: dup (Standard, durchreichen UND
+weiterleiten), forward (nur weiterleiten), pass (nur durchreichen, auf den echten
+Deskriptoren, nichts wird gelesen). Ein unbekannter Wert ist ein Fehler und kein
+stilles Standardverhalten. init und crond nutzen denselben Code, jedes Kind hat
+eine eigene Zeile, kein Kind muss etwas dafuer tun - auch fremde Binaries sind
+abgedeckt.
+
+Regeln aus dem Ticket, alle gehalten: eine Roehre, die nicht mehr abnimmt, wirft
+Zeilen weg und zaehlt sie, das Kind laeuft weiter (gemessene Grenze unten);
+Teilzeilen am Ende kommen raus; Zeilen ueber 4096 Bytes werden gekuerzt und mit
+"(gekuerzt)" markiert; der Exit-Code des Kindes bleibt, was er war; ein Kind, das
+selbst per logger schreibt, ergibt genau eine syslog-Zeile.
+
+Beweis im Image (Inittab: syslogd, ein Kind mit 2x stdout und 3x stderr, ein
+logger-Kind, ein Kind mit Exit 7):
+
+    podman logs        eins / zwei-auf-stderr / drei / vier-auf-stderr /
+                       fuenf-auf-stderr   (alle fuenf durchgereicht)
+    logread            <14> kind.sh: eins
+                       <14> kind.sh: drei
+                       <11> kind.sh: zwei-auf-stderr
+                       <11> kind.sh: vier-auf-stderr
+                       <11> kind.sh: fuenf-auf-stderr
+                       <13> selbst: durch logger        (genau einmal)
+    init-Log           init: /bin/sh -c 'sleep 1; exit 7' exited with 7
+    podman stop -t 10  219 ms / 462 ms in zwei Laeufen, Container-Exit 0
+
+Grenze bei totem Socket, gemessen im Test (Socket aufgemacht und nie gelesen,
+500 Zeilen): 278 Zeilen nahm der Socket-Puffer noch an, 217 wurden verworfen und
+gezaehlt, das Kind lief in 0 ms durch. Der Aufpasser blockiert also nie, er
+verliert im Extremfall Zeilen - und sagt es.
+
+Zwei Fehler beim Beweis gefunden und behoben:
+1. Der Sink wurde beim Start von init angelegt; /dev/log gab es da noch nicht,
+   also wurde gar nicht weitergeleitet. Jetzt wird die Verbindung beim ersten
+   Satz aufgebaut.
+2. Danach fehlte die allererste Zeile des ersten Dienstes, weil syslogd noch
+   startete. Jetzt versucht der Sink es fuenfmal im Abstand von 100 ms, bevor er
+   eine Zeile aufgibt.
+
+Der Preis steht im Ticket und hier: ein Kind sieht eine Roehre statt eines
+Terminals, manche Programme schalten dann Farbe ab oder puffern anders. Dafuer
+gibt es den Modus pass.
+
+Tests (8): Dup reicht durch und leitet weiter (2x info, 3x err), forward bleibt
+still, Teilzeile kommt raus, lange Zeile wird gekuerzt, Exit-Code, voller Sink
+blockiert nicht, toter Socket blockiert nicht, AKMESH_SUPERVISE wird gelesen und
+ein Tippfehler abgelehnt.
+
+Groessen: Linux statisch 17.6 MiB (18440316 Bytes, +16384 gegen g7n 18423932),
+Windows 16.5 MiB (17348608, +12800), gestrippt. Batterie 211/0, Hilfe-Audit 0,
+Lizenzpruefung 20/20, 121 Befehle Linux / 114 Windows.

@@ -23,12 +23,15 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
+
+	"akmesh/internal/supervise"
 )
 
 // action is the inittab action, the subset BusyBox understands and a container
@@ -102,6 +105,7 @@ type child struct {
 	pid   int
 	ent   entry
 	cmd   *exec.Cmd
+	pipes *supervise.Pipes
 	start time.Time
 }
 
@@ -118,6 +122,11 @@ type Runner struct {
 	// when a service keeps dying at once, up to RespawnMax.
 	RespawnDelay time.Duration
 	RespawnMax   time.Duration
+	// Mode is how a service's output is handled: pass through and forward to
+	// syslog (default), forward only, or pass only. AKMESH_SUPERVISE switches it.
+	Mode supervise.Mode
+	// Sink is the syslog endpoint; nil means the output is only passed through.
+	Sink supervise.Sink
 
 	now   func() time.Time
 	spawn func(entry) (*exec.Cmd, error)
@@ -132,7 +141,7 @@ type Runner struct {
 
 // New returns a runner with the real syscalls and a 3 second grace.
 func New(entries []entry, stdout, stderr io.Writer) *Runner {
-	return &Runner{
+	r := &Runner{
 		Entries:      entries,
 		Stdout:       stdout,
 		Stderr:       stderr,
@@ -146,6 +155,13 @@ func New(entries []entry, stdout, stderr io.Writer) *Runner {
 		children:     map[int]*child{},
 		fastFails:    map[string]int{},
 	}
+	if mode, err := supervise.ModeFromEnv(); err == nil {
+		r.Mode = mode
+	} else {
+		fmt.Fprintf(stderr, "init: %v; using dup\n", err)
+	}
+	r.Sink = syslogSink()
+	return r
 }
 
 // defaultSpawn starts a command through /bin/sh, the way inittab lines are
@@ -286,13 +302,58 @@ func (r *Runner) start(e entry) error {
 	if err != nil {
 		return err
 	}
-	if err := cmd.Start(); err != nil {
+	pipes, err := supervise.Attach(cmd, supervise.Config{
+		Mode: r.Mode, Sink: r.Sink, Tag: tagFor(e.Command), Out: r.Stdout, Err: r.Stderr,
+	})
+	if err != nil {
 		return err
 	}
+	if err := cmd.Start(); err != nil {
+		pipes.Abort()
+		return err
+	}
+	pipes.AfterStart()
+	// The readers end at EOF when the service dies; nobody has to wait for them
+	// in the reap loop.
+	go pipes.Wait()
 	r.mu.Lock()
-	r.children[cmd.Process.Pid] = &child{pid: cmd.Process.Pid, ent: e, cmd: cmd, start: r.now()}
+	r.children[cmd.Process.Pid] = &child{pid: cmd.Process.Pid, ent: e, cmd: cmd, pipes: pipes, start: r.now()}
 	r.mu.Unlock()
 	return nil
+}
+
+// tagFor is the syslog tag of a service: the program it runs, not the whole
+// command line, so logread shows "ticker" and not "sh -c while true; do ...".
+func tagFor(command string) string {
+	fields := strings.Fields(command)
+	if len(fields) == 0 {
+		return "init"
+	}
+	first := filepath.Base(fields[0])
+	switch first {
+	case "sh", "/bin/sh", "bash":
+		// "sh -c 'ticker arg'" - the interesting name is inside.
+		for i, f := range fields {
+			if f == "-c" && i+1 < len(fields) {
+				inner := strings.Fields(strings.Trim(fields[i+1], "\"'"))
+				if len(inner) > 0 {
+					return filepath.Base(inner[0])
+				}
+			}
+		}
+	}
+	return first
+}
+
+// syslogSink opens /dev/log when it exists. Without a daemon the output is still
+// passed through - the supervisor never becomes the reason a service fails.
+func syslogSink() supervise.Sink {
+	// Always created: syslogd is usually started BY init, so the socket does not
+	// exist yet. The sink connects on its first line and a missing daemon only
+	// costs the lines it cannot take, never a service.
+	s := supervise.NewSyslogSink("/dev/log", "init", 1024)
+	_ = s.Start()
+	return s
 }
 
 // runAndWait starts a service and waits for that one pid, at most until it ends.
@@ -302,25 +363,15 @@ func (r *Runner) runAndWait(e entry) int {
 		fmt.Fprintf(r.Stderr, "init: cannot start %q: %v\n", e.Command, err)
 		return 1
 	}
-	if err := cmd.Start(); err != nil {
+	sess, err := supervise.Start(cmd, supervise.Config{
+		Mode: r.Mode, Sink: r.Sink, Tag: tagFor(e.Command), Out: r.Stdout, Err: r.Stderr,
+	})
+	if err != nil {
 		fmt.Fprintf(r.Stderr, "init: cannot start %q: %v\n", e.Command, err)
 		return 1
 	}
-	pid := cmd.Process.Pid
-	for {
-		var status syscall.WaitStatus
-		wpid, err := syscall.Wait4(pid, &status, 0, nil)
-		if err == syscall.EINTR {
-			continue
-		}
-		if err != nil {
-			fmt.Fprintf(r.Stderr, "init: wait for %q: %v\n", e.Command, err)
-			return 1
-		}
-		if wpid == pid {
-			return exitCode(status)
-		}
-	}
+	code, _ := sess.Wait()
+	return code
 }
 
 // reapAll collects every finished child without blocking and restarts the

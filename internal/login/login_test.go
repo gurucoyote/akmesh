@@ -114,18 +114,38 @@ func TestLoginOverridesCallerHome(t *testing.T) {
 	}
 }
 
-// TestLoginRefusesWithoutForce: there is no password check in this build, and a
-// login that pretends to authenticate is worse than one that says so.
-func TestLoginRefusesWithoutForce(t *testing.T) {
+// TestLoginAsksForAPassword: without -f the password is read and checked, and a
+// wrong one ends the attempt with the same sentence as an unknown name.
+func TestLoginAsksForAPassword(t *testing.T) {
 	home := t.TempDir()
 	fakeSystem(t, "martin:x:1000:1000::"+home+":/bin/sh\n")
+	withShadow(t, "martin:"+hashCases[0].hash+"::::::\n")
 
 	var out, errb bytes.Buffer
-	if code := Run([]string{"martin"}, strings.NewReader(""), &out, &errb); code != 1 {
+	if code := Run([]string{"martin"}, strings.NewReader("falsch\n"), &out, &errb); code != 1 {
 		t.Fatalf("exit %d, want 1", code)
 	}
-	if !strings.Contains(errb.String(), "password") {
-		t.Fatalf("message %q does not name the reason", errb.String())
+	if !strings.Contains(errb.String(), "Password: ") {
+		t.Fatalf("no prompt, stderr %q", errb.String())
+	}
+	if !strings.Contains(errb.String(), errIncorrect.Error()) {
+		t.Fatalf("message %q does not say the password was wrong", errb.String())
+	}
+}
+
+// TestLoginWithTheRightPasswordStartsTheSession: the whole chain, from the
+// shadow hash to the shell call.
+func TestLoginWithTheRightPasswordStartsTheSession(t *testing.T) {
+	home := t.TempDir()
+	ids, exec, _ := fakeSystem(t, "martin:x:1000:1000::"+home+":/bin/sh\n")
+	withShadow(t, "martin:"+hashCases[0].hash+"::::::\n")
+
+	var out, errb bytes.Buffer
+	if code := Run([]string{"martin"}, strings.NewReader(hashCases[0].password+"\n"), &out, &errb); code != 0 {
+		t.Fatalf("exit %d, stderr %q", code, errb.String())
+	}
+	if (*ids)[0] != 1000 || len(*exec) != 1 {
+		t.Fatalf("session not started: ids %v, exec %v", *ids, *exec)
 	}
 }
 

@@ -216,3 +216,22 @@ func TestHelpEndsZero(t *testing.T) {
 		}
 	}
 }
+
+// TestPromptEscapesAreExpanded: a profile sets PS1 to "\u@\h:\w\$"; printing
+// that literally is what a shell must not do.
+func TestPromptEscapesAreExpanded(t *testing.T) {
+	t.Setenv("USER", "martin")
+	got := expandPrompt(`\u@\h:\w\$`)
+	if strings.Contains(got, "\\") {
+		t.Fatalf("escapes not expanded: %q", got)
+	}
+	if !strings.HasPrefix(got, "martin@") {
+		t.Fatalf("user missing: %q", got)
+	}
+	if !strings.HasSuffix(got, "#") && !strings.HasSuffix(got, "$") {
+		t.Fatalf("prompt does not end in a prompt sign: %q", got)
+	}
+	if got := expandPrompt(`\[\]x`); got != "x" {
+		t.Fatalf("readline markers kept: %q", got)
+	}
+}

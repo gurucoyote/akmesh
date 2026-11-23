@@ -3940,3 +3940,66 @@ ersetzt, ohne -f verweigert, unbekannter Nutzer, Hilfe); go test gruen;
 
 Groesse: Linux 17182947 Bytes (+16384 gegen 17166563), Windows 17198080
 (+2048 gegen 17196032).
+
+## login: Passwortpruefung ueber /etc/shadow (23.11.2026, acmesh-7tx)
+
+`login` ohne `-f` prueft jetzt ein Passwort gegen /etc/shadow. Ohne Passwort geht
+es nicht weiter, und der Zustand des Kontos wird benannt.
+
+Umgesetzt (internal/login):
+
+- sha512-crypt ($6$) und sha256-crypt ($5$) in reinem Go, internal/login/shacrypt.go.
+  Rounds werden gelesen, auf 1000 bis 999999999 begrenzt und im Ergebnis gefuehrt,
+  wie glibc es tut.
+- Pruefwerte stammen von der Maschine selbst, nicht aus dem Gedaechtnis: sechs
+  Hashes von `openssl passwd -6/-5` (OpenSSL 3.5.5) und `perl -e 'print crypt(...)'`
+  gegen glibc, darunter rounds=10000, rounds=1400 und die Rundung von rounds=10
+  auf 1000. Alle sechs stimmen; je Hash wird auch das falsche Passwort abgelehnt.
+- Vergleich in konstanter Zeit (subtle.ConstantTimeCompare).
+- Nicht unterstuetzte Formate ($y$ yescrypt, $2$ bcrypt, $1$ md5-crypt, alte
+  DES-Hashes) werden als "unsupported" gemeldet, nicht als falsches Passwort.
+- /etc/shadow: gesperrt (! oder *), abgelaufen (Feld 8), ohne Passwort und eine
+  fehlende Datei haben je eine eigene Antwort.
+- Ohne -f: Frage "Password: ", auf einem Terminal ohne Echo (x/term), sonst eine
+  Zeile von der Eingabe. Falsches Passwort und unbekannter Name ergeben denselben
+  Satz und warten 2 Sekunden (failDelay, im Test auf 0).
+- Das Passwort wird auch bei unbekanntem Namen gelesen, damit die Zeit nicht
+  verraet, welche Namen existieren.
+
+Befund an einer Bibliothek: github.com/GehirnInc/crypt (MIT, reines Go) rechnet
+$6$/$5$ ohne rounds korrekt, schreibt bei "rounds=" aber ein doppeltes `$` und
+einen anderen Hash:
+
+    $6$rounds=10000$roundsalt$$ZJS34DsPMrYafh0uQ9RwBlcJF2Q9pr/...   (falsch)
+
+Deshalb eigene Implementierung, keine neue Abhaengigkeit: go.mod ist wieder ohne
+Fremdmodul. Der erste Versuch war ausserdem selbst falsch (P und S wurden auf ihre
+Laenge gekuerzt statt so oft geschrieben, wie ihre Laenge ist; der letzte
+Base64-Block nahm Byte 0 statt einer Null) - die Pruefwerte haben beides gefunden.
+
+Belege am gebauten Binary (Linux 17195235 Bytes):
+
+- Container, Alpine, eigenes /etc/passwd und /etc/shadow mit $6$-Hash:
+  `echo falsch | akmesh login tester` -> Exit 1, "incorrect name or password",
+  Laufzeit rund 2 Sekunden (gemessen: 2,594 s fuer beide Laeufe zusammen).
+  `echo geheim | akmesh login tester` -> Exit 0, Shell startet als tester,
+  ~/.profile schreibt /home/tester/proof mit "profil von tester".
+- Echtes Terminal (pty): das Passwort wird nicht gespiegelt (Echo aus), danach
+  startet die Sitzung.
+- Tests: 12 Faelle in internal/login (Pruefwerte, unbekannte Formate, richtiges
+  und falsches Passwort, Sperre, Ablauf, kein Echo-Pfad im Test, Hilfe).
+- Gatter: go test gruen, Hilfe-Audit Exit 0, Batterie 211 Checks 0 Fehler,
+  Windows meldet "login: not supported on Windows".
+
+## sh: zwei Reste aus dem Login (23.11.2026, acmesh-7tx)
+
+Beim Login auf einem Terminal fielen zwei Fehler auf, beide behoben:
+
+- `sh -l` war auf einem Terminal nicht interaktiv: die Startdateien liefen mit
+  der Sitzungs-Eingabe als stdin, und ein Profil, das stdin liest, leerte sie.
+  Jetzt bekommt die Shell bei interaktivem Aufruf von Anfang an einen leeren
+  Leser; die Zeilenschleife liest die Roh-Eingabe.
+- Ein Profil, das PS1 auf "\[..\]\u@\h:\w\$" setzt, wurde woertlich angezeigt.
+  expandPrompt setzt jetzt \u, \h, \w, \W, \$, \n und \\ um und entfernt die
+  \[..\]-Marker. Vorher: "\\033]0;golang \\w\\a\\h:\\w\\ngolang \\$". Nachher:
+  "033]0;golang /tmpaBSNB67:/tmp\ngolang #".

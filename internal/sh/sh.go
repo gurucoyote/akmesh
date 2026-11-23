@@ -62,6 +62,11 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 
 	out := &switchWriter{w: stdout}
 	in := &switchReader{r: stdin}
+	if inv.interactive {
+		// The session's input belongs to the line loop, never to the shell: a
+		// startup file that reads stdin would swallow the first line typed.
+		in.swap(strings.NewReader(""))
+	}
 	env := os.Environ()
 	if inv.interactive {
 		// The parent process may export its own PS1; a shell must not inherit
@@ -110,7 +115,6 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 		}
 		return finish(runner, runSource(runner, string(data), inv.scriptFile), stderr)
 	case inv.interactive:
-		in.swap(strings.NewReader(""))
 		return interactiveLoop(runner, stdin, in, out, stderr)
 	default:
 		data, err := io.ReadAll(in)
@@ -287,9 +291,68 @@ func promptString(r *interp.Runner, in *switchReader, out *switchWriter) string 
 	in.swap(prevIn)
 	out.swap(prevOut)
 	if s := buf.String(); s != "" {
-		return s
+		return expandPrompt(s)
 	}
 	return defaultPrompt()
+}
+
+// expandPrompt turns the PS1 escapes ash understands into text. Without this a
+// profile that sets PS1 to "\[..\]\u@\h:\w\$" shows that string literally.
+func expandPrompt(p string) string {
+	var b strings.Builder
+	for i := 0; i < len(p); i++ {
+		c := p[i]
+		if c == '\\' && i+1 < len(p) {
+			i++
+			switch p[i] {
+			case 'u':
+				b.WriteString(envOr("USER", "root"))
+			case 'h':
+				h, _ := os.Hostname()
+				if k := strings.IndexByte(h, '.'); k > 0 {
+					h = h[:k]
+				}
+				b.WriteString(h)
+			case 'w':
+				wd, _ := os.Getwd()
+				home := envOr("HOME", "")
+				if home != "" && strings.HasPrefix(wd, home) {
+					wd = "~" + wd[len(home):]
+				}
+				b.WriteString(wd)
+			case 'W':
+				wd, _ := os.Getwd()
+				if k := strings.LastIndexByte(wd, '/'); k >= 0 && k+1 < len(wd) {
+					wd = wd[k+1:]
+				}
+				b.WriteString(wd)
+			case '$':
+				if os.Geteuid() == 0 {
+					b.WriteByte('#')
+				} else {
+					b.WriteByte('$')
+				}
+			case 'n':
+				b.WriteByte('\n')
+			case '\\':
+				b.WriteByte('\\')
+			case '[', ']':
+				// Readline markers: they carry no text.
+			default:
+				b.WriteByte(p[i])
+			}
+			continue
+		}
+		b.WriteByte(c)
+	}
+	return b.String()
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
 
 // defaultPrompt is what ash prints when no profile set PS1.

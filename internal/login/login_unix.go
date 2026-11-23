@@ -69,15 +69,22 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "login: name the user: login [-f] USER")
 		return 1
 	}
+	acct, lookupErr := lookup(name)
 	if !force {
-		// Without PAM there is nothing that could check a password. Saying that
-		// is better than pretending the user authenticated.
-		fmt.Fprintln(stderr, "login: password authentication is not supported in this build, use -f")
-		return 1
+		// The password is asked for before the name is judged: an unknown name
+		// and a wrong password must look the same from the outside.
+		authErr := authenticate(name, stdin, stderr)
+		if lookupErr != nil || authErr != nil {
+			if lookupErr != nil {
+				fmt.Fprintln(stderr, "login: "+errIncorrect.Error())
+			} else {
+				fmt.Fprintf(stderr, "login: %v\n", authErr)
+			}
+			return 1
+		}
 	}
-	acct, err := lookup(name)
-	if err != nil {
-		fmt.Fprintf(stderr, "login: %v\n", err)
+	if lookupErr != nil {
+		fmt.Fprintf(stderr, "login: %v\n", lookupErr)
 		return 1
 	}
 	if err := start(acct, stdout, stderr); err != nil {

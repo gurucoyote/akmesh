@@ -115,6 +115,10 @@ wsl.exe die Shell direkt.
 - Drei Dienste haengen an diesem Ticket, weil sie einen Wiederstarter brauchen:
   acmesh-bu1 (getty), acmesh-qgf (crond, eigener Befehl mit robfig/cron) und
   acmesh-g7n (syslogd, logger und logread).
+- Das Aufpasser-Logging (acmesh-17s) gehoert hierher und nicht in die Befehle:
+  init haengt Roehren an stdout und stderr der Kinder und schreibt jede Zeile
+  sowohl durch als auch nach syslog. Ein Befehl muss dafuer nichts wissen, und
+  ein Programm, das bewusst nach stderr schreibt, schreibt weiter nach stderr.
 - Was fehlt, in der Reihenfolge, in der es weh tut: (1) Zombies waehrend des
   Laufs ernten (SIGCHLD + wait4-Schleife; u-root ruft WaitOrphans nur beim
   eigenen Ende), (2) Signale an die Kinder weitergeben, sonst ignoriert PID 1

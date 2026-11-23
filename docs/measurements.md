@@ -5568,3 +5568,38 @@ c.tar.gz{doc.txt}, doc.txt.
 - Ohne Treffer: Exit 1. Ohne `-z`: keine Treffer, Exit 1, kein Hinweis.
 - Kaputtes zip (`PK\x03\x04murks`): `ugrep: cannot decompress kaputt.zip: an
   error was detected in the zip compressed data`, Exit 1.
+
+## cut, comm, split, tee gegen GNU (23.11.2026, acmesh-y16)
+
+cut: 20 Aufrufe, alle gleich. -d/-f in allen Formen (1, 1,3, 2-, 1-2, f5),
+--complement, -s, -c, -b, --output-delimiter, fehlende Felder, leere Datei,
+letzte Zeile ohne Umbruch, stdin, --delimiter=/--fields=.
+
+tee: 6 Aufrufe, alle gleich (Durchreichen, -a, zwei Dateien, -i,
+--append, /dev/null).
+
+comm: war u-roots Fassung, 7 von 9 Aufrufen wichen ab. Neu als Fork
+internal/forked/comm mit u-roots Copyright:
+
+    -12/-13/-23/-123  u-root nutzte das flag-Paket, also nur -1 -2 -3 einzeln.
+    --total           fehlte: GNU haengt "4\t6\t0\ttotal" an.
+    --check-order     fehlte.
+    --output-delimiter=STR  fehlte.
+    Leerzeilen        u-root warf jeden Satz weg, dessen Ausgabe zwei Tabs war -
+                      genau die leere gemeinsame Zeile. Dazu kuerzte es die
+                      Tabs am Ende, GNU behaelt sie ("\t\t" fuer eine leere
+                      gemeinsame Zeile).
+    Unterdrueckte Spalte  u-root setzte die Tabs trotzdem, GNU nicht:
+                      "comm -12" gibt die gemeinsamen Zeilen ohne Tabs aus.
+    -                 meint stdin.
+
+Jetzt 9 von 9 gleich.
+
+split: 10 Aufrufe, 9 gleich; --verbose fehlte ("creating file 'xaa'"), ist
+gebaut. 10 von 10 gleich.
+
+Ein Befund ausserhalb des Tickets, der beim Messen auffiel: unsere cat-Meldung
+lautet "cat: can't open 'xac': No such file or directory", GNU "cat: xac: No
+such file or directory". Als Ticket notiert.
+
+Batterie: zwoelf neue Pruefungen (cut 6, comm 4, split 2, tee 2).

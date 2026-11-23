@@ -1,0 +1,11 @@
+# split gegen GNU coreutils 9.7; Namen und Inhalt der Teilstuecke zurueckgelesen
+rm -f x*; split -l 2 words.txt && ls xaa xab && cat xaa xab
+rm -f x*; split -l 2 -d words.txt && ls x00 x01 && cat x00 x01
+rm -f x*; split -l 2 -a 3 words.txt && ls xaaa xaab && cat xaaa xaab
+rm -f x*; split -n 2 words.txt && ls xaa xab && cat xaa xab
+rm -f x*; split -b 3 words.txt && ls xaa xab xac && cat xaa xab xac
+rm -f x*; split -l 1 --additional-suffix=.txt words.txt && ls xaa.txt xab.txt
+rm -f x*; split -l 3 colon.txt && ls xaa && cat xaa
+rm -f x*; split -l 2 NoNewline.txt && ls xaa && cat xaa
+rm -f x*; split -l 100 words.txt && ls && cat xaa
+rm -f x*; split -l 2 --verbose words.txt

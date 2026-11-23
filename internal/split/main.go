@@ -22,6 +22,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	numericFrom := 0
 	additional := ""
 	chunks := 0
+	verbose := false
 	var positional []string
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -87,6 +88,10 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 				return 2
 			}
 			bytes = n
+		case "--verbose":
+			// GNU says which file it creates, on stdout; agents use it to
+			// follow a long split.
+			verbose = true
 		case "-a", "--suffix-length":
 			if i+1 >= len(args) {
 				return 2
@@ -142,7 +147,11 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		}
 		name := stem + additional
 		index++
-		return os.Create(name)
+		f, err := os.Create(name)
+		if err == nil && verbose {
+			fmt.Fprintf(stdout, "creating file '%s'\n", name)
+		}
+		return f, err
 	}
 	if chunks > 0 {
 		return splitChunks(r, chunks, next, stderr)

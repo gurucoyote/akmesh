@@ -8,9 +8,9 @@
 readelf
 
 # files and text
-# head, find, grep, chmod, cp, xargs, tar, hexdump, base64, wc, tr, uniq and touch are not here: they are forked into internal/forked/, and a fork
+# head, find, grep, chmod, cp, xargs, tar, hexdump, base64, wc, tr, uniq, comm and touch are not here: they are forked into internal/forked/, and a fork
 # takes the name away from u-root (see scripts/fork-uroot.sh, OURS_ALL).
-cat more tail tee cmp comm
+cat more tail tee cmp
 mv rm mkdir ln mktemp readlink realpath
 
 # archives, hashes, encoding

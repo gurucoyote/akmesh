@@ -1,0 +1,10 @@
+# comm gegen GNU coreutils 9.7; beide Eingaben muessen sortiert sein
+rm -f x?? x??? x???? t?.txt s?.txt; sort words.txt > s1.txt; sort mixed.txt > s2.txt; comm s1.txt s2.txt
+rm -f x?? x??? x???? t?.txt s?.txt; sort words.txt > s1.txt; sort mixed.txt > s2.txt; comm -12 s1.txt s2.txt
+rm -f x?? x??? x???? t?.txt s?.txt; sort words.txt > s1.txt; sort mixed.txt > s2.txt; comm -13 s1.txt s2.txt
+rm -f x?? x??? x???? t?.txt s?.txt; sort words.txt > s1.txt; sort mixed.txt > s2.txt; comm -23 s1.txt s2.txt
+rm -f x?? x??? x???? t?.txt s?.txt; sort words.txt > s1.txt; sort mixed.txt > s2.txt; comm -123 s1.txt s2.txt
+rm -f x?? x??? x???? t?.txt s?.txt; sort blank.txt > s1.txt; sort blank.txt > s2.txt; comm s1.txt s2.txt
+rm -f x?? x??? x???? t?.txt s?.txt; sort words.txt > s1.txt; sort num.txt > s2.txt; comm --total s1.txt s2.txt
+rm -f x?? x??? x???? t?.txt s?.txt; sort words.txt > s1.txt; sort num.txt > s2.txt; comm --check-order s1.txt s2.txt
+rm -f x?? x??? x???? t?.txt s?.txt; comm empty.txt empty.txt

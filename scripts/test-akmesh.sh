@@ -264,6 +264,22 @@ printf 'a\n' > dgu1.txt && printf 'b\n' > dgu2.txt
 check diff-u-header-stamp "$(run diff -u dgu1.txt dgu2.txt | tr -d '\r' | sed -n 1p | grep -c 'dgu1.txt	[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\.[0-9]\{9\} [+-][0-9]\{4\}')" "1"
 # sed -z (acmesh-d9e): NUL-getrennte Saetze rein und raus.
 printf 'a.txt\000b c.txt\000d.txt\000' > z.nul
+# cut, comm, split, tee gegen GNU (acmesh-y16).
+printf 'b:2:z\nA:1:y\na:3:x\nc:10:w\n' > c1.txt
+check cut-field "$(run cut -d: -f2 c1.txt | tr '\n' '|')" "2|1|3|10|"
+check cut-range "$(run cut -d: -f1,3 c1.txt | tr '\n' '|')" "b:z|A:y|a:x|c:w|"
+check cut-open-range "$(run cut -d: -f2- c1.txt | tr '\n' '|')" "2:z|1:y|3:x|10:w|"
+check cut-complement "$(run cut -d: -f2 --complement c1.txt | tr '\n' '|')" "b:z|A:y|a:x|c:w|"
+check cut-chars "$(run cut -c1-3 c1.txt | tr '\n' '|')" "b:2|A:1|a:3|c:1|"
+check cut-output-delimiter "$(run cut -d: -f2,3 --output-delimiter='|' c1.txt | tr '\n' '/')" "2|z/1|y/3|x/10|w/"
+check comm-basic "$(printf 'a\nb\n' > m1.txt; printf 'b\nc\n' > m2.txt; run comm m1.txt m2.txt | cat -A | tr '\n' '/')" "a$/^I^Ib$/^Ic$/"
+check comm-suppress "$(printf 'a\nb\n' > m1.txt; printf 'b\nc\n' > m2.txt; run comm -12 m1.txt m2.txt | tr '\n' '|')" "b|"
+check comm-total "$(printf 'a\nb\n' > m1.txt; printf 'b\nc\n' > m2.txt; run comm --total m1.txt m2.txt | tail -1)" "1	1	1	total"
+check comm-empty-lines "$(printf 'a\n\nb\n' > m1.txt; printf 'a\n\nb\n' > m2.txt; run comm m1.txt m2.txt | wc -l | tr -d ' ')" "3"
+check split-lines "$(rm -f x*; run split -l 2 c1.txt && cat xaa xab | wc -l | tr -d ' ')" "4"
+check split-suffix "$(rm -f x*; run split -l 2 -d c1.txt && ls x00 x01 | tr '\n' ' ')" "x00 x01 "
+check tee-passthrough "$(printf 'a\nb\n' | run tee t9.txt | tr '\n' '|')" "a|b|"
+check tee-append "$(printf 'a\n' | run tee t9.txt > /dev/null; printf 'b\n' | run tee -a t9.txt > /dev/null; cat t9.txt | tr '\n' '|')" "a|b|"
 # uniq gegen GNU (acmesh-6bq): Zaehlbreite, -d, -u, -f, -s, -w, -z.
 printf 'a\na\nb\n' > u1.txt
 printf 'x one\ny one\nz two\n' > u2.txt

@@ -1,0 +1,21 @@
+# cut gegen GNU coreutils 9.7
+cut -d: -f2 colon.txt
+cut -d: -f1,3 colon.txt
+cut -d: -f2- colon.txt
+cut -d: -f1-2 colon.txt
+cut -d: -f2 --complement colon.txt
+cut -d: -f2 -s words.txt
+cut -d: -f2 words.txt
+cut -c1-3 colon.txt
+cut -c2- colon.txt
+cut -b1-2 colon.txt
+cut -d: -f2 --output-delimiter='|' colon.txt
+cut -d: -f2,3 blank.txt
+cut -f2 tsv.txt
+cut -f1 tsv.txt
+cut -d: -f3 empty.txt
+cut -c1-2 NoNewline.txt
+cut -d: -f2,1 colon.txt
+cut -d: -f5 colon.txt
+sort colon.txt | cut -d: -f2
+cut --delimiter=: --fields=2 colon.txt

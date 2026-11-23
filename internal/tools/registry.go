@@ -37,6 +37,7 @@ var Commands = map[string]Func{
 	"chmod":     runChmod,
 	"chown":     runChown,
 	"cp":        runCp,
+	"comm":      runComm,
 	"cut":       runCut,
 	"diff":      runDiff,
 	"dirname":   runDirname,

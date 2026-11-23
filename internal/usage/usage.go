@@ -54,6 +54,14 @@ var Texts = map[string]Entry{
 			"  -s, --suffix=SUFFIX   remove SUFFIX from each name\n" +
 			"  -z, --zero            end each line with NUL, not newline",
 	},
+	"comm": {
+		"[-1] [-2] [-3] [--total] [--check-order] [--output-delimiter=STR] FILE1 FILE2",
+		"  -1, -2, -3               suppress column 1, 2 or 3 (glued: -12, -123)\n" +
+			"  --total                  print the counts and their sum at the end\n" +
+			"  --check-order            fail when a file is not sorted\n" +
+			"  --output-delimiter=STR   separate the columns with STR instead of a tab\n" +
+			"  A file name of - reads standard input.",
+	},
 	"cp": {
 		"[-rR] [-f] [-i] [-n] [-p] [-v] SOURCE... DEST",
 		"  -r, -R, --recursive   copy directories recursively\n" +

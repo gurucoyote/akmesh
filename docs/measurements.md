@@ -4003,3 +4003,54 @@ Beim Login auf einem Terminal fielen zwei Fehler auf, beide behoben:
   expandPrompt setzt jetzt \u, \h, \w, \W, \$, \n und \\ um und entfernt die
   \[..\]-Marker. Vorher: "\\033]0;golang \\w\\a\\h:\\w\\ngolang \\$". Nachher:
   "033]0;golang /tmpaBSNB67:/tmp\ngolang #".
+
+## Systempaket 2: ip und dhclient (23.11.2026, acmesh-iey)
+
+ip ist mit 26 Aufrufstellen der zweithaeufigste fehlende Befehl gewesen
+(ip link set, ip addr add, ip route add in /etc/init.d und /lib/rc), dhclient
+fehlte fuer Adressen und /etc/resolv.conf im leeren Image. Beide kommen jetzt aus
+u-root mit, als Linux-only markiert (`linux: ip dhclient` in scripts/cmds.txt).
+
+Bauaenderung: `ip` liegt in u-root unter cmds/core, `dhclient` unter cmds/exp.
+`scripts/build-bb.sh` sucht ein cmds.txt-Namenspaket jetzt in core und dann in
+exp und bricht mit einer Meldung ab, wenn der Name in keinem von beiden steht -
+vorher wurde blind `./cmds/core/$c` gebaut.
+
+Groesse (gemessen):
+
+- Linux dynamisch: 17195235 -> 18338019 Bytes, also +1142784 (1,14 MB). Das ist
+  der Preis von netlink; der Bau meldet die Zunahme selbst.
+- Linux statisch (CGO_ENABLED=0): 18276476 Bytes, statisch gelinkt (file:
+  "statically linked"). Nur dieser Bau laeuft im leeren Image.
+- Windows: 17200128 Bytes, unveraendert; `ip` und `dhclient` fehlen dort
+  (`./akmesh.exe gibtsnicht` nennt keinen der beiden Namen).
+
+Belege im leeren Image (localhost/local/empty, --privileged, /proc eingebunden,
+sonst keine Werkzeuge):
+
+    ip link show                       -> lo und eth0 mit MTU, Zustand, MAC
+    ip addr show lo                    -> 127.0.0.1/8, ::1/128
+
+und in einem Lauf, also mit bestehendem Netns (die Befehle der Skripte):
+
+    ip addr add 10.42.0.2/24 dev eth0   -> Exit 0, Adresse erscheint in addr show
+    ip route add 10.99.0.0/16 dev eth0  -> Exit 0, Route erscheint in route show
+    ip link set eth0 down / up          -> beide Exit 0
+
+dhclient:
+
+- startet, zaehlt die Schnittstellen auf, versucht DHCPv4 und DHCPv6
+  (`dhclient -timeout 3 lo` im Container).
+- schreibt /etc/resolv.conf: die Pfadkonstante ist ResolvConfPath =
+  "/etc/resolv.conf", geschrieben in pkg/dhclient.WriteDNSSettings (0o644).
+- Ein echter Lease ist NICHT belegt: der Testaufbau mit einem DHCP-Server im
+  Testnetz brauchte eine Freigabe und lief nicht. Offen und so im Ticket vermerkt.
+- Befund: ohne Lease endet dhclient mit Exit 0. Ein Skript, das auf den Exitcode
+  schaut, haelt das fuer Erfolg. Als Abweichung notiert (acmesh-er3).
+
+Weitere Abweichung gegen iproute2: u-root druckt bei fehlender Angabe `<nil>`,
+zum Beispiel `brd <nil>` in addr show und `src <nil>` in route show.
+
+Gatter: go build und go vet gruen, `internal/cmdlist` gruen (ip und dhclient in
+der Gruppe Network), Hilfe-Audit Exit 0 (`ip -h` und `dhclient -h` antworten),
+Batterie 211 Checks 0 Fehler.

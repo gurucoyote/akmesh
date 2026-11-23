@@ -89,12 +89,19 @@ eines in cmds/exp, es startet eine Shell ohne Nutzerwechsel.
   nutzer` eine Shell als dieser Nutzer, `id` zeigt die passende UID, und
   ~/.profile dieses Nutzers wurde gelesen.
 
-## Stufe 3: Netz (acmesh-iey)
+## Stufe 3: Netz (acmesh-iey) - ip und dhclient aufgenommen, Rest offen
+
+Stand 23.11.2026: `ip` (u-root, netlink) und `dhclient` sind im Bau, beide mit
+dem Praefix `linux:` in scripts/cmds.txt. `ip link/addr/route` und `link set`
+sind im leeren Image belegt, dhclient startet und schreibt /etc/resolv.conf laut
+Quelltext. Ein echter DHCP-Lease ist nicht gemessen; die zwei gemessenen Abweichungen
+stehen in acmesh-er3.
 
 - ip (u-root, netlink) und dhclient aufnehmen, beide mit dem Praefix `linux:`
   in scripts/cmds.txt.
 - Dazu /etc/resolv.conf (schreibt dhclient) und ein CA-Bundle im Image, sonst
-  endet curl mit Exit 60.
+  endet curl mit Exit 60. Das CA-Bundle fehlt noch: es gehoert in den Image-Bau
+  (acmesh-35q), nicht in die Befehlsliste.
 - Ende: `curl https://example.com` im Image Exit 0, `ip addr` zeigt die Adresse
   von dhclient.
 

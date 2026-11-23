@@ -335,7 +335,16 @@ if [ -n "$PROFILE_KEEP" ]; then
 fi
 PKGS=""
 for c in $NAMES; do
-	PKGS="$PKGS ./cmds/core/$c"
+	# u-root keeps a command either in cmds/core or in cmds/exp; ip is core,
+	# dhclient is experimental. Both are built the same way.
+	if [ -d "$UROOT_DIR/cmds/core/$c" ]; then
+		PKGS="$PKGS ./cmds/core/$c"
+	elif [ -d "$UROOT_DIR/cmds/exp/$c" ]; then
+		PKGS="$PKGS ./cmds/exp/$c"
+	else
+		echo "unknown command '$c' in scripts/cmds.txt" >&2
+		exit 2
+	fi
 done
 for c in $UROOT_EXTRA; do
 	if [ -d "$UROOT_DIR/cmds/core/$c" ]; then

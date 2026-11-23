@@ -154,13 +154,15 @@ var groups = map[string]string{
 	"which":     System,
 
 	// Network.
-	"curl":   Network,
-	"httpd":  Network,
-	"netcat": Network,
-	"ping":   Network,
-	"scp":    Network,
-	"ssh":    Network,
-	"wget":   Network,
+	"curl":     Network,
+	"dhclient": Network,
+	"httpd":    Network,
+	"ip":       Network,
+	"netcat":   Network,
+	"ping":     Network,
+	"scp":      Network,
+	"ssh":      Network,
+	"wget":     Network,
 }
 
 // ByGroup returns the names per block, with the blocks in printing order and an

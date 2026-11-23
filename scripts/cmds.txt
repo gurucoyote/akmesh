@@ -21,6 +21,8 @@ linux: mount umount mknod blkid losetup
 
 # network
 ping netcat
+# Linux only: netlink and DHCP talk to the kernel, they cannot build for Windows.
+linux: ip dhclient
 
 # helpers
 seq yes

@@ -25,6 +25,7 @@ package grep
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -47,6 +48,7 @@ type params struct {
 	caseInsensitive bool
 	fixed           bool
 	noShowMatch     bool // -l
+	filesWithout    bool // -L: name the files where nothing matched
 	quiet           bool // -q
 	count           bool // -c
 	number          bool // -n
@@ -60,6 +62,7 @@ type params struct {
 	wholeLine       bool     // -x: the pattern has to match the whole line
 	forceName       bool     // -H: always print the file name
 	textMode        bool     // -a: read binary files as text
+	binaryWithout   bool     // -I: a binary file counts as no match
 	nullSep         bool     // -z: NUL instead of newline
 	includes        []string // --include=GLOB
 	excludes        []string // --exclude=GLOB
@@ -198,6 +201,17 @@ func parse(args []string) (*params, error) {
 			if err := setDepth("-C", strings.TrimPrefix(a, "--context=")); err != nil {
 				return nil, err
 			}
+		case strings.HasPrefix(a, "--binary-files="):
+			switch strings.TrimPrefix(a, "--binary-files=") {
+			case "text":
+				p.textMode = true
+			case "without-match":
+				p.binaryWithout = true
+			case "binary":
+				p.binaryWithout = false
+			default:
+				return nil, unknownOption{opt: a}
+			}
 		case strings.HasPrefix(a, "--include="), strings.HasPrefix(a, "--exclude="), strings.HasPrefix(a, "--max-count="):
 			opt, val, _ := strings.Cut(a, "=")
 			switch opt {
@@ -238,6 +252,23 @@ func parse(args []string) (*params, error) {
 				p.onlyMatch = true
 			case "--text":
 				p.textMode = true
+			case "--binary-files":
+				if i+1 >= len(args) {
+					return nil, unknownOption{opt: args[i]}
+				}
+				i++
+				switch args[i] {
+				case "text":
+					p.textMode = true
+				case "without-match":
+					p.binaryWithout = true
+				case "binary":
+					p.binaryWithout = false
+				default:
+					return nil, unknownOption{opt: "--binary-files=" + args[i]}
+				}
+			case "-I":
+				p.binaryWithout = true
 			case "--null", "--null-data":
 				p.nullSep = true
 			case "--line-regexp":
@@ -309,6 +340,10 @@ func parse(args []string) (*params, error) {
 					p.forceName = true
 				case 'a':
 					p.textMode = true
+				case 'I':
+					p.binaryWithout = true
+				case 'L':
+					p.filesWithout = true
 				case 'z':
 					p.nullSep = true
 				case 'm':
@@ -461,16 +496,17 @@ func (p *params) compile() (matcher, error) {
 
 // printer writes the matches of one input.
 type printer struct {
-	p      *params
-	re     matcher
-	out    *bufio.Writer
-	name   string
-	show   bool
-	before []string
-	after  int
-	last   int
-	groups int
-	hits   int
+	p        *params
+	re       matcher
+	out      *bufio.Writer
+	name     string
+	show     bool
+	before   []string
+	after    int
+	last     int
+	groups   int
+	hits     int
+	suppress bool // binary file: count the matches, print none of them
 }
 
 func (pr *printer) prefix(num int, context bool) {
@@ -493,7 +529,10 @@ func (pr *printer) prefix(num int, context bool) {
 }
 
 func (pr *printer) emit(line string, num int, context bool) {
-	if pr.p.count || pr.p.noShowMatch || pr.p.quiet {
+	if pr.suppress {
+		return
+	}
+	if pr.p.count || pr.p.noShowMatch || pr.p.filesWithout || pr.p.quiet {
 		return
 	}
 	pr.prefix(num, context)
@@ -531,8 +570,8 @@ func (pr *printer) scan(r io.Reader) error {
 		if pr.p.quiet {
 			return true, nil
 		}
-		if pr.p.noShowMatch && !pr.p.count {
-			// -l: the file name is printed once by the caller, one hit is enough.
+		if (pr.p.noShowMatch || pr.p.filesWithout) && !pr.p.count {
+			// -l and -L: the name is printed by the caller, one hit settles it.
 			return true, nil
 		}
 		if pr.p.count {
@@ -558,6 +597,11 @@ func (pr *printer) scan(r io.Reader) error {
 		}
 		pr.before = pr.before[:0]
 		pr.after = pr.p.after
+		if pr.suppress {
+			// A binary file: the hit is counted, the line stays unprinted.
+			pr.last = num
+			return pr.atLimit(), nil
+		}
 		if pr.p.onlyMatch {
 			matches, err := pr.re.FindAll(line, -1)
 			if err != nil {
@@ -617,6 +661,17 @@ func (pr *printer) scan(r io.Reader) error {
 	return sc.Err()
 }
 
+// isBinary reports whether the first 8 KiB hold a NUL byte and leaves the file
+// at the start again.
+func isBinary(f *os.File) bool {
+	head := make([]byte, 8192)
+	n, _ := io.ReadFull(f, head)
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return false
+	}
+	return bytes.IndexByte(head[:n], 0) >= 0
+}
+
 // atLimit reports whether -m has been satisfied for this file.
 func (pr *printer) atLimit() bool {
 	return pr.p.maxCount > 0 && pr.hits >= pr.p.maxCount
@@ -646,6 +701,10 @@ func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 			// -l names the input, and GNU calls stdin "(standard input)".
 			pr.out.WriteString("(standard input)\n")
 		}
+		if p.filesWithout && pr.hits == 0 {
+			pr.out.WriteString("(standard input)\n")
+			code = 0
+		}
 		pr.out.Flush()
 		if p.count {
 			fmt.Fprintf(stdout, "%d\n", pr.hits)
@@ -662,12 +721,40 @@ func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 		}
 		defer f.Close()
 		pr.name = name
+		// GNU's binary rule (measured 23.11.2026 against grep 3.11): a NUL
+		// inside the first 8 KiB makes the file binary. Without -a the lines
+		// are not printed; if something matched, GNU says on stderr
+		// "grep: NAME: binary file matches" and exits 0. -I calls such a file
+		// a non-match, -c and -l still count and name it.
+		if !p.textMode && isBinary(f) {
+			if p.binaryWithout {
+				return nil
+			}
+			if !p.count && !p.noShowMatch && !p.quiet && !p.filesWithout {
+				pr.suppress = true
+				if err := pr.scan(f); err != nil {
+					return err
+				}
+				pr.out.Flush()
+				if pr.hits > 0 {
+					fmt.Fprintf(stderr, "grep: %s: binary file matches\n", name)
+					matched(pr)
+				}
+				return nil
+			}
+		}
 		if err := pr.scan(f); err != nil {
 			return err
 		}
 		if p.noShowMatch && !p.count && pr.hits > 0 {
 			// -l prints the name once, as soon as one line matched.
 			pr.out.WriteString(name + "\n")
+		}
+		if p.filesWithout && pr.hits == 0 {
+			// -L prints the name of a file nothing matched in, and GNU then
+			// exits 0.
+			pr.out.WriteString(name + "\n")
+			code = 0
 		}
 		pr.out.Flush()
 		if p.count {
@@ -776,6 +863,11 @@ func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "grep: %s: %s\n", path, errText(err))
 			code = 2
 		}
+	}
+	// -L lists what did not match, and GNU exits 0 as long as the files could
+	// be read, even when nothing is listed (measured 23.11.2026).
+	if p.filesWithout && code != 2 {
+		code = 0
 	}
 	return code
 }

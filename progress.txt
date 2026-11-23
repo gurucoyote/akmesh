@@ -261,3 +261,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 23.11.2026: find im eigenen Fork neu gebaut (Ausdrucksbaum, 31 von 31 Aufrufen gleich GNU) und rg um -P/--engine=pcre2 erweitert; Batterie 289 Linux / 266 Windows gruen.
 23.11.2026: wc -L und GNU-Spaltenbreite, base64 -w0/-d, ls -t mit Nanosekunden und df-Kopfzeile gegen GNU angeglichen; Batterie 306 Linux / 283 Windows gruen.
 23.11.2026: sed -z (NUL-getrennte Saetze) im Wrapper gebaut, gegen GNU gemessen; Batterie 314 Linux / 291 Windows gruen.
+23.11.2026: grep erkennt Binaerdateien wie GNU (Meldung, -a, -I, --binary-files, dazu -L); Batterie 321 Linux / 298 Windows gruen.

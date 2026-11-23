@@ -146,11 +146,15 @@ var Texts = map[string]Entry{
 			"  -w, --wide            wide output",
 	},
 	"grep": {
-		"[-E] [-F] [-P] [-i] [-v] [-w] [-c] [-l] [-n] [-h] [-q] [-o] [-r] [-A N] [-B N] [-C N] [-e PATTERN] [PATTERN] [FILE...]",
+		"[-E] [-F] [-P] [-i] [-v] [-w] [-c] [-l] [-L] [-n] [-h] [-q] [-o] [-a] [-I] [-r] [-A N] [-B N] [-C N] [-e PATTERN] [PATTERN] [FILE...]",
 		"  -E, --extended-regexp   PATTERN is an extended regular expression\n" +
 			"  -F, --fixed-strings     PATTERN is a literal string\n" +
 			"  -P, --perl-regexp       PATTERN is a Perl/PCRE2 regular expression\n" +
 			"  -i, --ignore-case       ignore case\n" +
+			"  -a, --text              read a binary file as text\n" +
+			"  -I                      a binary file counts as no match\n" +
+			"      --binary-files=TYPE text, binary or without-match\n" +
+			"  -L, --files-without-match  name the files where nothing matched\n" +
 			"  -v, --invert-match      select non-matching lines\n" +
 			"  -w, --word-regexp       match whole words only\n" +
 			"  -c, --count             print a count of matches per file\n" +

@@ -5421,3 +5421,35 @@ TestZeroTerminatedKeepsLineBreakInRecord).
 Nachtrag zur Grenze: "$" am Satzende trifft richtig - "sed -z 's/txt$/END/'"
 ersetzt in allen drei Saetzen (a.END|b c.END|d.END), wie GNU. Die Umsetzung
 haengt also nicht an einem Zeilenumbruch am Satzende.
+
+## grep und Binaerdateien gegen GNU grep 3.11 (23.11.2026, acmesh-bde)
+
+Vorher las unser grep jede Datei als Text. GNU erkennt eine Datei an einem
+Nullbyte in den ersten 8 KiB, und dann:
+
+    grep ABC bin1                 stderr "grep: bin1: binary file matches", Exit 0
+    grep -c ABC bin1              1            (zaehlt normal)
+    grep -l ABC bin1 txt          bin1 und txt
+    grep -L ABC bin1              nichts, Exit 0
+    grep -I ABC bin1              nichts, Exit 1
+    grep -a ABC bin1              die Rohzeile
+    grep ABC bin1 txt             Meldung fuer bin1, Zeile fuer txt
+    grep -q ABC bin1              Exit 0, nichts
+    grep --binary-files=text      wie -a
+    grep --binary-files=without-match  wie -I
+
+So gebaut: isBinary liest 8 KiB, springt zurueck, und der Drucker bekommt ein
+suppress-Flag, das die Treffer zaehlt, aber keine Zeile schreibt. Dabei fiel auf,
+dass scan() die Trefferzeile an emit() vorbei direkt schrieb; das war der Grund,
+warum die erste Fassung die Meldung UND die Rohzeile ausgab.
+
+-L fehlte bei uns ganz und ist mitgebaut: es nennt die Dateien ohne Treffer und
+endet mit 0, auch wenn nichts zu nennen ist (so gemessen).
+
+Gemessen mit scripts/grep-binary-probe.sh, 13 Aufrufe, alle gleich. stdout und
+stderr werden getrennt verglichen; im gemeinsamen Kanal haengt die Reihenfolge
+von der Pufferung ab, was nichts ueber das Verhalten sagt.
+
+Batterie: sieben Pruefungen (grep-binary-message, -silent-stdout, -rc, -a, -I,
+-count, -L-rc). Dazu zwei Go-Tests (TestBinaryFileMessage,
+TestFilesWithoutMatch).

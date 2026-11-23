@@ -61,8 +61,10 @@ sechs neue Batteriepruefungen.
 (internal/pcre), inklusive \K, Lookbehind und possessiven Quantoren.
 
 Erledigt am 23.11.2026 (acmesh-v6r): -m, -x, -H, -a, -z, --include, --exclude.
-Offen bleibt nur acmesh-bde: ohne -a meldet GNU bei Binaerdateien "binary file
-matches", akmesh gibt die Zeile aus.
+Auch erledigt am 23.11.2026 (acmesh-bde): ohne -a meldet GNU bei Binaerdateien
+"binary file matches" auf stderr, mit -a die Rohzeile. Beides ist gebaut, dazu
+-I, --binary-files=text|binary|without-match und -L (das ganz fehlte). Sieben
+Batteriepruefungen, 13 Aufrufe gegen GNU grep 3.11 gleich.
 
 Neuer Fund beim Pruefen (erledigt am 23.11.2026, acmesh-4gi): das Standardmuster
 war ERE, GNU liest BRE. Jetzt umgeschrieben in internal/forked/grep/bre.go,

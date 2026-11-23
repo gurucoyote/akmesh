@@ -264,6 +264,15 @@ printf 'a\n' > dgu1.txt && printf 'b\n' > dgu2.txt
 check diff-u-header-stamp "$(run diff -u dgu1.txt dgu2.txt | tr -d '\r' | sed -n 1p | grep -c 'dgu1.txt	[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\.[0-9]\{9\} [+-][0-9]\{4\}')" "1"
 # sed -z (acmesh-d9e): NUL-getrennte Saetze rein und raus.
 printf 'a.txt\000b c.txt\000d.txt\000' > z.nul
+# grep und Binaerdateien (acmesh-bde): Meldung auf stderr, kein Zeilenausdruck.
+printf 'X\000ABC\n' > gbin.bin
+check grep-binary-message "$(run grep ABC gbin.bin 2>&1 >/dev/null | tr -d '\r' | sed 's/.*: //')" "binary file matches"
+check grep-binary-silent-stdout "$(run grep ABC gbin.bin 2>/dev/null | wc -c | tr -d ' ')" "0"
+check grep-binary-rc "$(run grep ABC gbin.bin >/dev/null 2>&1; printf '%s' "$?")" "0"
+check grep-binary-a "$(run grep -a ABC gbin.bin | tr '\0' '@')" "X@ABC"
+check grep-binary-I "$(run grep -I ABC gbin.bin >/dev/null 2>&1; printf '%s' "$?")" "1"
+check grep-binary-count "$(run grep -c ABC gbin.bin | tr -d '\r')" "1"
+check grep-binary-L-rc "$(run grep -L ABC gbin.bin >/dev/null 2>&1; printf '%s' "$?")" "0"
 check sed-z-prefix "$(run sed -z 's/^/X/' z.nul | tr '\0' '|')" "Xa.txt|Xb c.txt|Xd.txt|"
 check sed-z-count "$(run sed -z 's/^/X/' z.nul | tr -cd '\0' | wc -c | tr -d ' ')" "3"
 check sed-z-delete "$(run sed -z 2d z.nul | tr '\0' '|')" "a.txt|d.txt|"

@@ -43,6 +43,24 @@ type Opts struct {
 	// Exclude holds patterns; a path whose name or base name matches one is
 	// not put into the archive, like "tar --exclude=PATTERN".
 	Exclude []string
+
+	// Self identifies the archive being written. A tar file inside the tree it
+	// packs would otherwise be read while it grows, which produces an archive
+	// that contains a truncated copy of itself (acmesh-vc3). GNU tar leaves it
+	// out and warns.
+	Self os.FileInfo
+
+	// OnSelf is called with the path of the skipped archive, so the caller can
+	// print the warning.
+	OnSelf func(name string)
+
+	// OnAbs is called once when a leading "/" has to be dropped from member
+	// names, so the caller can print GNU's warning.
+	OnAbs func()
+
+	// OnSkip is called for a file whose header cannot be written (a Windows
+	// special file, for instance); the archive continues without it.
+	OnSkip func(name string, err error)
 }
 
 // excluded reports whether the path matches one of the exclude patterns.
@@ -94,6 +112,42 @@ func applyToArchive(tarFile io.Reader, f func(tr *tar.Reader, hdr *tar.Header) e
 		}
 	}
 	return nil
+}
+
+// ExtractToStdout writes the regular files of an archive to w instead of to
+// disk, which is what "tar -xO" does (acmesh-vc3). An empty names list means
+// every file; otherwise a file is taken when its stored name matches a name or
+// starts with "name/", the way GNU tar matches.
+func ExtractToStdout(r io.Reader, w io.Writer, opts *Opts, names []string) error {
+	if opts == nil {
+		opts = &Opts{}
+	}
+	wanted := func(stored string) bool {
+		if len(names) == 0 {
+			return true
+		}
+		clean := strings.TrimSuffix(stored, "/")
+		for _, n := range names {
+			// GNU drops the leading "/" from a member name, so a request for
+			// the absolute path has to be matched without it.
+			n = strings.TrimSuffix(filepath.ToSlash(n), "/")
+			n = strings.TrimLeft(n, "/")
+			if clean == n || strings.HasPrefix(clean, n+"/") {
+				return true
+			}
+		}
+		return false
+	}
+	return applyToArchive(r, func(tr *tar.Reader, hdr *tar.Header) error {
+		if hdr.Typeflag != tar.TypeReg && hdr.Typeflag != tar.TypeRegA {
+			return nil
+		}
+		if !passesFilters(hdr, opts.Filters) || !wanted(hdr.Name) {
+			return nil
+		}
+		_, err := io.Copy(w, tr)
+		return err
+	})
 }
 
 // ListArchive lists the contents of the given tar archive.
@@ -176,13 +230,46 @@ func CreateTar(tarFile io.Writer, files []string, opts *Opts) error {
 
 			// The record should not contain the ChangeDirectory
 			// path, so we need to derive bc from abc.
-			bcPath, err := filepath.Rel(opts.ChangeDirectory, abcPath)
-			if err != nil {
-				return err
+			bcPath, relErr := filepath.Rel(opts.ChangeDirectory, abcPath)
+			if relErr != nil {
+				// Rel cannot express a relative path to an absolute source (or
+				// the other way round); the absolute name is the answer GNU
+				// gives too, minus the leading slash.
+				bcPath = abcPath
 			}
 			if filepath.IsAbs(bFile) {
 				// "cd" does nothing if the file is absolute.
 				bcPath = abcPath
+			}
+			if filepath.IsAbs(bcPath) || strings.HasPrefix(bcPath, "/") {
+				// GNU drops the leading "/" and says so once. On Windows the
+				// volume name ("C:") goes with it, because an archive entry
+				// cannot carry a drive letter.
+				if opts.OnAbs != nil {
+					opts.OnAbs()
+				}
+				bcPath = strings.TrimLeft(filepath.ToSlash(bcPath), "/")
+				if vol := filepath.VolumeName(bcPath); vol != "" {
+					bcPath = strings.TrimLeft(strings.TrimPrefix(bcPath, vol), "/")
+				}
+			}
+
+			// GNU keeps the spelling of the argument: "tar -cf x.tar ." stores
+			// "./a.txt", and "tar -cf x.tar dir" stores "dir/a.txt".
+			if bFile == "." || strings.HasPrefix(filepath.ToSlash(bFile), "./") {
+				if bcPath == "." {
+					bcPath = "./"
+				} else if !strings.HasPrefix(bcPath, "./") {
+					bcPath = "./" + bcPath
+				}
+			}
+
+			if opts.Self != nil && os.SameFile(opts.Self, info) {
+				// The archive must not be packed into itself.
+				if opts.OnSelf != nil {
+					opts.OnSelf(bcPath)
+				}
+				return nil
 			}
 
 			var symlink string
@@ -195,7 +282,13 @@ func CreateTar(tarFile io.Writer, files []string, opts *Opts) error {
 			if err != nil {
 				return err
 			}
-			hdr.Name = bcPath
+			// A tar archive stores "/" separators whatever the host does;
+			// "d\a.txt" from a Windows build would be unreadable by GNU tar.
+			hdr.Name = filepath.ToSlash(bcPath)
+			if hdr.Typeflag == tar.TypeDir && !strings.HasSuffix(hdr.Name, "/") {
+				// GNU stores a directory as "dir/", and "." as "./".
+				hdr.Name += "/"
+			}
 			if excluded(bcPath, opts.Exclude) {
 				return nil
 			}
@@ -205,6 +298,10 @@ func CreateTar(tarFile io.Writer, files []string, opts *Opts) error {
 			switch hdr.Typeflag {
 			case tar.TypeLink, tar.TypeSymlink, tar.TypeChar, tar.TypeBlock, tar.TypeDir, tar.TypeFifo:
 				if err := tw.WriteHeader(hdr); err != nil {
+					if opts.OnSkip != nil {
+						opts.OnSkip(bcPath, err)
+						return nil
+					}
 					return err
 				}
 			default:

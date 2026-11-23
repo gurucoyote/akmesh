@@ -5170,3 +5170,44 @@ Verzeichnisreihenfolge (dieselbe Klasse wie acmesh-kgi bei find).
 Batterie: sechs neue Pruefungen (Windows-tauglich, weil sie auf scheinbaren
 Groessen rechnen, die auf beiden Zielen gleich sind). Groesse 19468515 Bytes
 dynamisch.
+
+## tar: -O, Verzeichnis-Schraegstrich, kein Archiv in sich selbst (23.11.2026, acmesh-vc3, acmesh-9e7)
+
+Vier Sachen waren falsch, alle gemessen gegen GNU tar 1.34 im Referenz-Image:
+
+1. -O fehlte ("unknown option").  Jetzt: -O/--to-stdout schreibt den Inhalt nach
+   stdout, mit Namen nur die genannten Dateien. Gegenprobe: gleiche Ausgabe wie
+   GNU, auch bei ganzen Verzeichnissen im Archiv.
+2. Ein Archiv im gepackten Verzeichnis wurde mitgepackt, waehrend es wuchs: der
+   Archivinhalt enthielt sich selbst abgeschnitten, ohne Meldung.
+   GNU laesst die Datei aus und sagt "tar: ./g.tar: archive cannot contain itself;
+   not dumped", Exit 0. Jetzt genauso, inklusive Namen mit "./".
+3. Verzeichnisse wurden ohne Schraegstrich abgelegt ("d" statt "d/"), was
+   Werkzeuge verwirrt, die auf "d/" pruefen. Jetzt "d/".
+4. "tar -cf x.tar ." schrieb "a.txt", GNU schreibt "./a.txt" (acmesh-9e7). Jetzt
+   bleibt die Schreibweise des Arguments erhalten: "." wird "./", "./x" bleibt
+   "./x", "dir" bleibt "dir".
+
+Dabei fiel ein fuenfter Fehler auf, der nicht im Ticket stand: ein absoluter
+Quellpfad brach mit "Rel: can't make /tmp/d relative to" und Exit 2 ab. GNU
+schreibt "tar: Removing leading `/' from member names" und legt "tmp/d/a.txt" an.
+Jetzt genauso, Warnung einmal, Exit 0.
+
+Gegen GNU geprueft, GNU liest unsere Archive und wir lesen seine, Listen
+byte-gleich:
+    d/  d/a.txt  d/s/  d/s/b.txt         identisch in beide Richtungen
+    ./  ./a.txt  ./g.tar  ./gnu.txt  ./sub/   identisch
+    tar -xO   gleich
+
+Beim Schreiben werden Namen jetzt immer mit "/" als Trenner abgelegt, auch aus
+dem Windows-Build, weil "d\a.txt" kein GNU-tar lesen kann.
+
+Batterie: sieben neue tar-Pruefungen (276 Linux, 253 Windows; die Pruefung mit
+absolutem Pfad laeuft nur gegen den Linux-Build, weil ein WSL-Pfad fuer die
+Windows-Binary kein absoluter Pfad ist). Groesse 19468515 Bytes dynamisch,
+Windows 18107392.
+
+Auf Windows fiel dabei noch auf: ein Laufwerksbuchstabe landete im Archivnamen
+("C:/Users/..."），jetzt wird er entfernt wie der fuehrende Schraegstrich; und ein
+Dateimodus, den Go tar nicht kodieren kann, brach das ganze Archiv ab, jetzt wird
+die Datei mit Meldung uebersprungen.

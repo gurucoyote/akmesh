@@ -44,6 +44,7 @@ type params struct {
 	list      bool
 	gzip      bool
 	verbose   bool
+	toStdout  bool // -O: write the extracted files to stdout
 	noRecurse bool
 	dir       string
 	strip     int
@@ -74,6 +75,8 @@ func parse(args []string) (p params, rest []string, err error) {
 			p.gzip = true
 		case a == "--verbose":
 			p.verbose = true
+		case a == "--to-stdout":
+			p.toStdout = true
 		case strings.HasPrefix(a, "--file="):
 			p.file = strings.TrimPrefix(a, "--file=")
 		case a == "--file":
@@ -124,6 +127,8 @@ func parse(args []string) (p params, rest []string, err error) {
 					p.gzip = true
 				case 'v':
 					p.verbose = true
+				case 'O':
+					p.toStdout = true
 				case 'p':
 					// keep permissions; the extractor does that already
 				case 'j', 'J':
@@ -261,8 +266,17 @@ func (p params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "tar: %v\n", err)
 			return 2
 		}
+		if info, serr := os.Stat(p.file); serr == nil && p.file != "-" {
+			// The archive being written must not be packed into itself. GNU
+			// leaves it out, says so, and still exits 0 (measured, acmesh-vc3).
+			opts.Self = info
+			opts.OnSelf = func(name string) {
+				fmt.Fprintf(stderr, "tar: %s: archive cannot contain itself; not dumped\n", name)
+			}
+		}
 		if err := tarutil.CreateTar(out, p.files, opts); err != nil {
 			fmt.Fprintf(stderr, "tar: %v\n", err)
+			closeArchive(out)
 			return 2
 		}
 		closeArchive(out)
@@ -275,6 +289,14 @@ func (p params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 		defer closeFn()
 		if p.list {
 			if err := listArchive(in, stdout, p); err != nil {
+				fmt.Fprintf(stderr, "tar: %v\n", err)
+				return 2
+			}
+			return 0
+		}
+		if p.toStdout {
+			// -O: the file contents go to stdout, nothing is written to disk.
+			if err := tarutil.ExtractToStdout(in, stdout, opts, p.files); err != nil {
 				fmt.Fprintf(stderr, "tar: %v\n", err)
 				return 2
 			}

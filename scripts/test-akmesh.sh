@@ -549,6 +549,23 @@ PGNAME=${PGNAME%.exe}
 check pgrep-finds-own-name "ja" "$(run pgrep -x "$PGNAME" 2>/dev/null | tr -d '\r' | head -1 | grep -q '^[0-9][0-9]*$' && echo ja)"
 check pgrep-count "1" "$(run pgrep -c -x "$PGNAME" 2>/dev/null | tr -d '\r' | tr -dc '0-9' | grep -c .)"
 
+# tar: -O, Verzeichnisse mit Schraegstrich, Archiv nicht in sich selbst (acmesh-vc3)
+TDIR=$(mktemp -d 2>/dev/null || echo /tmp/akmesh-tar)
+mkdir -p "$TDIR/d"
+printf 'aaa\n' > "$TDIR/d/a.txt"
+( cd "$TDIR" && run tar -cf x.tar d >/dev/null 2>&1 )
+check tar-dir-slash "d/" "$(run tar -tf "$TDIR/x.tar" 2>/dev/null | head -n 1 | tr -d '\r')"
+check tar-to-stdout "aaa" "$(run tar -xOf "$TDIR/x.tar" d/a.txt 2>/dev/null | head -n 1 | tr -d '\r')"
+check tar-to-stdout-all "aaa" "$(run tar -xOf "$TDIR/x.tar" 2>/dev/null | head -n 1 | tr -d '\r')"
+checkcode tar-self-archive-rc 0 "$(run tar -cf "$TDIR/d/self.tar" "$TDIR/d" >/dev/null 2>&1; echo $?)"
+check tar-self-archive-skip "ja" "$(run tar -tf "$TDIR/d/self.tar" 2>/dev/null | grep -q self.tar || echo ja)"
+case "$BIN" in
+*.exe) ;; # a WSL path like /tmp/x is not absolute for the Windows binary
+*) ABS=$(cd "$TDIR/d" && pwd)
+   check tar-absolute-strips-slash "ja" "$(run tar -cf "$TDIR/abs.tar" "$ABS" 2>/dev/null; run tar -tf "$TDIR/abs.tar" 2>/dev/null | grep -qvE '^(/|[A-Za-z]:)' && echo ja)" ;;
+esac
+rm -rf "$TDIR"
+
 # du: Verzeichnisbloecke, -b (scheinbare Groesse), -x (acmesh-yd7)
 TDIR=$(mktemp -d 2>/dev/null || echo /tmp/akmesh-du)
 mkdir -p "$TDIR/sub"

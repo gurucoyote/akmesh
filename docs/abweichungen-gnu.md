@@ -90,7 +90,12 @@ docs/design/patches/uroot-date-gnu.patch, 22 Faelle gegen GNU geprueft.
 
 `date -r DATEI` und alle Formatangaben (`+%F %T`, `+%s`) gehen.
 
-### tar (u-root, cmds/core/tar)
+### tar (eigener Code, internal/forked/tar) - erledigt am 23.11.2026 (acmesh-vc3, acmesh-9e7)
+
+-O/--to-stdout da; das Archiv wird nicht mehr in sich selbst gepackt (GNU-Meldung,
+Exit 0); Verzeichnisse enden im Archiv auf "/"; die Schreibweise des Arguments
+bleibt erhalten ("." wird "./"); absolute Quellpfade funktionieren wie bei GNU
+(leading "/" wird entfernt, mit Warnung).
 
     tar -xOf x.tar a.txt    tar: unknown option "-O"
 

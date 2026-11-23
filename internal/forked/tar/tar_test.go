@@ -133,3 +133,72 @@ func TestStdinStdout(t *testing.T) {
 		t.Fatalf("tar -tf - = %d, %q", code, out)
 	}
 }
+
+// TestDirectoriesHaveSlashAndDotKeepsItsSpelling: GNU stores a directory with a
+// trailing slash and keeps the "./" of the argument (acmesh-9e7, acmesh-vc3).
+func TestDirectoriesHaveSlashAndDotKeepsItsSpelling(t *testing.T) {
+	dir := writeTree(t)
+	wd, _ := os.Getwd()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(wd)
+
+	if _, _, code := runTar(t, nil, "-cf", "a.tar", "d"); code != 0 {
+		t.Fatalf("tar -cf exit %d", code)
+	}
+	out, _, _ := runTar(t, nil, "-tf", "a.tar")
+	if !strings.Contains(out, "d/\n") || !strings.Contains(out, "d/a.txt\n") {
+		t.Fatalf("factory listing = %q, want d/ and d/a.txt", out)
+	}
+
+	out, _, _ = runTar(t, nil, "-cf", "dot.tar", ".")
+	if !strings.Contains(out, "") {
+		_ = out
+	}
+	list, _, _ := runTar(t, nil, "-tf", "dot.tar")
+	if !strings.HasPrefix(list, "./\n") || !strings.Contains(list, "./d/\n") {
+		t.Fatalf("listing of \".\" = %q, want ./ and ./d/", list)
+	}
+}
+
+// TestExtractToStdout: -xO prints the file contents and writes nothing to disk.
+func TestExtractToStdout(t *testing.T) {
+	dir := writeTree(t)
+	archive := filepath.Join(dir, "x.tar")
+	if _, _, code := runTar(t, nil, "-cf", archive, filepath.Join(dir, "d")); code != 0 {
+		t.Fatalf("create exit %d", code)
+	}
+	out, _, code := runTar(t, nil, "-xOf", archive)
+	if code != 0 || !strings.Contains(out, "x") {
+		t.Fatalf("tar -xOf = %d, %q", code, out)
+	}
+	// a named file only
+	out, _, _ = runTar(t, nil, "-xOf", archive, filepath.Join(dir, "d", "a.txt"))
+	if out != "x" {
+		t.Fatalf("tar -xOf with a name = %q", out)
+	}
+}
+
+// TestArchiveInsideItsOwnTree: the archive is left out, the warning is GNU's,
+// and the exit status stays 0 (measured at GNU tar 1.34, acmesh-vc3).
+func TestArchiveInsideItsOwnTree(t *testing.T) {
+	dir := writeTree(t)
+	wd, _ := os.Getwd()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(wd)
+
+	_, errOut, code := runTar(t, nil, "-cf", "d/self.tar", "d")
+	if code != 0 {
+		t.Fatalf("tar with the archive inside the tree exit %d, want 0", code)
+	}
+	if !strings.Contains(errOut, "archive cannot contain itself; not dumped") {
+		t.Fatalf("warning = %q", errOut)
+	}
+	list, _, _ := runTar(t, nil, "-tf", "d/self.tar")
+	if strings.Contains(list, "self.tar") {
+		t.Fatalf("the archive contains itself: %q", list)
+	}
+}

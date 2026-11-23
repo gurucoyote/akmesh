@@ -4602,3 +4602,45 @@ man ist.
 Groessen: Linux statisch 17.6 MiB (18448508 Bytes, +8192 gegen 17s 18440316),
 Windows 16.5 MiB (17351168, +2560), gestrippt. Befehle: 122 Linux / 115 Windows.
 Batterie 211/0, Hilfe-Audit 0, Lizenzpruefung 20/20.
+
+## Image mit trivy gescannt (23.11.2026)
+
+Werkzeug: trivy 0.68.2 lokal auf Alpine 3.16. Vorgehen, weil das Image nur ein
+statisches Go-Binary ohne Distribution ist: `podman save` in eine tar, dann
+`trivy image --input`. Ein Scan der Verzeichnisse waere dasselbe Ergebnis, die
+tar zeigt aber genau das, was podman gespeichert hat. Das Skript dafuer ist
+scripts/scan-image.sh (exportiert, scannt, unterdrueckt anhand .trivyignore).
+
+Erster Lauf, Stand d813888 (go1.27.1, x/crypto v0.58.0):
+
+    Total: 20 (UNKNOWN: 1, LOW: 1, MEDIUM: 11, HIGH: 7, CRITICAL: 0)
+    stdlib go1.27.1   CVE-2026-111943 crypto/x509 MITM (Fix 1.27.3)
+                      CVE-2026-97032, CVE-2026-97054 net/http DoS (Fix 1.27.4)
+                      CVE-2026-56857 os: Windows junction traversal (Fix 1.27.2)
+    golang.org/x/net  CVE-2026-78661 (Fix 0.62.0)
+    golang.org/x/crypto GO-2026-5932 openpgp (unmaintained; Fix-Pseudoversion)
+    u-root            CVE-2020-7665, CVE-2020-7669
+
+Behoben:
+
+- `go mod edit -go=1.27.4` und neu gebaut: `go version -m akmesh` sagt
+  go1.27.4. Das raeumt alle stdlib-CVEs ab (7 HIGH und 11 MEDIUM waren
+  ueberwiegend net/http, x509, os).
+- golang.org/x/net auf v0.62.0, golang.org/x/crypto auf
+  v0.58.1-0.20261009181718 (die im Advisory genannte Fixversion). openpgp wird
+  nicht importiert (wir nutzen cryptobyte, chacha20, chacha20poly1305), die
+  Aenderung ist trotzdem gratis.
+
+Zweiter Lauf, gleiches Image neu gebaut:
+
+    Total: 3 (UNKNOWN: 1, HIGH: 2)  -> nach .trivyignore: Total 0, unterdrueckt 2
+
+Die zwei u-root-CVEs sind ein Fehlalarm und stehen mit Begruendung in
+.trivyignore: u-root ist an Commit 869f00f6 (17.11.2026) gepinnt, die CVEs sind
+in 0.9.0 (2021) behoben. Go schreibt fuer einen lokalen Ersatz aber "v0.0.0", und
+diese Version kann trivy nicht einordnen - deshalb meldet es die CVEs fuer jeden
+so gebauten Binary. Geprueft mit `--show-suppressed`: es sind genau diese zwei.
+
+Secrets: sauber (--scanners secret, 0 Funde). Groesse unveraendert 17.6 MiB
+statisch (18464892 Bytes); go1.27.4 kostet nichts, x/crypto ebenso wenig.
+Windows neu gebaut mit demselben Toolchain: 16.6 MiB (17370112 Bytes).

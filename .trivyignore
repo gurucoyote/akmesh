@@ -1,0 +1,12 @@
+# trivy suppression, each line with the reason it is here.
+#
+# CVE-2020-7665 and CVE-2020-7669 are path traversals in u-root, fixed in 0.9.0
+# (2021). We build u-root from the pinned commit 869f00f6 (2026-11-17), which is
+# five years newer, but Go records a local replacement as "v0.0.0" - a version
+# trivy cannot order, so it reports the CVE for every such build. The code is not
+# the affected one; the version string is the problem.
+#
+# Check before suppressing: the pinned commit in scripts/build-bb.sh must stay
+# newer than 0.9.0, and u-root must not be swapped for an old tag.
+CVE-2020-7665
+CVE-2020-7669

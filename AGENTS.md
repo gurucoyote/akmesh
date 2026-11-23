@@ -26,6 +26,10 @@ are English; documents meant for Martin are German.
   out `/bin` with one symlink per name, tars the rootfs and `podman import`s it
   as `akmesh:latest`. A name list written down here would drift; the binary is
   the source. `--verify-only` re-runs the checks against the existing image.
+- `scripts/scan-image.sh`: `podman save` and `trivy image --input`, with the
+  suppressions in `.trivyignore` (each with its reason). The image is a static Go
+  binary without a distribution, so trivy's OS scan finds nothing; the Go
+  standard library and modules are what carry the findings.
 - `scripts/test-akmesh.sh`: the live battery, run against the built binary for
   either target (`./scripts/test-akmesh.sh ./akmesh.exe`).
 - `scripts/build-bb.sh` writes `.build/go.work` (both modules) and passes the

@@ -1,0 +1,5 @@
+# sort, erste Messreihe (siehe scripts/gnu-probe.sh)
+sort colon.txt
+sort -r colon.txt
+sort -k2 -t: colon.txt
+sort -u words.txt

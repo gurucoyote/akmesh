@@ -5453,3 +5453,53 @@ von der Pufferung ab, was nichts ueber das Verhalten sagt.
 Batterie: sieben Pruefungen (grep-binary-message, -silent-stdout, -rc, -a, -I,
 -count, -L-rc). Dazu zwei Go-Tests (TestBinaryFileMessage,
 TestFilesWithoutMatch).
+
+## Image-Neubau nach der GNU-Runde (23.11.2026, acmesh-k6e)
+
+Neu gebaut mit dem Stand nach wc, base64, ls -t, df, diff -u, sed -z und grep
+(Binaererkennung). Belege:
+
+    report: 19456124 bytes, statically linked, stripped (das Image nimmt den
+            statischen Bau, die dynamische 19513571-Version bleibt fuer den Host)
+    make-image: 134 names linked into /bin
+    make-image: image size 19.8 MB, 5 container starts a 350 ms,
+                50 execs von /bin/true a 14.59 ms
+    trivy: bin/akmesh, gobinary, 0 Vulnerabilities, Secrets sauber
+
+Stichproben im Container (akmesh:latest), jede mit Ausgabe:
+
+    wc -L /a.txt                3 /a.txt      (a.txt = a, bb, ccc)
+    sed -z s/^/X/ /l.nul        Ausgabe 14 Bytes, grep -c X = 1
+                                (Xa.txt\0Xb.txt\0, zwei Saetze, ein "Zeilenende")
+    grep ABC /b.bin             "grep: /b.bin: binary file matches", rc 0
+    ls -t /t                     y.txt vor x.tar (y.txt juenger)
+    df -h | head -1              Filesystem      Size Used Avail Use% Mounted on
+
+Beim Pruefen zwei neue Luecken gefunden, nicht Teil dieses Tickets:
+
+    od -c /tmp/txt              od: unrecognized option "-c"  (GNU druckt Zeichen)
+    tr "\0" "@"                 tr: unknown escape sequence "\0"  (GNU ersetzt NUL)
+
+## Vorbereitung der Messreihe Textwerkzeuge (23.11.2026, acmesh-efg)
+
+Rahmen statt Einzelskript: scripts/gnu-probe.sh TOOL AUFRUF-DATEI vergleicht
+stdout, stderr und Exitcode getrennt gegen das gepinnte Debian-Image. Die
+Aufrufe stehen in scripts/probes/<tool>.probe, das Fixture baut
+scripts/gnufix.sh in /tmp/gnufix (elf Dateien: Woerter, Felder mit Doppelpunkt
+und Tabulator, Gross-/Kleinschreibung, Zahlen, Umlaute, Leerzeilen, eine Zeile
+ueber 8 KiB, leer, eine Binaerdatei, ein Text ohne Zeilenende).
+
+Beleg, dass Rahmen und Fixture zusammen laufen (erster Lauf, sort):
+
+    sort colon.txt              gleich
+    sort -r colon.txt           gleich
+    sort -k2 -t: colon.txt      gleich
+    sort -u words.txt           gleich
+    4 gleich, 0 abweichend
+
+Der Fehler beim ersten Lauf war meiner: das Skript wechselt ins Fixture und las
+die Probe-Datei danach relativ - jetzt wird der Pfad vorher absolut gemacht. Ein
+Lauf ohne gelesene Aufrufe endet mit 2 statt mit "0 gleich".
+
+Zuschnitt und Regeln stehen in docs/design/messreihe-textwerkzeuge.md, die
+Einzel-Tickets in acmesh-efg (Dach) und sechs Geschwister.

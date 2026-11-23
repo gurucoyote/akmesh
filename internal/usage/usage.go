@@ -163,7 +163,15 @@ var Texts = map[string]Entry{
 			"  -A N, --after-context=N   print N lines after a match\n" +
 			"  -B N, --before-context=N  print N lines before a match\n" +
 			"  -C N, --context=N         print N lines around a match\n" +
-			"  -e PATTERN, --regexp=PATTERN  the pattern (repeatable)",
+			"  -e PATTERN, --regexp=PATTERN  the pattern (repeatable)\n" +
+			"  -x, --line-regexp       the whole line has to match\n" +
+			"  -H, --with-filename     always print the file name\n" +
+			"  -a, --text              read binary files as text (there is no binary\n" +
+			"                          detection, so this is the only behaviour)\n" +
+			"  -z, --null-data         records are separated by NUL instead of newline\n" +
+			"  -m NUM, --max-count=NUM stop after NUM matching lines per file\n" +
+			"  --include=GLOB          only search files whose name matches GLOB\n" +
+			"  --exclude=GLOB          skip files whose name matches GLOB",
 	},
 	"head": {
 		"[-n N] [-c N] [-q] [-v] [FILE...]",

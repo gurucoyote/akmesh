@@ -57,8 +57,11 @@ sechs neue Batteriepruefungen.
 ### grep (eigener Fork, internal/forked/grep) - -P erledigt am 23.11.2026 (acmesh-b87)
 
 -P/--perl-regexp geht jetzt ueber eine reine Go-Portierung von PCRE2 10.44
-(internal/pcre), inklusive \K, Lookbehind und possessiven Quantoren. Die uebrigen
-sieben Schalter dieses Abschnitts bleiben offen (acmesh-v6r).
+(internal/pcre), inklusive \K, Lookbehind und possessiven Quantoren.
+
+Erledigt am 23.11.2026 (acmesh-v6r): -m, -x, -H, -a, -z, --include, --exclude.
+Offen bleibt nur acmesh-bde: ohne -a meldet GNU bei Binaerdateien "binary file
+matches", akmesh gibt die Zeile aus.
 
 Neuer Fund beim Pruefen (erledigt am 23.11.2026, acmesh-4gi): das Standardmuster
 war ERE, GNU liest BRE. Jetzt umgeschrieben in internal/forked/grep/bre.go,

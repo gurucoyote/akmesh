@@ -56,12 +56,49 @@ type params struct {
 	wordMatch       bool // -w
 	onlyMatch       bool // -o
 	before, after   int
+	maxCount        int      // -m: stop after N matching lines per file
+	wholeLine       bool     // -x: the pattern has to match the whole line
+	forceName       bool     // -H: always print the file name
+	textMode        bool     // -a: read binary files as text
+	nullSep         bool     // -z: NUL instead of newline
+	includes        []string // --include=GLOB
+	excludes        []string // --exclude=GLOB
 	files           []string
 }
 
+// sep is the record separator both for reading and for writing: a newline, or a
+// NUL with -z.
+func (p *params) sep() byte {
+	if p.nullSep {
+		return 0
+	}
+	return '\n'
+}
+
+// wanted reports whether a file found inside a directory passes --include and
+// --exclude. GNU matches the base name against the globs.
+func (p *params) wanted(name string) bool {
+	base := filepath.Base(name)
+	for _, g := range p.excludes {
+		if ok, _ := filepath.Match(g, base); ok {
+			return false
+		}
+	}
+	if len(p.includes) == 0 {
+		return true
+	}
+	for _, g := range p.includes {
+		if ok, _ := filepath.Match(g, base); ok {
+			return true
+		}
+	}
+	return false
+}
+
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "usage: grep [-E] [-F] [-P] [-i] [-v] [-c] [-n] [-l] [-q] [-h] [-r] [-R]")
-	fmt.Fprintln(w, "            [-w] [-o] [-A NUM] [-B NUM] [-C NUM] [-e PATTERN] PATTERN [FILE...]")
+	fmt.Fprintln(w, "usage: grep [-E] [-F] [-P] [-i] [-v] [-c] [-n] [-l] [-q] [-h] [-H] [-r] [-R]")
+	fmt.Fprintln(w, "            [-w] [-o] [-x] [-a] [-z] [-m NUM] [-A NUM] [-B NUM] [-C NUM]")
+	fmt.Fprintln(w, "            [--include=GLOB] [--exclude=GLOB] [-e PATTERN] PATTERN [FILE...]")
 }
 
 // unknownOption carries the option as the user wrote it, so the message can
@@ -161,6 +198,20 @@ func parse(args []string) (*params, error) {
 			if err := setDepth("-C", strings.TrimPrefix(a, "--context=")); err != nil {
 				return nil, err
 			}
+		case strings.HasPrefix(a, "--include="), strings.HasPrefix(a, "--exclude="), strings.HasPrefix(a, "--max-count="):
+			opt, val, _ := strings.Cut(a, "=")
+			switch opt {
+			case "--include":
+				p.includes = append(p.includes, val)
+			case "--exclude":
+				p.excludes = append(p.excludes, val)
+			default:
+				n, err := strconv.Atoi(val)
+				if err != nil || n < 0 {
+					return nil, fmt.Errorf("invalid max count %q", val)
+				}
+				p.maxCount = n
+			}
 		case strings.HasPrefix(a, "--"):
 			switch a {
 			case "--ignore-case":
@@ -185,8 +236,35 @@ func parse(args []string) (*params, error) {
 				p.wordMatch = true
 			case "--only-matching":
 				p.onlyMatch = true
+			case "--text":
+				p.textMode = true
+			case "--null", "--null-data":
+				p.nullSep = true
+			case "--line-regexp":
+				p.wholeLine = true
+			case "--with-filename":
+				p.forceName = true
 			case "--perl-regexp":
 				p.pcreEngine = true
+			case "--include", "--exclude", "--max-count":
+				// --include=GLOB is the usual spelling; the bare form takes the
+				// next argument.
+				v, err := needValue(&i, a)
+				if err != nil {
+					return nil, err
+				}
+				switch a {
+				case "--include":
+					p.includes = append(p.includes, v)
+				case "--exclude":
+					p.excludes = append(p.excludes, v)
+				default:
+					n, err := strconv.Atoi(v)
+					if err != nil || n < 0 {
+						return nil, fmt.Errorf("invalid max count %q", v)
+					}
+					p.maxCount = n
+				}
 			case "--extended-regexp":
 				p.extended = true
 			case "--basic-regexp":
@@ -225,6 +303,30 @@ func parse(args []string) (*params, error) {
 					}
 				case 'P':
 					p.pcreEngine = true
+				case 'x':
+					p.wholeLine = true
+				case 'H':
+					p.forceName = true
+				case 'a':
+					p.textMode = true
+				case 'z':
+					p.nullSep = true
+				case 'm':
+					// -m N, also glued as -m5
+					v := rest[j+1:]
+					if v == "" {
+						got, err := needValue(&i, "-m")
+						if err != nil {
+							return nil, err
+						}
+						v = got
+					}
+					n, err := strconv.Atoi(v)
+					if err != nil || n < 0 {
+						return nil, fmt.Errorf("invalid max count %q", v)
+					}
+					p.maxCount = n
+					j = len(rest)
 				case 'w':
 					p.wordMatch = true
 				case 'o':
@@ -333,6 +435,10 @@ func (p *params) compile() (matcher, error) {
 		}
 	}
 	expr := strings.Join(pats, "|")
+	if p.wholeLine {
+		// -x: the whole line has to match, so the alternation is anchored.
+		expr = `^(?:` + expr + `)$`
+	}
 	if p.wordMatch {
 		expr = `\b(?:` + expr + `)\b`
 	}
@@ -392,21 +498,19 @@ func (pr *printer) emit(line string, num int, context bool) {
 	}
 	pr.prefix(num, context)
 	pr.out.WriteString(line)
-	pr.out.WriteByte('\n')
+	pr.out.WriteByte(pr.p.sep())
 	pr.last = num
 }
 
 // scan reads one file (or stdin) and prints what matches.
 func (pr *printer) scan(r io.Reader) error {
-	sc := bufio.NewScanner(r)
-	sc.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
-	num := 0
-	for sc.Scan() {
-		num++
-		line := sc.Text()
+	sep := pr.p.sep()
+	// handle processes one record and reports whether scanning stops early
+	// (-m, -q and -l all end the file).
+	handle := func(line string, num int) (bool, error) {
 		hit, err := pr.re.Match(line)
 		if err != nil {
-			return err
+			return true, err
 		}
 		match := hit != pr.p.invert
 		if !match {
@@ -421,20 +525,20 @@ func (pr *printer) scan(r io.Reader) error {
 					pr.before = pr.before[1:]
 				}
 			}
-			continue
+			return false, nil
 		}
 		pr.hits++
 		if pr.p.quiet {
-			return nil
+			return true, nil
 		}
 		if pr.p.noShowMatch && !pr.p.count {
 			// -l: the file name is printed once by the caller, one hit is enough.
-			return nil
+			return true, nil
 		}
 		if pr.p.count {
 			pr.after = 0
 			pr.before = pr.before[:0]
-			continue
+			return pr.atLimit(), nil
 		}
 		// Only lines that were not already printed as after-context of the
 		// previous match: those sit in the ring and would appear twice.
@@ -457,22 +561,65 @@ func (pr *printer) scan(r io.Reader) error {
 		if pr.p.onlyMatch {
 			matches, err := pr.re.FindAll(line, -1)
 			if err != nil {
-				return err
+				return true, err
 			}
 			for _, m := range matches {
 				pr.prefix(num, false)
 				pr.out.WriteString(m)
-				pr.out.WriteByte('\n')
+				pr.out.WriteByte(sep)
 			}
 			pr.last = num
-			continue
+			return pr.atLimit(), nil
 		}
 		pr.prefix(num, false)
 		pr.out.WriteString(line)
-		pr.out.WriteByte('\n')
+		pr.out.WriteByte(sep)
 		pr.last = num
+		return pr.atLimit(), nil
+	}
+
+	if pr.p.nullSep {
+		// -z: the input is a NUL-separated list of records. It has to be read
+		// whole, because a bufio.Scanner would still split on newlines.
+		data, err := io.ReadAll(r)
+		if err != nil {
+			return err
+		}
+		records := strings.Split(string(data), "\x00")
+		if len(records) > 0 && records[len(records)-1] == "" {
+			records = records[:len(records)-1]
+		}
+		for i, rec := range records {
+			stop, err := handle(rec, i+1)
+			if err != nil {
+				return err
+			}
+			if stop {
+				return nil
+			}
+		}
+		return nil
+	}
+
+	sc := bufio.NewScanner(r)
+	sc.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
+	num := 0
+	for sc.Scan() {
+		num++
+		stop, err := handle(sc.Text(), num)
+		if err != nil {
+			return err
+		}
+		if stop {
+			return nil
+		}
 	}
 	return sc.Err()
+}
+
+// atLimit reports whether -m has been satisfied for this file.
+func (pr *printer) atLimit() bool {
+	return pr.p.maxCount > 0 && pr.hits >= pr.p.maxCount
 }
 
 func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
@@ -482,7 +629,7 @@ func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 		return 2
 	}
 	// -r names the file even for one start path, as GNU does.
-	show := (len(p.files) > 1 || p.recursive) && !p.noFilename
+	show := ((len(p.files) > 1 || p.recursive) || p.forceName) && !p.noFilename
 	code := 1
 	matched := func(pr *printer) {
 		if pr.hits > 0 {
@@ -591,6 +738,12 @@ func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 					return nil
 				}
 				if fi.IsDir() {
+					return nil
+				}
+				if !p.wanted(name) {
+					// --include/--exclude, applied to files found inside a
+					// directory; a file named on the command line is always
+					// searched, as in GNU. Directories already returned above.
 					return nil
 				}
 				if fi.Mode()&os.ModeSymlink != 0 {

@@ -5103,3 +5103,35 @@ a\|b, a\{2\}, (, [, \<axb\>, dazu -E, -F, -P und -c auf denselben Fixture).
 Batterie: sieben neue BRE-Pruefungen; Go-Tests decken die Umschrift-Tabelle und
 die gemessenen Faelle ab. Groesse: 19460323 Bytes dynamisch (vorher 19456227,
 also 4096 mehr fuer die Umschrift).
+
+## grep: die sieben uebrigen Schalter (23.11.2026, acmesh-v6r)
+
+Nach -P und der BRE-Umschrift fehlten noch -m, -x, -H, -a, -z sowie --include und
+--exclude. Alle sieben sind jetzt drin, alle in internal/forked/grep.
+
+    -m N, -mN       nach N Treffern je Datei aufhoeren (nicht je Aufruf)
+    -x              das Muster muss die ganze Zeile treffen (^(?:...)$)
+    -H              Dateiname immer mitschreiben
+    -a, --text      Binaerdateien als Text lesen
+    -z, --null-data Datensaetze sind NUL-getrennt, Ausgabe ebenso
+    --include=GLOB  nur Dateien mit passendem Namen durchsuchen
+    --exclude=GLOB  solche Dateien auslassen
+
+Beim Bauen fiel auf, dass die Scan-Schleife fuer -z und -m umgebaut werden musste:
+aus dem Schleifenkoerper wurde eine Funktion handle(record, num), die sagt, ob die
+Datei zu Ende ist. -z liest die Eingabe ganz und trennt an NUL, weil ein
+bufio.Scanner immer an Zeilenumbruechen trennt. --include/--exclude greifen im
+Walk, also nur fuer Dateien aus einem Verzeichnis; eine auf der Kommandozeile
+genannte Datei wird immer durchsucht, wie bei GNU.
+
+Gegen GNU im Referenz-Image, zehn Aufrufe: neun gleich, einer nicht vergleichbar
+(die Sonde kann Binaerausgabe nicht als UTF-8 lesen). -a von Hand nachgeprueft:
+die Ausgabe ist byte-gleich mit GNU.
+
+Ein neuer, kleiner Unterschied bleibt und ist als acmesh-bde notiert: ohne -a
+meldet GNU bei Binaerdateien "binary file matches", akmesh gibt die Zeile aus,
+weil es keine Binaererkennung hat. Fuer Agenten ist das brauchbarer, aber es ist
+eben nicht GNU.
+
+Batterie: sieben neue Pruefungen (264 Linux, 242 Windows). Groesse unveraendert
+19460323 Bytes dynamisch, Windows 18102272.

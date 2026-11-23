@@ -549,6 +549,22 @@ PGNAME=${PGNAME%.exe}
 check pgrep-finds-own-name "ja" "$(run pgrep -x "$PGNAME" 2>/dev/null | tr -d '\r' | head -1 | grep -q '^[0-9][0-9]*$' && echo ja)"
 check pgrep-count "1" "$(run pgrep -c -x "$PGNAME" 2>/dev/null | tr -d '\r' | tr -dc '0-9' | grep -c .)"
 
+# grep -m -x -H -a -z --include --exclude (acmesh-v6r)
+TDIR=$(mktemp -d 2>/dev/null || echo /tmp/akmesh-grep7)
+mkdir -p "$TDIR/sub"
+printf 'AB\nAC\n' > "$TDIR/a.txt"
+printf 'delta\n' > "$TDIR/sub/c.txt"
+printf 'needle\n' > "$TDIR/b.log"
+printf 'needle\n' > "$TDIR/d.txt"
+check grep-m1 "AB" "$(run grep -m1 A "$TDIR/a.txt" 2>/dev/null | tr -d '\r')"
+check grep-x "AC" "$(run grep -x AC "$TDIR/a.txt" 2>/dev/null | tr -d '\r')"
+check grep-x-nomatch "ja" "$(run grep -x A "$TDIR/a.txt" >/dev/null 2>&1 || echo ja)"
+check grep-H "ja" "$(run grep -H AB "$TDIR/a.txt" 2>/dev/null | grep -q 'a.txt:AB' && echo ja)"
+check grep-z "ja" "$(printf 'a\0b\0' | run grep -z b 2>/dev/null | od -An -c | grep -q 'b  \\0' && echo ja)"
+check grep-include "ja" "$(run grep -r --include=*.log needle "$TDIR" 2>/dev/null | grep -q 'b.log' && echo ja)"
+check grep-exclude "ja" "$(o=$(run grep -r --exclude=*.log needle "$TDIR" 2>/dev/null); echo "$o" | grep -q 'd.txt' && ! echo "$o" | grep -q 'b.log' && echo ja)"
+rm -rf "$TDIR"
+
 # grep ohne -E ist BRE wie bei GNU (acmesh-4gi)
 TDIR=$(mktemp -d 2>/dev/null || echo /tmp/akmesh-bre)
 mkdir -p "$TDIR"

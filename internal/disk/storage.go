@@ -373,8 +373,13 @@ func filterFileSystems(rows []diskRow, paths []string) (out []diskRow, missing [
 //
 //	du [-h] [-s] [-a] [-c] [-k|-m|-g] [PATH...]
 func runDu(args []string, stdin *os.File, stdout, stderr *os.File) int {
-	human, unit, rest, _ := parseUnitFlags(splitShortFlags(args, "d"))
+	pre := splitShortFlags(args, "d")
+	human, unit, rest, _ := parseUnitFlags(pre)
 	rest = splitShortFlags(rest, "d")
+	// -b changes what is measured (apparent size, not occupied blocks), not
+	// just the unit, which parseUnitFlags alone cannot express (acmesh-yd7).
+	apparent := hasAnyFlag(pre, "-b", "--bytes")
+	oneFS := false
 	summary := false
 	all := false
 	grandTotal := false
@@ -421,6 +426,8 @@ func runDu(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			all = true
 		case "-c", "--total":
 			grandTotal = true
+		case "-x", "--one-file-system":
+			oneFS = true
 		default:
 			if strings.HasPrefix(a, "-") {
 				fmt.Fprintf(stderr, "du: unknown option %q\n", a)
@@ -444,12 +451,16 @@ func runDu(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			continue
 		}
 		if !info.IsDir() {
-			size := usageOf(info, root)
+			size := usageOfB(info, root, apparent)
 			fmt.Fprintf(stdout, "%s\t%s\n", format(size), root)
 			total += size
 			continue
 		}
-		size, err := walkUsage(stdout, root, format, summary, all, seen, 0, maxDepth)
+		rootDev, hasDev := devOf(info)
+		if !oneFS {
+			hasDev = false
+		}
+		size, err := walkUsage(stdout, root, format, summary, all, seen, 0, maxDepth, apparent, hasDev, rootDev)
 		if err != nil {
 			fmt.Fprintf(stderr, "du: %v\n", err)
 			code = 1
@@ -467,24 +478,32 @@ func runDu(args []string, stdin *os.File, stdout, stderr *os.File) int {
 
 // walkUsage sums one tree depth first and prints each directory (and each file
 // with -a). Hard links are counted once, which is what GNU du does.
-func walkUsage(stdout *os.File, root string, format func(int64) string, summary, all bool, seen map[fileKey]bool, depth, maxDepth int) (int64, error) {
+func walkUsage(stdout *os.File, root string, format func(int64) string, summary, all bool, seen map[fileKey]bool, depth, maxDepth int, apparent, oneFS bool, rootDev uint64) (int64, error) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return 0, err
 	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+	// A directory occupies space of its own (4096 bytes on most filesystems)
+	// and GNU counts it; without this the totals are one block per directory
+	// short (acmesh-yd7).
 	var total int64
+	if info, lerr := os.Lstat(root); lerr == nil {
+		total += usageOfB(info, root, apparent)
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
 	for _, e := range entries {
-		full, err := joinPath(root, e.Name())
-		if err != nil {
-			continue
-		}
+		full := duPath(root, e.Name())
 		info, err := os.Lstat(full)
 		if err != nil {
 			continue
 		}
+		if oneFS {
+			if dev, ok := devOf(info); ok && dev != rootDev {
+				continue // -x: stay on one filesystem
+			}
+		}
 		if info.IsDir() {
-			size, err := walkUsage(stdout, full, format, summary, all, seen, depth+1, maxDepth)
+			size, err := walkUsage(stdout, full, format, summary, all, seen, depth+1, maxDepth, apparent, oneFS, rootDev)
 			if err != nil {
 				continue
 			}
@@ -495,7 +514,7 @@ func walkUsage(stdout *os.File, root string, format func(int64) string, summary,
 			}
 			continue
 		}
-		size := usageOf(info, full)
+		size := usageOfB(info, full, apparent)
 		if key, ok := keyOf(info); ok {
 			if seen[key] {
 				continue
@@ -508,6 +527,33 @@ func walkUsage(stdout *os.File, root string, format func(int64) string, summary,
 		}
 	}
 	return total, nil
+}
+
+// duPath joins a child name without cleaning the path. filepath.Join turns
+// "du ." into "sub/c.txt", but GNU prints "./sub/c.txt" and a script that greps
+// for "^\." sees the difference.
+func duPath(root, name string) string {
+	if root == "" {
+		return name
+	}
+	sep := string(os.PathSeparator)
+	if strings.HasSuffix(root, sep) || strings.HasSuffix(root, "/") {
+		return root + name
+	}
+	return root + sep + name
+}
+
+// hasAnyFlag reports whether one of the spellings is on the command line. It is
+// used for switches whose meaning is not just a unit (-b measures differently).
+func hasAnyFlag(args []string, names ...string) bool {
+	for _, a := range args {
+		for _, n := range names {
+			if a == n {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // fileKey identifies a file for hard link detection.

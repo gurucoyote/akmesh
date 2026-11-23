@@ -146,6 +146,28 @@ func unescapeMount(s string) string {
 
 // usageOf returns the disk blocks a file occupies, which is what du reports by
 // default. Sparse files therefore count with their real usage, not their size.
+// usageOfB is du's size of one entry: the space it occupies (st_blocks) by
+// default, or its apparent size with -b, where a directory counts as zero - the
+// same split GNU du makes.
+func usageOfB(info os.FileInfo, path string, apparent bool) int64 {
+	if apparent {
+		if info.IsDir() {
+			return 0
+		}
+		return info.Size()
+	}
+	return usageOf(info, path)
+}
+
+// devOf returns the device an entry lives on, for -x.
+func devOf(info os.FileInfo) (uint64, bool) {
+	st, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, false
+	}
+	return uint64(st.Dev), true
+}
+
 func usageOf(info os.FileInfo, path string) int64 {
 	if st, ok := info.Sys().(*syscall.Stat_t); ok {
 		blocks := int64(st.Blocks) * 512

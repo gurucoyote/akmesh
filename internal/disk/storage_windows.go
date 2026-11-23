@@ -101,6 +101,18 @@ func readFileSystems() ([]diskRow, error) {
 // file, which costs more than it explains for an agent.
 func usageOf(info os.FileInfo, path string) int64 { return info.Size() }
 
+// usageOfB: Windows has no block count here, so both modes report the apparent
+// size; a directory counts as zero with -b, as in GNU du.
+func usageOfB(info os.FileInfo, path string, apparent bool) int64 {
+	if apparent && info.IsDir() {
+		return 0
+	}
+	return info.Size()
+}
+
+// devOf is not available on Windows; -x therefore has no effect there.
+func devOf(info os.FileInfo) (uint64, bool) { return 0, false }
+
 func keyOf(info os.FileInfo) (fileKey, bool) { return fileKey{}, false }
 
 func absPath(p string) (string, error) { return filepath.Abs(p) }

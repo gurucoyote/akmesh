@@ -5135,3 +5135,38 @@ eben nicht GNU.
 
 Batterie: sieben neue Pruefungen (264 Linux, 242 Windows). Groesse unveraendert
 19460323 Bytes dynamisch, Windows 18102272.
+
+## du: Verzeichnisbloecke, -b und -x (23.11.2026, acmesh-yd7)
+
+Befund: du zaehlte die Bloecke der Verzeichnisse selbst nicht mit (24 statt 32 auf
+der Fixture), -b aenderte nur die Einheit und lieferte weiter Bloecke (4096 statt
+17), -x fehlte, und Pfade wurden ohne "./" gedruckt.
+
+Ursache im Code: walkUsage summierte nur die Kinder, nie den Ordner selbst;
+parseUnitFlags setzte -b auf Einheit 1, was die Messung nicht aendert; -x gab es
+nicht.
+
+Gefixt in internal/disk:
+  * walkUsage zaehlt jetzt die eigenen Bloecke des Verzeichnisses mit (das sind
+    auf den meisten Dateisystemen 4096 Bytes je Ordner).
+  * usageOfB trennt die zwei Groessen: scheinbare Groesse mit -b (Verzeichnis
+    zaehlt 0), belegte Bloecke sonst.
+  * -x/--one-file-system: devOf liefert das Geraet, der Walk springt ueber
+    alles, was auf einem anderen Geraet liegt. Auf Windows gibt es das nicht,
+    dort ist -x wirkungslos (ehrlich so dokumentiert).
+  * duPath verbindet ohne filepath.Join, damit "du ." wie GNU "./sub" druckt.
+
+Gegen GNU du im Referenz-Image, zehn Aufrufe, alle gleich (sortiert verglichen,
+weil GNU in Verzeichnisreihenfolge laeuft und wir sortieren):
+
+    du, du -b, du -s, du -c, du -h, du -d1, du -x, du -b -s, du -sh, du -a
+
+Fixture: 5000-Byte-Datei in sub/deep, zwei kleine Dateien, ein Unterordner.
+GNU und akmesh: 12 ./sub/deep, 20 ./sub, 32 .; mit -b: 5000, 5002, 5016.
+
+Offen und bewusst: die Reihenfolge der Zeilen ist bei uns sortiert, bei GNU in
+Verzeichnisreihenfolge (dieselbe Klasse wie acmesh-kgi bei find).
+
+Batterie: sechs neue Pruefungen (Windows-tauglich, weil sie auf scheinbaren
+Groessen rechnen, die auf beiden Zielen gleich sind). Groesse 19468515 Bytes
+dynamisch.

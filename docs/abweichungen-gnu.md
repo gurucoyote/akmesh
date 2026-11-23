@@ -99,7 +99,11 @@ diesem Verzeichnis liegt (`tar -cf t.tar .`), bricht akmesh mit
 "tar: archive/tar: write too long" ab und laesst ein kaputtes Archiv zurueck;
 GNU ueberspringt das Archiv mit Warnung und schreibt den Rest.
 
-### du (u-root, cmds/core/du)
+### du (eigener Code, internal/disk) - erledigt am 23.11.2026 (acmesh-yd7)
+
+Verzeichnisbloecke, -b (scheinbare Groesse) und -x gehen jetzt; zehn Aufrufe
+gegen GNU gleich. Offen bleibt die Zeilenreihenfolge (sortiert statt
+Verzeichnisreihenfolge, wie acmesh-kgi bei find).
 
     du -x .          flag provided but not defined: -x
     du -b a.txt      4096 statt 17 (GNU: Bytes; akmesh: Bloecke)

@@ -549,6 +549,19 @@ PGNAME=${PGNAME%.exe}
 check pgrep-finds-own-name "ja" "$(run pgrep -x "$PGNAME" 2>/dev/null | tr -d '\r' | head -1 | grep -q '^[0-9][0-9]*$' && echo ja)"
 check pgrep-count "1" "$(run pgrep -c -x "$PGNAME" 2>/dev/null | tr -d '\r' | tr -dc '0-9' | grep -c .)"
 
+# du: Verzeichnisbloecke, -b (scheinbare Groesse), -x (acmesh-yd7)
+TDIR=$(mktemp -d 2>/dev/null || echo /tmp/akmesh-du)
+mkdir -p "$TDIR/sub"
+printf 'aaaa\n' > "$TDIR/a.txt"
+printf 'c\n' > "$TDIR/sub/c.txt"
+check du-apparent-total "7" "$(run du -b -s "$TDIR" 2>/dev/null | cut -f1 | tr -d '\r')"
+check du-apparent-parent "7" "$(run du -b -s "$TDIR/sub/.." 2>/dev/null | cut -f1 | tr -d '\r')"
+check du-child-apparent "2" "$(run du -b -s "$TDIR/sub/c.txt" 2>/dev/null | cut -f1 | tr -d '\r')"
+check du-dot-prefix "ja" "$(cd "$TDIR" && run du . 2>/dev/null | grep -qE '^[0-9]+[[:space:]]+\.[\\/]sub' && echo ja)"
+checkcode du-one-file-system 0 "$(run du -x -s "$TDIR" >/dev/null 2>&1; echo $?)"
+checkcode du-bad-depth 2 "$(run du -d nope "$TDIR" >/dev/null 2>&1; echo $?)"
+rm -rf "$TDIR"
+
 # grep -m -x -H -a -z --include --exclude (acmesh-v6r)
 TDIR=$(mktemp -d 2>/dev/null || echo /tmp/akmesh-grep7)
 mkdir -p "$TDIR/sub"

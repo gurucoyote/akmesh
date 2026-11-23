@@ -152,6 +152,9 @@ wsl.exe die Shell direkt.
 ## Stufe 8: Betrieb
 
 - acmesh-696: Batterie gegen akmesh.exe einmal fahren.
+- Windows bleibt lokal: Protokolle in eigene Dateien, kein Event Log, keine
+  Registry, kein Dienst. Ein Hintergrundprogramm laeuft im Vordergrund und endet
+  mit seinem Aufrufer (AGENTS.md, "Windows: no traces in the host").
 - Batterie gegen das IMAGE, nicht gegen das Host-Binary.
 - docs/design/akmesh.md nachziehen, sobald init und login stehen.
 

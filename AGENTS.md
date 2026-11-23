@@ -59,6 +59,19 @@ per-command path checks in Go: that would be the guessing this project exists to
 avoid. A broken policy must exit nonzero, never fall back to running unconfined.
 See docs/policy.md.
 
+## Windows: no traces in the host
+
+What akmesh does on Windows stays local to akmesh. Write logs and state into
+files we own (below the working directory, or a path the caller names), never
+into the Windows Event Log, the registry, a scheduled task or a service. Do not
+register an SCM service: a service is a host install, survives the session and is
+exactly the trace we do not want. A daemon runs in the foreground, under whatever
+already supervises the caller - if nobody supervises it, it simply ends.
+
+The reason is the same as for the policy: a harness must be able to run this
+binary without leaving something behind that outlives it. When in doubt, keep a
+feature Linux-only rather than reach for a host facility.
+
 ## Guiding principle for commands
 
 Implement every command the way an agent will expect it, not the way we would

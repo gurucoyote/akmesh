@@ -5944,3 +5944,25 @@ Vier Fallstricke, alle gemessen
 Handgebauter Weg ohne abuild (control.tar.gz + data.tar.gz aneinanderhaengen)
 wurde ebenfalls versucht: der Index entstand, apk nahm das Paket aber nicht an.
 Der Weg ueber abuild ist der belastbare.
+
+## apk ohne root (24.11.2026)
+
+Frage war, ob apk root braucht, wenn der Zielbaum dem ausfuehrenden Benutzer
+gehoert. Gemessen, jeweils als Benutzer martin in einem ihm gehoerenden Baum.
+
+apk-tools 2.14.9 (Alpine 3.22), apk add --root <baum> --initdb: laeuft durch,
+installiert das Paket, schreibt world und installed, meldet aber
+"ERROR: 2 errors updating directory permissions" - es will Verzeichnisse auf
+root:root setzen und darf nicht. Die Dateien gehoeren danach dem Benutzer
+(1000:1000), nicht root.
+
+apk-tools 3.0.9 (Alpine 3.24), zusaetzlich --usermode: laeuft ohne Fehler
+durch, "(1/1) Installing akmesh-hello (0.0.1-r0)", "OK: 43 B in 1 packages",
+Datei 1000:1000, /etc/apk/world und /lib/apk/db/installed vollstaendig.
+apk 3 --help nennt --usermode ("Create usermode database with --initdb") und
+--no-chown als veralteten Alias dafuer.
+
+Was ohne root weiterhin nicht geht: Eigentuemer auf andere Benutzer setzen
+(chown), Geraetedateien anlegen (mknod), Datei-Capabilities setzen, und
+Skripte per chroot im Ziel ausfuehren. Fuer eigene Pakete aus statischen
+Go-Programmen braucht es nichts davon.

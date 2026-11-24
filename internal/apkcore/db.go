@@ -325,6 +325,31 @@ func gzipReader(raw []byte) *gzip.Reader {
 	return gz
 }
 
+// ScriptBodies returns the install scripts of a package (.pre-install,
+// .post-install, .trigger, ...) with their bodies, keyed by made-up name. The
+// caller decides whether to run them (apkcmd runs them through akmesh's own
+// shell, apkscript).
+func ScriptBodies(data []byte, pkg *Package) (map[string][]byte, error) {
+	streams, err := splitStreams(data)
+	if err != nil {
+		return nil, err
+	}
+	for i := range streams {
+		s := &streams[i]
+		if s.isSignature() {
+			continue
+		}
+		if _, ok := s.entries[".PKGINFO"]; ok {
+			out := map[string][]byte{}
+			for _, name := range Scripts(s.entries) {
+				out[name] = s.entries[name]
+			}
+			return out, nil
+		}
+	}
+	return nil, fmt.Errorf("%s: no control segment", pkg.FullName())
+}
+
 // ExtractOptions controls what lands on disk.
 type ExtractOptions struct {
 	Root       string

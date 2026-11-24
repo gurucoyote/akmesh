@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"akmesh/internal/apkcore"
+	"akmesh/internal/apkscript"
 )
 
 type options struct {
@@ -437,19 +438,6 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 
 	var added int64
 	for i, p := range order {
-		data, err := c.PackageData(p)
-		if err != nil {
-			fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
-			return 1
-		}
-		files, err := apkcore.Extract(data, p, apkcore.ExtractOptions{
-			Root: o.root, NoScripts: o.noScripts, Now: time.Now(),
-		})
-		if err != nil {
-			fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
-			return 1
-		}
-		installed = append(installed, &apkcore.Installed{Package: *p, Files: files})
 		if !o.quiet {
 			// apk's wording: Installing, Upgrading, Downgrading - agents read it.
 			switch {
@@ -461,6 +449,54 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 				fmt.Fprintf(stdout, "(%d/%d) Installing %s (%s)\n", i+1, len(order), p.Name, p.Version)
 			}
 		}
+		data, err := c.PackageData(p)
+		if err != nil {
+			fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+			return 1
+		}
+		// Install scripts run through akmesh's own shell with every path mapped
+		// into the target root (apkscript); --no-scripts keeps files only.
+		scripts, err := apkcore.ScriptBodies(data, p)
+		if err != nil {
+			fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+			return 1
+		}
+		// A fresh install runs the install scripts, a replacement the upgrade ones.
+		installKind, doneKind := ".pre-install", ".post-install"
+		if have[p.Name] {
+			installKind, doneKind = ".pre-upgrade", ".post-upgrade"
+		}
+		if !o.noScripts {
+			for _, kind := range []string{installKind} {
+				if body, ok := scripts[kind]; ok {
+					if err := apkscript.Run(apkscript.Script{Kind: kind, Body: body, Package: p.Name, Version: p.Version}, o.root, stdout, stderr); err != nil {
+						fmt.Fprintf(stderr, "%s: %s failed: %v\n", cmd, p.FullName(), err)
+						return 1
+					}
+				}
+			}
+		}
+		files, err := apkcore.Extract(data, p, apkcore.ExtractOptions{
+			Root: o.root, NoScripts: true, Now: time.Now(),
+		})
+		if err != nil {
+			fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+			return 1
+		}
+		if !o.noScripts {
+			for _, kind := range []string{doneKind} {
+				if body, ok := scripts[kind]; ok {
+					if !o.quiet {
+						fmt.Fprintf(stdout, "  Executing %s%s\n", p.FullName(), kind)
+					}
+					if err := apkscript.Run(apkscript.Script{Kind: kind, Body: body, Package: p.Name, Version: p.Version}, o.root, stdout, stderr); err != nil {
+						fmt.Fprintf(stderr, "%s: %s failed: %v\n", cmd, p.FullName(), err)
+						return 1
+					}
+				}
+			}
+		}
+		installed = append(installed, &apkcore.Installed{Package: *p, Files: files})
 		added += p.Installed
 	}
 	for _, name := range names {

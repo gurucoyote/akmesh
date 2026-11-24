@@ -6378,3 +6378,48 @@ Grenzen: apkguard raeumt beim Rueckfall keine Dateien der neuen Version weg
 (das Paket wird ueber die alte entpackt); der Bericht kennt nur den Exit-Code
 von apk, nicht die genaue Ursache eines Fehlschlags.
 
+
+
+## apk-Skripte laufen in akmesh's eigener Shell (24.11.2026, acmesh-gk2i)
+
+Gemessen, nicht behauptet. Paket mit .post-install, gebaut mit apkbuild,
+installiert mit unserem apk gegen ein lokales Repo:
+
+    (1/1) Installing scrprog (1.0.0-r0)
+      Executing scrprog-1.0.0-r0.post-install
+    danach liegt "<root>/postinstall.txt" mit "post-install fuer 1.0.0-r0" und "ok",
+    auf dem Host gibt es /postinstall.txt nicht.
+
+Echtes Alpine-Paket mit Skripten, das vorher abgelehnt wurde:
+    ./akmesh apk -p /tmp/bb7 -X .../v3.24/main add busybox
+    -> Executing busybox-1.37.0-r31.post-install, OK: 1.4 MiB in 2 packages
+    -> /bin 82 Eintraege, /usr/bin 136, chroot /tmp/bb7 /bin/sh laeuft:
+       "echo test | head -1" -> test
+
+Wie es arbeitet
+- Der Skripttext geht durch mvdan/sh (derselbe Interpreter wie "akmesh sh").
+- Absolute Pfade im Skript werden auf den Zielbaum umgeschrieben ("/etc/x" ->
+  "<root>/etc/x"), relative gelten gegen das aktuelle Verzeichnis; Ausbrueche wie
+  "../../etc/passwd" werden abgelehnt ("leaves the target root").
+- Oeffnen geht durch einen Handler, der jeden Pfad prueft; /dev/null und
+  /dev/zero zeigen auf das Geraet des Hosts, weil Zielbaeume selten Knoten haben.
+- Externe Programme: als root per chroot im Zielbaum (dort gesucht ueber die
+  uebliche PATH-Reihenfolge), ohne root mit klarer Meldung abgelehnt
+  ("needs root (chroot into ...)"; "--no-scripts" als Ausweg).
+- Vor dem Lauf werden die Standardverzeichnisse angelegt (bin, sbin, usr/bin,
+  usr/sbin, etc, var/tmp, tmp mit 1777, dev mit /dev/null als root); ohne sie
+  scheiterte busybox' post-install beim Verlinken ("/usr/bin/xxd: No such file").
+- Frische Installation fuehrt .pre-install/.post-install aus, ein Ersetzen
+  .pre-upgrade/.post-upgrade.
+
+Grenzen
+- Landlock und Pfadpruefung greifen fuer den akmesh-Prozess; ein per chroot
+  gestartetes Programm laeuft im Zielbaum, aber mit denselben Rechten wie wir
+  (kein eigener Landlock-Domain). Ein Skript ist also nur so vertrauenswuerdig
+  wie die Quelle, auch wenn es den Host nicht mehr per Pfad erreicht.
+- Trigger (.trigger) und Deinstallationsskripte laufen noch nicht.
+- Ohne root keine externen Programme; Pakete wie ca-certificates brauchen sie.
+
+Batterie: 5 neue Pruefungen (Skript laeuft, Inhalt, kein Host-Schreibzugriff,
+--no-scripts laesst das Skript aus), 452 Linux / 372 Windows, 0 Fehler.
+

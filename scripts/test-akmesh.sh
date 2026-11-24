@@ -1125,6 +1125,21 @@ if [ -z "$WINDOWS" ]; then
   check apk-pin-older '1' "$(run apk -p "$B2/r2" -X "$B2/repo" add abhi=1.2.3-r0 2>&1 | tr -d '\r' | grep -c 'abhi (1.2.3-r0)')"
   check apk-pin-missing '1' "$(run apk -p "$B2/r2" -X "$B2/repo" add abhi=9.9.9-r0 2>&1 | tr -d '\r' | grep -c 'no such version')"
 
+  # Skripte laufen durch unsere eigene Shell, Pfade im Zielbaum (acmesh-gk2i).
+  S3="$WORK/ab3"; mkdir -p "$S3/src/usr/bin" "$S3/repo/x86_64" "$S3/r1/etc/apk/keys" "$S3/r2/etc/apk/keys"
+  cp "$BD/src/usr/bin/abhi" "$S3/src/usr/bin/"
+  cp "$BD/bkey.rsa.pub" "$S3/r1/etc/apk/keys/"; cp "$BD/bkey.rsa.pub" "$S3/r2/etc/apk/keys/"
+  printf '#!/bin/sh\necho "post fuer $1" > /postinst.txt\n' > "$S3/post"; chmod 755 "$S3/post"
+  printf 'pkgname = absc\npkgver = 1.0.0\npkgrel = 0\npkgdesc = mit skript\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\nscript = .post-install:%s/post\n' "$S3" > "$S3/manifest"
+  run apkbuild build --manifest "$S3/manifest" --source "$S3/src" -o "$S3/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+  run apkbuild index -o "$S3/repo/x86_64/APKINDEX.tar.gz" "$S3"/repo/x86_64/*.apk --key "$BD/bkey.rsa" >/dev/null 2>&1
+  check apkbuild-script-executing '1' "$(run apk -p "$S3/r1" -X "$S3/repo" add absc 2>&1 | tr -d '\r' | grep -c 'Executing absc-1.0.0-r0.post-install')"
+  check apkbuild-script-ran '1' "$([ -f "$S3/r1/postinst.txt" ] && echo 1 || echo 0)"
+  check apkbuild-script-content 'post fuer 1.0.0-r0' "$(tr -d '\r' < "$S3/r1/postinst.txt" 2>/dev/null)"
+  check apkbuild-script-no-host '0' "$([ -f /postinst.txt ] && echo 1 || echo 0)"
+  run apk -p "$S3/r2" -X "$S3/repo" --no-scripts add absc >/dev/null 2>&1
+  check apkbuild-script-skipped '0' "$([ -f "$S3/r2/postinst.txt" ] && echo 1 || echo 0)"
+
   # Waechter (acmesh-2p44): ein Rueckfall, dann Stillstand. Nachgemachtes apk,
   # damit die Batterie ohne Netz und ohne Container laeuft.
   G="$WORK/guard"; mkdir -p "$G/root/lib/apk/db" "$G/root/etc/apk" "$G/bin"

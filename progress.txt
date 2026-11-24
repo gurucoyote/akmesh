@@ -274,3 +274,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 24.11.2026: Messreihe abgeschlossen - nl 21/21, tac 11/11 und seq 16/16 gegen GNU neu gebaut; Batterie 403 Linux / 371 Windows; acmesh-efg geschlossen.
 24.11.2026: awk-Funktionsmeldung auf mawks Satz uebersetzt, RSTART/RLENGTH und 1/0 begruendet entschieden; Batterie 404 Linux / 372 Windows; acmesh-3xs geschlossen.
 24.11.2026: Image zum Schluss neu gebaut (19.8 MB, trivy 0 Schwaechen) - der Stand enthaelt jetzt auch nl, tac, seq, cat und awk.
+24.11.2026: Ctrl-C bricht in der interaktiven Shell den Befehl ab statt die Shell zu beenden; zwei Grenzen dokumentiert; Batterie 404 Linux / 372 Windows; acmesh-43qq geschlossen.

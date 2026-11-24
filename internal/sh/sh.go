@@ -133,7 +133,34 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 		}
 		return finish(runner, runSource(runner, string(data), inv.scriptFile), stderr)
 	case inv.interactive:
-		return interactiveLoop(runner, stdin, out, stderr)
+		// Ctrl-C must end the line, not the shell (acmesh-43qq).
+		it := newInterrupter()
+		defer it.stop()
+		// A cancelled statement leaves the runner marked as exiting, so the
+		// session needs a fresh one after a Ctrl-C. It carries the variables,
+		// the directory and the positional parameters; shell functions are
+		// lost, which is the price of interrupting a builtin loop.
+		rebuild := func(old *interp.Runner) (*interp.Runner, error) {
+			env := make([]string, 0, len(old.Vars))
+			for name, v := range old.Vars {
+				if !v.Set || v.Kind == expand.Indexed || v.Kind == expand.Associative {
+					continue
+				}
+				env = append(env, name+"="+v.Str)
+			}
+			opts := []interp.RunnerOption{
+				interp.StdIO(shellIn, out, stderr),
+				interp.Dir(old.Dir),
+				interp.Env(expand.ListEnviron(env...)),
+				interp.Interactive(true),
+				interp.CallHandler(chainCall(killCall(out, stderr), umaskCall(out, stderr))),
+			}
+			if len(old.Params) > 0 {
+				opts = append(opts, interp.Params(old.Params...))
+			}
+			return interp.New(opts...)
+		}
+		return interactiveLoop(runner, stdin, out, stderr, it, rebuild)
 	default:
 		data, err := io.ReadAll(stdin)
 		if err != nil {
@@ -270,7 +297,7 @@ func runStartup(r *interp.Runner, path string, stderr io.Writer) (int, bool) {
 // one and keeps the session alive after a failing command. It reads lines
 // itself instead of using the parser's sequence API: a test with a plain
 // strings.Reader has to behave exactly like a terminal.
-func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stderr io.Writer) int {
+func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stderr io.Writer, it *interrupter, rebuild func(*interp.Runner) (*interp.Runner, error)) int {
 	// One byte at a time: a buffered reader would read past the line, and a
 	// command like `read` would find the input already eaten (acmesh-51b).
 	reader := &lineReader{r: stdin}
@@ -278,6 +305,14 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stder
 	out.WriteString(promptString(r, out))
 	for {
 		line, readErr := reader.readLine()
+		if readErr != nil && it != nil && it.consume() {
+			// Ctrl-C while typing: the terminal threw the line away, so start
+			// a fresh one instead of ending the session.
+			pending.Reset()
+			out.WriteString("\n")
+			out.WriteString(promptString(r, out))
+			continue
+		}
 		if line == "" && readErr != nil {
 			return 0
 		}
@@ -301,11 +336,32 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stder
 			continue
 		}
 		pending.Reset()
-		runErr := runStatements(r, file)
+		ctx, done := context.Background(), func() bool { return false }
+		if it != nil {
+			ctx, done = it.begin()
+		}
+		runErr := runStatements(ctx, r, file)
+		interrupted := done()
+		if interrupted && r.Exited() && rebuild != nil {
+			fresh, err := rebuild(r)
+			if err != nil {
+				fmt.Fprintf(stderr, "sh: %v\n", err)
+				return 1
+			}
+			r = fresh
+		}
 		if r.Exited() {
 			return exitCode(runErr)
 		}
-		if runErr != nil {
+		if interrupted || interruptedBySignal(runErr) {
+			// A newline, then a new prompt: the cancelled statement is not an
+			// error to report, it is what the user asked for. $? is 130, the
+			// status ash leaves after a Ctrl-C.
+			if file, err := syntax.NewParser().Parse(strings.NewReader("(exit 130)"), "<interrupt>"); err == nil {
+				_ = runStatements(context.Background(), r, file)
+			}
+			out.WriteString("\n")
+		} else if runErr != nil {
 			fmt.Fprintf(stderr, "sh: %v\n", runErr)
 		}
 		out.WriteString(promptString(r, out))
@@ -313,6 +369,13 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stder
 			return 0
 		}
 	}
+}
+
+// interruptedBySignal reports whether a command ended because the terminal
+// sent it SIGINT. ash prints nothing there, only a new prompt.
+func interruptedBySignal(err error) bool {
+	status, ok := interp.IsExitStatus(err)
+	return ok && status == 130
 }
 
 // promptString is PS1 when the profile set one, otherwise the ash default. The
@@ -415,17 +478,17 @@ func runSource(r *interp.Runner, src, name string) error {
 	if err != nil {
 		return err
 	}
-	return runStatements(r, file)
+	return runStatements(context.Background(), r, file)
 }
 
 // runStatements runs one statement at a time. Passing a whole *syntax.File to
 // Runner.Run implies an exit - the runner is then spent, and the next line of
 // an interactive session would do nothing. Statements keep the session alive,
 // and the variables, options and directory with it.
-func runStatements(r *interp.Runner, file *syntax.File) error {
+func runStatements(ctx context.Context, r *interp.Runner, file *syntax.File) error {
 	var last error
 	for _, stmt := range file.Stmts {
-		last = r.Run(context.Background(), stmt)
+		last = r.Run(ctx, stmt)
 		if r.Exited() {
 			return last
 		}

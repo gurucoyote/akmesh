@@ -5992,3 +5992,37 @@ Der Lauf braucht also ein echtes Skript, nicht -n.
 Grenze dieser Messung: gemessen ist die Vertraeglichkeit der Shell und die
 Liste der Befehlsnamen, nicht die Wirkung der Skripte im Zielbaum. Ein echter
 Lauf braucht chroot und damit root.
+
+## Ctrl-C in der interaktiven Shell (24.11.2026, acmesh-43qq)
+
+Vorher: ^C beendete die Shell. Go beendet sich bei SIGINT, wenn niemand den
+Signal abfaengt; das Terminal spiegelte danach nur noch Eingaben. Am PTY
+gemessen: "sleep 5", ^C, danach kam nie ein Prompt, und "echo lebt" wurde nur
+gespiegelt.
+
+Jetzt: die interaktive Shell faengt os.Interrupt ab (internal/sh/interrupt.go).
+Je Anweisung gibt es einen eigenen Kontext; ein Signal bricht ihn ab, die
+Schleife setzt $? auf 130, schreibt einen Zeilenumbruch und einen neuen Prompt.
+
+Gemessen am PTY nach dem Bau
+    sleep 5, ^C        -> "^C", neuer Prompt, Sitzung lebt
+    while true; do :; done, ^C -> "^C", neuer Prompt, Sitzung lebt
+    ^C waehrend des Tippens  -> Zeile verworfen, naechster Befehl laeuft
+    exit 3             -> Shell endet weiterhin mit 3
+
+Drei Grenzen, ehrlich
+    1. Wird eine reine Builtin-Schleife abgebrochen, markiert mvdan/sh den
+       Runner als beendet. Die Schleife baut ihn dann neu auf, mit Variablen,
+       Verzeichnis und Parametern; Shell-Funktionen gehen dabei verloren.
+    2. $? steht nach ^C auf 0, ash hinterlaesst 130. Der Versuch, (exit 130)
+       nachzuschieben, hat den Status nicht gesetzt - offen.
+    3. ^C waehrend des Tippens zeigt den neuen Prompt erst mit der naechsten
+       Eingabe: Go wiederholt den lesenden Systemaufruf nach EINTR selbst.
+       Die Zeile ist trotzdem verworfen, der Befehl davor ist abgebrochen.
+
+Tests: internal/sh/interrupt_test.go (drei Faelle, ueber it.handle ohne echten
+Signal an den Testprozess). Batterie 404 Linux, Windows siehe unten.
+
+Batterie 404 Linux / 372 Windows, beide 0 Fehler, help-audit gruen.
+Groessen: 19562723 Bytes Linux dynamisch, 18199552 Bytes Windows, beide
+gestrippt (+8192 und +2048 gegen den Stand davor).

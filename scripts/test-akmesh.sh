@@ -1204,6 +1204,27 @@ if [ -z "$WINDOWS" ]; then
   run apkbuild build --manifest "$AR/manifest" --source "$AR/src" -o "$AR/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
   check apk-foreign-arch '1' "$(run apk -p "$AR/root" add "$AR"/repo/x86_64/arprog-1.0.0-r0.apk 2>&1 | tr -d '\r' | grep -c 'package is for aarch64, this target is x86_64')"
 
+  # Versionsoperatoren, Konflikte und Trigger (acmesh-gk2i, 24.11.2026).
+  V="$WORK/vers"; mkdir -p "$V/root/etc/apk/keys" "$V/repo/x86_64"
+  cp "$BD/bkey.rsa.pub" "$V/root/etc/apk/keys/"
+  for ver in 1.0.0 2.0.0; do
+    mkdir -p "$V/src$ver/usr/lib"
+    printf 'basis %s\n' "$ver" > "$V/src$ver/usr/lib/basis"
+    printf 'pkgname = depbase\npkgver = %s\npkgrel = 0\npkgdesc = basis\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\n' "$ver" > "$V/man$ver"
+    run apkbuild build --manifest "$V/man$ver" --source "$V/src$ver" -o "$V/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+  done
+  mkdir -p "$V/srcop/usr/bin"; printf 'x\n' > "$V/srcop/usr/bin/op"
+  printf '#!/bin/sh\necho trigger lief > /trigger.txt\n' > "$V/trigger"; chmod 755 "$V/trigger"
+  printf 'pkgname = depop\npkgver = 1.0.0\npkgrel = 0\npkgdesc = braucht neu\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\ndepends = depbase>=2.0.0\nscript = .trigger:%s/trigger\n' "$V" > "$V/manop"
+  run apkbuild build --manifest "$V/manop" --source "$V/srcop" -o "$V/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+  run apkbuild index -o "$V/repo/x86_64/APKINDEX.tar.gz" "$V"/repo/x86_64/*.apk --key "$BD/bkey.rsa" >/dev/null 2>&1
+  run apk -p "$V/root" -X "$V/repo" add depop >/dev/null 2>&1
+  check apk-version-operator '2.0.0-r0' "$(tr -d '\r' < "$V/root/lib/apk/db/installed" | grep -A1 '^P:depbase$' | grep '^V:' | head -1 | cut -d: -f2)"
+  check apk-trigger-ran '1' "$([ -f "$V/root/trigger.txt" ] && echo 1 || echo 0)"
+  check apk-trigger-content 'trigger lief' "$(tr -d '\r' < "$V/root/trigger.txt" 2>/dev/null)"
+  mkdir -p "$V/root2/etc/apk/keys"; cp "$BD/bkey.rsa.pub" "$V/root2/etc/apk/keys/"
+  check apk-version-unsatisfied '1' "$(run apk -p "$V/root2" -X "$V/repo" add 'depbase>9.0' 2>&1 | tr -d '\r' | grep -c 'no package satisfies >9.0')"
+
   # Waechter (acmesh-2p44): ein Rueckfall, dann Stillstand. Nachgemachtes apk,
   # damit die Batterie ohne Netz und ohne Container laeuft.
   G="$WORK/guard"; mkdir -p "$G/root/lib/apk/db" "$G/root/etc/apk" "$G/bin"

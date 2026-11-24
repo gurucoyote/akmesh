@@ -290,6 +290,129 @@ func sigNote(idx *apkcore.Index) string {
 }
 
 // best finds a package by name (or provides) across the indexes.
+// depSpec is one dependency as it appears in an index: "libcrypto3>=3.1.0",
+// "openssh-keygen=10.3_p1-r2", "!openssh-client-krb5", "so:libz.so.1" or with a
+// channel tag "pkg@testing". apk accepts all of these, so we must too.
+type depSpec struct {
+	name     string
+	op       string
+	ver      string
+	tag      string
+	conflict bool
+	by       string // who asked for it, for the error message
+}
+
+func (d depSpec) wantedBy() string {
+	if d.by == "" {
+		return ""
+	}
+	return " for " + d.by
+}
+
+// parseDep splits a dependency string. The operators are the ones apk uses; "~"
+// means "same major.minor", which is how Alpine pins a library to its soname.
+func parseDep(spec string) depSpec {
+	d := depSpec{}
+	spec = strings.TrimSpace(spec)
+	if strings.HasPrefix(spec, "!") {
+		d.conflict = true
+		spec = spec[1:]
+	}
+	if i := strings.Index(spec, "@"); i > 0 {
+		d.tag = spec[i+1:]
+		spec = spec[:i]
+	}
+	for _, op := range []string{">=", "<=", "=", ">", "<", "~"} {
+		if i := strings.Index(spec, op); i > 0 {
+			d.name = spec[:i]
+			d.op = op
+			d.ver = spec[i+len(op):]
+			return d
+		}
+	}
+	d.name = spec
+	return d
+}
+
+// satisfies reports whether ver meets the constraint. An empty operator accepts
+// anything, which is the common case.
+func satisfies(ver, op, want string) bool {
+	if op == "" || want == "" {
+		return true
+	}
+	c := apkcore.CompareVersions(ver, want)
+	switch op {
+	case "=":
+		return c == 0
+	case ">=":
+		return c >= 0
+	case "<=":
+		return c <= 0
+	case ">":
+		return c > 0
+	case "<":
+		return c < 0
+	case "~":
+		// Same major.minor: 3.5.9 satisfies 3.5, not 3.4.
+		return c >= 0 && strings.HasPrefix(ver, strings.TrimSuffix(want, "-r")+".") ||
+			ver == want
+	}
+	return true
+}
+
+// bestSatisfying picks the newest package that meets the constraint, first by
+// name and then through provides ("so:libcrypto.so.3=3").
+func bestSatisfying(indexes []*apkcore.Index, d depSpec, tag string) *apkcore.Package {
+	var found *apkcore.Package
+	for _, idx := range indexes {
+		if tag != "" && idx.Tag != tag {
+			continue
+		}
+		for _, p := range idx.Packages {
+			if p.Name != d.name || !satisfies(p.Version, d.op, d.ver) {
+				continue
+			}
+			if found == nil || apkcore.CompareVersions(p.Version, found.Version) > 0 {
+				found = p
+			}
+		}
+	}
+	if found != nil {
+		return found
+	}
+	bestPrio := -1
+	for _, idx := range indexes {
+		if tag != "" && idx.Tag != tag {
+			continue
+		}
+		for _, p := range idx.Packages {
+			for _, prov := range p.Provides {
+				prov = strings.TrimPrefix(prov, "!")
+				name, ver := prov, ""
+				if i := strings.Index(prov, "="); i > 0 {
+					name, ver = prov[:i], prov[i+1:]
+				}
+				if name != d.name {
+					continue
+				}
+				// A provider without its own version offers the package version.
+				if ver == "" {
+					ver = p.Version
+				}
+				if !satisfies(ver, d.op, d.ver) {
+					continue
+				}
+				if found == nil || p.ProviderPrio > bestPrio ||
+					(p.ProviderPrio == bestPrio && apkcore.CompareVersions(p.Version, found.Version) > 0) {
+					found = p
+					bestPrio = p.ProviderPrio
+				}
+			}
+		}
+	}
+	return found
+}
+
 // best returns the newest package of that name, optionally only from one
 // channel tag ("" means any repository).
 func best(indexes []*apkcore.Index, name string) *apkcore.Package {
@@ -515,31 +638,38 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 	// Resolve: requested names plus their depends, dependencies first.
 	var order []*apkcore.Package
 	seen := map[string]bool{}
-	// resolve installs one name. A pin ("pkg=1.0.0-r0", used by rollback) picks
-	// exactly that version; without a pin the newest wins, as in apk.
-	var resolve func(name, pin, tag string, top bool) int
-	resolve = func(name, pin, tag string, top bool) int {
-		if seen[name] {
+	// resolve installs one dependency spec. "=" pins exactly that version; >=, <=,
+	// >, < and ~ filter the newest match; a leading "!" is a conflict.
+	var resolve func(d depSpec, top bool) int
+	resolve = func(d depSpec, top bool) int {
+		if d.conflict {
+			if have[d.name] || seen[d.name] {
+				fmt.Fprintf(stderr, "%s: %s must not be installed (%s conflicts with it)\n", cmd, d.name, d.by)
+				return 1
+			}
 			return 0
 		}
-		// An installed package is left alone unless a pin names another version
-		// or the repository has a newer one (that is what upgrade relies on).
-		if have[name] {
+		if seen[d.name] {
+			return 0
+		}
+		// An installed package is left alone unless the constraint asks for another
+		// version or the repository has a newer one (that is what upgrade relies on).
+		if have[d.name] {
 			switch {
-			case pin == "":
-				if newer := bestTagged(indexes, name, tag); newer == nil ||
-					apkcore.CompareVersions(newer.Version, installedVers[name]) <= 0 {
+			case d.op == "":
+				if newer := bestTagged(indexes, d.name, d.tag); newer == nil ||
+					apkcore.CompareVersions(newer.Version, installedVers[d.name]) <= 0 {
 					return 0
 				}
-			case installedVers[name] == pin:
+			case satisfies(installedVers[d.name], d.op, d.ver):
 				return 0
 			}
 		}
 		var p *apkcore.Package
-		if pin != "" {
-			p = exactTagged(indexes, name, pin, tag)
+		if d.op == "=" {
+			p = exactTagged(indexes, d.name, d.ver, d.tag)
 		} else {
-			p = bestTagged(indexes, name, tag)
+			p = bestSatisfying(indexes, d, d.tag)
 		}
 		if p != nil {
 			if err := checkArch(p, o.arch); err != nil {
@@ -548,10 +678,15 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 			}
 		}
 		if p == nil {
-			if pin != "" {
-				fmt.Fprintf(stderr, "%s: %s=%s (no such version)\n", cmd, name, pin)
-			} else {
-				fmt.Fprintf(stderr, "%s: %s (no such package)\n", cmd, name)
+			switch {
+			case d.op == "=":
+				fmt.Fprintf(stderr, "%s: %s=%s (no such version)\n", cmd, d.name, d.ver)
+			case d.op != "":
+				fmt.Fprintf(stderr, "%s: %s (no package satisfies %s%s)%s\n", cmd, d.name, d.op, d.ver, d.wantedBy())
+			case strings.HasPrefix(d.name, "so:") || strings.HasPrefix(d.name, "cmd:"):
+				fmt.Fprintf(stderr, "%s: %s requires %s, which no repository provides\n", cmd, d.by, d.name)
+			default:
+				fmt.Fprintf(stderr, "%s: %s (no such package)\n", cmd, d.name)
 			}
 			return 1
 		}
@@ -560,24 +695,9 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		}
 		seen[p.Name] = true
 		for _, dep := range p.Depends {
-			dep = strings.TrimPrefix(dep, "!")
-			if strings.HasPrefix(dep, "so:") || strings.HasPrefix(dep, "cmd:") {
-				// Virtual names: satisfied by provides, looked up the same way.
-				if provider := best(indexes, dep); provider != nil {
-					if code := resolve(provider.Name, "", "", false); code != 0 {
-						return code
-					}
-					continue
-				}
-				fmt.Fprintf(stderr, "%s: %s requires %s, which no repository provides\n", cmd, p.Name, dep)
-				return 1
-			}
-			depTag := ""
-			if i := strings.Index(dep, "@"); i > 0 {
-				depTag = dep[i+1:]
-				dep = dep[:i]
-			}
-			if code := resolve(apkcore.EntryName(dep), depPin(dep), depTag, false); code != 0 {
+			sub := parseDep(dep)
+			sub.by = p.Name
+			if code := resolve(sub, false); code != 0 {
 				return code
 			}
 		}
@@ -590,21 +710,18 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		}
 		seen[lp.Name] = true
 		for _, dep := range lp.Depends {
-			dep = strings.TrimPrefix(dep, "!")
-			depTag := ""
-			if i := strings.Index(dep, "@"); i > 0 {
-				depTag = dep[i+1:]
-				dep = dep[:i]
-			}
-			if code := resolve(apkcore.EntryName(dep), depPin(dep), depTag, false); code != 0 {
+			sub := parseDep(dep)
+			sub.by = lp.Name
+			if code := resolve(sub, false); code != 0 {
 				return code
 			}
 		}
 		order = append(order, lp)
 	}
 	for _, spec := range wanted {
-		name, tag := splitTag(spec)
-		if code := resolve(apkcore.EntryName(name), depPin(name), tag, true); code != 0 {
+		d := parseDep(spec)
+		d.by = "the command line"
+		if code := resolve(d, true); code != 0 {
 			return code
 		}
 	}
@@ -677,7 +794,7 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 			return 1
 		}
 		if !o.noScripts {
-			for _, kind := range []string{doneKind} {
+			for _, kind := range []string{doneKind, ".trigger"} {
 				if body, ok := scripts[kind]; ok {
 					if !o.quiet {
 						fmt.Fprintf(stdout, "  Executing %s%s\n", p.FullName(), kind)

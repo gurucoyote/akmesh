@@ -6594,3 +6594,39 @@ a) Unsere Shell unter Windows: Skripte laufen darin (mvdan/sh, wie akmesh sh).
 
 Batterie unveraendert 470 Linux / 372 Windows, 0 Fehler.
 
+
+
+## Abhaengigkeiten mit Operatoren, Konflikte, Trigger (24.11.2026, acmesh-gk2i)
+
+Befund: openssh-client liess sich nicht installieren -
+    apk: libcrypto3=3.1.0 (no such version)
+Ursache: "libcrypto3>=3.1.0" wurde als Pin gelesen (=), also wurde genau 3.1.0
+gesucht. apk kennt >=, <=, >, <, = und "~" (gleiche Haupt.Nebenversion).
+
+Jetzt:
+    ./akmesh apk -p /tmp/real3 -X .../v3.24/main add openssh-client
+    -> 9 Pakete, OK: 19.1 MiB in 9 packages
+       darunter libcrypto3 3.5.9-r1 (erfuellt >=3.1.0) und libedit/zlib ueber so:
+    Konflikt:
+    ./akmesh apk -p /tmp/real3 ... add openssh-client-krb5
+    -> apk: openssh-client-default must not be installed
+       (openssh-client-krb5 conflicts with it)
+    Unerfuellbare Forderung:
+    add 'libcrypto3<3.0' -> apk: libcrypto3 (no package satisfies <3.0) for the command line
+
+Regeln im Code
+- parseDep kennt "!name" (Konflikt), "@kanal", und die Operatoren; so:- und
+  cmd:-Namen laufen ueber provides, deren Version in "so:libcrypto.so.3=3" steht
+  (ohne Angabe gilt die Paketversion). Bei mehreren Anbietern gewinnt die hoehere
+  Prioritaet (k: im Index), dann die neuere Version.
+- Ein installiertes Paket bleibt stehen, wenn seine Version die Forderung erfuellt.
+
+Trigger
+- .trigger laeuft nach der Installation des Pakets, in unserer Shell, mit den
+  bekannten Pfadregeln. Vereinfachung gegenueber apk: apk fuehrt einen Trigger
+  aus, wenn ein spaeter installiertes Paket Dateien unter den im .trigger
+  genannten Pfaden aendert; wir fuehren ihn beim eigenen Paket aus.
+
+Batterie: 4 neue Pruefungen (Operator waehlt 2.0.0 statt 1.0.0, Trigger laeuft,
+Triggerinhalt, unerfuellbare Forderung gemeldet), 474 Linux, 0 Fehler.
+

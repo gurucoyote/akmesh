@@ -5888,3 +5888,7 @@ Eine neue Batteriepruefung fuer die Funktionsmeldung.
 
 Batterie 404 Linux / 372 Windows, beide 0 Fehler, help-audit gruen.
 Groessen: 19554531 Bytes Linux dynamisch, 18191360 Bytes Windows, gestrippt.
+
+Image am Ende der Runde noch einmal gebaut, nachdem nl, tac, seq, cat und awk im
+Binaerstand sind: akmesh:latest 19.8 MB, trivy 0.68.2 meldet 0 Schwachstellen
+in bin/akmesh, 0 Secrets.

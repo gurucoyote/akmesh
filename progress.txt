@@ -273,3 +273,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 24.11.2026: Zeitstempel in elf u-root-Meldungen abgesetzt, cat auf GNU-Meldung und Weiterlaufen umgestellt; Batterie 389 Linux / 357 Windows; acmesh-jlk4 und 2rl geschlossen.
 24.11.2026: Messreihe abgeschlossen - nl 21/21, tac 11/11 und seq 16/16 gegen GNU neu gebaut; Batterie 403 Linux / 371 Windows; acmesh-efg geschlossen.
 24.11.2026: awk-Funktionsmeldung auf mawks Satz uebersetzt, RSTART/RLENGTH und 1/0 begruendet entschieden; Batterie 404 Linux / 372 Windows; acmesh-3xs geschlossen.
+24.11.2026: Image zum Schluss neu gebaut (19.8 MB, trivy 0 Schwaechen) - der Stand enthaelt jetzt auch nl, tac, seq, cat und awk.

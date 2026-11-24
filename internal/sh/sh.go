@@ -90,8 +90,12 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 		env = withoutVar(env, "PS1")
 		env = append(env, "PS1="+defaultPrompt())
 	}
+	// The tracer writes "+ " where ash writes PS4; the wrapper rewrites that
+	// while xtrace is on (acmesh-89s9).
+	var curRunner *interp.Runner
+	traceErr := newPS4Writer(stderr, func() *interp.Runner { return curRunner })
 	opts := []interp.RunnerOption{
-		interp.StdIO(shellIn, out, stderr),
+		interp.StdIO(shellIn, out, traceErr),
 		interp.Dir(workingDir()),
 		interp.Env(expand.ListEnviron(env...)),
 	}
@@ -109,6 +113,7 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 	// function, so they are chained.
 	opts = append(opts, interp.CallHandler(chainCall(killCall(out, stderr), umaskCall(out, stderr))))
 	runner, err := interp.New(opts...)
+	curRunner = runner
 	if err != nil {
 		fmt.Fprintf(stderr, "sh: %v\n", err)
 		return 1
@@ -149,7 +154,7 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 				env = append(env, name+"="+v.Str)
 			}
 			opts := []interp.RunnerOption{
-				interp.StdIO(shellIn, out, stderr),
+				interp.StdIO(shellIn, out, traceErr),
 				interp.Dir(old.Dir),
 				interp.Env(expand.ListEnviron(env...)),
 				interp.Interactive(true),

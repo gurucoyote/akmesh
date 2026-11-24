@@ -6736,3 +6736,34 @@ neu vor. Loeschen am Ende nutzt Ruecklauf-Leerzeichen-Ruecklauf.
 Tests: TestHistoryRoundTrip (Reihenfolge, Wiederholung, Limit),
 TestHistoryWithoutFileIsQuiet, TestNoEditorOnAPipe.
 
+
+
+## PS2 und PS4 in unserer Shell (24.11.2026, acmesh-89s9)
+
+PS2, der Prompt einer fortgesetzten Zeile, wird jetzt gelesen: an einem Terminal
+zeigt der Zeileneditor ihn als naechste Zeile an, ohne Terminal druckt der Leser
+ihn. Gemessen im PTY mit PS2="WEITER> ":
+
+    echo 'a
+    WEITER> b'
+    -> a, b
+
+PS4, der Praefix einer xtrace-Zeile, gilt ebenfalls. mvdan/sh schreibt dafuer
+fest "+ " und kennt PS4 nicht (interp/trace.go), deshalb formt ein kleiner
+Schreiber (internal/sh/ps4.go) den Praefix um. Gemessen:
+
+    printf 'PS4="TRACE> "\nset -x\necho hi\nset +x\necho ohne\n' | ./akmesh sh
+    -> TRACE> echo hi
+       hi
+       TRACE> set +x
+       ohne
+
+Grenze, ehrlich: mvdan legt nicht offen, ob xtrace an ist ("$-" steht nicht in
+seinen Variablen). Die Umformung haengt deshalb allein an PS4 - bei "+ " (dem
+Standard) passiert nichts, bei allem anderen beginnt jede verfolgte Zeile mit
+"+ ". Folge: ein Befehl, dessen Ausgabe mit "+ " beginnt, bekommt den Praefix
+ersetzt, solange PS4 vom Standard abweicht. Das ist die Grenze der Umformung,
+keine Nachbildung von ash.
+
+Batterie: neue Pruefung sh-ps4.
+

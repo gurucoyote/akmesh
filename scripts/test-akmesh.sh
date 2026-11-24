@@ -1204,6 +1204,10 @@ if [ -z "$WINDOWS" ]; then
   run apkbuild build --manifest "$AR/manifest" --source "$AR/src" -o "$AR/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
   check apk-foreign-arch '1' "$(run apk -p "$AR/root" add "$AR"/repo/x86_64/arprog-1.0.0-r0.apk 2>&1 | tr -d '\r' | grep -c 'package is for aarch64, this target is x86_64')"
 
+  # PS4 im xtrace (acmesh-89s9, 24.11.2026): mvdan schreibt fest "+ ", PS4 muss
+  # aber gelten.
+  check sh-ps4 '1' "$(printf 'PS4="T> "\nset -x\necho hi\n' | $BIN sh 2>&1 | tr -d '\r' | grep -c '^T> echo hi')"
+
   # Versionsoperatoren, Konflikte und Trigger (acmesh-gk2i, 24.11.2026).
   V="$WORK/vers"; mkdir -p "$V/root/etc/apk/keys" "$V/repo/x86_64"
   cp "$BD/bkey.rsa.pub" "$V/root/etc/apk/keys/"

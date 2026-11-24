@@ -295,3 +295,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 24.11.2026: apk legt Deinstallationsskripte beim Installieren ab und fuehrt sie beim Entfernen aus; Geraeteknoten werden nicht mehr stillschweigend uebersprungen; Herkunftszeilen in forked ergaenzt. Batterie 477 Linux / 372 Windows.
 24.11.2026: Paketskripte rufen fremde Befehle jetzt aus unserem eigenen Werkzeugkasten auf (akmesh mkdir ...), auch unter Windows; Backslash- und Doppelpraefix-Fehler behoben. Batterie 479 Linux / 372 Windows.
 24.11.2026: Shell hat jetzt Zeilenbearbeitung und History (Pfeiltasten, Ctrl-A/E/U/K/W, Ctrl-C verwirft die Zeile, ~/.akmesh_history bzw. AKMESH_HISTFILE); PS2 wird als Fortsetzungsprompt benutzt. Batterie 479 Linux / 372 Windows.
+24.11.2026: PS2 gilt als Fortsetzungsprompt, PS4 im xtrace (Umformung des festen "+ " von mvdan); Batterie 480 Linux / 372 Windows.

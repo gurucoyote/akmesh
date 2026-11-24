@@ -1140,6 +1140,26 @@ if [ -z "$WINDOWS" ]; then
   run apk -p "$S3/r2" -X "$S3/repo" --no-scripts add absc >/dev/null 2>&1
   check apkbuild-script-skipped '0' "$([ -f "$S3/r2/postinst.txt" ] && echo 1 || echo 0)"
 
+  # Kanaele (acmesh-ke0r): zwei Repos mit Etikett, Upgrade bleibt im Kanal,
+  # Wechsel ist ein Handgriff ueber die Versionsangabe.
+  C="$WORK/chan"; mkdir -p "$C/stable/src/usr/bin" "$C/stable/repo/x86_64" "$C/testing/src/usr/bin" "$C/testing/repo/x86_64" "$C/root/etc/apk/keys"
+  cp "$BD/bkey.rsa.pub" "$C/root/etc/apk/keys/"
+  printf '#!/bin/sh\necho eins\n' > "$C/stable/src/usr/bin/chabhi"; chmod 755 "$C/stable/src/usr/bin/chabhi"
+  printf '#!/bin/sh\necho zwei\n' > "$C/testing/src/usr/bin/chabhi"; chmod 755 "$C/testing/src/usr/bin/chabhi"
+  printf 'pkgname = chabhi\npkgver = 1.0.0\npkgrel = 0\npkgdesc = stable\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\n' > "$C/stable/manifest"
+  printf 'pkgname = chabhi\npkgver = 2.0.0\npkgrel = 0\npkgdesc = testing\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\n' > "$C/testing/manifest"
+  for ch in stable testing; do
+    run apkbuild build --manifest "$C/$ch/manifest" --source "$C/$ch/src" -o "$C/$ch/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+    run apkbuild index -o "$C/$ch/repo/x86_64/APKINDEX.tar.gz" "$C/$ch"/repo/x86_64/*.apk --key "$BD/bkey.rsa" >/dev/null 2>&1
+  done
+  printf '@stable %s\n@testing %s\n' "$C/stable/repo" "$C/testing/repo" > "$C/root/etc/apk/repositories"
+  check channel-add-in-channel '1' "$(run apk -p "$C/root" add chabhi@stable 2>&1 | tr -d '\r' | grep -c 'Installing chabhi (1.0.0-r0)')"
+  check channel-world 'chabhi@stable' "$(tr -d '\r' < "$C/root/etc/apk/world")"
+  check channel-upgrade-stays '1' "$(run apk -p "$C/root" upgrade 2>&1 | tr -d '\r' | grep -c 'nothing to upgrade')"
+  check channel-switch '1' "$(run apk -p "$C/root" add chabhi@testing 2>&1 | tr -d '\r' | grep -c 'chabhi (1.0.0-r0 -> 2.0.0-r0)')"
+  check channel-switch-world 'chabhi@testing' "$(tr -d '\r' < "$C/root/etc/apk/world")"
+  check channel-run 'zwei' "$("$C/root/usr/bin/chabhi" 2>&1 | tr -d '\r')"
+
   # Waechter (acmesh-2p44): ein Rueckfall, dann Stillstand. Nachgemachtes apk,
   # damit die Batterie ohne Netz und ohne Container laeuft.
   G="$WORK/guard"; mkdir -p "$G/root/lib/apk/db" "$G/root/etc/apk" "$G/bin"

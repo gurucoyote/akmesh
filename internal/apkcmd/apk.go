@@ -152,7 +152,10 @@ func newClient(cmd string, o options, stderr io.Writer) (*apkcore.Client, int) {
 		fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
 		return nil, 1
 	}
-	repos := o.repos
+	var repos []Repo
+	for _, u := range o.repos {
+		repos = append(repos, Repo{URL: u})
+	}
 	if len(repos) == 0 {
 		repos, err = readRepos(o.root)
 		if err != nil {
@@ -165,7 +168,9 @@ func newClient(cmd string, o options, stderr io.Writer) (*apkcore.Client, int) {
 		cache = apkcore.CacheDir(o.root)
 	}
 	c := apkcore.NewClient(o.arch, keys, cache)
-	c.Repos = repos
+	for _, r := range repos {
+		c.Repos = append(c.Repos, r.URL)
+	}
 	return c, 0
 }
 
@@ -195,7 +200,13 @@ func loadKeys(root string) ([]*apkcore.Key, error) {
 }
 
 // readRepos reads /etc/apk/repositories inside the root.
-func readRepos(root string) ([]string, error) {
+// Repo is one line of /etc/apk/repositories: a URL and an optional channel tag.
+type Repo struct {
+	Tag string
+	URL string
+}
+
+func readRepos(root string) ([]Repo, error) {
 	data, err := os.ReadFile(apkcore.RepoFilePath(root))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -203,13 +214,27 @@ func readRepos(root string) ([]string, error) {
 		}
 		return nil, err
 	}
-	var out []string
+	var out []Repo
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		out = append(out, line)
+		// apk's syntax: "@tag url" or "url"; an "@tag" may also follow the url.
+		var r Repo
+		for _, field := range strings.Fields(line) {
+			if strings.HasPrefix(field, "@") {
+				r.Tag = strings.TrimPrefix(field, "@")
+				continue
+			}
+			if r.URL == "" {
+				r.URL = field
+			}
+		}
+		if r.URL == "" {
+			continue
+		}
+		out = append(out, r)
 	}
 	return out, nil
 }
@@ -218,10 +243,17 @@ func readRepos(root string) ([]string, error) {
 // the caller said --allow-untrusted.
 // requireRepos complains only for the subcommands that really need a
 // repository; info and del work on an installed tree alone.
-func requireRepos(cmd string, o options, stderr io.Writer, c *apkcore.Client) []string {
-	repos := o.repos
+// requireRepos returns the repositories with their channel tags: -X wins, then
+// /etc/apk/repositories (which is where "@stable https://..." lives).
+func requireRepos(cmd string, o options, stderr io.Writer, c *apkcore.Client) []Repo {
+	var repos []Repo
+	for _, u := range o.repos {
+		repos = append(repos, Repo{URL: u})
+	}
 	if len(repos) == 0 {
-		repos = c.Repos
+		if fromFile, err := readRepos(o.root); err == nil && len(fromFile) > 0 {
+			repos = fromFile
+		}
 	}
 	if len(repos) == 0 {
 		fmt.Fprintf(stderr, "%s: no repositories configured (use -X or %s)\n", cmd, apkcore.RepoFilePath(o.root))
@@ -229,21 +261,22 @@ func requireRepos(cmd string, o options, stderr io.Writer, c *apkcore.Client) []
 	return repos
 }
 
-func loadIndexes(cmd string, c *apkcore.Client, o options, repos []string, stderr io.Writer) ([]*apkcore.Index, int) {
+func loadIndexes(cmd string, c *apkcore.Client, o options, repos []Repo, stderr io.Writer) ([]*apkcore.Index, int) {
 	var out []*apkcore.Index
 	for _, repo := range repos {
-		idx, err := c.Index(repo)
+		idx, err := c.Index(repo.URL)
 		if err != nil {
 			fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
 			return nil, 1
 		}
 		if (idx.Unsigned || idx.Untrusted) && !o.allowUntr {
-			fmt.Fprintf(stderr, "%s: %s: UNTRUSTED signature\n", cmd, repo)
+			fmt.Fprintf(stderr, "%s: %s: UNTRUSTED signature\n", cmd, repo.URL)
 			return nil, 1
 		}
 		if o.verbose {
-			fmt.Fprintf(stderr, "%s: %s: %d packages%s\n", cmd, repo, len(idx.Packages), sigNote(idx))
+			fmt.Fprintf(stderr, "%s: %s: %d packages%s\n", cmd, repo.URL, len(idx.Packages), sigNote(idx))
 		}
+		idx.Tag = repo.Tag
 		out = append(out, idx)
 	}
 	return out, 0
@@ -257,9 +290,18 @@ func sigNote(idx *apkcore.Index) string {
 }
 
 // best finds a package by name (or provides) across the indexes.
+// best returns the newest package of that name, optionally only from one
+// channel tag ("" means any repository).
 func best(indexes []*apkcore.Index, name string) *apkcore.Package {
+	return bestTagged(indexes, name, "")
+}
+
+func bestTagged(indexes []*apkcore.Index, name, tag string) *apkcore.Package {
 	var found *apkcore.Package
 	for _, idx := range indexes {
+		if tag != "" && idx.Tag != tag {
+			continue
+		}
 		for _, p := range idx.Packages {
 			if p.Name != name {
 				continue
@@ -287,6 +329,47 @@ func best(indexes []*apkcore.Index, name string) *apkcore.Package {
 	return found
 }
 
+// replaceWorld puts spec in place of the existing entry for base (channel
+// switch: "pkg@stable" becomes "pkg@testing").
+func replaceWorld(world []string, base, spec string) []string {
+	out := make([]string, 0, len(world))
+	replaced := false
+	for _, w := range world {
+		if apkcore.EntryName(w) == base {
+			if !replaced {
+				out = append(out, spec)
+				replaced = true
+			}
+			continue
+		}
+		out = append(out, w)
+	}
+	if !replaced {
+		out = append(out, spec)
+	}
+	return out
+}
+
+// splitTag splits "pkg@testing" into name and channel tag.
+func splitTag(spec string) (string, string) {
+	if i := strings.Index(spec, "@"); i > 0 {
+		return spec[:i], spec[i+1:]
+	}
+	return spec, ""
+}
+
+// channelOf returns the tag a package was installed from, by looking at its
+// world entry ("pkg@testing"). Empty means no channel.
+func channelOf(world []string, name string) string {
+	for _, w := range world {
+		if apkcore.EntryName(w) == name {
+			_, tag := splitTag(w)
+			return tag
+		}
+	}
+	return ""
+}
+
 // depPin returns the version of an "name=version" constraint, or "" when the
 // constraint is absent or not an equality. Other operators are ticket acmesh-gk2i.
 func depPin(spec string) string {
@@ -298,7 +381,14 @@ func depPin(spec string) string {
 
 // exact finds the named package at exactly that version.
 func exact(indexes []*apkcore.Index, name, version string) *apkcore.Package {
+	return exactTagged(indexes, name, version, "")
+}
+
+func exactTagged(indexes []*apkcore.Index, name, version, tag string) *apkcore.Package {
 	for _, idx := range indexes {
+		if tag != "" && idx.Tag != tag {
+			continue
+		}
 		for _, p := range idx.Packages {
 			if p.Name == name && p.Version == version {
 				return p
@@ -324,7 +414,7 @@ func update(cmd string, c *apkcore.Client, o options, stdout, stderr io.Writer) 
 	}
 	if !o.quiet {
 		for _, repo := range repos {
-			fmt.Fprintf(stdout, "%s/%s/APKINDEX.tar.gz\n", strings.TrimSuffix(repo, "/"), o.arch)
+			fmt.Fprintf(stdout, "%s/%s/APKINDEX.tar.gz\n", strings.TrimSuffix(repo.URL, "/"), o.arch)
 		}
 		fmt.Fprintf(stdout, "OK: %d distinct packages available\n", len(seen))
 	}
@@ -358,8 +448,8 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 	seen := map[string]bool{}
 	// resolve installs one name. A pin ("pkg=1.0.0-r0", used by rollback) picks
 	// exactly that version; without a pin the newest wins, as in apk.
-	var resolve func(name, pin string, top bool) int
-	resolve = func(name, pin string, top bool) int {
+	var resolve func(name, pin, tag string, top bool) int
+	resolve = func(name, pin, tag string, top bool) int {
 		if seen[name] {
 			return 0
 		}
@@ -368,7 +458,7 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		if have[name] {
 			switch {
 			case pin == "":
-				if newer := best(indexes, name); newer == nil ||
+				if newer := bestTagged(indexes, name, tag); newer == nil ||
 					apkcore.CompareVersions(newer.Version, installedVers[name]) <= 0 {
 					return 0
 				}
@@ -378,9 +468,9 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		}
 		var p *apkcore.Package
 		if pin != "" {
-			p = exact(indexes, name, pin)
+			p = exactTagged(indexes, name, pin, tag)
 		} else {
-			p = best(indexes, name)
+			p = bestTagged(indexes, name, tag)
 		}
 		if p == nil {
 			if pin != "" {
@@ -399,7 +489,7 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 			if strings.HasPrefix(dep, "so:") || strings.HasPrefix(dep, "cmd:") {
 				// Virtual names: satisfied by provides, looked up the same way.
 				if provider := best(indexes, dep); provider != nil {
-					if code := resolve(provider.Name, "", false); code != 0 {
+					if code := resolve(provider.Name, "", "", false); code != 0 {
 						return code
 					}
 					continue
@@ -407,15 +497,21 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 				fmt.Fprintf(stderr, "%s: %s requires %s, which no repository provides\n", cmd, p.Name, dep)
 				return 1
 			}
-			if code := resolve(apkcore.EntryName(dep), depPin(dep), false); code != 0 {
+			depTag := ""
+			if i := strings.Index(dep, "@"); i > 0 {
+				depTag = dep[i+1:]
+				dep = dep[:i]
+			}
+			if code := resolve(apkcore.EntryName(dep), depPin(dep), depTag, false); code != 0 {
 				return code
 			}
 		}
 		order = append(order, p)
 		return 0
 	}
-	for _, name := range names {
-		if code := resolve(apkcore.EntryName(name), depPin(name), true); code != 0 {
+	for _, spec := range names {
+		name, tag := splitTag(spec)
+		if code := resolve(apkcore.EntryName(name), depPin(name), tag, true); code != 0 {
 			return code
 		}
 	}
@@ -499,12 +595,15 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		installed = append(installed, &apkcore.Installed{Package: *p, Files: files})
 		added += p.Installed
 	}
-	for _, name := range names {
-		base := apkcore.EntryName(name)
-		if !worldSet[base] {
-			world = append(world, name)
-			worldSet[base] = true
+	for _, spec := range names {
+		base := apkcore.EntryName(spec)
+		if worldSet[base] {
+			// A channel switch replaces the world line, it does not add one.
+			world = replaceWorld(world, base, spec)
+			continue
 		}
+		world = append(world, spec)
+		worldSet[base] = true
 	}
 	if err := apkcore.WriteInstalled(o.root, installed); err != nil {
 		fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
@@ -615,11 +714,23 @@ func upgrade(cmd string, c *apkcore.Client, o options, stdout, stderr io.Writer)
 		fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
 		return 1
 	}
+	world, err := apkcore.ReadWorld(o.root)
+	if err != nil {
+		fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+		return 1
+	}
+	// An upgrade stays inside the channel the package was installed from: a pin
+	// to @testing is not moved to stable (or the other way) by apk upgrade.
 	var names []string
 	for _, p := range installed {
-		newer := best(indexes, p.Name)
+		tag := channelOf(world, p.Name)
+		newer := bestTagged(indexes, p.Name, tag)
 		if newer != nil && apkcore.CompareVersions(newer.Version, p.Version) > 0 {
-			names = append(names, p.Name)
+			if tag != "" {
+				names = append(names, p.Name+"@"+tag)
+			} else {
+				names = append(names, p.Name)
+			}
 		}
 	}
 	if len(names) == 0 {
@@ -687,7 +798,10 @@ func list(cmd string, c *apkcore.Client, o options, patterns []string, stdout, s
 		}
 	}
 	if len(o.repos) > 0 || len(patterns) > 0 {
-		repos := o.repos
+		var repos []Repo
+		for _, u := range o.repos {
+			repos = append(repos, Repo{URL: u})
+		}
 		if len(repos) == 0 {
 			repos, _ = readRepos(o.root)
 		}

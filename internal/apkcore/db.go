@@ -275,7 +275,8 @@ func WriteWorld(root string, entries []string) error {
 
 // EntryName strips a constraint from a world line: "x>1" becomes "x".
 func EntryName(entry string) string {
-	for _, sep := range []string{"<", ">", "=", "~"} {
+	// "@" is the channel tag ("pkg@testing"), the others are version constraints.
+	for _, sep := range []string{"<", ">", "=", "~", "@"} {
 		if i := strings.Index(entry, sep); i > 0 {
 			return entry[:i]
 		}

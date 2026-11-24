@@ -60,7 +60,10 @@ func (p Package) FullName() string { return p.Name + "-" + p.Version }
 
 // Index is a parsed APKINDEX plus where it came from.
 type Index struct {
-	Repo     string
+	Repo string
+	// Tag is the channel label a repository carries in /etc/apk/repositories
+	// ("@stable https://..."), empty for an untagged repository.
+	Tag      string
 	Packages []*Package
 	Keys     []string // key names whose signature verified
 	// Untrusted is true when the index carries a signature by a key we do not

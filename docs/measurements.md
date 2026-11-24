@@ -6423,3 +6423,37 @@ Grenzen
 Batterie: 5 neue Pruefungen (Skript laeuft, Inhalt, kein Host-Schreibzugriff,
 --no-scripts laesst das Skript aus), 452 Linux / 372 Windows, 0 Fehler.
 
+
+
+## apk-Kanaele: ein Repo je Kanal, Wahl per Etikett (24.11.2026, acmesh-ke0r)
+
+Ein Repo je Kanal, gebaut mit apkbuild; auf dem Ziel steht in
+/etc/apk/repositories:
+
+    @stable /tmp/chan/stable/repo
+    @testing /tmp/chan/testing/repo
+
+Gemessen mit unserem apk, chprog 1.0.0-r0 in stable und 2.0.0-r0 in testing:
+
+    apk add chprog@stable   -> Installing chprog (1.0.0-r0), world: chprog@stable
+    apk upgrade             -> OK: nothing to upgrade   (bleibt im Kanal)
+    apk add chprog@testing   -> Upgrading chprog (1.0.0-r0 -> 2.0.0-r0),
+                               world: chprog@testing
+    apk upgrade             -> OK: nothing to upgrade
+                                 (2.0.0-r0, im neuen Kanal aktuell)
+
+Regeln, die daraus im Code stehen
+- repositories-Zeilen duerfen "@tag url" sein; der Tag haengt am Index.
+- "pkg@tag" sucht nur in diesem Kanal; ohne Tag zaehlt jedes Repo.
+- apk upgrade bewegt ein Paket nicht zwischen Kanaelen: das Etikett aus
+  /etc/apk/world bestimmt, wo gesucht wird.
+- Ein Kanalwechsel ersetzt die world-Zeile, statt eine zweite anzulegen.
+- Die Abhaengigkeitsaufloesung kennt Etiketten ebenfalls ("dep@tag").
+
+Nebenbefund und behoben: EntryName hat "@" nicht abgeschnitten, deshalb galt
+ein Kanalpaket als kanallos und apk upgrade holte die neuere Version aus dem
+anderen Kanal. apkreport liest den Kanal jetzt aus der rohen world-Zeile.
+
+Batterie: 6 neue Pruefungen (Installation im Kanal, world-Zeile, Upgrade bleibt,
+Wechsel, world nach Wechsel, Programm laeuft), 458 Linux, 0 Fehler.
+

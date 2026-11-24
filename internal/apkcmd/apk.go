@@ -778,6 +778,9 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 	}
 
 	var added int64
+	// Triggers run at the end and only for the packages whose paths were
+	// touched (acmesh-8h9j); the list of written files is what they are judged by.
+	var newFiles []apkcore.InstalledFile
 	for i, p := range order {
 		if !o.quiet {
 			// apk's wording: Installing, Upgrading, Downgrading - agents read it.
@@ -840,18 +843,35 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 				cmd, p.FullName(), len(skippedDev), strings.Join(skippedDev, " "))
 		}
 		if !o.noScripts {
-			for _, kind := range []string{doneKind, ".trigger"} {
-				if body, ok := scripts[kind]; ok {
-					if !o.quiet {
-						fmt.Fprintf(stdout, "  Executing %s%s\n", p.FullName(), kind)
-					}
-					if err := apkscript.Run(apkscript.Script{Kind: kind, Body: body, Package: p.Name, Version: p.Version}, o.root, stdout, stderr); err != nil {
-						fmt.Fprintf(stderr, "%s: %s failed: %v\n", cmd, p.FullName(), err)
-						return 1
-					}
+			if body, ok := scripts[doneKind]; ok {
+				if !o.quiet {
+					fmt.Fprintf(stdout, "  Executing %s%s\n", p.FullName(), doneKind)
+				}
+				if err := apkscript.Run(apkscript.Script{Kind: doneKind, Body: body, Package: p.Name, Version: p.Version}, o.root, stdout, stderr); err != nil {
+					fmt.Fprintf(stderr, "%s: %s failed: %v\n", cmd, p.FullName(), err)
+					return 1
+				}
+			}
+			// A trigger belongs to its package and runs later, when another
+			// package writes below its paths. The paths come from "triggers" in
+			// .PKGINFO, the action from the control file .trigger - as in apk;
+			// both are kept in our script directory because apk's installed
+			// database has no key for them.
+			if body, ok := scripts[".trigger"]; ok {
+				if err := saveStoredScript(o.root, p.FullName(), ".trigger", body); err != nil {
+					fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+					return 1
+				}
+			}
+			if len(p.Triggers) > 0 {
+				paths := strings.Join(p.Triggers, "\n") + "\n"
+				if err := saveStoredScript(o.root, p.FullName(), ".trigger-paths", []byte(paths)); err != nil {
+					fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+					return 1
 				}
 			}
 		}
+		newFiles = append(newFiles, files...)
 		installed = append(installed, &apkcore.Installed{Package: *p, Files: files})
 		added += p.Installed
 	}
@@ -872,6 +892,13 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		world = append(world, spec)
 		worldSet[base] = true
 	}
+	if !o.noScripts {
+		if err := runTriggers(cmd, o, newFiles, stdout, stderr); err != nil {
+			fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+			return 1
+		}
+	}
+	installed = applyReplaces(cmd, o, installed, stdout, stderr)
 	if err := apkcore.WriteInstalled(o.root, installed); err != nil {
 		fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
 		return 1
@@ -884,6 +911,142 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		fmt.Fprintf(stdout, "OK: %s in %s\n", human(added), plural(len(order), "package"))
 	}
 	return 0
+}
+
+// triggerPaths reads the paths a .trigger names, one per line, as apk writes
+// them ("usr/share/icons/*" or a directory).
+func triggerPaths(body []byte) []string {
+	var out []string
+	for _, line := range strings.Split(string(body), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		out = append(out, line)
+	}
+	return out
+}
+
+// saveStoredScript writes a script next to the deinstall scripts, so a later
+// run can find it without the package file (apk keeps its triggers the same way).
+func saveStoredScript(root, fullName, kind string, body []byte) error {
+	dir := apkcore.ScriptsDir(root)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, fullName+kind), body, 0o755)
+}
+
+// runTriggers runs every stored .trigger whose paths cover a file this run
+// wrote. apk behaves the same way: the trigger belongs to a package that is
+// already installed, and a later install under its paths wakes it up.
+func runTriggers(cmd string, o options, written []apkcore.InstalledFile, stdout, stderr io.Writer) error {
+	if o.noScripts {
+		return nil
+	}
+	dir := apkcore.ScriptsDir(o.root)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	for _, e := range entries {
+		name := e.Name()
+		if !strings.HasSuffix(name, ".trigger-paths") {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			return err
+		}
+		paths := triggerPaths(raw)
+		if len(paths) == 0 || !triggerTouched(paths, written) {
+			continue
+		}
+		owner := strings.TrimSuffix(name, ".trigger-paths")
+		body, err := os.ReadFile(filepath.Join(dir, owner+".trigger"))
+		if err != nil {
+			// Paths without an action: nothing to run (a package may name paths
+			// and rely on its own scripts; apk would have no script either).
+			continue
+		}
+		if !o.quiet {
+			fmt.Fprintf(stdout, "  Executing %s.trigger\n", owner)
+		}
+		pkg := apkcore.EntryName(owner)
+		if err := apkscript.Run(apkscript.Script{Kind: ".trigger", Body: body, Package: pkg}, o.root, stdout, stderr); err != nil {
+			return fmt.Errorf("%s.trigger failed: %v", owner, err)
+		}
+	}
+	return nil
+}
+
+// triggerTouched reports whether one of the written files lies at or below a
+// trigger path.
+func triggerTouched(paths []string, written []apkcore.InstalledFile) bool {
+	for _, f := range written {
+		p := "/" + strings.TrimPrefix(f.Dir+"/"+f.Base, "/")
+		p = strings.ReplaceAll(p, "//", "/")
+		for _, t := range paths {
+			t = "/" + strings.TrimPrefix(strings.TrimSuffix(t, "/"), "/")
+			if p == t || strings.HasPrefix(p, t+"/") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// applyReplaces removes the packages a newly installed package replaces, the
+// way apk does: the replaced package disappears, its files stay only where the
+// new package ships them too (acmesh-8h9j).
+func applyReplaces(cmd string, o options, installed []*apkcore.Installed, stdout, stderr io.Writer) []*apkcore.Installed {
+	newest := map[string]*apkcore.Installed{}
+	for _, p := range installed {
+		newest[p.Name] = p
+	}
+	// Which new package replaces which name.
+	replaceBy := map[string]*apkcore.Installed{}
+	for _, p := range installed {
+		for _, rep := range p.Replaces {
+			name := apkcore.EntryName(rep)
+			if name != "" && name != p.Name {
+				replaceBy[name] = p
+			}
+		}
+	}
+	if len(replaceBy) == 0 {
+		return installed
+	}
+	keep := installed[:0]
+	for _, old := range installed {
+		np := replaceBy[old.Name]
+		if np == nil || np.Name == old.Name {
+			keep = append(keep, old)
+			continue
+		}
+		shipped := map[string]bool{}
+		for _, f := range np.Files {
+			shipped[f.Dir+"/"+f.Base] = true
+		}
+		var gone []apkcore.InstalledFile
+		for _, f := range old.Files {
+			if !shipped[f.Dir+"/"+f.Base] {
+				gone = append(gone, f)
+			}
+		}
+		removed, keptCount, err := apkcore.RemoveFiles(o.root, gone)
+		if err != nil {
+			fmt.Fprintf(stderr, "%s: replacing %s: %v\n", cmd, old.Name, err)
+		}
+		if !o.quiet {
+			fmt.Fprintf(stdout, "  Replacing %s (%s) with %s (%s removed, %s kept)\n",
+				old.Name, old.Version, np.Name, plural(removed, "file"), plural(keptCount, "file"))
+		}
+	}
+	return keep
 }
 
 func del(cmd string, c *apkcore.Client, o options, names []string, stdout, stderr io.Writer) int {

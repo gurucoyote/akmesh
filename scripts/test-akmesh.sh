@@ -404,6 +404,11 @@ check diff-normal-lines "$(run diff dnm1.txt dnm2.txt | tr -d '\r' | tr '\n' '|'
 printf 'txt\0txt\0txt\n' > gbin.txt
 check grep-count-binary "3" "$(run grep -c txt gbin.txt | tr -d '\r')"
 check grep-count-binary-a "1" "$(run grep -a -c txt gbin.txt | tr -d '\r')"
+printf 'a\tb\001c\177d\n' > lf.txt
+check sed-l-escape "a\\tb\\001c\\177d$" "$(run sed -n l lf.txt | tr -d '\r')"
+check sed-T-branch "no|b|c|" "$(printf 'a\nb\nc\n' > tb.txt; run sed 's/a/A/;T end;s/.*/no/;:end' tb.txt | tr -d '\r' | tr '\n' '|')"
+check sed-Q-quit "a|" "$(printf 'a\nb\n' > tq2.txt; run sed '2Q' tq2.txt | tr -d '\r' | tr '\n' '|')"
+check sed-z-zap "X|X|" "$(printf 'a\nb\n' > tz.txt; run sed 'z;s/^/X/' tz.txt | tr -d '\r' | tr '\n' '|')"
 check sed-nul-not-separator "0000000   T   X   T  \\0   t   x   t  \\0   t   x   t  \\n" "$(run sed 's/txt/TXT/' gbin.txt | od -c | head -1 | tr -d '\r' | sed 's/ *$//')"
 check tac-regex-sep "$(printf 'a1b22c' > tre.txt; run tac -r -s '[0-9]+' tre.txt | tr -d '\r')" "cb22a1"
 check diff-u-plus-line "$(run diff -u dgu1.txt dgu2.txt | tr -d '\r' | sed -n 2p | grep -c '^+++ dgu2.txt	')" "1"
@@ -1212,6 +1217,33 @@ if [ -z "$WINDOWS" ]; then
   run apkbuild build --manifest "$AR/manifest" --source "$AR/src" -o "$AR/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
   check apk-foreign-arch '1' "$(run apk -p "$AR/root" add "$AR"/repo/x86_64/arprog-1.0.0-r0.apk 2>&1 | tr -d '\r' | grep -c 'package is for aarch64, this target is x86_64')"
 
+  # Ersetzen und Trigger (acmesh-8h9j, 24.11.2026): ein Paket mit replaces
+  # nimmt die Dateien des ersetzten Pakets mit, ein Trigger wartet auf Pfade.
+  RT="$WORK/rep"; mkdir -p "$RT/root/etc/apk/keys" "$RT/repo/x86_64"
+  cp "$BD/bkey.rsa.pub" "$RT/root/etc/apk/keys/"
+  mkdir -p "$RT/o/usr/bin" "$RT/o/usr/share/doc" "$RT/n/usr/bin" "$RT/n/usr/share/doc"
+  printf 'alt\n' > "$RT/o/usr/bin/oldtool"; printf 'alt-doku\n' > "$RT/o/usr/share/doc/old.txt"
+  printf 'neu\n' > "$RT/n/usr/bin/oldtool"; printf 'neu-doku\n' > "$RT/n/usr/share/doc/new.txt"
+  printf 'pkgname = oldtool\npkgver = 1.0.0\npkgrel = 0\npkgdesc = alt\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\n' > "$RT/m1"
+  printf 'pkgname = newtool\npkgver = 1.0.0\npkgrel = 0\npkgdesc = ersetzt\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\nreplaces = oldtool\n' > "$RT/m2"
+  run apkbuild build --manifest "$RT/m1" --source "$RT/o" -o "$RT/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+  run apkbuild build --manifest "$RT/m2" --source "$RT/n" -o "$RT/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+  run apk -p "$RT/root" add "$RT"/repo/x86_64/oldtool-1.0.0-r0.apk >/dev/null 2>&1
+  run apk -p "$RT/root" add "$RT"/repo/x86_64/newtool-1.0.0-r0.apk >/dev/null 2>&1
+  check apk-replaces-file-gone '0' "$([ -e "$RT/root/usr/share/doc/old.txt" ] && echo 1 || echo 0)"
+  check apk-replaces-file-kept 'neu' "$(tr -d '\r' < "$RT/root/usr/bin/oldtool")"
+  check apk-replaces-record-gone '0' "$($BIN apk -p "$RT/root" list 2>/dev/null | grep -c '^oldtool-')"
+  mkdir -p "$RT/t/usr/bin" "$RT/w/usr/share/mime"; printf 't\n' > "$RT/t/usr/bin/trigtool"; printf 'm\n' > "$RT/w/usr/share/mime/new.xml"
+  printf '#!/bin/sh\necho ran > /trigger.txt\n' > "$RT/trg.sh"; chmod 755 "$RT/trg.sh"
+  printf 'pkgname = trigpkg\npkgver = 1.0.0\npkgrel = 0\npkgdesc = trigger\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\ntriggers = usr/share/mime\nscript = .trigger:%s/trg.sh\n' "$RT" > "$RT/m3"
+  printf 'pkgname = writer\npkgver = 1.0.0\npkgrel = 0\npkgdesc = schreibt\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\n' > "$RT/m4"
+  run apkbuild build --manifest "$RT/m3" --source "$RT/t" -o "$RT/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+  run apkbuild build --manifest "$RT/m4" --source "$RT/w" -o "$RT/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+  run apk -p "$RT/root" add "$RT"/repo/x86_64/trigpkg-1.0.0-r0.apk >/dev/null 2>&1
+  check apk-trigger-quiet-own '0' "$([ -e "$RT/root/trigger.txt" ] && echo 1 || echo 0)"
+  run apk -p "$RT/root" add "$RT"/repo/x86_64/writer-1.0.0-r0.apk >/dev/null 2>&1
+  check apk-trigger-fires 'ran' "$(tr -d '\r' < "$RT/root/trigger.txt" 2>/dev/null)"
+
   # PS4 im xtrace (acmesh-89s9, 24.11.2026): mvdan schreibt fest "+ ", PS4 muss
   # aber gelten.
   check sh-ps4 '1' "$(printf 'PS4="T> "\nset -x\necho hi\n' | $BIN sh 2>&1 | tr -d '\r' | grep -c '^T> echo hi')"
@@ -1227,7 +1259,7 @@ if [ -z "$WINDOWS" ]; then
   done
   mkdir -p "$V/srcop/usr/bin"; printf 'x\n' > "$V/srcop/usr/bin/op"
   printf '#!/bin/sh\necho trigger lief > /trigger.txt\n' > "$V/trigger"; chmod 755 "$V/trigger"
-  printf 'pkgname = depop\npkgver = 1.0.0\npkgrel = 0\npkgdesc = braucht neu\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\ndepends = depbase>=2.0.0\nscript = .trigger:%s/trigger\n' "$V" > "$V/manop"
+  printf 'pkgname = depop\npkgver = 1.0.0\npkgrel = 0\npkgdesc = braucht neu\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\ndepends = depbase>=2.0.0\ntriggers = usr/bin\nscript = .trigger:%s/trigger\n' "$V" > "$V/manop"
   run apkbuild build --manifest "$V/manop" --source "$V/srcop" -o "$V/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
   run apkbuild index -o "$V/repo/x86_64/APKINDEX.tar.gz" "$V"/repo/x86_64/*.apk --key "$BD/bkey.rsa" >/dev/null 2>&1
   run apk -p "$V/root" -X "$V/repo" add depop >/dev/null 2>&1

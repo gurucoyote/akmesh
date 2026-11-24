@@ -49,10 +49,22 @@ DIR=$(go list -m -f '{{.Dir}}' "$MOD" 2>/dev/null | head -n 1)
 # Already applied? Ask the module itself, not patch: busybox patch and GNU patch
 # disagree about a reverse dry run on an applied patch, and the build calls this
 # script through sh. The marker is a file only the fork has.
+#
+# The marker file names the version and the patch hash, so a patch that grew
+# (as it did on 24.11.2026 for "l") is not mistaken for an applied one: the
+# module then still carries the old fork and has to be replaced by a fresh copy
+# from the module cache.
+WANT="$VER $(sha256sum "$PATCH" | cut -d' ' -f1) $(sha256sum "$DIR/sed/instructions.go" 2>/dev/null | cut -d' ' -f1)"
 if grep -q "longestMatcher gives a pattern POSIX" "$DIR/sed/substitution.go" 2>/dev/null; then
-	mkdir -p .build
-	printf '%s %s\n' "$VER" "$(sha256sum "$PATCH" | cut -d' ' -f1)" > "$MARK"
-	exit 0
+	if [ -f "$MARK" ] && [ "$(cat "$MARK")" = "$WANT" ] && grep -q "func cmd_list" "$DIR/sed/instructions.go" 2>/dev/null; then
+		exit 0
+	fi
+	echo "fork: $MOD@$VER carries an older fork, replacing the module copy"
+	chmod -R u+w "$DIR" 2>/dev/null || true
+	rm -rf "$DIR"
+	go mod download "$MOD" >/dev/null 2>&1 || { echo "fork: cannot download $MOD again" >&2; exit 1; }
+	DIR=$(go list -m -f '{{.Dir}}' "$MOD" 2>/dev/null | head -n 1)
+	[ -n "$DIR" ] && [ -d "$DIR" ] || { echo "fork: $MOD@$VER not back in the module cache" >&2; exit 1; }
 fi
 
 # Applying needs write access; the cache is read-only by design.
@@ -63,5 +75,5 @@ fi
 chmod -R u+w "$DIR"
 patch -p1 --silent -d "$DIR" < "$PATCH"
 mkdir -p .build
-printf '%s %s\n' "$VER" "$(sha256sum "$PATCH" | cut -d' ' -f1)" > "$MARK"
+printf '%s\n' "$VER $(sha256sum "$PATCH" | cut -d' ' -f1) $(sha256sum "$DIR/sed/instructions.go" | cut -d' ' -f1)" > "$MARK"
 echo "fork: applied $PATCH to $MOD@$VER"

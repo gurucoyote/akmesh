@@ -370,6 +370,18 @@ type ExtractOptions struct {
 
 // Extract writes the data stream of a package into the root and returns the
 // file records for the installed database.
+// pkgInfoTriggers reads the "triggers = " lines out of a .PKGINFO body.
+func pkgInfoTriggers(body []byte) []string {
+	var out []string
+	for _, line := range strings.Split(string(body), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "triggers = ") {
+			out = append(out, strings.Fields(strings.TrimPrefix(line, "triggers = "))...)
+		}
+	}
+	return out
+}
+
 func Extract(data []byte, pkg *Package, opts ExtractOptions) ([]InstalledFile, []string, error) {
 	streams, err := splitStreams(data)
 	if err != nil {
@@ -384,6 +396,12 @@ func Extract(data []byte, pkg *Package, opts ExtractOptions) ([]InstalledFile, [
 		}
 		if _, ok := s.entries[".PKGINFO"]; ok {
 			controlEntries = s.entries
+			// The paths a package watches live in .PKGINFO, and the index has no
+			// field for them; take them from the package file itself
+			// (acmesh-8h9j).
+			if pkg != nil && len(pkg.Triggers) == 0 {
+				pkg.Triggers = pkgInfoTriggers(s.entries[".PKGINFO"])
+			}
 			continue
 		}
 		dataStream = s

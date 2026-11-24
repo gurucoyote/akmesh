@@ -350,6 +350,11 @@ Ebenso BSD-3-Clause: internal/winmode, uebernommen aus der Gabel qiangli/sh
 (Copyright Daniel Marti), unveraendert bis auf das Paketverzeichnis - die
 Copyright-Kopfzeilen der fuenf Dateien bleiben stehen.
 
+sed laeuft auf rwtodd/Go.Sed (github.com/rwtodd/Go.Sed), MIT-Lizenz
+(Copyright Richard Todd), geforkt per Patch (siehe den sed-Abschnitt oben). Der
+MIT-Hinweis gehoert in dasselbe NOTICE-Dokument. Am 24.11.2026 kamen die Befehle
+l, T, Q und z dazu (acmesh-qxaf); der Patch traegt sie, die Lizenzlage bleibt MIT.
+
 Neu dazugekommen (23.11.2026): github.com/go-regexp/pcre2, eine reine
 Go-Portierung von PCRE2 10.44, BSD-3-Clause, mit einer zweiten Datei
 LICENSE-PCRE2 fuer das Original (PCRE2 selbst steht unter einer

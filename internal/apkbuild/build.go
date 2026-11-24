@@ -55,6 +55,7 @@ type Manifest struct {
 	Depends     []string
 	Provides    []string
 	Replaces    []string
+	Triggers    []string
 	Scripts     map[string]string // ".post-install" -> file on disk
 	// SourceDateEpoch fixes every timestamp. Zero means "the current time",
 	// which is what a non-reproducible build does.
@@ -102,6 +103,8 @@ func ReadManifest(path string) (*Manifest, error) {
 			m.Provides = strings.Fields(val)
 		case "replaces":
 			m.Replaces = strings.Fields(val)
+		case "triggers":
+			m.Triggers = strings.Fields(val)
 		case "source_date_epoch":
 			n, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
@@ -188,6 +191,9 @@ func Build(m *Manifest, sourceDir, outDir, keyPath string) (*BuildResult, error)
 	}
 	if len(m.Replaces) > 0 {
 		fmt.Fprintf(pkginfo, "replaces = %s\n", strings.Join(m.Replaces, " "))
+	}
+	if len(m.Triggers) > 0 {
+		fmt.Fprintf(pkginfo, "triggers = %s\n", strings.Join(m.Triggers, " "))
 	}
 	fmt.Fprintf(pkginfo, "datahash = %x\n", dataSum)
 

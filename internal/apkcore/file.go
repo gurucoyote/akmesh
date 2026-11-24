@@ -72,6 +72,8 @@ func ParsePackageFile(data []byte, src string, trusted []*Key) (*Package, bool, 
 			p.Provides = append(p.Provides, strings.TrimSpace(strings.TrimPrefix(line, "provides = ")))
 		case strings.HasPrefix(line, "replaces = "):
 			p.Replaces = append(p.Replaces, strings.TrimSpace(strings.TrimPrefix(line, "replaces = ")))
+		case strings.HasPrefix(line, "triggers = "):
+			p.Triggers = append(p.Triggers, strings.Fields(strings.TrimPrefix(line, "triggers = "))...)
 		}
 	}
 	return p, ok, nil

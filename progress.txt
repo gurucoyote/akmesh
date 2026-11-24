@@ -298,3 +298,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 24.11.2026: PS2 gilt als Fortsetzungsprompt, PS4 im xtrace (Umformung des festen "+ " von mvdan); Batterie 480 Linux / 372 Windows.
 24.11.2026: diff schreibt ohne -u das normale Format wie GNU, tac -r trennt am Treffer; die zwei roten Tests sind gruen. Batterie 483 Linux / 375 Windows.
 24.11.2026: grep -c zaehlt Binaerdateien satzweise wie GNU, sed -z bildet \n im Skript ab und haengt keinen Endtrenner mehr an. Batterie 486 Linux / 378 Windows.
+24.11.2026: sed kennt l, T, Q und z (per Patch am Go.Sed-Fork), apk wertet replaces aus und laesst Trigger auf Pfade warten. Batterie 495 Linux / 382 Windows.

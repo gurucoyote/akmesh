@@ -33,23 +33,27 @@ import (
 
 // Package is one record of an APKINDEX.
 type Package struct {
-	Name         string
-	Version      string
-	Arch         string
-	Size         int64
-	Installed    int64
-	Hash         string // Q1... (sha1 of the control+data stream)
-	Description  string
-	URL          string
-	License      string
-	Origin       string
-	Maintainer   string
-	BuildTime    int64
-	Commit       string
-	Depends      []string
-	Provides     []string
-	InstallIf    []string
-	Replaces     []string
+	Name        string
+	Version     string
+	Arch        string
+	Size        int64
+	Installed   int64
+	Hash        string // Q1... (sha1 of the control+data stream)
+	Description string
+	URL         string
+	License     string
+	Origin      string
+	Maintainer  string
+	BuildTime   int64
+	Commit      string
+	Depends     []string
+	Provides    []string
+	InstallIf   []string
+	Replaces    []string
+	// Triggers are the paths a package watches: a later install that writes
+	// below them runs the package's stored .trigger script (apk keeps the paths
+	// in .PKGINFO and the action in the control file .trigger).
+	Triggers     []string
 	DataHash     string
 	ProviderPrio int
 	RepoName     string // the repository it came from, for messages

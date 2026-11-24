@@ -6865,3 +6865,82 @@ nicht. Steht als Grenze hier und im Ticket; nicht stillgelegt.
 
 Batterie: sed-nul-not-separator (od-Vergleich), 486 Pruefungen Linux.
 
+
+
+## sed: l, T, Q und z ergaenzt (24.11.2026, acmesh-qxaf)
+
+Der Befund stand im Ticket: "sed -n l datei" scheiterte mit "Unknown command 'l'".
+GNU sed 4.9 gibt damit die Zeile escaped aus. Beim Nachsehen fehlten vier
+Befehle: l, T, Q und z.
+
+Umsetzung: die Engine ist jetzt ein Fork von github.com/rwtodd/Go.Sed (MIT) in
+internal/gosed, upstream-Commit ba712dc84b62, sonst byte-gleich; nur die vier
+Befehle und das Abfangen eines leeren Sprungziels sind von uns, jede Stelle im
+Kopf der Datei gekennzeichnet. Die Lizenz liegt bei, und die Lizenzliste in
+docs/design/akmesh.md nennt sie. Vorher kam die Engine aus dem Modul-Cache.
+
+Gemessen gegen GNU sed 4.9, gleiche Eingabe, gleiche Ausgabe:
+
+    printf 'abc\n'          | sed -n l   abc$
+    a<TAB>b<0x01>c<0x7f>d    | sed -n l   a\\tb\\001c\\177d$
+    a<BACKSLASH>b            | sed -n l   a\\\\b$
+    200 x                    | sed -n l   Umbruch nach 69 Zeichen, dann BACKSLASH
+    s/a/A/;T end;s/.*/no/;:end             no, b, c
+    sed 2Q auf a,b                         a
+    sed z;s/^/X/ auf a,b                   X, X
+    T missing                              sed: unknown label missing (wie GNU's Fehler)
+
+Auch behoben: "T" ohne Label liess den Parser abstuerzen (index out of range);
+der Lexer las das Label eines T-Zweigs nicht als Label.
+
+Nicht umgesetzt, weil es mehr braucht als den Befehl: F (Dateiname im Muster-
+raum - unsere Engine kennt den Dateinamen nicht), e und s///e (fuehren Programme
+aus), s///w (schreibt in eine Datei). Steht im Ticket als Rest.
+
+Tests: TestSedListCommand, TestSedBranchIfUnchanged, TestSedQuitAndZap,
+TestSedUnknownLabelStillFails; Batterie sed-l-escape, sed-T-branch, sed-Q-quit,
+sed-z-zap.
+
+## apk: replaces und Trigger-Pfade (24.11.2026, acmesh-8h9j)
+
+Zwei Reste aus gk2i, beide mit eigenen Paketen gemessen.
+
+replaces
+Paket newtool mit "replaces = oldtool" tritt an dessen Stelle: beim Installieren
+verschwindet der Eintrag oldtool, Dateien, die newtool nicht selbst mitbringt,
+werden entfernt, gleichnamige Dateien gehoeren danach newtool.
+
+    vorher:  usr/bin/oldtool (oldtool), usr/share/doc/old.txt
+    apk add newtool-1.0.0-r0.apk
+             "Replacing oldtool (1.0.0-r0) with newtool (1.0.0-r0) (1 file removed, 0 kept)"
+    nachher: usr/bin/oldtool = "neu" (von newtool), usr/share/doc/new.txt,
+             old.txt weg, apk list zeigt oldtool nicht mehr
+
+Trigger
+Ein Trigger besteht aus zwei Teilen, wie bei apk: die Pfade stehen als
+"triggers = usr/share/mime" im .PKGINFO, die Handlung im Steuerdatei-Member
+.trigger. Beides legen wir unter lib/apk/db/scripts/<paket>.trigger bzw.
+.trigger-paths ab, weil die apk-Datenbank keinen Schluessel fuer die Pfade hat
+(unser Zusatz, im Code vermerkt).
+
+Die Pfade stehen nicht in der APKINDEX (das Format hat kein Feld dafuer), also
+liest apk sie beim Installieren aus dem .PKGINFO im Paket selbst; das ist die
+Stelle, an der apk add sie auch hernimmt.
+
+Gemessen: trigpkg (triggers = usr/share/mime, Skript schreibt /trigger.txt)
+allein installiert - kein Lauf, weil es selbst nichts unter usr/share/mime
+schreibt. Danach writer installiert, das usr/share/mime/new.xml mitbringt:
+
+    (1/1) Installing writer (1.0.0-r0)
+      Executing trigpkg-1.0.0-r0.trigger
+    OK: 5 B in 1 package
+    /trigger.txt = trigger-ran
+
+Grenze: der Vergleich ist ein Pfad-Praefix-Vergleich, keine Mustererkennung;
+"usr/share/mime/*" als Pfad wirkt wie "usr/share/mime". Der Trigger laeuft nur
+fuer Pakete, deren .trigger-Pfade in diesem Lauf beruehrt wurden, und nicht
+nach einem apk del.
+
+Batterie: apk-replaces-file-gone, apk-replaces-file-kept, apk-replaces-record-gone,
+apk-trigger-quiet-own, apk-trigger-fires.
+

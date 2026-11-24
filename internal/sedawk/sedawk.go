@@ -99,6 +99,12 @@ func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		files = files[1:]
 	}
 	program := strings.Join(programs, "\n")
+	if zeroTerminated {
+		// A "\n" in the script means a line break inside the record, which the
+		// stream carries as the two bytes 0x01 0x30; write it that way so a
+		// pattern can match it and a replacement can produce it (acmesh-0l4).
+		program = strings.ReplaceAll(program, `\n`, "\x01"+"0")
+	}
 	var eng *sed.Engine
 	var err error
 	switch {
@@ -124,14 +130,22 @@ func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	// record sees the escape instead.
 	var in io.Reader = stdin
 	var out io.Writer = stdout
+	var zstate termState
 	if zeroTerminated {
-		in = nulToLines(stdin)
-		out = linesToNul(stdout)
+		zstate = termState{}
+		in = nulToLines(stdin, &zstate)
+		out = linesToNul(stdout, &zstate)
 	}
 	if len(files) == 0 {
 		if _, err := io.Copy(out, eng.Wrap(in)); err != nil {
 			fmt.Fprintf(stderr, "sed: %v\n", err)
 			return 1
+		}
+		if nw, ok := out.(*nulWriter); ok {
+			if err := nw.finish(); err != nil {
+				fmt.Fprintf(stderr, "sed: %v\n", err)
+				return 1
+			}
 		}
 		return 0
 	}
@@ -149,7 +163,7 @@ func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		}
 		var fin io.Reader = f
 		if zeroTerminated {
-			fin = nulToLines(f)
+			fin = nulToLines(f, &zstate)
 		}
 		if !inPlace {
 			if _, err := io.Copy(out, eng.Wrap(fin)); err != nil {
@@ -177,12 +191,25 @@ func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			code = 1
 		}
 	}
+	if nw, ok := out.(*nulWriter); ok {
+		if err := nw.finish(); err != nil {
+			fmt.Fprintf(stderr, "sed: %v\n", err)
+			return 1
+		}
+	}
 	return code
+}
+
+// termState remembers whether the input ended with a NUL. GNU keeps that
+// property: a record without a terminator stays without one (measured
+// 24.11.2026 against sed 4.9).
+type termState struct {
+	endedWithTerm bool
 }
 
 // nulToLines turns a NUL-separated stream into the line-separated one the sed
 // engine wants, escaping the bytes that would be ambiguous.
-func nulToLines(r io.Reader) io.Reader {
+func nulToLines(r io.Reader, st *termState) io.Reader {
 	pr, pw := io.Pipe()
 	go func() {
 		br := bufio.NewReaderSize(r, 64*1024)
@@ -202,6 +229,9 @@ func nulToLines(r io.Reader) io.Reader {
 			}
 			if len(chunk) > 0 && chunk[len(chunk)-1] == 0 {
 				buf = append(buf, '\n')
+				st.endedWithTerm = true
+			} else if len(chunk) > 0 {
+				st.endedWithTerm = false
 			}
 			if _, werr := pw.Write(buf); werr != nil {
 				return
@@ -218,14 +248,18 @@ func nulToLines(r io.Reader) io.Reader {
 
 // linesToNul is the way back: a line break is the record separator again, and
 // the escapes become the bytes they stood for.
-func linesToNul(w io.Writer) io.Writer {
-	return &nulWriter{w: w}
+func linesToNul(w io.Writer, st *termState) io.Writer {
+	return &nulWriter{w: w, st: st}
 }
 
 type nulWriter struct {
 	w    io.Writer
+	st   *termState
 	last byte // the previous byte, for the two-byte escapes
-	held bool
+	held bool // a 0x01 waiting for its second byte
+	// pendingNul holds the last NUL back: it is written only when more output
+	// follows or when the input ended with a terminator itself.
+	pendingNul bool
 }
 
 func (n *nulWriter) Write(p []byte) (int, error) {
@@ -253,11 +287,32 @@ func (n *nulWriter) Write(p []byte) (int, error) {
 		}
 	}
 	if len(out) > 0 {
+		if n.pendingNul {
+			out = append([]byte{0}, out...)
+			n.pendingNul = false
+		}
+		if out[len(out)-1] == 0 {
+			out = out[:len(out)-1]
+			n.pendingNul = true
+		}
 		if _, err := n.w.Write(out); err != nil {
 			return 0, err
 		}
 	}
 	return len(p), nil
+}
+
+// finish writes the held-back terminator when the input had one.
+func (n *nulWriter) finish() error {
+	if !n.pendingNul {
+		return nil
+	}
+	n.pendingNul = false
+	if n.st != nil && !n.st.endedWithTerm {
+		return nil
+	}
+	_, err := n.w.Write([]byte{0})
+	return err
 }
 
 // awkParseError turns goawk's parse message into the one mawk prints, where

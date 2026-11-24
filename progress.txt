@@ -297,3 +297,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 24.11.2026: Shell hat jetzt Zeilenbearbeitung und History (Pfeiltasten, Ctrl-A/E/U/K/W, Ctrl-C verwirft die Zeile, ~/.akmesh_history bzw. AKMESH_HISTFILE); PS2 wird als Fortsetzungsprompt benutzt. Batterie 479 Linux / 372 Windows.
 24.11.2026: PS2 gilt als Fortsetzungsprompt, PS4 im xtrace (Umformung des festen "+ " von mvdan); Batterie 480 Linux / 372 Windows.
 24.11.2026: diff schreibt ohne -u das normale Format wie GNU, tac -r trennt am Treffer; die zwei roten Tests sind gruen. Batterie 483 Linux / 375 Windows.
+24.11.2026: grep -c zaehlt Binaerdateien satzweise wie GNU, sed -z bildet \n im Skript ab und haengt keinen Endtrenner mehr an. Batterie 486 Linux / 378 Windows.

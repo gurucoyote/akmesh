@@ -6811,3 +6811,57 @@ Aufteilung bei benachbarten Treffern weicht ab - dokumentiert, nicht stillgelegt
 
 Batterie: diff-normal-default, diff-normal-lines, tac-regex-sep; 483 Linux.
 
+
+
+## grep -c auf einer Binaerdatei, sed und NUL (24.11.2026, acmesh-a8c)
+
+Die Frage im Ticket: NUL als Zeilentrenner. Gemessen gegen GNU grep 3.11 und
+GNU sed 4.9 im Referenz-Image, Eingabe "txt\0txt\0txt\n":
+
+    sed 's/txt/TXT/'        GNU: TXT\0txt\0txt   unser: gleich   (NUL bleibt Satzinhalt)
+    sed -z, sed -n          unveraendert
+    grep txt                beide: "binary file matches", rc 0
+    grep -a -c txt          beide: 1
+    grep -z -c txt          beide: 3
+    grep -c txt             GNU: 3, unser bisher: 1  <- der Fehler
+
+GNU zaehlt eine Binaerdatei ohne -a bei -c satzweise mit NUL als Trenner, obwohl
+-z nicht gesetzt ist ("xxx\0xxx\0xxx\n" mit "grep -c x" ergibt 3, mit
+"-a -c x" nur 1). Jetzt tut unser grep dasselbe: der Zaehlpfad schaltet fuer
+diesen Fall auf den -z-Satz um, womit -v, -w und -x ihre Bedeutung behalten.
+
+sed war nicht zu aendern: es liest NUL bereits als gewoehnliches Byte im Satz.
+
+Batterie: grep-count-binary, grep-count-binary-a, sed-nul-not-separator.
+
+
+
+## sed -z: Zeilenumbruch im Satz und der Endtrenner (24.11.2026, acmesh-0l4)
+
+Zwei Abweichungen, gemessen gegen GNU sed 4.9 im Referenz-Image.
+
+1. Ein "\n" im Skript traf den Zeilenumbruch im NUL-Satz nicht, weil der
+   Uebergang den Umbruch zu den zwei Bytes 0x01 0x30 maskiert. Jetzt wird das
+   Skript bei -z genauso abgebildet, damit Muster und Ersetzung beide wirken:
+
+       printf 'a\nb\0c\n' | sed -z 's/a\nb/X/'   GNU: X\0c\n   unser: gleich
+
+2. Wir haengten am Ende immer einen NUL an. GNU behaelt die Eigenschaft der
+   Eingabe: ein letzter Satz ohne Trenner bleibt ohne Trenner. Der Schreiber
+   haelt den letzten NUL deshalb zurueck und schreibt ihn nur, wenn mehr folgt
+   oder die Eingabe selbst mit NUL endete:
+
+       printf 'a\0b\0' | sed -z 's/a/A/'   GNU und unser: A\0b\0
+
+Grenze, ehrlich gemessen: "N" verbindet in GNU die Saetze mit einem echten
+Zeilenumbruch, in unserer Engine mit dem Zeilentrenner der Engine. Sichtbar an
+
+       printf 'a\nb\n' | sed -z 'N;s/\n/+/'
+       GNU:   a\nb\n      (das N ergaenzt keinen Umbruch, s trifft nicht)
+       unser: a+b\n        (N ergaenzt einen Umbruch, den s dann ersetzt)
+
+Der Umbruch im Skript (Punkt 1) ist damit richtig, die Bedeutung von N in -z
+nicht. Steht als Grenze hier und im Ticket; nicht stillgelegt.
+
+Batterie: sed-nul-not-separator (od-Vergleich), 486 Pruefungen Linux.
+

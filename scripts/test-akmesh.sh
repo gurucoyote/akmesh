@@ -401,6 +401,10 @@ printf 'a.txt\000b c.txt\000d.txt\000' > z.nul
 printf 'eins\nzwei\ndrei\n' > dnm1.txt && printf 'eins\nZWEI\ndrei\n' > dnm2.txt
 check diff-normal-default "$(run diff dnm1.txt dnm2.txt | tr -d '\r' | sed -n 1p)" "2c2"
 check diff-normal-lines "$(run diff dnm1.txt dnm2.txt | tr -d '\r' | tr '\n' '|')" "2c2|< zwei|---|> ZWEI|"
+printf 'txt\0txt\0txt\n' > gbin.txt
+check grep-count-binary "3" "$(run grep -c txt gbin.txt | tr -d '\r')"
+check grep-count-binary-a "1" "$(run grep -a -c txt gbin.txt | tr -d '\r')"
+check sed-nul-not-separator "0000000   T   X   T  \\0   t   x   t  \\0   t   x   t  \\n" "$(run sed 's/txt/TXT/' gbin.txt | od -c | head -1 | tr -d '\r' | sed 's/ *$//')"
 check tac-regex-sep "$(printf 'a1b22c' > tre.txt; run tac -r -s '[0-9]+' tre.txt | tr -d '\r')" "cb22a1"
 check diff-u-plus-line "$(run diff -u dgu1.txt dgu2.txt | tr -d '\r' | sed -n 2p | grep -c '^+++ dgu2.txt	')" "1"
 check df-h-size-header "$(run df -h | tr -d '\r' | head -1 | tr -s ' ' | cut -d' ' -f2)" "Size"

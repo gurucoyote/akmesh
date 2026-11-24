@@ -730,6 +730,15 @@ func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 			if p.binaryWithout {
 				return nil
 			}
+			// GNU counts a binary file record by record with NUL as the
+			// separator, even without -z: "grep -c x" on "xxx\0xxx\0xxx\n"
+			// prints 3 where -a -c prints 1 (measured 24.11.2026 against grep
+			// 3.11). The rest of the scan is the one -z uses, so -v, -w and -x
+			// keep their meaning.
+			if p.count && !p.nullSep {
+				p.nullSep = true
+				defer func() { p.nullSep = false }()
+			}
 			if !p.count && !p.noShowMatch && !p.quiet && !p.filesWithout {
 				pr.suppress = true
 				if err := pr.scan(f); err != nil {

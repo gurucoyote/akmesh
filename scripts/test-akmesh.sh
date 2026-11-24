@@ -1160,6 +1160,16 @@ if [ -z "$WINDOWS" ]; then
   check channel-switch-world 'chabhi@testing' "$(tr -d '\r' < "$C/root/etc/apk/world")"
   check channel-run 'zwei' "$("$C/root/usr/bin/chabhi" 2>&1 | tr -d '\r')"
 
+  # Lokale Datei installieren: "apk add ./paket.apk" (acmesh-ke0r-Nachtrag).
+  L="$WORK/lok"; mkdir -p "$L/ok/etc/apk/keys" "$L/bad/etc/apk/keys" "$L/put/etc/apk/keys"
+  cp "$BD/bkey.rsa.pub" "$L/ok/etc/apk/keys/"
+  LAPK="$S3/repo/x86_64/absc-1.0.0-r0.apk"
+  check apk-local-install '1' "$(run apk -p "$L/ok" --no-scripts add "$LAPK" 2>&1 | tr -d '\r' | grep -c 'Installing absc (1.0.0-r0)')"
+  check apk-local-world 'absc' "$(tr -d '\r' < "$L/ok/etc/apk/world")"
+  check apk-local-untrusted '1' "$(run apk -p "$L/bad" add "$LAPK" 2>&1 | tr -d '\r' | grep -c 'UNTRUSTED signature')"
+  check apk-local-allow '1' "$(run apk -p "$L/put" --allow-untrusted --no-scripts add "$LAPK" 2>&1 | tr -d '\r' | grep -c 'Installing absc (1.0.0-r0)')"
+  check apk-local-file '1' "$([ -f "$L/ok/usr/bin/abhi" ] && echo 1 || echo 0)"
+
   # Waechter (acmesh-2p44): ein Rueckfall, dann Stillstand. Nachgemachtes apk,
   # damit die Batterie ohne Netz und ohne Container laeuft.
   G="$WORK/guard"; mkdir -p "$G/root/lib/apk/db" "$G/root/etc/apk" "$G/bin"

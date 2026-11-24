@@ -6457,3 +6457,29 @@ anderen Kanal. apkreport liest den Kanal jetzt aus der rohen world-Zeile.
 Batterie: 6 neue Pruefungen (Installation im Kanal, world-Zeile, Upgrade bleibt,
 Wechsel, world nach Wechsel, Programm laeuft), 458 Linux, 0 Fehler.
 
+
+
+## Lokale Paketdatei installieren (24.11.2026)
+
+    ./akmesh apk -p /tmp/lt2 add /tmp/lokal.apk
+    -> (1/1) Installing chprog (2.0.0-r0), OK: 21 B in 1 package
+       world: chprog            (kein Pfad, wie bei apk)
+       21 B ist die tatsaechlich geschriebene Groesse
+
+Ohne den passenden Schluessel im Zielbaum:
+    apk: /tmp/lokal.apk: UNTRUSTED signature (use --allow-untrusted)
+    mit --allow-untrusted: installiert.
+
+Regeln
+- Erkannt wird ein Name, der auf .apk endet und als Datei existiert.
+- Die Signatur wird wie bei einem Index gegen die Schluessel in
+  <root>/etc/apk/keys geprueft; unbekannt oder fehlend heisst UNTRUSTED und
+  verlangt --allow-untrusted.
+- Abhaengigkeiten eines lokalen Pakets werden aus den konfigurierten Repos
+  aufgeloest; ohne Repos meldet apk, welche Abhaengigkeit fehlt.
+- Nebenbefund und behoben: die Groesse wurde bisher aus dem Index genommen; jetzt
+  zaehlt, was Extract wirklich schreibt (davor "OK: 0 B" fuer lokale Pakete).
+
+Batterie: 5 neue Pruefungen (Installation, world-Name, UNTRUSTED, --allow-untrusted,
+Datei liegt im Baum), 463 Linux.
+

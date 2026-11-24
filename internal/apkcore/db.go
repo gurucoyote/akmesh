@@ -494,6 +494,8 @@ func extractTar(raw []byte, opts ExtractOptions, pkg *Package) error {
 			if err := f.Close(); err != nil {
 				return err
 			}
+			// What actually landed on disk is the installed size apk reports.
+			pkg.Installed += hdr.Size
 			if !opts.Now.IsZero() {
 				_ = os.Chtimes(target, opts.Now, opts.Now)
 			}

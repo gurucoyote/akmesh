@@ -426,10 +426,49 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		fmt.Fprintf(stderr, "%s: add: no packages given\n", cmd)
 		return 1
 	}
+
+	// "apk add ./pkg.apk": a package that lies on disk needs no repository.
+	localData := map[string][]byte{}
+	var local []*apkcore.Package
+	var wanted []string
+	for _, spec := range names {
+		if strings.HasSuffix(spec, ".apk") {
+			if st, err := os.Stat(spec); err == nil && !st.IsDir() {
+				data, err := os.ReadFile(spec)
+				if err != nil {
+					fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+					return 1
+				}
+				keys, err := loadKeys(o.root)
+				if err != nil {
+					fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+					return 1
+				}
+				p, trusted, err := apkcore.ParsePackageFile(data, spec, keys)
+				if err != nil {
+					fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+					return 1
+				}
+				if !trusted && !o.allowUntr {
+					fmt.Fprintf(stderr, "%s: %s: UNTRUSTED signature (use --allow-untrusted)\n", cmd, spec)
+					return 1
+				}
+				local = append(local, p)
+				localData[p.Name] = data
+				continue
+			}
+		}
+		wanted = append(wanted, spec)
+	}
 	repos := requireRepos(cmd, o, stderr, c)
 	indexes, code := loadIndexes(cmd, c, o, repos, stderr)
-	if code != 0 {
+	if code != 0 && len(local) == 0 {
 		return code
+	}
+	if code != 0 {
+		// A local package without repositories: only its own files, no deps from
+		// a repo. The dependency check below reports what is missing.
+		indexes = nil
 	}
 	installed, err := apkcore.ReadInstalled(o.root)
 	if err != nil {
@@ -509,7 +548,25 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		order = append(order, p)
 		return 0
 	}
-	for _, spec := range names {
+	for _, lp := range local {
+		if have[lp.Name] && installedVers[lp.Name] == lp.Version {
+			continue
+		}
+		seen[lp.Name] = true
+		for _, dep := range lp.Depends {
+			dep = strings.TrimPrefix(dep, "!")
+			depTag := ""
+			if i := strings.Index(dep, "@"); i > 0 {
+				depTag = dep[i+1:]
+				dep = dep[:i]
+			}
+			if code := resolve(apkcore.EntryName(dep), depPin(dep), depTag, false); code != 0 {
+				return code
+			}
+		}
+		order = append(order, lp)
+	}
+	for _, spec := range wanted {
 		name, tag := splitTag(spec)
 		if code := resolve(apkcore.EntryName(name), depPin(name), tag, true); code != 0 {
 			return code
@@ -545,10 +602,14 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 				fmt.Fprintf(stdout, "(%d/%d) Installing %s (%s)\n", i+1, len(order), p.Name, p.Version)
 			}
 		}
-		data, err := c.PackageData(p)
-		if err != nil {
-			fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
-			return 1
+		data, ok := localData[p.Name]
+		if !ok {
+			var err error
+			data, err = c.PackageData(p)
+			if err != nil {
+				fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+				return 1
+			}
 		}
 		// Install scripts run through akmesh's own shell with every path mapped
 		// into the target root (apkscript); --no-scripts keeps files only.
@@ -595,7 +656,14 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		installed = append(installed, &apkcore.Installed{Package: *p, Files: files})
 		added += p.Installed
 	}
-	for _, spec := range names {
+	// A local file is recorded by package name, not by its path.
+	for _, lp := range local {
+		if !worldSet[lp.Name] {
+			world = append(world, lp.Name)
+			worldSet[lp.Name] = true
+		}
+	}
+	for _, spec := range wanted {
 		base := apkcore.EntryName(spec)
 		if worldSet[base] {
 			// A channel switch replaces the world line, it does not add one.

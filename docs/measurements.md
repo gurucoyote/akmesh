@@ -7036,3 +7036,31 @@ Vorlage: corpus mit python3 erzeugt (1491 .go-Dateien, je ~200 Textzeilen plus
 "func main()"), awk.txt mit 300 000 Zeilen "kN M" (random.seed(7)).
 
 Batterie: 499 Linux / 386 Windows, 0 Fehler. help-audit --check ./akmesh rc 0.
+
+## Profilgroessen fuer die Aufteilung (24.11.2026)
+
+Wegwerf-Profile (`scripts/profiles/zz-*.txt`, nach der Messung geloescht),
+linux amd64, go 1.27.4, Inlining an, gestrippt; Zahlen aus der report-Zeile:
+
+    voll (heute)                                 22511843 Bytes  21,5 MiB
+    fs  (alles ausser Netz)                      17723619 Bytes  16,9 MiB
+    nur Text und Dateien, 37 Namen               15728867 Bytes  15,0 MiB
+    nur Shell (sh, gosh)                         15130851 Bytes  14,4 MiB
+    nur Netz (10 Namen)                          13127907 Bytes  12,5 MiB
+    nur Dokumente (14 Namen)                     10432739 Bytes  10,4 MiB
+    nur apk (4 Namen)                             9208035 Bytes   8,8 MiB
+    nur Dienste und Benutzer (14 Namen)           4407523 Bytes   4,2 MiB
+    ein eigener Befehl (pwd)                      3363043 Bytes   3,2 MiB
+    ein u-root-Befehl (more)                      2437347 Bytes   2,3 MiB
+
+Befehl je Zeile: `GOTOOLCHAIN=auto ./scripts/build-bb.sh linux <profil>`.
+Die Schlussfolgerung (Paketgrenze in internal/tools, vier Binaries) steht in
+docs/design/split.md.
+
+Nebenbefund und behoben: der Zweig fuer Profile mit Tags war seit 2fa3a8c
+kaputt. Dort stand `export GOFLAGS=` und `export GOWORK=off"-tags=$TAGS"`, also
+ein ungueltiger Workspace-Wert; jeder Bau mit `tags` (fs, ext, fs-nocpio)
+brach mit "exit status 1" ab, ohne Meldung. Nach dem Zuruecksetzen von
+GOFLAGS auf `-tags=$TAGS` und GOWORK auf den eigenen Workspace baut fs wieder:
+vorher Abbruch, nachher 17723619 Bytes.
+

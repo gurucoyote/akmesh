@@ -398,11 +398,11 @@ cd "$UROOT_DIR"
 # shellcheck disable=SC2086
 # makebb has no -tags flag; the go tool it calls does read GOFLAGS.
 if [ -n "$TAGS" ]; then
-	export GOFLAGS=
-# A workspace file somewhere above the build would pull its own module set into
-# this build; a stray /tmp/wk/go.work once failed it with a Go version that has
-# nothing to do with this repository.
-export GOWORK=off"-tags=$TAGS"
+	export GOFLAGS="-tags=$TAGS"
+# GOWORK stays as line 277 set it (this build's own workspace). Switching it off
+# here made makebb read ./cmd/<name> as "outside main module" - the workspace is
+# what joins u-root and our packages (measured 24.11.2026).
+	export GOWORK="$WORKFILE"
 	echo "build tags: $TAGS"
 fi
 # A generator-only run is what a non-Go compiler needs: makebb writes the

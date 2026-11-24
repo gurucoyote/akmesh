@@ -1,0 +1,22 @@
+# nl gegen GNU coreutils 9.7
+nl words.txt
+nl -ba words.txt
+nl -b a words.txt
+nl -b t words.txt
+nl -n rz -w 4 words.txt
+nl -n ln words.txt
+nl -n rn words.txt
+nl -s ' : ' words.txt
+nl -v 5 words.txt
+nl -i 2 words.txt
+nl -d '::' w1.txt
+nl -p w1.txt
+nl -p -b a w1.txt
+nl -l 1 w1.txt
+nl -l 2 w1.txt
+nl -h a -f a -b a words.txt
+nl -w 1 words.txt
+nl empty.txt
+nl < words.txt
+nl -ba nofile 2>&1; echo "rc=$?"
+nl -b x words.txt 2>&1; echo "rc=$?"

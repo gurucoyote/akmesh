@@ -98,6 +98,7 @@ var Commands = map[string]Func{
 	"touch":     runTouch,
 	"tr":        runTr,
 	"uniq":      runUniq,
+	"seq":       runSeq,
 	"uname":     runUname,
 	"verify":    runVerify,
 	"id":        runID,

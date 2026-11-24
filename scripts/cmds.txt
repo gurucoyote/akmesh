@@ -30,7 +30,7 @@ linux: ip dhclient
 linux: netstat
 
 # helpers
-seq yes
+yes
 
 # Excluded on Windows (build constraints, see docs/measurements.md):
 #   df du free hostname kill ps sync timeout uname

@@ -5812,3 +5812,52 @@ Systemsatz liefert.
 Batterie 389 Linux / 357 Windows, beide 0 Fehler, help-audit gruen.
 Groessen: 19546339 Bytes Linux dynamisch, 18183168 Bytes Windows, beide
 gestrippt (+8192 gegen den tail-Stand).
+
+## nl, tac und seq gegen GNU (24.11.2026, acmesh-efg)
+
+Referenz GNU coreutils 9.7 im gepinnten Image. Erste Messung: nl 11 von 21,
+tac 7 von 11, seq 10 von 16. Alle drei Befehle waren die u-root-Fassungen ohne
+die GNU-Schalter. Sie sind jetzt eigene Implementierungen in internal/nl,
+internal/tac und internal/seq (die alten Pakete internal/nl und internal/tac
+sind ersetzt, seq ist neu und steht in OURS_ALL).
+
+nl: 21 von 21 gleich. Was fehlte und jetzt da ist
+    -v, -i        erster Wert und Schrittweite
+    -l            N Leerzeilen als eine zaehlen
+    -h, -f        Nummerierung fuer Kopf und Fuss, dazu -b pREGEX
+    -d '::'       Trennzeile druckt als leere Zeile, Abschnitt wechselt
+    -n, -w, -s    ln/rn/rz, Breite, Trenner
+    Meldungen     "invalid body numbering style: 'x'" mit dem GNU-Zusatz
+                  "Try 'nl --help' for more information." und Exit 1
+    Randfall      Zeilen ohne Nummer werden um eine Spalte breiter eingerueckt
+                  als die Zahl breit ist; so steht der Text unter dem Text.
+
+tac: 11 von 11 gleich.
+    -b            Trennzeichen beginnt den Satz statt ihn zu beenden; an
+                  "a\nb\nc\n" gibt das "\\n\\nc\\nba", byteweise gegen GNU geprueft
+    -s            inklusive Escapes (\n, \t, \0, oktal) und -r fuer regulaere
+                  Ausdruecke
+    leerer -s     GNU gibt die Eingabe unveraendert aus (ein Satz, nichts zu
+                  drehen); zuerst hatte ich hier zeichenweise gedreht, das war
+                  falsch und ist korrigiert
+    Meldung       "tac: failed to open 'nofile' for reading: No such file or
+                  directory" wie GNU, Exit 1
+
+seq: 16 von 16 gleich.
+    -s,           die angeklebte Form; die flag-Paket-Fassung starb an "-s,"
+    -f 'x%02g'    das Null-Flag auf %g, das Go nicht kennt, wird von Hand
+                  aufgefuellt (x01 x02 x03)
+    Genauigkeit   "seq 1.0 3" gibt 1.0 2.0 3.0, "seq 0.5 0.5 2" gibt
+                  0.5 1.0 1.5 2.0, ganze Zahlen ohne Nachkommastellen
+    -w            gleiche Breite mit fuehrenden Nullen (08 09 10)
+    Meldungen     "seq: invalid floating point argument: 'x'" und "seq: missing
+                  operand", beide mit dem Try-Zusatz, Exit 1, ohne Zeitstempel
+
+Vierzehn neue Batteriepruefungen. Zwei eigene Fehler dabei: die Pruefungen
+liefen, bevor ihre Fixtures angelegt waren, und eine Pruefung las c1.txt, das
+ein frueherer Block mit anderem Inhalt ueberschreibt - sie hat jetzt ihre eigene
+Datei.
+
+Batterie 403 Linux / 371 Windows, beide 0 Fehler, help-audit gruen.
+Groessen: 19554531 Bytes Linux dynamisch, 18190848 Bytes Windows, beide
+gestrippt (+8192 gegen den cat-Stand; seq bringt eigene Formatierung mit).

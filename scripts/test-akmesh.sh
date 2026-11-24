@@ -277,6 +277,26 @@ if [ -z "$WINDOWS" ]; then
 check cat-missing "$(run cat nofile 2>&1 | tr -d '\r')" "cat: nofile: No such file or directory"
 check tail-missing-file "$(run tail nofile.txt 2>&1 | tr -d '\r')" "tail: cannot open 'nofile.txt' for reading: No such file or directory"
 fi
+# nl, tac und seq gegen GNU (acmesh-efg). The two fixtures are made here because
+# the head block further down creates them again.
+printf 'a\nb\nc\nd\ne\n' > h1.txt
+printf 'b:2:z\nA:1:y\na:3:x\nc:10:w\n' > c1.txt
+check nl-default "$(run nl h1.txt | tr -d '\r' | tr '\t\n' '||')" "     1|a|     2|b|     3|c|     4|d|     5|e|"
+check nl-all "$(printf 'x\n\ny\n' > h2b.txt; run nl -ba h2b.txt | tr -d '\r' | tr '\t\n' '||')" "     1|x|     2||     3|y|"
+check nl-format "$(run nl -n rz -w 3 h1.txt | tr -d '\r' | sed -n 1p | tr '\t' '|')" "001|a"
+check nl-sep "$(run nl -s = -w 4 h1.txt | tr -d '\r' | sed -n 1p)" "   1=a"
+check nl-start "$(run nl -v 5 -i 2 h1.txt | tr -d '\r' | sed -n 1,2p | tr '\t\n' '||')" "     5|a|     7|b|"
+check tac-lines "$(run tac h1.txt | tr -d '\r' | tr '\n' '|')" "e|d|c|b|a|"
+# Own fixture: an earlier block writes c1.txt with other content, so a shared
+# file would make this check depend on the order of the battery.
+check tac-sep "$(printf 'a:b\nc:d\n' > tq.txt; run tac -s : tq.txt | tr -d '\r' | tr '\n' '|')" "d|b|c:a:"
+check tac-before "$(printf 'a\nb\nc\n' | run tac -b | od -c | head -1 | tr -d '\r')" "0000000  \\n  \\n   c  \\n   b   a"
+check seq-basic "$(run seq 3 | tr -d '\r' | tr '\n' ' ')" "1 2 3 "
+check seq-step "$(run seq 1 2 7 | tr -d '\r' | tr '\n' ' ')" "1 3 5 7 "
+check seq-decimals "$(run seq 1.0 3 | tr -d '\r' | tr '\n' ' ')" "1.0 2.0 3.0 "
+check seq-width "$(run seq -w 8 10 | tr -d '\r' | tr '\n' ' ')" "08 09 10 "
+check seq-sep "$(run seq -s, 3 | tr -d '\r')" "1,2,3"
+check seq-format "$(run seq -f 'x%02g' 3 | tr -d '\r' | tr '\n' ' ')" "x01 x02 x03 "
 # tr und od gegen GNU (acmesh-3qy, acmesh-bly, acmesh-4b7).
 check tr-octal-nul "$(printf 'x\000y\n' | run tr '\0' '@' | od -c | head -1)" "0000000   x   @   y  \\n"
 check tr-delete-nul "$(printf 'x\000y\n' | run tr -d '\0' | od -c | head -1)" "0000000   x   y  \\n"

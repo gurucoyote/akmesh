@@ -7,6 +7,7 @@ import (
 	"akmesh/internal/cut"
 	"akmesh/internal/dirname"
 	"akmesh/internal/nl"
+	"akmesh/internal/seq"
 	"akmesh/internal/tac"
 )
 
@@ -28,6 +29,10 @@ func runNl(args []string, stdin *os.File, stdout, stderr *os.File) int {
 
 func runTac(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	return tac.Run(args, stdin, stdout, stderr)
+}
+
+func runSeq(args []string, stdin *os.File, stdout, stderr *os.File) int {
+	return seq.Run(args, stdin, stdout, stderr)
 }
 
 func runCut(args []string, stdin *os.File, stdout, stderr *os.File) int {

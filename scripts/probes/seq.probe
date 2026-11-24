@@ -1,0 +1,17 @@
+# seq gegen GNU coreutils 9.7
+seq 3
+seq 2 5
+seq 1 2 7
+seq -w 8 11
+seq -s, 3
+seq -f 'x%02g' 3
+seq 0.5 0.5 2
+seq 1.0 3
+seq 3 -1 1
+seq -w 1 10
+seq 1 0.3 2
+seq -s '' 3
+seq 3 x 2>&1; echo "rc=$?"
+seq --help >/dev/null; echo "rc=$?"
+seq
+seq 1e2 2>&1 | head -2

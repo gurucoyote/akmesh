@@ -39,6 +39,8 @@ awk 'BEGIN{for(i=0;i<400;i++) printf "x"; printf "\n"}' > long.txt
 : > empty.txt
 printf 'X\000ABC\n' > bin.bin
 printf 'ohne Umbruch' > NoNewline.txt
+# Abschnitte fuer nl -d und tac -s (acmesh-efg)
+printf 'a\n::\nb\nc\n' > w1.txt
 
 ls -l | awk 'NR>1{print $5, $9}'
 echo "gnufix: $FIX ready"

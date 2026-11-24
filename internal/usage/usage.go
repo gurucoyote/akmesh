@@ -368,12 +368,17 @@ var Texts = map[string]Entry{
 			"memory. Good for test and intranet certificates, not for a real CA.",
 	},
 	"nl": {
-		"[-b STYLE] [-n FORMAT] [-w WIDTH] [-s SEP] [-d DELIM] [FILE]",
-		"  -b, --body-numbering=STYLE   a all lines, t text lines only, n none\n" +
-			"  -n, --number-format=FORMAT   ln left, rn right, rz right with zeros\n" +
-			"  -w, --number-width=WIDTH     width of the number\n" +
+		"[-b STYLE] [-h STYLE] [-f STYLE] [-n FORMAT] [-w WIDTH] [-s SEP] [-d DELIM] [-v N] [-i N] [-l N] [FILE...]",
+		"  -b, --body-numbering=STYLE   a all lines, t text lines only (default),\n" +
+			"                               n none, pREGEX lines matching\n" +
+			"  -h, -f STYLE                 numbering for header and footer lines\n" +
+			"  -n, --number-format=FORMAT   ln left, rn right (default), rz with zeros\n" +
+			"  -w, --number-width=WIDTH     width of the number (default 6)\n" +
 			"  -s, --number-separator=SEP   text after the number (default TAB)\n" +
-			"  -d, --section-delimiter=DELIM  section delimiter (default \\:)",
+			"  -d, --section-delimiter=DELIM  section delimiter (default \\:)\n" +
+			"  -v, --starting-line-number=N first number (default 1)\n" +
+			"  -i, --line-increment=N       step between numbers (default 1)\n" +
+			"  -l, --join-blank-lines=N     count N empty lines as one (default 1)",
 	},
 	"patch": {
 		"[-R] [-N] [-f] [-i FILE] [-p NUM] [--dry-run] [FILE]",
@@ -461,9 +466,17 @@ var Texts = map[string]Entry{
 			"the named files are. Windows has no whole-system flush and says so.",
 	},
 	"tac": {
-		"[-s SEP] [-r] [FILE...]",
-		"  -s, --separator=SEP  record separator (default newline)\n" +
-			"  -r, --regex          the separator is a regular expression",
+		"[-b] [-r] [-s SEP] [FILE...]",
+		"  -b, --before         the separator starts a record instead of ending it\n" +
+			"  -r, --regex          the separator is a regular expression\n" +
+			"  -s, --separator=SEP  record separator (default newline)",
+	},
+	"seq": {
+		"[-w] [-s SEP] [-f FORMAT] LAST | FIRST LAST | FIRST STEP LAST",
+		"  -w, --equal-width        pad the numbers with zeros to one width\n" +
+			"  -s, --separator=SEP      separate the numbers with SEP (default newline)\n" +
+			"  -f, --format=FORMAT      printf style format, e.g. 'x%02g'\n" +
+			"  The precision follows the arguments: \"seq 1.0 3\" gives 1.0 2.0 3.0.",
 	},
 	"tar": {
 		"-c|-t|-x [-z] [-v] [-f ARCHIVE] [-C DIR] [--strip-components=N] [--exclude=PATTERN] [FILE...]",

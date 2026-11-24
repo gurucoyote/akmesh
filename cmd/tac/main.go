@@ -1,8 +1,8 @@
-// Command tac is the tac tool, reachable as its own command inside the akmesh
-// binary.
+// Command tac is the tac tool, reachable as its own command inside the
+// akmesh binary.
 //
-// It imports only internal/tac and not internal/tools: the table in
-// internal/tools pulls every tool we own into the binary (acmesh-mq1).
+// It imports only akmesh/internal/tac: the table in internal/tools
+// pulls every tool we own into the binary (see acmesh-mq1).
 package main
 
 import (
@@ -16,5 +16,5 @@ import (
 
 func main() {
 	policy.Enter()
-	os.Exit(usage.Run("tac", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, tac.Run))
+	os.Exit(usage.RunIO("tac", os.Args[1:], os.Stdin, os.Stdout, os.Stderr, tac.Run))
 }

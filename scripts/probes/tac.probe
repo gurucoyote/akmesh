@@ -1,0 +1,12 @@
+# tac gegen GNU coreutils 9.7
+tac words.txt
+tac -s ':' colon.txt
+tac -r -s '[0-9]' words.txt
+tac -b words.txt
+tac -b -s ':' colon.txt
+tac NoNewline.txt
+tac empty.txt
+tac < words.txt
+tac nofile 2>&1; echo "rc=$?"
+tac -s '' words.txt 2>&1 | head -3; echo "rc=$?"
+tac --help >/dev/null; echo "rc=$?"

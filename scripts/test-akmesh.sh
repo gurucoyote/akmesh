@@ -1170,6 +1170,19 @@ if [ -z "$WINDOWS" ]; then
   check apk-local-allow '1' "$(run apk -p "$L/put" --allow-untrusted --no-scripts add "$LAPK" 2>&1 | tr -d '\r' | grep -c 'Installing absc (1.0.0-r0)')"
   check apk-local-file '1' "$([ -f "$L/ok/usr/bin/abhi" ] && echo 1 || echo 0)"
 
+  # upgrade mit lokaler Datei (Nachtrag 24.11.2026): das neue Paket liegt als
+  # Datei vor, apk upgrade soll es einspielen statt "not found" zu sagen.
+  U="$L/up"; mkdir -p "$U/etc/apk/keys" "$S3/repo2/x86_64"
+  cp "$BD/bkey.rsa.pub" "$U/etc/apk/keys/"
+  printf 'pkgname = absc\npkgver = 2.0.0\npkgrel = 0\npkgdesc = mit skript\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\n' > "$S3/manifest2"
+  run apkbuild build --manifest "$S3/manifest2" --source "$S3/src" -o "$S3/repo2/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+  run apk -p "$U" --no-scripts add "$LAPK" >/dev/null 2>&1
+  NEW="$S3/repo2/x86_64/absc-2.0.0-r0.apk"
+  check apk-upgrade-local '1' "$(run apk -p "$U" --no-scripts upgrade "$NEW" 2>&1 | tr -d '\r' | grep -c 'Upgrading absc (1.0.0-r0 -> 2.0.0-r0)')"
+  check apk-upgrade-local-version '2.0.0-r0' "$(tr -d '\r' < "$U/lib/apk/db/installed" | grep -A1 '^P:absc$' | grep '^V:' | head -1 | cut -d: -f2)"
+  check apk-update-local-note '1' "$(run apk -p "$U" update "$NEW" 2>&1 | tr -d '\r' | grep -c 'local package')"
+  check apk-update-local-exit '0' "$(run apk -p "$U" update "$NEW" >/dev/null 2>&1; echo $?)"
+
   # Waechter (acmesh-2p44): ein Rueckfall, dann Stillstand. Nachgemachtes apk,
   # damit die Batterie ohne Netz und ohne Container laeuft.
   G="$WORK/guard"; mkdir -p "$G/root/lib/apk/db" "$G/root/etc/apk" "$G/bin"

@@ -6483,3 +6483,36 @@ Regeln
 Batterie: 5 neue Pruefungen (Installation, world-Name, UNTRUSTED, --allow-untrusted,
 Datei liegt im Baum), 463 Linux.
 
+
+
+## apk update und apk upgrade mit lokalem Dateipfad (24.11.2026)
+
+Was das echte apk macht (alpine:3.24, apk-tools 3.0.9), gemessen:
+
+    apk update /p.apk   -> ignoriert den Pfad, aktualisiert die Indizes, rc 0
+    apk upgrade /p.apk  -> ERROR: Package '/p.apk' not found, rc 1
+
+Unser Verhalten:
+
+    apk update /pfad/paket.apk
+      apk: /pfad/paket.apk is a local package, update does not need it (install it with apk add)
+      apk: WARNING: no repositories configured
+      rc 0                       (kein Fehlschlag, wie bei apk)
+
+    apk add /pfad/paket-1.0.0-r0.apk      -> Installing chprog (1.0.0-r0)
+    apk upgrade /pfad/paket-2.0.0-r0.apk  -> (1/1) Upgrading chprog (1.0.0-r0 -> 2.0.0-r0)
+                                             OK: 21 B in 1 package
+                                             /usr/bin/chprog sagt danach 2.0.0
+
+Regeln
+- apk upgrade mit Argumenten ist "upgrade nur diese": es laeuft ueber denselben Weg
+  wie add, also mit Versionsvergleich, Kanal und Skripten; eine Datei wird dabei
+  wie ein Paketname behandelt. Ein Pfad, den apk selbst mit "not found" abweist,
+  wird bei uns angenommen - eine Erweiterung, kein Widerspruch.
+- apk update kennt keine Pakete: ein Pfad wird benannt und ignoriert, der Exitcode
+  bleibt 0; ohne Repos kommt apk's "WARNING: no repositories configured" statt eines
+  Fehlers.
+
+Batterie: 4 neue Pruefungen (Upgrade mit Datei, Version in der Datenbank,
+Hinweis bei update, Exitcode 0), 467 Linux, 0 Fehler.
+

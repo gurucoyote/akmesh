@@ -58,13 +58,13 @@ func Run(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) i
 	}
 	switch sub {
 	case "update":
-		return update(cmd, c, o, stdout, stderr)
+		return update(cmd, c, o, operands, stdout, stderr)
 	case "add":
 		return add(cmd, c, o, operands, stdout, stderr)
 	case "del", "remove":
 		return del(cmd, c, o, operands, stdout, stderr)
 	case "upgrade":
-		return upgrade(cmd, c, o, stdout, stderr)
+		return upgrade(cmd, c, o, operands, stdout, stderr)
 	case "info":
 		return info(cmd, o, operands, stdout, stderr)
 	case "list":
@@ -398,7 +398,22 @@ func exactTagged(indexes []*apkcore.Index, name, version, tag string) *apkcore.P
 	return nil
 }
 
-func update(cmd string, c *apkcore.Client, o options, stdout, stderr io.Writer) int {
+func update(cmd string, c *apkcore.Client, o options, args []string, stdout, stderr io.Writer) int {
+	// apk update takes no packages; apk 3.0.9 ignores a path here and still
+	// succeeds. We say what the path is instead of ignoring it silently, and
+	// keep the exit code, so a script does not turn red for nothing.
+	for _, a := range args {
+		if strings.HasSuffix(a, ".apk") {
+			fmt.Fprintf(stderr, "%s: %s is a local package, update does not need it (install it with apk add)\n", cmd, a)
+		}
+	}
+	if len(o.repos) == 0 {
+		if fromFile, err := readRepos(o.root); err == nil && len(fromFile) == 0 {
+			// apk warns here, it does not fail; a path argument changes nothing.
+			fmt.Fprintf(stderr, "%s: WARNING: no repositories configured\n", cmd)
+			return 0
+		}
+	}
 	repos := requireRepos(cmd, o, stderr, c)
 	indexes, code := loadIndexes(cmd, c, options{root: o.root, allowUntr: o.allowUntr, verbose: o.verbose, noCache: true}, repos, stderr)
 	if code != 0 {
@@ -771,7 +786,14 @@ func del(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 	return 0
 }
 
-func upgrade(cmd string, c *apkcore.Client, o options, stdout, stderr io.Writer) int {
+func upgrade(cmd string, c *apkcore.Client, o options, args []string, stdout, stderr io.Writer) int {
+	// "apk upgrade paket" (and a local "./paket.apk") upgrades just that: add
+	// does the comparison, the wording and the channel, so it is reused. Real
+	// apk refuses a file path here ("Package '/p.apk' not found", apk 3.0.9);
+	// accepting it is an extension, not a contradiction.
+	if len(args) > 0 {
+		return add(cmd, c, o, args, stdout, stderr)
+	}
 	repos := requireRepos(cmd, o, stderr, c)
 	indexes, code := loadIndexes(cmd, c, o, repos, stderr)
 	if code != 0 {

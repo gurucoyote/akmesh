@@ -302,9 +302,28 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stder
 	// command like `read` would find the input already eaten (acmesh-51b).
 	reader := &lineReader{r: stdin}
 	var pending strings.Builder
-	out.WriteString(promptString(r, out))
+	// At a real terminal the line editor takes over: cursor keys, history and
+	// Ctrl-C work while typing. A pipe or a test reader keeps the plain reader,
+	// so nothing about the non-interactive behaviour changes.
+	f, editing := useEditor(stdin)
+	var ed *editor
+	if editing {
+		ed = newEditor(f, out)
+	} else {
+		out.WriteString(promptString(r, out))
+	}
 	for {
-		line, readErr := reader.readLine()
+		var line string
+		var readErr error
+		if ed != nil {
+			line, readErr = ed.readLine(promptString(r, out))
+			if readErr == errLineCancelled {
+				pending.Reset()
+				continue
+			}
+		} else {
+			line, readErr = reader.readLine()
+		}
 		if readErr != nil && it != nil && it.consume() {
 			// Ctrl-C while typing: the terminal threw the line away, so start
 			// a fresh one instead of ending the session.
@@ -321,7 +340,17 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stder
 		file, err := syntax.NewParser().Parse(strings.NewReader(src), "<stdin>")
 		if err != nil {
 			if syntax.IsIncomplete(err) {
-				out.WriteString("> ")
+				if ed != nil {
+					// The editor prints its own prompt on the next call: PS2, the
+					// continuation prompt, not the main one (acmesh-89s9).
+					if readErr != nil {
+						return 0
+					}
+					pending.WriteString("\n")
+					ed.setPrompt(promptString2(r, out))
+					continue
+				}
+				out.WriteString(promptString2(r, out))
 				if readErr != nil {
 					return 0
 				}
@@ -380,6 +409,18 @@ func interruptedBySignal(err error) bool {
 
 // promptString is PS1 when the profile set one, otherwise the ash default. The
 // value is expanded by the shell itself, so a profile can use $USER or $PWD.
+// promptString2 is PS2, the prompt of a continued line (ash default "> ").
+func promptString2(r *interp.Runner, out *switchWriter) string {
+	var buf strings.Builder
+	prevOut := out.swap(&buf)
+	_ = runSource(r, `printf '%s' "$PS2"`, "<prompt>")
+	out.swap(prevOut)
+	if s := buf.String(); s != "" {
+		return expandPrompt(s)
+	}
+	return "> "
+}
+
 func promptString(r *interp.Runner, out *switchWriter) string {
 	var buf strings.Builder
 	prevOut := out.swap(&buf)

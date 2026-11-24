@@ -6700,3 +6700,39 @@ Zwei Fehler kamen dabei heraus, beide behoben
 Grenze: laeuft im selben Prozessbaum, nicht im Zielbaum; ein Programm, das der
 Zielbaum selbst mitbringt, wird weiterhin bevorzugt (Linux, als root).
 
+
+
+## Shell: History und Zeilenbearbeitung (24.11.2026, acmesh-mc52)
+
+Bisher las die interaktive Shell nur ganze Zeilen: kein Zuruecknehmen von Tippfehlern,
+keine Pfeiltasten, keine History. Jetzt gibt es einen Zeileneditor, der nur an einem
+echten Terminal aktiv wird (Rohmodus ueber golang.org/x/term, das auch Windows kann);
+an einer Pipe, in Skripten und in Tests bleibt der alte Leser, damit sich am
+nicht-interaktiven Verhalten nichts aendert.
+
+Tasten
+    Pfeil links/rechts, Pos1/Ende, Entf, Ruecklauf
+    Pfeil hoch/runter: History
+    Ctrl-A/E Anfang/Ende, Ctrl-B/F ein Zeichen, Ctrl-K bis Ende loeschen,
+    Ctrl-U ganze Zeile, Ctrl-W letztes Wort, Ctrl-L Bildschirm leeren
+    Ctrl-C: Zeile verwerfen, Sitzung laeuft weiter; Ctrl-D auf leerer Zeile: Ende
+
+History
+    Datei aus AKMESH_HISTFILE, sonst ~/.akmesh_history, 1000 Zeilen, 0600.
+    Leere Zeilen und unmittelbare Wiederholungen werden nicht gespeichert.
+    Ohne HOME und ohne AKMESH_HISTFILE bleibt die History im Speicher.
+
+Gemessen (echtes PTY, Python-pty-Treiber, ./akmesh sh):
+    echo hallo                      -> "hallo", Prompt wieder da
+    echo abc, Ctrl-B Ctrl-B, X      -> Zeile wird "echo aXbc", Ausgabe "aXbc"
+    echo eins zwei, Ctrl-W, drei    -> "echo eins drei", Ausgabe "eins drei"
+    Pfeil hoch, Enter               -> letzter Befehl laeuft erneut
+    /tmp/h3.txt nach dem Lauf       -> "echo eins drei", "echo neu", "exit"
+
+Tippen am Zeilenende schreibt nur das neue Zeichen, statt die ganze Zeile neu
+zu zeichnen; ein Screenreader liest die Zeile also nicht bei jedem Tastendruck
+neu vor. Loeschen am Ende nutzt Ruecklauf-Leerzeichen-Ruecklauf.
+
+Tests: TestHistoryRoundTrip (Reihenfolge, Wiederholung, Limit),
+TestHistoryWithoutFileIsQuiet, TestNoEditorOnAPipe.
+

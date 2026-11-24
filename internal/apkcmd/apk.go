@@ -350,6 +350,17 @@ func replaceWorld(world []string, base, spec string) []string {
 	return out
 }
 
+// checkArch refuses a package built for another target. apk does the same; without
+// it a Linux package installs into a Windows tree and the failure shows up much
+// later (found 24.11.2026: arch = aarch64 was accepted on x86_64). "noarch" is
+// the usual exception.
+func checkArch(p *apkcore.Package, want string) error {
+	if p.Arch == "" || p.Arch == "noarch" || want == "" || p.Arch == want {
+		return nil
+	}
+	return fmt.Errorf("%s: package is for %s, this target is %s", p.FullName(), p.Arch, want)
+}
+
 // splitTag splits "pkg@testing" into name and channel tag.
 func splitTag(spec string) (string, string) {
 	if i := strings.Index(spec, "@"); i > 0 {
@@ -468,6 +479,10 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 					fmt.Fprintf(stderr, "%s: %s: UNTRUSTED signature (use --allow-untrusted)\n", cmd, spec)
 					return 1
 				}
+				if err := checkArch(p, o.arch); err != nil {
+					fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+					return 1
+				}
 				local = append(local, p)
 				localData[p.Name] = data
 				continue
@@ -525,6 +540,12 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 			p = exactTagged(indexes, name, pin, tag)
 		} else {
 			p = bestTagged(indexes, name, tag)
+		}
+		if p != nil {
+			if err := checkArch(p, o.arch); err != nil {
+				fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+				return 1
+			}
 		}
 		if p == nil {
 			if pin != "" {

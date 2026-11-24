@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"mvdan.cc/sh/v3/expand"
@@ -200,6 +201,10 @@ func chrootExec(root string, stderr io.Writer) interp.ExecHandlerFunc {
 			}
 			return nil
 		}
+		if runtime.GOOS == "windows" {
+			fmt.Fprintf(stderr, "apkscript: running other programs is not supported on Windows (there is no chroot); use --no-scripts to install the files only\n")
+			return interp.NewExitStatus(127)
+		}
 		if os.Geteuid() != 0 {
 			fmt.Fprintf(stderr, "apkscript: %s is not a shell builtin, running it needs root (chroot into %s); use --no-scripts to install the files only\n", args[0], root)
 			return interp.NewExitStatus(127)
@@ -220,6 +225,10 @@ func chrootExec(root string, stderr io.Writer) interp.ExecHandlerFunc {
 				}
 			}
 			if found == "" {
+				if runtime.GOOS == "windows" {
+					fmt.Fprintf(stderr, "apkscript: running other programs is not supported on Windows; use --no-scripts to install the files only\n")
+					return interp.NewExitStatus(127)
+				}
 				fmt.Fprintf(stderr, "apkscript: %s is not in the target root's PATH, so the script cannot run it; use --no-scripts to install the files only\n", bin)
 				return interp.NewExitStatus(127)
 			}

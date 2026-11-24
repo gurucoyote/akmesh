@@ -6516,3 +6516,46 @@ Regeln
 Batterie: 4 neue Pruefungen (Upgrade mit Datei, Version in der Datenbank,
 Hinweis bei update, Exitcode 0), 467 Linux, 0 Fehler.
 
+
+
+## apk unter Windows: was laeuft, was nicht (24.11.2026)
+
+Gemessen mit ./akmesh.exe (Windows-PE) gegen Baeume unter \\wsl.localhost\...:
+
+Laeuft
+    ./akmesh.exe apk -p <root> add <pfad>\paket.apk      -> Installing, rc 0
+    Repo per -X oder @tag-Zeile in <root>\etc\apk\repositories
+    -> (1/1) Installing chprog (1.0.0-r0), OK: 42 B in 1 package, rc 0
+    ./akmesh.exe apk -p <root> list
+    -> chprog-1.0.0-r0 x86_64 installed
+    Signaturen, Index, Datenbank (installed, world), Kanaledefinitionen: alles
+    wie auf Linux, weil nur Dateien gelesen und geschrieben werden.
+
+Laeuft nicht, und sagt es ehrlich
+    Symlink im Paket:
+      apk: usr/bin/symlink: symlinks are not available here (symlink ... Dem Client
+      fehlt ein erforderliches Recht.); a package for this target must ship plain
+      files                                    -> rc 1
+    Paketskript, das ein fremdes Programm aufruft:
+      apkscript: running other programs is not supported on Windows (there is no
+      chroot); use --no-scripts to install the files only      -> rc 1
+      mit --no-scripts: OK: 27 B in 1 package, rc 0, Dateien liegen im Baum.
+
+Weitere Unterschiede
+- Ausfuehrungsrechte (x-Bit) ueberleben das Windows-Dateisystem nicht; eine Datei
+  mit 0755 landet als 0644. Wer Programme startet, muss das wissen.
+- Die Architektur des Ziels ist "x86_64" (oder AKMESH_APK_ARCH); vorher prueften
+  wir sie gar nicht. Neu: ein Paket mit arch = aarch64 wird abgelehnt
+  ("package is for aarch64, this target is x86_64"), "noarch" bleibt erlaubt.
+- Ein Windows-Repo geht also: Pakete mit apkbuild bauen, arch z. B.
+  windows_amd64, Verzeichnis <repo>/windows_amd64/APKINDEX.tar.gz, auf dem Ziel
+  AKMESH_APK_ARCH=windows_amd64, und in den Paketen nur regulaere Dateien und
+  Skripte ohne fremde Programme.
+
+Nebenbefund und behoben: apkbuild hat Symlinks stillschweigend verworfen (sie
+landeten nicht im tar, weil sie nicht in der Dateiliste standen). Jetzt sind sie
+im Paket, und unser apk legt sie auf Linux als Symlink an.
+
+Batterie: 3 neue Pruefungen (Symlink im Paket, Symlink im Zielbaum, fremde
+Architektur abgelehnt), 470 Linux / 372 Windows, 0 Fehler.
+

@@ -278,6 +278,9 @@ func dataStream(dir string, when time.Time) ([]byte, int64, error) {
 				return err
 			}
 			links[name] = target
+			// A symlink carries no body, but it must appear in files or the tar
+			// loop never sees it (found on 24.11.2026: links were dropped silently).
+			files[name] = nil
 			modes[name] = mode | 0o120000
 			kinds[name] = tar.TypeSymlink
 		default:

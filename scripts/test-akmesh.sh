@@ -1183,6 +1183,27 @@ if [ -z "$WINDOWS" ]; then
   check apk-update-local-note '1' "$(run apk -p "$U" update "$NEW" 2>&1 | tr -d '\r' | grep -c 'local package')"
   check apk-update-local-exit '0' "$(run apk -p "$U" update "$NEW" >/dev/null 2>&1; echo $?)"
 
+  # Symlinks im Paket (Nachtrag 24.11.2026): apkbuild hatte sie stillschweigend
+  # verworfen; jetzt landen sie im tar und im Zielbaum.
+  SY="$WORK/sym"; mkdir -p "$SY/src/usr/bin" "$SY/repo/x86_64" "$SY/root/etc/apk/keys"
+  printf '#!/bin/sh\necho sym\n' > "$SY/src/usr/bin/symziel"; chmod 755 "$SY/src/usr/bin/symziel"
+  ln -sf /usr/bin/symziel "$SY/src/usr/bin/symlink" 2>/dev/null
+  printf 'pkgname = symprog\npkgver = 1.0.0\npkgrel = 0\npkgdesc = mit symlink\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\n' > "$SY/manifest"
+  cp "$BD/bkey.rsa.pub" "$SY/root/etc/apk/keys/"
+  run apkbuild build --manifest "$SY/manifest" --source "$SY/src" -o "$SY/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+  check apkbuild-symlink-in-package '1' "$(tar tzf "$SY"/repo/x86_64/*.apk 2>/dev/null | grep -c 'usr/bin/symlink')"
+  run apk -p "$SY/root" add "$SY"/repo/x86_64/symprog-1.0.0-r0.apk >/dev/null 2>&1
+  check apk-symlink-installed '1' "$([ -L "$SY/root/usr/bin/symlink" ] && echo 1 || echo 0)"
+
+  # Fremde Architektur wird abgelehnt (Nachtrag 24.11.2026): vorher installierte
+  # ein aarch64-Paket klaglos in einen x86_64-Baum.
+  AR="$WORK/arch"; mkdir -p "$AR/src/usr/bin" "$AR/repo/x86_64" "$AR/root/etc/apk/keys"
+  printf 'x\n' > "$AR/src/usr/bin/arprog"
+  printf 'pkgname = arprog\npkgver = 1.0.0\npkgrel = 0\npkgdesc = archtest\narch = aarch64\nlicense = MIT\nsource_date_epoch = 1764000000\n' > "$AR/manifest"
+  cp "$BD/bkey.rsa.pub" "$AR/root/etc/apk/keys/"
+  run apkbuild build --manifest "$AR/manifest" --source "$AR/src" -o "$AR/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+  check apk-foreign-arch '1' "$(run apk -p "$AR/root" add "$AR"/repo/x86_64/arprog-1.0.0-r0.apk 2>&1 | tr -d '\r' | grep -c 'package is for aarch64, this target is x86_64')"
+
   # Waechter (acmesh-2p44): ein Rueckfall, dann Stillstand. Nachgemachtes apk,
   # damit die Batterie ohne Netz und ohne Container laeuft.
   G="$WORK/guard"; mkdir -p "$G/root/lib/apk/db" "$G/root/etc/apk" "$G/bin"

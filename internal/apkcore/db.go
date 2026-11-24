@@ -463,7 +463,9 @@ func extractTar(raw []byte, opts ExtractOptions, pkg *Package) error {
 				return err
 			}
 			if err := os.Symlink(hdr.Linkname, target); err != nil {
-				return err
+				// Windows has no symlinks without a privilege (developer mode or
+				// admin); say so instead of leaving the file out silently.
+				return fmt.Errorf("%s: symlinks are not available here (%v); a package for this target must ship plain files", hdr.Name, err)
 			}
 		case tar.TypeLink:
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {

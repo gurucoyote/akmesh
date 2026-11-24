@@ -5892,3 +5892,21 @@ Groessen: 19554531 Bytes Linux dynamisch, 18191360 Bytes Windows, gestrippt.
 Image am Ende der Runde noch einmal gebaut, nachdem nl, tac, seq, cat und awk im
 Binaerstand sind: akmesh:latest 19.8 MB, trivy 0.68.2 meldet 0 Schwachstellen
 in bin/akmesh, 0 Secrets.
+
+## sh: History und Zeilenbearbeitung (24.11.2026)
+
+Am PTY gemessen, nicht am Code erraten.
+
+History: keine. "fc -l" und "history" geben "unsupported builtin" mit Exit 2,
+$HISTFILE ist leer, und nichts schreibt eine Datei.
+
+Zeilenbearbeitung: keine, nur was das Terminal selbst tut. Pfeil hoch kommt
+als "^[[A" beim Befehl an ("\\x1b[A": executable file not found in $PATH, Exit
+127), Tab fuegt ein woertliches Tabulatorzeichen ein ("ech\\t" statt
+Vervollstaendigung), Ctrl-R gibt es nicht. Die Ruecktaste wirkt, weil die
+Tastatur im kanonischen Modus selbst loescht - das ist das Terminal, nicht die
+Schale. Ctrl-D beendet die Schleife wie erwartet.
+
+Ctrl-C: stoert. "sleep 5" und "while true; do :; done" laufen nach ^C weiter,
+es kommt kein Prompt zurueck; eingegebene Zeilen werden nur noch vom Terminal
+gespiegelt. Zweimal reproduziert, jeweils 2,5 s gewartet.

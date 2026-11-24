@@ -282,3 +282,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 24.11.2026: Rollout-Entscheidungen als docs/design/rollout.md festgehalten, apk-Pins und Kanaele gemessen, Indexfehler bei mehreren Versionen behoben (acmesh-o6ja offen fuer zwei Entscheidungen).
 24.11.2026: Rollout-Entscheidungen eingearbeitet (beides c), acmesh-o6ja geschlossen, Bau-Tickets acmesh-slyv (Bericht), acmesh-ke0r (Kanaele), acmesh-2p44 (Waechter) angelegt.
 24.11.2026: apkreport gebaut (JSON-Zeile je Paket, Kanal und vorher aus der Datei), Batterie 439 Linux / 372 Windows, acmesh-slyv geschlossen.
+24.11.2026: gemessen - unser apk installiert echte Alpine-Pakete (musl+busybox aus 3.24, Signatur gegen Alpines Schluessel, busybox laeuft im chroot); apkbuild-Skripte laufen unter apk 3.0.9; apk-3-only spart nichts, beide lehnen Endbloecke gleich ab.

@@ -6257,3 +6257,42 @@ nicht genannt wird (--apk-exit); "letzte gute Version" ist deshalb nur so gut
 wie die Aufrufe, die den Bericht schreiben. Der Waechter (acmesh-2p44) muss also
 nach jedem Lauf schreiben, nicht nur bei Aenderungen.
 
+
+
+## Fremde Pakete und apk-Versionen: drei Fragen gemessen (24.11.2026)
+
+Frage: koennen wir Alpine-Pakete installieren?
+    ./akmesh apk -p /tmp/z3 -X https://dl-cdn.alpinelinux.org/alpine/v3.24/main
+        --no-scripts add busybox
+    -> (1/2) Installing musl (1.2.6-r3)
+       (2/2) Installing busybox (1.37.0-r31)
+       OK: 1.4 MiB in 2 packages
+    Dateien liegen im Zielbaum, Signatur gegen die echten Alpine-Schluessel in
+    <root>/etc/apk/keys geprueft (kein --allow-untrusted):
+    chroot /tmp/z3 /bin/busybox echo ... -> "busybox laeuft im Zielbaum"
+    Gelesene Indizes: 3.22/main "5647 packages (signed by
+    alpine-devel@lists.alpinelinux.org-6165ee59.rsa.pub)", 3.24/main 5963.
+    Pakete MIT Skripten werden ohne --no-scripts bewusst abgelehnt, mit klarer
+    Meldung (".post-install .post-upgrade .trigger ... this akmesh runs none").
+
+Frage: bauen wir Pakete, die apk 3 sinnvoll verarbeitet?
+    Paket mit .post-install, gebaut mit apkbuild, installiert von apk 3.0.9:
+        Executing scprog-1.0.0-r0.post-install
+        OK: 1449 KiB in 3 packages
+        /x/daten/postinstall.txt enthaelt "post-install lief"
+    Vorher, ohne Shell im Zielbaum, scheiterte dasselbe Skript mit
+    "execve: No such file or directory" und Exit 127 - das ist die Umgebung,
+    nicht das Format: apk fuehrt Skripte im Zielbaum aus.
+    Abhaengigkeiten, Kanaldaten, Groessen, Rueckweg: siehe apkbuild-Abschnitt.
+
+Frage: spart apk-3-only Arbeit?
+    Nein. Die Regeln sind dieselben: ein Control-tar mit zwei Endbloecken wird
+    von apk 3.0.9 ("unexpected end of file") genauso abgelehnt wie von 2.14.9
+    ("-74 BAD archive"). Unsere SHA1-Signatur (.SIGN.RSA.) und unser Index
+    werden von beiden angenommen, ebenso die PAX-Checksumme je Datei (2.x
+    ignoriert sie).
+    Was apk-3-only sparen wuerde, sind wenige Zeilen im Verifier (SHA1-Zweig
+    entfaellt) - der Preis waere, kein Ziel auf 3.20-3.22 mehr zu koennen, die
+    heute noch apk-tools 2.14 haben. Empfehlung: beide weiter tragen, weil beide
+    mit denselben Bytes zufrieden sind.
+

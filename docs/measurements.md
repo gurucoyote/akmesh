@@ -5910,3 +5910,37 @@ Schale. Ctrl-D beendet die Schleife wie erwartet.
 Ctrl-C: stoert. "sleep 5" und "while true; do :; done" laufen nach ^C weiter,
 es kommt kein Prompt zurueck; eingegebene Zeilen werden nur noch vom Terminal
 gespiegelt. Zweimal reproduziert, jeweils 2,5 s gewartet.
+
+## Eigenes apk-Repository, durchgebaut (24.11.2026)
+
+In einem Alpine-3.22-Container (apk-tools 2.14) einmal komplett durchgespielt,
+weil die Frage war, wie schwer ein eigenes Repo mit akmesh-Paketen ist.
+
+Gebaut wurde ein Beispielpaket akmesh-hello: APKBUILD mit rund 25 Zeilen
+(build() legt ein Skript ab, package() kopiert es nach /usr/bin).
+
+Schritte und Zeiten
+    abuild-keygen -n -q         RSA-Schluessel, landet in ~/.abuild
+    abuild -r -q                baut akmesh-hello-0.0.1-r0.apk, 1481 Bytes
+    apk index -o APKINDEX.tar.gz *.apk
+    abuild-sign APKINDEX.tar.gz  ergibt 983 Bytes, tar enthaelt
+                                 .SIGN.RSA.builder-*.rsa.pub und APKINDEX
+
+Installation gegengeprueft: Schluessel nach /etc/apk/keys, dann
+"apk add --repository /tmp/repotest/repo --allow-untrusted akmesh-hello" ->
+"(1/1) Installing akmesh-hello (0.0.1-r0)", danach druckt akmesh-hello
+"hallo aus dem eigenen paket", "apk info" nennt Beschreibung und Version.
+
+Vier Fallstricke, alle gemessen
+    1. Repo-Layout: <repo>/<arch>/APKINDEX.tar.gz. Lag der Index direkt im
+       Basisverzeichnis, sagte apk "opening <verzeichnis>: No such file or
+       directory" - es sucht <verzeichnis>/<arch>/.
+    2. Mit --root rechnet apk Repository-Pfade im Zielbaum; ein Repo auf dem
+       Host ist dann nicht erreichbar, es muss im Ziel liegen.
+    3. abuild braucht den Benutzer in der Gruppe abuild, sonst
+       "User builder is not a member of group abuild".
+    4. abuilds Standard-makedepends build-base muss installiert sein, sonst
+       "builddeps failed" ohne weiteren Hinweis.
+Handgebauter Weg ohne abuild (control.tar.gz + data.tar.gz aneinanderhaengen)
+wurde ebenfalls versucht: der Index entstand, apk nahm das Paket aber nicht an.
+Der Weg ueber abuild ist der belastbare.

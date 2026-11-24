@@ -415,16 +415,18 @@ if [ -n "${AKMESH_GEN_DIR:-}" ]; then
 fi
 # makebb generates the multicall main.go, then we build it ourselves: that is
 # how the command list becomes ours. The flags below are the ones makebb would
-# have used (-a, inlining off, stripped, trimpath) with the same toolchain, so
-# the size stays comparable; the size budget further down would notice a
-# difference of a megabyte.
+# have used (-a, stripped, trimpath) with the same toolchain, so the size stays
+# comparable; the size budget further down would notice a difference of a
+# megabyte. Inlining stays on: turning it off was measured on 24.11.2026 to save
+# 2.4 MiB but cost 22 percent on a recursive grep and 37 percent on an awk
+# aggregation - too dear for tools that run in loops (acmesh-5gkk).
 rm -rf "$GEN_DIR"
 "$MAKEBB" -g -gen-dir "$GEN_DIR" -o "$ROOT/$OUT" $PKGS
 prepare_gen "$GEN_DIR"
 (
 	cd "$GEN_DIR" &&
 		GOWORK=off GOTOOLCHAIN=auto \
-			go build -o "$ROOT/$OUT" -mod=vendor -a -gcflags=all=-l \
+			go build -o "$ROOT/$OUT" -mod=vendor -a \
 			-ldflags "-s -w -buildid= -X akmesh/internal/appname.Name=$NAME" -trimpath .
 )
 # The rename above must reach the binary. A vendor/module mismatch would build

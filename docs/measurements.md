@@ -7007,3 +7007,32 @@ Trefferform: akte.zip{akte/d1.docx}. Ohne --pre bleibt der docx-Text unsichtbar
 Batterie: 499 Linux / 386 Windows, 0 Fehler; die neuen Pruefungen sind
 rg-z-tar-label, rg-z-tar-list, rg-z-tar-no-hit, rg-z-bad-zmax. help-audit
 --check ./akmesh endet mit 0, -z und --zmax stehen im rg-Hilfetext.
+
+## Build: Inlining an (acmesh-5gkk, 24.11.2026)
+
+Aenderung: `-gcflags=all=-l` aus der go-build-Zeile in scripts/build-bb.sh
+entfernt, sonst dieselben Schalter (`-mod=vendor -a -ldflags "-s -w -buildid=
+-X akmesh/internal/appname.Name=..." -trimpath`), dieselbe Toolchain (go 1.27.4
+linux/amd64), beide Ziele hintereinander gebaut. Die "vorher"-Binaries lagen
+noch aus dem vorigen Bau vor und wurden vorher beiseite gelegt.
+
+Groessen aus der report-Zeile:
+
+    linux   vorher 19.1 MiB (19988707 Bytes) -> nachher 21.5 MiB (22511843 Bytes), +2523136 Bytes
+    windows vorher 17.7 MiB (18592768 Bytes) -> nachher 19.6 MiB (20598784 Bytes), +2006016 Bytes
+
+Beide unter der Warnlinie 25 MB (harte Grenze 30 MB). Der Bau meldet den
+Zuwachs selbst ("size: akmesh grew by ...").
+
+Laufzeit, bester von drei Laeufen, beide Binaries nacheinander im selben
+Verzeichnis:
+
+    grep -rn 'func main' corpus            (29.2 MB in 1491 Dateien)
+        mit Inlining aus (vorher) 0.17 s  ->  mit Inlining an 0.12 s   (-29 %)
+    awk '{s[$1]+=$2} END{print s["k1"]}' awk.txt   (300 000 Zeilen)
+        mit Inlining aus (vorher) 0.06 s  ->  mit Inlining an 0.04 s   (-33 %)
+
+Vorlage: corpus mit python3 erzeugt (1491 .go-Dateien, je ~200 Textzeilen plus
+"func main()"), awk.txt mit 300 000 Zeilen "kN M" (random.seed(7)).
+
+Batterie: 499 Linux / 386 Windows, 0 Fehler. help-audit --check ./akmesh rc 0.

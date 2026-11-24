@@ -31,6 +31,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+
+	"akmesh/internal/winmode"
 	"strconv"
 	"strings"
 	"time"
@@ -267,6 +269,11 @@ func dataStream(dir string, when time.Time) ([]byte, int64, error) {
 		}
 		name := filepath.ToSlash(rel)
 		mode := int64(info.Mode().Perm())
+		// On Windows the platform has no bits; our chmod records them in the ACL
+		// and that record is what a package built there must carry.
+		if m, ok := winmode.Get(path); ok {
+			mode = int64(m.Perm())
+		}
 		switch {
 		case info.IsDir():
 			files[name+"/"] = nil

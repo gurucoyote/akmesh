@@ -6559,3 +6559,38 @@ im Paket, und unser apk legt sie auf Linux als Symlink an.
 Batterie: 3 neue Pruefungen (Symlink im Paket, Symlink im Zielbaum, fremde
 Architektur abgelehnt), 470 Linux / 372 Windows, 0 Fehler.
 
+
+
+## Rechte unter Windows: apk nutzt winmode (24.11.2026)
+
+Zu Martins Punkten a/b/c:
+
+c) chmod/winmode - jetzt auch im apk.
+    Auf einem echten NTFS-Pfad (C:\temp-akm):
+      ./akmesh.exe apk -p C:\temp-akm add chprog-1.0.0-r0.apk
+      ./akmesh.exe ls -l C:\temp-akm\usr\bin
+      -> -rwxr-xr-x 1 BUSYS\Spernau - 21 ... chprog
+      ./akmesh.exe chmod 700 ...\chprog
+      -> -rwx------ ...
+    Vorher schrieb apk nur die Datei; 0755 aus dem tar ging verloren. Jetzt ruft
+    Extract nach jedem Eintrag winmode.SetQuiet, und apkbuild liest beim Bauen
+    winmode.Get, damit ein unter Windows gebautes Paket die Rechte mittraegt.
+
+    Grenze, gemessen: auf einem WSL-Pfad (\\wsl.localhost\golang\tmp\...) bleiben
+    die Rechte -rw-rw-rw-, auch nach chmod. Dort laesst sich der ACL-Eintrag nicht
+    schreiben; das ist keine apk-Frage, sondern die Eigenheit des Netzpfsads.
+
+b) Symlinks in Windows-Paketen: kein Handlungsbedarf, weil wir von Windows fuer
+    Windows bauen; ein solches Paket enthaelt keine Symlinks. Enthaelt es doch
+    welche, sagt apk es und bricht mit rc 1 ab, statt Dateien stillschweigend
+    wegzulassen.
+
+a) Unsere Shell unter Windows: Skripte laufen darin (mvdan/sh, wie akmesh sh).
+    Was fehlt, sind die Programme, die ein Skript aufruft (mkdir, cp, ln, rm sind
+    in keiner Shell Builtins). Auf Linux springt chroot ein, auf Windows gibt es
+    keins. Ticket acmesh-3vco: solche Namen gegen unsere eigene Befehlstabelle
+    aufloesen und im Prozess ausfuehren - PrefixPaths hat die Pfade dann schon in
+    den Zielbaum geschrieben.
+
+Batterie unveraendert 470 Linux / 372 Windows, 0 Fehler.
+

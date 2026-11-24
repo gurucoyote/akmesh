@@ -10,11 +10,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
+
+	"akmesh/internal/winmode"
 )
 
 // Layout inside a target root. The paths are functions, not constants, because
@@ -513,6 +516,11 @@ func extractTar(raw []byte, opts ExtractOptions, pkg *Package) error {
 		// behaves the same way with --usermode.
 		if hdr.Typeflag != tar.TypeSymlink {
 			_ = os.Lchown(target, hdr.Uid, hdr.Gid)
+		}
+		// Windows has no permission bits; record them in the ACL the way our
+		// chmod does, so an installed 0755 file counts as executable there too.
+		if hdr.Typeflag != tar.TypeSymlink {
+			_ = winmode.SetQuiet(target, fs.FileMode(hdr.Mode).Perm())
 		}
 	}
 }

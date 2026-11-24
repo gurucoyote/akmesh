@@ -50,7 +50,8 @@ func (o diffOptions) normalise(s string) string {
 // command (go-gitdiff) is strict: a header that announces one line too many is
 // rejected.
 func runDiff(args []string, stdin *os.File, stdout, stderr *os.File) int {
-	opts := diffOptions{unified: true}
+	// The default is GNU's normal format; -u asks for unified output.
+	opts := diffOptions{}
 	haveLabelA := false
 	var files []string
 	for i := 0; i < len(args); i++ {
@@ -117,11 +118,7 @@ func runDiff(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		}
 	}
 	if len(files) != 2 {
-		fmt.Fprintln(stderr, "usage: diff [-u] [-r] [-N] [-q] [-i] [-w] [-b] [-L LABEL -L LABEL] FILE1 FILE2")
-		return 2
-	}
-	if !opts.unified {
-		fmt.Fprintln(stderr, "diff: only unified output is supported")
+		fmt.Fprintln(stderr, "usage: diff [-u] [-r] [-N] [-q] [-i] [-w] [-b] [-L LABEL -L LABEL] FILE1 FILE2\n       without -u the normal format is written, as GNU does")
 		return 2
 	}
 	if opts.labelA == "" {
@@ -180,6 +177,13 @@ func diffFiles(nameA, nameB, labelA, labelB string, opts diffOptions, stdout, st
 		fmt.Fprintf(stdout, "Files %s and %s differ\n", nameA, nameB)
 		return 1
 	}
+	if !opts.unified {
+		// GNU's normal format is the default: "2c2" and the two lines, no
+		// header. An agent types "diff a b" and expects this (measured
+		// 24.11.2026 against GNU diff 3.10 in the reference image).
+		writeNormal(stdout, hs)
+		return 1
+	}
 	if opts.recursive {
 		// GNU names the file pair before each diff so a reader can tell which
 		// files the hunks belong to.
@@ -200,6 +204,59 @@ func diffFiles(nameA, nameB, labelA, labelB string, opts diffOptions, stdout, st
 		}
 	}
 	return 1
+}
+
+// numRange writes "N" for a single line and "N,M" for a span, the way GNU
+// normal format names a range.
+func numRange(from, to int) string {
+	if from == to {
+		return strconv.Itoa(from)
+	}
+	return strconv.Itoa(from) + "," + strconv.Itoa(to)
+}
+
+// writeNormal prints the change groups of the hunks in GNU's normal format:
+// "2c2" with "<" and ">", "2d1" for a deletion, "1a2" for an addition.
+func writeNormal(stdout io.Writer, hs []hunk) {
+	for _, h := range hs {
+		aLine, bLine := h.aStart, h.bStart
+		for i := 0; i < len(h.lines); {
+			if h.lines[i][0] == ' ' {
+				aLine++
+				bLine++
+				i++
+				continue
+			}
+			var dels, adds []string
+			for ; i < len(h.lines) && h.lines[i][0] != ' '; i++ {
+				switch h.lines[i][0] {
+				case '-':
+					dels = append(dels, h.lines[i][1:])
+				case '+':
+					adds = append(adds, h.lines[i][1:])
+				}
+			}
+			switch {
+			case len(dels) > 0 && len(adds) > 0:
+				fmt.Fprintf(stdout, "%sc%s\n", numRange(aLine, aLine+len(dels)-1), numRange(bLine, bLine+len(adds)-1))
+			case len(dels) > 0:
+				fmt.Fprintf(stdout, "%sd%d\n", numRange(aLine, aLine+len(dels)-1), bLine-1)
+			default:
+				fmt.Fprintf(stdout, "%da%s\n", aLine-1, numRange(bLine, bLine+len(adds)-1))
+			}
+			for _, d := range dels {
+				fmt.Fprintf(stdout, "< %s\n", d)
+			}
+			if len(dels) > 0 && len(adds) > 0 {
+				fmt.Fprintln(stdout, "---")
+			}
+			for _, a := range adds {
+				fmt.Fprintf(stdout, "> %s\n", a)
+			}
+			aLine += len(dels)
+			bLine += len(adds)
+		}
+	}
 }
 
 // diffDirectories walks both trees in one sorted pass, so the output order does

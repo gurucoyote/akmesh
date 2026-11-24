@@ -6767,3 +6767,47 @@ keine Nachbildung von ash.
 
 Batterie: neue Pruefung sh-ps4.
 
+
+
+## diff: normales Format als Standard, tac -r trennt am Treffer (24.11.2026, acmesh-31ab)
+
+Zwei rote Tests, beide ein echter Befehlsfehler.
+
+diff
+Bisher schrieb unser diff immer das vereinheitlichte Format (mit Zeitstempel im
+Kopf), auch ohne -u. GNU diff 3.10 im Referenz-Image schreibt ohne -u das
+normale Format:
+
+    $ diff a.txt b.txt
+    2c2
+    < zwei
+    ---
+    > ZWEI
+
+Jetzt ist das der Standard; -u liefert weiter das vereinheitlichte Format mit
+Kopf und Zeitstempel. Gemessen gegen GNU 3.10, gleiche Eingaben, gleiche Ausgabe:
+
+    Aenderung   "2c2", "< zwei", "---", "> ZWEI"
+    Loeschung   "2d1", "< b"
+    Einfuegung  "2a3", "> X"
+    leere Datei "0a1,5" bzw. "1,5d0"
+
+Der Test prueft jetzt beides: ohne -u die normale Form, mit -u den Kopf
+"--- a.txt<TAB>Zeitstempel". diff -r -N gegen eine nur einseitig vorhandene
+Datei ergibt "1d0" und "< x" wie GNU.
+
+tac
+Bei -r -s REGEX schrieb unser tac den Musterttext selbst als Trenner
+("b[0-9]+a[0-9]+"), GNU nimmt den Treffer. Jetzt trennt es an den Treffern und
+haengt den Treffer an den Satz:
+
+    printf 'a1b22c' | tac -r -s '[0-9]+'   ->  cb22a1
+
+Grenze, gemessen: GNU tac 9.7 teilt bei direkt benachbarten Treffern anders
+("a1b2c3" mit -s '[0-9]' gleich, "a1b22c" mit '[0-9]+' liefert GNU "c2b2a1").
+GNU sucht rueckwaerts und laesst dabei Treffer ueberlappen; wir teilen vorwaerts
+in einem Durchgang. Die Treffer selbst und die Reihenfolge stimmen, die
+Aufteilung bei benachbarten Treffern weicht ab - dokumentiert, nicht stillgelegt.
+
+Batterie: diff-normal-default, diff-normal-lines, tac-regex-sep; 483 Linux.
+

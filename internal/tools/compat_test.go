@@ -202,9 +202,12 @@ func TestDiffBriefAndRecursive(t *testing.T) {
 	if code != 1 || strings.Contains(out, "@@") {
 		t.Fatalf("diff -r -q = %d, %q; want no hunks", code, out)
 	}
+	// -N treats the missing file as empty, so x.txt is a deletion towards an
+	// empty file: "1d0" with "< x" in GNU's normal format (reference image,
+	// 24.11.2026).
 	out, code = captureIn(t, runDiff, []string{"-r", "-N", dirA, dirB}, "")
-	if code != 1 || !strings.Contains(out, "-x") {
-		t.Fatalf("diff -r -N = %d, %q; want the removed line", code, out)
+	if code != 1 || !strings.Contains(out, "< x") {
+		t.Fatalf("diff -r -N = %d, %q; want the line as \"< x\"", code, out)
 	}
 }
 

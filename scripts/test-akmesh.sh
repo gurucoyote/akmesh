@@ -398,6 +398,10 @@ check sed-z-last "$(run sed -z 's/txt$/END/' z.nul | tr '\0' '|')" "a.END|b c.EN
 check diff-u-header-stamp "$(run diff -u dgu1.txt dgu2.txt | tr -d '\r' | sed -n 1p | grep -c 'dgu1.txt	[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\.[0-9]\{9\} [+-][0-9]\{4\}')" "1"
 # sed -z (acmesh-d9e): NUL-getrennte Saetze rein und raus.
 printf 'a.txt\000b c.txt\000d.txt\000' > z.nul
+printf 'eins\nzwei\ndrei\n' > dnm1.txt && printf 'eins\nZWEI\ndrei\n' > dnm2.txt
+check diff-normal-default "$(run diff dnm1.txt dnm2.txt | tr -d '\r' | sed -n 1p)" "2c2"
+check diff-normal-lines "$(run diff dnm1.txt dnm2.txt | tr -d '\r' | tr '\n' '|')" "2c2|< zwei|---|> ZWEI|"
+check tac-regex-sep "$(printf 'a1b22c' > tre.txt; run tac -r -s '[0-9]+' tre.txt | tr -d '\r')" "cb22a1"
 check diff-u-plus-line "$(run diff -u dgu1.txt dgu2.txt | tr -d '\r' | sed -n 2p | grep -c '^+++ dgu2.txt	')" "1"
 check df-h-size-header "$(run df -h | tr -d '\r' | head -1 | tr -s ' ' | cut -d' ' -f2)" "Size"
 check df-blocks-header "$(run df | tr -d '\r' | head -1 | tr -s ' ' | cut -d' ' -f2)" "1K-blocks"

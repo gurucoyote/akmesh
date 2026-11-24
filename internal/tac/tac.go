@@ -62,6 +62,27 @@ func unescape(s string) string {
 	return b.String()
 }
 
+// splitRecords cuts the text into parts and the separators between them.
+// seps[i] is the text that ended parts[i], so a record can carry its own
+// separator - with -r the match itself, not the pattern (found 24.11.2026:
+// the pattern text was written out as the separator).
+func splitRecords(o options, text string) (parts, seps []string) {
+	if o.regex {
+		last := 0
+		for _, m := range o.sepRe.FindAllStringIndex(text, -1) {
+			parts = append(parts, text[last:m[0]])
+			seps = append(seps, text[m[0]:m[1]])
+			last = m[1]
+		}
+		return append(parts, text[last:]), seps
+	}
+	parts = strings.Split(text, o.sep)
+	for i := 0; i < len(parts)-1; i++ {
+		seps = append(seps, o.sep)
+	}
+	return parts, seps
+}
+
 // reverse turns the whole input around, record by record.
 func reverse(o options, data []byte) string {
 	text := string(data)
@@ -70,46 +91,31 @@ func reverse(o options, data []byte) string {
 		// records in reverse leaves it as it was (measured against GNU tac).
 		return text
 	}
-	var parts []string
-	if o.regex {
-		parts = o.sepRe.Split(text, -1)
-	} else {
-		parts = strings.Split(text, o.sep)
-	}
+	parts, seps := splitRecords(o, text)
 	var records []string
 	if o.before {
 		// The separator starts the record: the first part has none, every
-		// later one carries the separator its predecessor ended with.
+		// later one carries its own separator at the front.
 		for i, p := range parts {
 			if i == 0 {
 				records = append(records, p)
 				continue
 			}
-			if o.regex {
-				records = append(records, o.sepRe.String()+p)
-			} else {
-				records = append(records, o.sep+p)
-			}
+			records = append(records, seps[i-1]+p)
 		}
 	} else {
-		// The separator ends the record, except after the last part when the
-		// input did not end with one.
+		// The separator ends the record; the empty part after a final
+		// separator is no record of its own.
 		for i, p := range parts {
-			last := i == len(parts)-1
-			if last && p == "" {
+			if i == len(parts)-1 && p == "" && len(seps) == len(parts)-1 {
 				continue
 			}
-			records = append(records, p)
-		}
-		var out []string
-		for i := 0; i < len(records); i++ {
-			r := records[i]
-			if i < len(records)-1 || strings.HasSuffix(text, o.sep) {
-				r += o.sep
+			r := p
+			if i < len(seps) {
+				r += seps[i]
 			}
-			out = append(out, r)
+			records = append(records, r)
 		}
-		records = out
 	}
 	var b strings.Builder
 	for i := len(records) - 1; i >= 0; i-- {

@@ -3,6 +3,7 @@ package tools
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -278,23 +279,47 @@ func TestDiffAndPatchRoundTrip(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "b.txt"), []byte("eins\nZWEI\ndrei\nvier\nfuenf\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// Without -u GNU writes the normal format: the change group and no header
+	// (measured 24.11.2026 against GNU diff in the reference image).
 	out, errOut, code := runFileCommand(t, dir, "", "diff", "a.txt", "b.txt")
-	if code != 0 && code != 1 {
-		t.Fatalf("diff = %d, %q", code, errOut)
+	if code != 1 {
+		t.Fatalf("diff = %d, %q; want 1 (files differ)", code, errOut)
 	}
-	if !containsLineSuffix(out, "--- a.txt") {
-		t.Fatalf("diff header is %q, want it to end with --- a.txt", firstLineOf(out))
+	if firstLineOf(out) != "2c2" {
+		t.Fatalf("diff first line is %q, want 2c2", firstLineOf(out))
 	}
-	if !containsLineSuffix(out, "+++ b.txt") {
-		t.Fatalf("diff header has no +++ line: %q", firstLineOf(out))
+	for _, want := range []string{"< zwei", "---", "> ZWEI"} {
+		if !containsLineSuffix(out, want) {
+			t.Fatalf("diff output %q has no %q line", out, want)
+		}
 	}
 
-	if _, errOut, code := runFileCommand(t, dir, out, "patch"); code != 0 {
+	// -u gives the unified header GNU writes: the name, a tab, the timestamp.
+	uni, errOut, code := runFileCommand(t, dir, "", "diff", "-u", "a.txt", "b.txt")
+	if code != 1 {
+		t.Fatalf("diff -u = %d, %q", code, errOut)
+	}
+	if !strings.HasPrefix(firstLineOf(uni), "--- a.txt\t") {
+		t.Fatalf("diff -u header is %q, want it to start with --- a.txt and a tab", firstLineOf(uni))
+	}
+	if !strings.HasPrefix(secondLineOf(uni), "+++ b.txt\t") {
+		t.Fatalf("diff -u header has no +++ b.txt line: %q", secondLineOf(uni))
+	}
+
+	if _, errOut, code := runFileCommand(t, dir, uni, "patch"); code != 0 {
 		t.Fatalf("patch = %d, %q", code, errOut)
 	}
 	if got := readFileString(t, filepath.Join(dir, "a.txt")); got != "eins\nZWEI\ndrei\nvier\nfuenf\n" {
 		t.Fatalf("patched file = %q", got)
 	}
+}
+
+func secondLineOf(s string) string {
+	lines := strings.SplitN(s, "\n", 3)
+	if len(lines) < 2 {
+		return ""
+	}
+	return lines[1]
 }
 
 func firstLineOf(s string) string {

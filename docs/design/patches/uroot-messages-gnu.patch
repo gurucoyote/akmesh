@@ -1,0 +1,274 @@
+diff --git a/cmds/core/cat/cat.go b/cmds/core/cat/cat.go
+index 81d4331..013c44f 100644
+--- a/cmds/core/cat/cat.go
++++ b/cmds/core/cat/cat.go
+@@ -18,10 +18,10 @@
+ package main
+ 
+ import (
++	"errors"
+ 	"flag"
+ 	"fmt"
+ 	"io"
+-	"log"
+ 	"os"
+ )
+ 
+@@ -35,33 +35,66 @@ func cat(reader io.Reader, writer io.Writer) error {
+ 	return nil
+ }
+ 
++// stderr is where the per-file messages go; main points it at os.Stderr.
++var stderr io.Writer = os.Stderr
++
++// errReported says "a message has been printed already", so main only sets the
++// status and does not print a second line.
++var errReported = errors.New("reported")
++
++// describe renders a failure the way GNU cat does: the file name, then the
++// system's sentence with its capital ("cat: xac: No such file or directory").
++func describe(name string, err error) string {
++	var pe *os.PathError
++	if errors.As(err, &pe) {
++		err = pe.Err
++	}
++	msg := err.Error()
++	if msg != "" && msg[0] >= 'a' && msg[0] <= 'z' {
++		msg = string(msg[0]-32) + msg[1:]
++	}
++	return name + ": " + msg
++}
++
++// run copies every file to the writer, like GNU cat: a file that fails is
++// reported and the next one is still copied; the status is 1 when any failed
++// (acmesh-2rl).
+ func run(stdin io.Reader, stdout io.Writer, args ...string) error {
+ 	if len(args) == 0 {
+ 		return cat(stdin, stdout)
+ 	}
++	failed := false
+ 	for _, file := range args {
+ 		if file == "-" {
+-			err := cat(stdin, stdout)
+-			if err != nil {
++			if err := cat(stdin, stdout); err != nil {
+ 				return err
+ 			}
+ 			continue
+ 		}
+ 		f, err := os.Open(file)
+ 		if err != nil {
+-			return err
++			fmt.Fprintf(stderr, "cat: %s\n", describe(file, err))
++			failed = true
++			continue
+ 		}
+ 		if err := cat(f, stdout); err != nil {
+-			return fmt.Errorf("failed to concatenate file %s to given writer", f.Name())
++			fmt.Fprintf(stderr, "cat: %s\n", describe(file, err))
++			failed = true
+ 		}
+ 		f.Close()
+ 	}
++	if failed {
++		return errReported
++	}
+ 	return nil
+ }
+ 
+ func main() {
+ 	flag.Parse()
+ 	if err := run(os.Stdin, os.Stdout, flag.Args()...); err != nil {
+-		log.Fatalf("cat failed with: %v", err)
++		if !errors.Is(err, errReported) {
++			fmt.Fprintf(os.Stderr, "cat: %v\n", err)
++		}
++		os.Exit(1)
+ 	}
+ }
+diff --git a/cmds/core/cpio/cpio.go b/cmds/core/cpio/cpio.go
+index 7fbab78..4de9368 100644
+--- a/cmds/core/cpio/cpio.go
++++ b/cmds/core/cpio/cpio.go
+@@ -172,6 +172,7 @@ func run(args []string, stdin *os.File, stdout io.Writer, d bool, format string)
+ func main() {
+ 	flag.Parse()
+ 	if err := run(flag.Args(), os.Stdin, os.Stdout, *d, *format); err != nil {
+-		log.Fatalf("cpio: %v", err)
++		fmt.Fprintf(os.Stderr, "cpio: %v\n", err)
++		os.Exit(1)
+ 	}
+ }
+diff --git a/cmds/core/gzip/gzip.go b/cmds/core/gzip/gzip.go
+index b29d590..7b99584 100644
+--- a/cmds/core/gzip/gzip.go
++++ b/cmds/core/gzip/gzip.go
+@@ -9,7 +9,6 @@ import (
+ 	"errors"
+ 	"flag"
+ 	"fmt"
+-	"log"
+ 	"os"
+ 
+ 	"github.com/u-root/u-root/pkg/gzip"
+@@ -83,6 +82,7 @@ func run(args []string) error {
+ 
+ func main() {
+ 	if err := run(os.Args[1:]); err != nil {
+-		log.Fatalf("gzip: %v", err)
++		fmt.Fprintf(os.Stderr, "gzip: %v\n", err)
++		os.Exit(1)
+ 	}
+ }
+diff --git a/cmds/core/ln/ln.go b/cmds/core/ln/ln.go
+index 2ef1f85..f9f657f 100644
+--- a/cmds/core/ln/ln.go
++++ b/cmds/core/ln/ln.go
+@@ -230,6 +230,7 @@ func main() {
+ 	}
+ 
+ 	if err := conf.ln(args); err != nil {
+-		log.Fatalf("ln: link creation failed: %v", err)
++		fmt.Fprintf(os.Stderr, "ln: %v\n", err)
++		os.Exit(1)
+ 	}
+ }
+diff --git a/cmds/core/mktemp/mktemp.go b/cmds/core/mktemp/mktemp.go
+index 981cb10..5a54a06 100644
+--- a/cmds/core/mktemp/mktemp.go
++++ b/cmds/core/mktemp/mktemp.go
+@@ -138,6 +138,7 @@ func command(stdout io.Writer, args []string) *cmd {
+ 
+ func main() {
+ 	if err := command(os.Stdout, os.Args).run(); err != nil {
+-		log.Fatal(err)
++		fmt.Fprintf(os.Stderr, "mktemp: %v\n", err)
++		os.Exit(1)
+ 	}
+ }
+diff --git a/cmds/core/more/more.go b/cmds/core/more/more.go
+index 62979da..666ea38 100644
+--- a/cmds/core/more/more.go
++++ b/cmds/core/more/more.go
+@@ -25,7 +25,6 @@ import (
+ 	"flag"
+ 	"fmt"
+ 	"io"
+-	"log"
+ 	"os"
+ )
+ 
+@@ -70,6 +69,7 @@ func run(stdin io.Reader, stdout io.Writer, lines int, args []string) error {
+ func main() {
+ 	flag.Parse()
+ 	if err := run(os.Stdin, os.Stdout, *lines, flag.Args()); err != nil {
+-		log.Fatal(err)
++		fmt.Fprintf(os.Stderr, "more: %v\n", err)
++		os.Exit(1)
+ 	}
+ }
+diff --git a/cmds/core/mv/mv.go b/cmds/core/mv/mv.go
+index 4415df5..9ebca66 100644
+--- a/cmds/core/mv/mv.go
++++ b/cmds/core/mv/mv.go
+@@ -19,7 +19,6 @@ import (
+ 	"flag"
+ 	"fmt"
+ 	"io"
+-	"log"
+ 	"os"
+ 	"path/filepath"
+ 	"syscall"
+@@ -126,6 +125,7 @@ func move(stderr io.Writer, args []string) error {
+ 
+ func main() {
+ 	if err := move(os.Stderr, os.Args[1:]); err != nil {
+-		log.Fatal(err)
++		fmt.Fprintf(os.Stderr, "mv: %v\n", err)
++		os.Exit(1)
+ 	}
+ }
+diff --git a/cmds/core/realpath/realpath.go b/cmds/core/realpath/realpath.go
+index c7c47cd..7ba8a04 100644
+--- a/cmds/core/realpath/realpath.go
++++ b/cmds/core/realpath/realpath.go
+@@ -9,7 +9,6 @@ import (
+ 	"flag"
+ 	"fmt"
+ 	"io"
+-	"log"
+ 	"os"
+ 	"path/filepath"
+ )
+@@ -43,6 +42,7 @@ func main() {
+ 		if *q {
+ 			os.Exit(1)
+ 		}
+-		log.Fatal(err)
++		fmt.Fprintf(os.Stderr, "realpath: %v\n", err)
++		os.Exit(1)
+ 	}
+ }
+diff --git a/cmds/core/rm/rm.go b/cmds/core/rm/rm.go
+index a01811c..f2296c8 100644
+--- a/cmds/core/rm/rm.go
++++ b/cmds/core/rm/rm.go
+@@ -23,7 +23,6 @@ import (
+ 	"flag"
+ 	"fmt"
+ 	"io"
+-	"log"
+ 	"os"
+ 
+ 	"github.com/u-root/u-root/pkg/uroot/unixflag"
+@@ -99,6 +98,7 @@ func rm(stdin io.Reader, stdout, stderr io.Writer, args ...string) error {
+ 
+ func main() {
+ 	if err := rm(os.Stdin, os.Stdout, os.Stderr, os.Args[1:]...); err != nil {
+-		log.Fatal(err)
++		fmt.Fprintf(os.Stderr, "rm: %v\n", err)
++		os.Exit(1)
+ 	}
+ }
+diff --git a/cmds/core/tee/tee.go b/cmds/core/tee/tee.go
+index cce9336..bccac50 100644
+--- a/cmds/core/tee/tee.go
++++ b/cmds/core/tee/tee.go
+@@ -20,7 +20,6 @@ import (
+ 	"flag"
+ 	"fmt"
+ 	"io"
+-	"log"
+ 	"os"
+ 	"os/signal"
+ 
+@@ -97,6 +96,7 @@ func command(args []string) *cmd {
+ 
+ func main() {
+ 	if err := command(os.Args).run(); err != nil {
+-		log.Fatalf("tee: %v", err)
++		fmt.Fprintf(os.Stderr, "tee: %v\n", err)
++		os.Exit(1)
+ 	}
+ }
+diff --git a/cmds/exp/readelf/readelf.go b/cmds/exp/readelf/readelf.go
+index ebbf1fd..841f0f8 100644
+--- a/cmds/exp/readelf/readelf.go
++++ b/cmds/exp/readelf/readelf.go
+@@ -19,14 +19,14 @@ import (
+ 	"flag"
+ 	"fmt"
+ 	"io"
+-	"log"
+ 	"os"
+ )
+ 
+ func main() {
+ 	flag.Parse()
+ 	if err := run(os.Stdin, os.Stdout, flag.Args()...); err != nil {
+-		log.Fatal(err)
++		fmt.Fprintf(os.Stderr, "readelf: %v\n", err)
++		os.Exit(1)
+ 	}
+ }
+ 

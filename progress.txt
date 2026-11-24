@@ -270,3 +270,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 24.11.2026: head/tail-Grenzfaelle - head 20/20 nach -z und rohem Satzausgang, tail 16/17 (nur -z), Zeitstempel in u-root-Meldungen als eigenes Ticket; Batterie 370 Linux / 340 Windows.
 24.11.2026: tr und od gegen GNU - tr 22/22 nach oktalen Escapes und Klassen, od 20/20 nach Kurzformen (-c/-b/-x), Breiten, -w und mehreren Typen; acmesh-3qy, bly und 4b7 geschlossen; Batterie 382 Linux / 352 Windows.
 24.11.2026: Image neu gebaut (19.8 MB, trivy 0); tail -z und GNU-Meldungen im Patch, Batterie 386 Linux / 355 Windows; acmesh-bmr geschlossen.
+24.11.2026: Zeitstempel in elf u-root-Meldungen abgesetzt, cat auf GNU-Meldung und Weiterlaufen umgestellt; Batterie 389 Linux / 357 Windows; acmesh-jlk4 und 2rl geschlossen.

@@ -268,9 +268,13 @@ printf 'a.txt\000b c.txt\000d.txt\000' > z.nul
 check tail-zero "$(printf 'a\000b\000c\000d\000' > t4.nul; run tail -z -n2 t4.nul | od -c | head -1 | tr -d '\r')" "0000000   c  \\0   d  \\0"
 check tail-zero-in-head "$(printf 'a\000b\000c\000' > t4.nul; run tail -z -n1 t4.nul | od -c | head -1 | tr -d '\r')" "0000000   c  \\0"
 check tail-bad-option "$(run tail -Y 2>&1 | tr -d '\r')" "tail: invalid option -- 'Y'"
+# cat: GNU's sentence, and the file after a bad one is still copied (acmesh-2rl).
+check cat-continues "$(printf 'hi\n' > cm.txt; run cat nofile cm.txt 2>/dev/null | tr -d '\r')" "hi"
+check cat-status-after-error "$(printf 'hi\n' > cm.txt; run cat nofile cm.txt >/dev/null 2>&1; echo $?)" "1"
 # The text after the colon is the system's own, German on this Windows, so the
 # sentence is only compared where GNU's English is the reference.
 if [ -z "$WINDOWS" ]; then
+check cat-missing "$(run cat nofile 2>&1 | tr -d '\r')" "cat: nofile: No such file or directory"
 check tail-missing-file "$(run tail nofile.txt 2>&1 | tr -d '\r')" "tail: cannot open 'nofile.txt' for reading: No such file or directory"
 fi
 # tr und od gegen GNU (acmesh-3qy, acmesh-bly, acmesh-4b7).

@@ -5778,3 +5778,37 @@ Der Patch liegt in docs/design/patches/uroot-tail-gnu.patch (jetzt 535 Zeilen)
 und wurde gegen den Pin 869f00f in einer frischen Kopie als anwendbar geprueft.
 Vier neue Batteriepruefungen (tail -z zwei Faelle, unbekannter Schalter,
 fehlende Datei).
+
+## Zeitstempel und cat-Meldung (24.11.2026, acmesh-jlk4 / acmesh-2rl)
+
+Elf Befehle meldeten Fehler ueber log.Fatal, also mit "2026/11/24 00:10:56 " vor
+der Zeile. Mit dem neuen Patch docs/design/patches/uroot-messages-gnu.patch
+(cat, more, tee, mv, rm, ln, mktemp, realpath, cpio, gzip, readelf) schreibt
+jeder Befehl jetzt selbst:
+
+    fmt.Fprintf(os.Stderr, "NAME: %v\n", err); os.Exit(1)
+
+Vorher: "2026/11/24 00:10:56 rm: remove nofile: no such file or directory"
+Nachher: "rm: remove nofile: no such file or directory", Exit 1. Kein Datum mehr
+in keiner der elf Meldungen; der Patch ist gegen den Pin 869f00f in einer
+frischen Kopie als anwendbar geprueft und in scripts/patch-uroot.sh eingetragen.
+
+cat dazu genauer (acmesh-2rl): GNU nennt Datei und Systemsatz, ohne Go-Wortlaut,
+und faengt nach einer fehlenden Datei nicht an. Gemessen im gepinnten Image:
+
+    GNU     cat nofile            -> "cat: nofile: No such file or directory", 1
+    GNU     cat nofile hi.txt     -> die Meldung, dann "hi", Exit 1
+    vorher  cat nofile            -> "cat: can't open 'nofile': No such file..."
+                                    (u-root) bzw. "cat: open nofile: no such ..."
+                                    nach dem Zeitstempel-Patch
+Jetzt gibt unser cat "cat: nofile: No such file or directory" aus, kopiert die
+uebrigen Dateien weiter und endet mit 1. Der Systemsatz wird wie bei glibc mit
+grossem Anfangsbuchstaben geschrieben.
+
+Drei neue Batteriepruefungen (cat fehlt, cat kopiert weiter, Status 1); die
+Meldungstexte werden nur unter Linux verglichen, weil Windows den deutschen
+Systemsatz liefert.
+
+Batterie 389 Linux / 357 Windows, beide 0 Fehler, help-audit gruen.
+Groessen: 19546339 Bytes Linux dynamisch, 18183168 Bytes Windows, beide
+gestrippt (+8192 gegen den tail-Stand).

@@ -6211,3 +6211,18 @@ Grenzen
 - Der Index traegt keine Architekturpruefung; verschiedene Archs im selben Index
   gaebe es zurecht als eine Liste.
 
+
+## Rollout-Fragen am echten apk gemessen (24.11.2026, acmesh-o6ja)
+
+Zwei Versionen desselben Pakets (rotest 1.0.0-r0, 2.0.0-r0) in einem Index,
+gebaut mit apkbuild, apk-tools 2.14.9 in alpine:3.22:
+    apk add rotest                 -> Installing rotest (2.0.0-r0)     world: rotest
+    apk add rotest=1.0.0-r0        -> Downgrading 2.0.0-r0 -> 1.0.0-r0 world: rotest=1.0.0-r0
+    apk upgrade                    -> OK: 0 MiB in 1 packages, bleibt 1.0.0-r0
+    apk add rotest (ohne Version)  -> laesst den Pin stehen
+    apk add rotest=2.0.0-r0        -> world: rotest=2.0.0-r0
+Kanal per Etikett: @stable /pfad in /etc/apk/repositories, `apk add rotest@stable`
+    -> (1/1) Installing rotest@stable (2.0.0-r0), world: rotest@stable
+Nebenbefund und Fehler: der Index war nach dem Namen geschluesselt und
+verschluckte beim zweiten Bau die aeltere Version ("1 packages" statt 2).
+Behoben: Schluessel ist Name-Version; Regressionstest TestIndexKeepsOldVersions.

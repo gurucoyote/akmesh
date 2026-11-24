@@ -174,9 +174,11 @@ func runIndex(args []string, stdout, stderr io.Writer) int {
 	if old, err := ReadIndexFile(out); err == nil {
 		entries = old
 	}
+	// Key by name and version: a repository keeps old versions so a host can
+	// pin or roll back (measured 24.11.2026, acmesh-o6ja).
 	byName := map[string]IndexEntry{}
 	for _, e := range entries {
-		byName[e.Name] = e
+		byName[e.Name+"-"+e.Version] = e
 	}
 	when := time.Now()
 	for _, path := range f.rest {
@@ -185,11 +187,11 @@ func runIndex(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "apkbuild: %v\n", err)
 			return 1
 		}
-		byName[e.Name] = e
+		byName[e.Name+"-"+e.Version] = e
 	}
 	names := make([]string, 0, len(byName))
-	for name := range byName {
-		names = append(names, name)
+	for key := range byName {
+		names = append(names, key)
 	}
 	sort.Strings(names)
 	all := make([]IndexEntry, 0, len(names))

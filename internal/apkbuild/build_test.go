@@ -182,3 +182,39 @@ func TestManifestRejectsUnknownKey(t *testing.T) {
 		t.Fatalf("depends: %v", m.Depends)
 	}
 }
+
+// TestIndexKeepsOldVersions guards the bug found while measuring rollout: the
+// index was keyed by name only, so building 2.0.0 dropped 1.0.0 and a host
+// could not pin or roll back (24.11.2026, acmesh-o6ja).
+func TestIndexKeepsOldVersions(t *testing.T) {
+	indexPath := filepath.Join(t.TempDir(), "APKINDEX.tar.gz")
+	entries, _ := ReadIndexFile(indexPath)
+	for _, v := range []string{"1.0.0", "2.0.0"} {
+		man := &Manifest{Name: "rotest", Version: v, Release: "0", Arch: "x86_64"}
+		res, err := Build(man, tree(t, map[string]string{"usr/bin/rotest": v}), t.TempDir(), "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		e := EntryFromManifest(man, res, time.Now())
+		replaced := false
+		for i := range entries {
+			if entries[i].Name == e.Name && entries[i].Version == e.Version {
+				entries[i] = e
+				replaced = true
+			}
+		}
+		if !replaced {
+			entries = append(entries, e)
+		}
+	}
+	if _, err := WriteIndex(entries, indexPath, ""); err != nil {
+		t.Fatal(err)
+	}
+	got, err := ReadIndexFile(indexPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("index keeps %d versions, want 2: %+v", len(got), got)
+	}
+}

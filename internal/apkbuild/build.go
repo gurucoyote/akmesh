@@ -608,11 +608,11 @@ func ReadIndexFile(path string) ([]IndexEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	entries := map[string]IndexEntry{}
+	entries := map[string]IndexEntry{} // key: name-version, so versions coexist
 	var cur *IndexEntry
 	flush := func() {
 		if cur != nil && cur.Name != "" {
-			entries[cur.Name] = *cur
+			entries[cur.Name+"-"+cur.Version] = *cur
 		}
 		cur = nil
 	}

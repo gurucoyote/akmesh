@@ -5966,3 +5966,29 @@ Was ohne root weiterhin nicht geht: Eigentuemer auf andere Benutzer setzen
 (chown), Geraetedateien anlegen (mknod), Datei-Capabilities setzen, und
 Skripte per chroot im Ziel ausfuehren. Fuer eigene Pakete aus statischen
 Go-Programmen braucht es nichts davon.
+
+## Taugt unsere sh fuer apk-Paketskripte? (24.11.2026)
+
+Acht echte Skripte aus dem Alpine-3.22-Repo gezogen (control-Strom der Pakete
+per Python aus den gzip-Stroemen geschnitten): busybox .post-install,
+.trigger, .post-upgrade; ca-certificates .trigger, .post-deinstall; dbus
+.pre-install, .post-install, .trigger.
+
+Ausfuehrung mit akmesh sh, PATH auf Stubs umgebogen, die jeden Aufruf
+protokollieren - damit die Skripte mit absoluten Zielen (/etc/ssl/certs) nichts
+anfassen. Ergebnis: alle acht laufen durch, Exit 0, kein Syntaxfehler. Die
+Konstrukte, die vorkommen (for/case in, $(command -v ...), Parameter-Expansion,
+readlink -f, Zeilenfortsetzung, && und ||) versteht unsere sh.
+
+Was die Skripte aufrufen und was akmesh davon hat
+    vorhanden: mkdir, find, sed, awk, sort, uniq, xargs, readlink, cat, rm
+    fehlt:     adduser, addgroup, rmdir
+    nicht unser Geschaeft: busybox, dbus-uuidgen, dbus-send, depmod
+               (kommen mit dem jeweiligen Paket)
+
+Nebenbefund: akmesh sh kennt kein -n (Syntaxpruefung); dash und ash koennen das.
+Der Lauf braucht also ein echtes Skript, nicht -n.
+
+Grenze dieser Messung: gemessen ist die Vertraeglichkeit der Shell und die
+Liste der Befehlsnamen, nicht die Wirkung der Skripte im Zielbaum. Ein echter
+Lauf braucht chroot und damit root.

@@ -277,6 +277,8 @@ if [ -z "$WINDOWS" ]; then
 check cat-missing "$(run cat nofile 2>&1 | tr -d '\r')" "cat: nofile: No such file or directory"
 check tail-missing-file "$(run tail nofile.txt 2>&1 | tr -d '\r')" "tail: cannot open 'nofile.txt' for reading: No such file or directory"
 fi
+# awk nennt eine unbekannte Funktion wie mawk (acmesh-3xs).
+check awk-undefined-function "$(run awk 'BEGIN{x = xor(1,2)}' 2>&1 | tr -d '\r')" "awk: function xor never defined"
 # nl, tac und seq gegen GNU (acmesh-efg). The two fixtures are made here because
 # the head block further down creates them again.
 printf 'a\nb\nc\nd\ne\n' > h1.txt

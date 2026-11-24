@@ -260,6 +260,25 @@ func (n *nulWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// awkParseError turns goawk's parse message into the one mawk prints, where
+// they differ: mawk says "function xor never defined", goawk "parse error at
+// 1:11: undefined function \"xor\"" (measured 24.11.2026, acmesh-3xs). The
+// rest of goawk's messages stay as they are.
+func awkParseError(err error) string {
+	msg := err.Error()
+	const marker = "undefined function "
+	if i := strings.Index(msg, marker); i >= 0 {
+		name := strings.Trim(msg[i+len(marker):], `\"`)
+		if j := strings.IndexAny(name, " \t"); j >= 0 {
+			name = name[:j]
+		}
+		if name != "" {
+			return "function " + name + " never defined"
+		}
+	}
+	return msg
+}
+
 // runAwk implements awk through goawk: -F, -v, -f, program and files.
 func runAwk(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	var progFiles, vars []string
@@ -331,7 +350,7 @@ func runAwk(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	}
 	prog, err := parser.ParseProgram([]byte(source), &parser.ParserConfig{})
 	if err != nil {
-		fmt.Fprintf(stderr, "awk: %v\n", err)
+		fmt.Fprintf(stderr, "awk: %s\n", awkParseError(err))
 		return 2
 	}
 	if fieldSep != "" {

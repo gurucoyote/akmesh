@@ -5861,3 +5861,30 @@ Datei.
 Batterie 403 Linux / 371 Windows, beide 0 Fehler, help-audit gruen.
 Groessen: 19554531 Bytes Linux dynamisch, 18190848 Bytes Windows, beide
 gestrippt (+8192 gegen den cat-Stand; seq bringt eigene Formatierung mit).
+
+## awk: die drei Restpunkte aus der Messung vom 23.11.2026 (acmesh-3xs)
+
+Alle drei kommen aus der Bibliothek goawk 1.31.0, nicht aus unserem Code.
+
+(3) unbekannte Funktion - gebaut. goawk sagte "awk: parse error at 1:11:
+    undefined function \"xor\"", mawk sagt "function xor never defined". Die
+    Meldung wird jetzt uebersetzt: "awk: function xor never defined", Exit 2
+    wie bei mawk. Nur diese eine Meldung, alle anderen bleiben goawks.
+
+(1) RSTART und RLENGTH vor dem ersten match - bleibt, wie es ist. mawk druckt
+    nichts (uninitialisiert), wir und gawk drucken 0. Beide Verhalten sind in
+    awk legal: die Variable ist leer, und in einem Test ist "" so falsch wie 0.
+    mawk hier zu folgen hiesse, goawk zu patchen, ohne dass ein Skript einen
+    Unterschied merkt - nicht gemacht, sondern hier festgehalten.
+
+(2) 1/0 - bleibt, wie es ist. mawk druckt "+inf" und endet mit 0, wir melden
+    "awk: division by zero" mit Exit 2. gawk meldet ebenfalls einen Fehler;
+    mawk ist hier die Ausnahme. Ein Skript, das auf +inf baut, ist seltener als
+    eines, das sich auf einen Fehlerstatus verlaesst, und ein stiller
+    Unendlich-Wert verdeckt einen Rechenfehler. Auch dieser Punkt ist damit
+    entschieden und nicht offen.
+
+Eine neue Batteriepruefung fuer die Funktionsmeldung.
+
+Batterie 404 Linux / 372 Windows, beide 0 Fehler, help-audit gruen.
+Groessen: 19554531 Bytes Linux dynamisch, 18191360 Bytes Windows, gestrippt.

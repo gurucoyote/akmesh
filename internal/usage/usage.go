@@ -265,6 +265,15 @@ var Texts = map[string]Entry{
 			"  Stage one installs files only: a package with install scripts is\n" +
 			"  refused unless --no-scripts is given, and then its scripts do not run.",
 	},
+	"apkbuild": {
+		"build --manifest FILE --source DIR [-o DIR] [--key KEY] | index -o APKINDEX.tar.gz PKG... [--key KEY] | keygen -o KEY [--bits 2048]",
+		"  Builds .apk packages and signed repository indexes in Go, without abuild\n" +
+			"  and fakeroot. The manifest is one \"key = value\" per line: pkgname, pkgver,\n" +
+			"  pkgrel, pkgdesc, url, license, maintainer, arch, depends, provides,\n" +
+			"  replaces, source_date_epoch, script = .post-install:path. The package is\n" +
+			"  written as signature, control and data member; the index repeats the\n" +
+			"  control hash as C:Q1... and is signed the same way (SHA1, .SIGN.RSA.NAME).",
+	},
 	"adduser": {
 		"[-h DIR] [-g GECOS] [-s SHELL] [-G GRP] [-S] [-D] [-H] [-u UID] USER [GROUP]",
 		"  Creates an account in /etc/passwd and /etc/shadow, busybox style like\n" +

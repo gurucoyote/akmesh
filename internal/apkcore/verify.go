@@ -16,16 +16,17 @@ import (
 //
 // The whole file is NOT what apk hashes, which is why a naive sha1 of the file
 // looked like a mismatch on a package that was perfectly fine.
-func VerifyPackage(data []byte, p *Package) error {
+func VerifyPackage(data []byte, p *Package, keys ...*Key) error {
 	streams, err := splitStreams(data)
 	if err != nil {
 		return fmt.Errorf("%s: %v", p.FullName(), err)
 	}
-	var control, payload *stream
+	var control, payload, signature *stream
 	var pkginfo string
 	for i := range streams {
 		s := &streams[i]
 		if s.isSignature() {
+			signature = s
 			continue
 		}
 		if body, ok := s.entries[".PKGINFO"]; ok {
@@ -43,6 +44,19 @@ func VerifyPackage(data []byte, p *Package) error {
 		got := "Q1" + base64.StdEncoding.EncodeToString(sum[:])
 		if got != p.Hash {
 			return fmt.Errorf("%s: checksum mismatch: index says %s, control segment is %s", p.FullName(), p.Hash, got)
+		}
+	}
+	if signature != nil && len(keys) > 0 {
+		// Package signature: RSA over sha1 of the raw control member.
+		verified, named, err := verifySignature(signature.entries, control.raw, keys)
+		if err != nil {
+			return fmt.Errorf("%s: %v", p.FullName(), err)
+		}
+		if len(verified) == 0 {
+			if len(named) == 0 {
+				return fmt.Errorf("%s: signature block without a key name", p.FullName())
+			}
+			return fmt.Errorf("%s: UNTRUSTED signature by %s", p.FullName(), strings.Join(named, ", "))
 		}
 	}
 	if payload != nil {

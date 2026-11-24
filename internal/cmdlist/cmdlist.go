@@ -148,6 +148,7 @@ var groups = map[string]string{
 	"deluser":   System,
 	"delgroup":  System,
 	"apk":       System,
+	"apkbuild":  System,
 	"mkpasswd":  System,
 	"killall":   System,
 	"pgrep":     System,

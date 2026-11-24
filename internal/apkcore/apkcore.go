@@ -474,6 +474,34 @@ func inflateMember(b []byte) ([]byte, int, error) {
 	return buf.Bytes(), len(b) - r.Len(), nil
 }
 
+// StreamInfo is one gzip member of a package or index, as apkbuild needs it.
+type StreamInfo struct {
+	Entries map[string][]byte
+	Raw     []byte
+}
+
+// Split exposes the member boundaries: apkbuild hashes and signs exactly these
+// bytes, so it must not guess them a second time.
+func Split(data []byte) ([]StreamInfo, error) {
+	streams, err := splitStreams(data)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]StreamInfo, 0, len(streams))
+	for _, s := range streams {
+		out = append(out, StreamInfo{Entries: s.entries, Raw: s.raw})
+	}
+	return out, nil
+}
+
+// HeaderLen reports the gzip header length of the member at b[0:]. apkbuild
+// writes the same format, so it uses this instead of a second copy.
+func HeaderLen(b []byte) (int, error) { return gzipHeaderLen(b) }
+
+// Inflate decompresses one deflate stream and reports the compressed bytes it
+// used, without the 8 bytes of gzip trailer.
+func Inflate(b []byte) ([]byte, int, error) { return inflateMember(b) }
+
 // readTar returns the regular files of one tar stream plus their order.
 func readTar(body []byte) (map[string][]byte, []string, error) {
 	entries := map[string][]byte{}

@@ -6167,3 +6167,47 @@ Tests: internal/apkcmd mit echten Dateien aus abuild (testdata/real), dazu
 sechs Faelle mit selbstgebautem Repo (Installieren, Abhaengigkeit zuerst,
 del schuetzt Abhaengige, Hashfehler, Versionen). Batterie: 8 neue Pruefungen,
 428 Linux / 372 Windows, beide 0 Fehler.
+
+
+## apkbuild: Pakete und Repos selbst bauen (24.11.2026, acmesh-oolz)
+
+Drei Unterbefehle, alle in Go, ohne abuild und ohne fakeroot:
+    apkbuild keygen -o KEY [--bits 2048]      RSA-Schluessel, dazu KEY.pub
+    apkbuild build --manifest M --source DIR -o OUT [--key KEY]
+    apkbuild index -o APKINDEX.tar.gz PKG... [--key KEY]   (erweitert vorhandene Indizes)
+Das Manifest ist eine Zeile "key = value" pro Feld (pkgname, pkgver, pkgrel, pkgdesc,
+url, license, maintainer, arch, depends, provides, replaces, source_date_epoch,
+script = .post-install:pfad). Ein unbekannter Schluessel ist ein Fehler, damit ein
+Tippfehler nicht still ein Feld verliert.
+
+Drei Regeln, alle gegen echtes apk-tools gemessen
+1. Signiert wird sha1 ueber den FERTIGEN komprimierten Control-Member. Beleg: der
+   entschluesselte RSA-Block eines abuild-Pakets enthaelt genau diesen Wert; ueber
+   Control plus Daten zu signieren ergibt "-129 BAD signature".
+2. Signatur- und Control-tar duerfen KEINE tar-Endbloecke (zwei Nullbloecke) haben.
+   apk liest alle gzip-Member als einen tar-Strom; beim zweiten Nullblock liest es
+   weiter und haelt den ersten Block des naechsten Members fuer einen Header
+   ("-74 BAD archive"). abuild macht dasselbe mit "abuild-tar --cut".
+   Gemessen: 0 Nullbloecke OK, 1 OK, 2 und mehr -74.
+3. apk-tools 3 verlangt eine eingebettete Checksumme je Datei: PAX-Eintrag
+   "APK-TOOLS.checksum.SHA1" = sha1 des Dateiinhalts. Ohne sie: "file format is
+   obsolete (e.g. missing embedded checksum)", gemessen mit 3.0.9. apk 2.x
+   ignoriert den Eintrag.
+
+Belege Ende zu Ende
+    apk verify 2.14.9 (alpine:3.22): 0 - OK
+    apk add 2.14.9 aus UNSEREM Index plus dl-cdn alpine main:
+        (3/3) Installing akmesh-hi (0.1.0-r0)   (busybox als Abhaengigkeit mitgeholt)
+        Datei laeuft, /etc/apk/world enthaelt akmesh-hi
+    apk add 3.0.9 (alpine:3.24): OK: 1449 KiB in 3 packages, keine Warnung
+    (vor der PAX-Checksumme: "1 error; failed to extract usr/bin/akmesh-hi")
+Groessen: unser Paket 1010 Bytes bei 42 Bytes Inhalt, unser Index 893 Bytes;
+zum Vergleich abuild-Paket mit gleichem Inhalt 1193 Bytes, abbuild-Index 983 Bytes.
+
+Grenzen
+- Paketskripte werden mitgeschrieben (.PKGINFO plus Skriptdatei im Control), aber
+  ihre Ausfuehrung durch apk im Ziel ist nicht gemessen.
+- Kein Konflikt-/Replaces-Handeln beim Bauen geprueft; die Felder landen im Index.
+- Der Index traegt keine Architekturpruefung; verschiedene Archs im selben Index
+  gaebe es zurecht als eine Liste.
+

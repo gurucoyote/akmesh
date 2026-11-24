@@ -1094,5 +1094,25 @@ if [ -z "$WINDOWS" ]; then
   check apk-del-gone '0' "$([ -f "$APKDIR/root/usr/bin/akmesh-hello" ] && echo 1 || echo 0)"
 fi
 
+
+# --- apkbuild (acmesh-oolz): Paket und Index selbst bauen, dann mit unserem
+# apk installieren. Kein podman, damit die Batterie ohne Container laeuft.
+if [ -z "$WINDOWS" ]; then
+  BD="$WORK/ab"; mkdir -p "$BD/src/usr/bin" "$BD/repo/x86_64" "$BD/root/etc/apk/keys"
+  printf '#!/bin/sh\necho aus apkbuild\n' > "$BD/src/usr/bin/abhi"; chmod 755 "$BD/src/usr/bin/abhi"
+  printf 'pkgname = abhi\npkgver = 1.2.3\npkgrel = 0\npkgdesc = gebaut in der Batterie\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\n' > "$BD/manifest"
+  run apkbuild keygen -o "$BD/bkey.rsa" >/dev/null 2>&1
+  check apkbuild-keygen '1' "$([ -f "$BD/bkey.rsa" ] && [ -f "$BD/bkey.rsa.pub" ] && echo 1 || echo 0)"
+  check apkbuild-build '1' "$(run apkbuild build --manifest "$BD/manifest" --source "$BD/src" -o "$BD/repo/x86_64" --key "$BD/bkey.rsa" 2>&1 | tr -d '\r' | grep -c 'abhi-1.2.3-r0.apk')"
+  check apkbuild-index '1' "$(run apkbuild index -o "$BD/repo/x86_64/APKINDEX.tar.gz" "$BD"/repo/x86_64/*.apk --key "$BD/bkey.rsa" 2>&1 | tr -d '\r' | grep -c '1 packages')"
+  cp "$BD/bkey.rsa.pub" "$BD/root/etc/apk/keys/"
+  check apkbuild-install '1' "$(run apk -p "$BD/root" -X "$BD/repo" add abhi 2>&1 | tr -d '\r' | grep -c '(1/1) Installing abhi (1.2.3-r0)')"
+  check apkbuild-run 'aus apkbuild' "$("$BD/root/usr/bin/abhi" 2>&1 | tr -d '\r')"
+  mkdir -p "$BD/root2/etc/apk/keys" && cp "$BD/bkey.rsa.pub" "$BD/root2/etc/apk/keys/"
+  printf 'x' | dd of="$BD/repo/x86_64/abhi-1.2.3-r0.apk" bs=1 seek=200 conv=notrunc 2>/dev/null
+  run apk -p "$BD/root2" -X "$BD/repo" add abhi >/dev/null 2>&1
+  check apkbuild-tamper-exit '1' "$([ $? -ne 0 ] && echo 1 || echo 0)"
+fi
+
 printf '%d checks, %d failures\n' "$checks" "$fails"
 [ "$fails" -eq 0 ]

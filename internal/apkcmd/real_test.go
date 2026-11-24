@@ -55,7 +55,7 @@ func TestRealAbuildPackage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := apkcore.VerifyPackage(apkData, idx.Packages[0]); err != nil {
+	if err := apkcore.VerifyPackage(apkData, idx.Packages[0], trusted...); err != nil {
 		t.Fatalf("package check: %v", err)
 	}
 	root := t.TempDir()

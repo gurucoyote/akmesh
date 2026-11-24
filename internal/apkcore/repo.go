@@ -68,7 +68,7 @@ func (c *Client) PackageData(p *Package) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := VerifyPackage(data, p); err != nil {
+	if err := VerifyPackage(data, p, c.Keys...); err != nil {
 		return nil, err
 	}
 	return data, nil

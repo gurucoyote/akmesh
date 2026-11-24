@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -32,7 +33,16 @@ func NewClient(arch string, keys []*Key, cache string) *Client {
 		Arch:  arch,
 		Keys:  keys,
 		Cache: cache,
-		HTTP:  &http.Client{Timeout: 30 * time.Second},
+		// A fixed 30 s total timeout cut big packages off (measured: build-base
+		// stopped at package 16/24 with "context deadline exceeded"). Dial and
+		// header timeouts stay short; the body may take minutes.
+		HTTP: &http.Client{
+			Timeout: 10 * time.Minute,
+			Transport: &http.Transport{
+				DialContext:           (&net.Dialer{Timeout: 30 * time.Second}).DialContext,
+				ResponseHeaderTimeout: 60 * time.Second,
+			},
+		},
 	}
 }
 

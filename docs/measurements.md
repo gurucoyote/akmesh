@@ -6296,3 +6296,47 @@ Frage: spart apk-3-only Arbeit?
     heute noch apk-tools 2.14 haben. Empfehlung: beide weiter tragen, weil beide
     mit denselben Bytes zufrieden sind.
 
+
+
+## Go, build-base und Python aus den echten Alpine-Repos (24.11.2026)
+
+Frage: koennen wir mit unserem apk eine Werkzeugkette installieren, obwohl wir
+Paketskripte nicht ausfuehren? Gemessen gegen dl-cdn.alpinelinux.org
+(alpine:3.24), jeweils mit --no-scripts, Schluessel in <root>/etc/apk/keys:
+
+    go           17 Pakete, 368.3 MiB   -> go version go1.26.11 linux/amd64 (im chroot)
+    build-base   24 Pakete, 268.1 MiB   -> gcc (Alpine 15.2.0) 15.2.0, uebersetzt
+                                           ein C-Programm, das Programm laeuft
+    python3      17 Pakete,  35.1 MiB   -> Python 3.14.10, json, sqlite3 und ssl
+                                           importierbar
+Laufzeit der build-base-Installation: 1m6s fuer 268 MiB.
+
+Grenzen, ehrlich gemessen
+- go braucht GOROOT=/usr/lib/go, weil es /proc/self/exe nicht lesen konnte (in
+  diesem chroot lag kein /proc); in einer echten Installation setzt das die
+  Umgebung bzw. ein Skript.
+- chroot braucht ein schreibbares /tmp, sonst scheitert der Linker
+  ("cannot open output file /tmp/t") - kein Problem unseres apk, aber ein
+  Hinweis fuer jeden Zielbaum.
+- Skripte laufen nicht (--no-scripts): was ein .post-install normalerweise tut
+  (ldconfig, Zertifikatsverknuepfungen, Bytecode) faellt weg. Bei musl faellt
+  das oft nicht auf, bei ca-certificates schon.
+
+Nebenbefund und behoben: der HTTP-Client brach bei 30 s Gesamtzeit ab
+("context deadline exceeded" bei Paket 16/24 von build-base). Jetzt: Zeitgrenze
+10 Minuten fuer den Rumpf, 30 s fuer den Verbindungsaufbau, 60 s bis zum
+Antwortkopf. Danach lief dieselbe Installation in 66 Sekunden durch.
+
+
+
+## Rust aus dem echten Alpine-Repo (24.11.2026)
+
+    ./akmesh apk -p /tmp/r1 -X .../v3.24/main -X .../v3.24/community --no-scripts add rust
+    -> (22/22) Installing rust (1.96.1-r0), OK: 576.2 MiB in 22 packages, 2m34s
+    chroot /tmp/r1 /usr/bin/rustc --version
+    -> rustc 1.96.1 (31fca3adb 2026-06-26) (Alpine Linux Rust 1.96.1-r0)
+    hallo.rs uebersetzt und im chroot ausgefuehrt:
+    -> "rust laeuft in der zielwurzel"
+Cargo ist ein eigenes Paket (usr/bin/cargo fehlte nach "rust"); es wurde nicht
+mitgemessen.
+

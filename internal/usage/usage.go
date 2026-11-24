@@ -265,6 +265,14 @@ var Texts = map[string]Entry{
 			"  Stage one installs files only: a package with install scripts is\n" +
 			"  refused unless --no-scripts is given, and then its scripts do not run.",
 	},
+	"apkreport": {
+		"[-p DIR] [-o FILE] [--host NAME] [--kanal NAME] [--health ok|fail|skip] [--apk-exit N]",
+		"  Writes one JSON line per installed package: time, host, channel, package,\n" +
+			"  version, the version before this run, the apk result and the health result.\n" +
+			"  -o FILE appends and is also the source of \"vorher\": the newest line per\n" +
+			"  package whose health is not fail. Source is <root>/lib/apk/db/installed,\n" +
+			"  the channel comes from the @tag in /etc/apk/world. No event log, no cloud.",
+	},
 	"apkbuild": {
 		"build --manifest FILE --source DIR [-o DIR] [--key KEY] | index -o APKINDEX.tar.gz PKG... [--key KEY] | keygen -o KEY [--bits 2048]",
 		"  Builds .apk packages and signed repository indexes in Go, without abuild\n" +

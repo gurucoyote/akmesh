@@ -73,6 +73,7 @@ var Commands = map[string]Func{
 	"rmdir":     runRmdir,
 	"apk":       runApk,
 	"apkbuild":  runApkbuild,
+	"apkreport": runApkreport,
 	"patch":     runPatch,
 	"policy":    runPolicy,
 	"blkid":     runBlkid,

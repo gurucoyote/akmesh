@@ -6226,3 +6226,34 @@ Kanal per Etikett: @stable /pfad in /etc/apk/repositories, `apk add rotest@stabl
 Nebenbefund und Fehler: der Index war nach dem Namen geschluesselt und
 verschluckte beim zweiten Bau die aeltere Version ("1 packages" statt 2).
 Behoben: Schluessel ist Name-Version; Regressionstest TestIndexKeepsOldVersions.
+
+
+## apkreport: Bericht je Rechner (24.11.2026, acmesh-slyv)
+
+Ein Befehl, eine JSON-Zeile je installiertem Paket, in eine Datei, die der
+Aufrufer nennt. Kein Eventlog, keine Registry, keine Cloud.
+
+    apkreport [-p DIR] [-o FILE] [--host NAME] [--kanal NAME]
+              [--health ok|fail|skip] [--apk-exit N] [-q]
+
+Quellen: <root>/lib/apk/db/installed fuer Paket und Version, /etc/apk/world fuer
+den Kanal (Eintrag "pkg@stable") und fuer Pins, die alte Berichtsdatei fuer
+"vorher" (die neueste Zeile je Paket, deren health nicht fail ist).
+
+Gemessen an einer Wurzel, in die unser apk akmesh-hello installiert hat:
+    {"zeit":"2026-11-24T11:33:12Z","host":"demo","paket":"akmesh-hello",
+     "version":"0.0.1-r0","ergebnis":"ok","health":"skip","apk_exit":0}
+Feldbedeutung: ergebnis ist "n/a" ohne --apk-exit, sonst ok/fail nach Exit-Code;
+health ist skip, wenn kein Check lief. Ein Pin (pkg=1.0.0-r0) ist kein Kanal und
+laesst das Feld leer.
+
+Tests: drei Faelle mit gefaelschter Wurzel (Zeile je Paket, Kanal aus world,
+"vorher" aus der Datei samt neuem Stand 3.0.0-r0 gegen 2.0.0-r0, falscher
+Health-Wert wird abgelehnt). Batterie: 5 neue Pruefungen, 439 Linux / 372
+Windows, beide 0 Fehler.
+
+Grenzen: der Bericht weiss nichts ueber das Ergebnis eines apk-Laufs, das ihm
+nicht genannt wird (--apk-exit); "letzte gute Version" ist deshalb nur so gut
+wie die Aufrufe, die den Bericht schreiben. Der Waechter (acmesh-2p44) muss also
+nach jedem Lauf schreiben, nicht nur bei Aenderungen.
+

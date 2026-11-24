@@ -149,6 +149,7 @@ var groups = map[string]string{
 	"delgroup":  System,
 	"apk":       System,
 	"apkbuild":  System,
+	"apkreport": System,
 	"mkpasswd":  System,
 	"killall":   System,
 	"pgrep":     System,

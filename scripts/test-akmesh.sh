@@ -1114,5 +1114,18 @@ if [ -z "$WINDOWS" ]; then
   check apkbuild-tamper-exit '1' "$([ $? -ne 0 ] && echo 1 || echo 0)"
 fi
 
+
+# --- apkreport (acmesh-slyv): Bericht je Rechner, eine JSON-Zeile pro Paket.
+if [ -z "$WINDOWS" ]; then
+  RP="$WORK/rep"; mkdir -p "$RP/root/lib/apk/db" "$RP/root/etc/apk"
+  printf 'P:rotest\nV:2.0.0-r0\nA:x86_64\nS:966\nI:28\n\nP:anderes\nV:1.0.0-r0\nA:x86_64\nS:100\nI:10\n\n' > "$RP/root/lib/apk/db/installed"
+  printf 'rotest@stable\n' > "$RP/root/etc/apk/world"
+  check apkreport-lines '2' "$(run apkreport -p "$RP/root" -q 2>/dev/null | wc -l | tr -d ' \r')"
+  check apkreport-json '2' "$(run apkreport -p "$RP/root" -q 2>/dev/null | grep -c '^{.*"paket":"[a-z]*".*}$')"
+  check apkreport-kanal '1' "$(run apkreport -p "$RP/root" -q 2>/dev/null | grep '"paket":"rotest"' | grep -c '"kanal":"stable"')"
+  check apkreport-writes-file '1' "$(run apkreport -p "$RP/root" -o "$RP/b.jsonl" -q 2>/dev/null; [ -s "$RP/b.jsonl" ] && echo 1 || echo 0)"
+  check apkreport-vorher '2.0.0-r0' "$(printf 'P:rotest\nV:3.0.0-r0\nA:x86_64\nS:966\nI:28\n\n' > "$RP/root/lib/apk/db/installed"; run apkreport -p "$RP/root" -o "$RP/b.jsonl" --health ok -q 2>/dev/null; tail -1 "$RP/b.jsonl" | sed -n 's/.*"vorher":"\([^"]*\)".*/\1/p')"
+fi
+
 printf '%d checks, %d failures\n' "$checks" "$fails"
 [ "$fails" -eq 0 ]

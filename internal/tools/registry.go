@@ -74,6 +74,7 @@ var Commands = map[string]Func{
 	"apk":       runApk,
 	"apkbuild":  runApkbuild,
 	"apkreport": runApkreport,
+	"apkguard":  runApkguard,
 	"patch":     runPatch,
 	"policy":    runPolicy,
 	"blkid":     runBlkid,

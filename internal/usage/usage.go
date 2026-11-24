@@ -273,6 +273,14 @@ var Texts = map[string]Entry{
 			"  package whose health is not fail. Source is <root>/lib/apk/db/installed,\n" +
 			"  the channel comes from the @tag in /etc/apk/world. No event log, no cloud.",
 	},
+	"apkguard": {
+		"-o FILE [--health CMD]... [--apk PATH] [-p DIR] [--state FILE] [--kanal NAME] [--no-upgrade] [-n]",
+		"  Upgrades, runs the health checks and rolls back exactly once to the last\n" +
+			"  known good version from the report (-o FILE, written by apkreport).\n" +
+			"  A second failure is reported and nothing more happens; --state FILE\n" +
+			"  (default <report>.state) remembers that the rollback was used.\n" +
+			"  One-shot, not a daemon: no event log, no service, exits with the result.",
+	},
 	"apkbuild": {
 		"build --manifest FILE --source DIR [-o DIR] [--key KEY] | index -o APKINDEX.tar.gz PKG... [--key KEY] | keygen -o KEY [--bits 2048]",
 		"  Builds .apk packages and signed repository indexes in Go, without abuild\n" +

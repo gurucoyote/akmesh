@@ -286,6 +286,27 @@ func best(indexes []*apkcore.Index, name string) *apkcore.Package {
 	return found
 }
 
+// depPin returns the version of an "name=version" constraint, or "" when the
+// constraint is absent or not an equality. Other operators are ticket acmesh-gk2i.
+func depPin(spec string) string {
+	if i := strings.Index(spec, "="); i > 0 {
+		return strings.TrimPrefix(spec[i+1:], "=")
+	}
+	return ""
+}
+
+// exact finds the named package at exactly that version.
+func exact(indexes []*apkcore.Index, name, version string) *apkcore.Package {
+	for _, idx := range indexes {
+		for _, p := range idx.Packages {
+			if p.Name == name && p.Version == version {
+				return p
+			}
+		}
+	}
+	return nil
+}
+
 func update(cmd string, c *apkcore.Client, o options, stdout, stderr io.Writer) int {
 	repos := requireRepos(cmd, o, stderr, c)
 	indexes, code := loadIndexes(cmd, c, options{root: o.root, allowUntr: o.allowUntr, verbose: o.verbose, noCache: true}, repos, stderr)
@@ -325,21 +346,47 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		return 1
 	}
 	have := map[string]bool{}
+	installedVers := map[string]string{}
 	for _, p := range installed {
 		have[p.Name] = true
+		installedVers[p.Name] = p.Version
 	}
 
 	// Resolve: requested names plus their depends, dependencies first.
 	var order []*apkcore.Package
 	seen := map[string]bool{}
-	var resolve func(name string, top bool) int
-	resolve = func(name string, top bool) int {
-		if have[name] || seen[name] {
+	// resolve installs one name. A pin ("pkg=1.0.0-r0", used by rollback) picks
+	// exactly that version; without a pin the newest wins, as in apk.
+	var resolve func(name, pin string, top bool) int
+	resolve = func(name, pin string, top bool) int {
+		if seen[name] {
 			return 0
 		}
-		p := best(indexes, name)
+		// An installed package is left alone unless a pin names another version
+		// or the repository has a newer one (that is what upgrade relies on).
+		if have[name] {
+			switch {
+			case pin == "":
+				if newer := best(indexes, name); newer == nil ||
+					apkcore.CompareVersions(newer.Version, installedVers[name]) <= 0 {
+					return 0
+				}
+			case installedVers[name] == pin:
+				return 0
+			}
+		}
+		var p *apkcore.Package
+		if pin != "" {
+			p = exact(indexes, name, pin)
+		} else {
+			p = best(indexes, name)
+		}
 		if p == nil {
-			fmt.Fprintf(stderr, "%s: %s (no such package)\n", cmd, name)
+			if pin != "" {
+				fmt.Fprintf(stderr, "%s: %s=%s (no such version)\n", cmd, name, pin)
+			} else {
+				fmt.Fprintf(stderr, "%s: %s (no such package)\n", cmd, name)
+			}
 			return 1
 		}
 		if seen[p.Name] {
@@ -351,7 +398,7 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 			if strings.HasPrefix(dep, "so:") || strings.HasPrefix(dep, "cmd:") {
 				// Virtual names: satisfied by provides, looked up the same way.
 				if provider := best(indexes, dep); provider != nil {
-					if code := resolve(provider.Name, false); code != 0 {
+					if code := resolve(provider.Name, "", false); code != 0 {
 						return code
 					}
 					continue
@@ -359,7 +406,7 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 				fmt.Fprintf(stderr, "%s: %s requires %s, which no repository provides\n", cmd, p.Name, dep)
 				return 1
 			}
-			if code := resolve(apkcore.EntryName(dep), false); code != 0 {
+			if code := resolve(apkcore.EntryName(dep), depPin(dep), false); code != 0 {
 				return code
 			}
 		}
@@ -367,7 +414,7 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		return 0
 	}
 	for _, name := range names {
-		if code := resolve(apkcore.EntryName(name), true); code != 0 {
+		if code := resolve(apkcore.EntryName(name), depPin(name), true); code != 0 {
 			return code
 		}
 	}
@@ -404,7 +451,15 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		}
 		installed = append(installed, &apkcore.Installed{Package: *p, Files: files})
 		if !o.quiet {
-			fmt.Fprintf(stdout, "(%d/%d) Installing %s (%s)\n", i+1, len(order), p.Name, p.Version)
+			// apk's wording: Installing, Upgrading, Downgrading - agents read it.
+			switch {
+			case have[p.Name] && apkcore.CompareVersions(p.Version, installedVers[p.Name]) < 0:
+				fmt.Fprintf(stdout, "(%d/%d) Downgrading %s (%s -> %s)\n", i+1, len(order), p.Name, installedVers[p.Name], p.Version)
+			case have[p.Name] && apkcore.CompareVersions(p.Version, installedVers[p.Name]) > 0:
+				fmt.Fprintf(stdout, "(%d/%d) Upgrading %s (%s -> %s)\n", i+1, len(order), p.Name, installedVers[p.Name], p.Version)
+			default:
+				fmt.Fprintf(stdout, "(%d/%d) Installing %s (%s)\n", i+1, len(order), p.Name, p.Version)
+			}
 		}
 		added += p.Installed
 	}

@@ -110,7 +110,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	kanals := worldChannels(o.root)
-	vorher := previous(o.out)
+	vorher := LastGood(o.out)
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	lines := make([]Line, 0, len(pkgs))
@@ -211,10 +211,10 @@ func worldChannels(root string) map[string]string {
 	return out
 }
 
-// previous reads the last known good version per package out of an existing
+// LastGood reads the last known good version per package out of an existing
 // report: the newest line whose health is ok (or skip, which means "no check
 // was run", so the state is not known to be bad).
-func previous(path string) map[string]string {
+func LastGood(path string) map[string]string {
 	out := map[string]string{}
 	if path == "" {
 		return out
@@ -240,4 +240,10 @@ func previous(path string) map[string]string {
 		out[l.Paket] = l.Version
 	}
 	return out
+}
+
+// Installed reads the target tree's package list, so other commands (the
+// rollback watcher) see the same picture this report writes.
+func Installed(root string) ([]*apkcore.Installed, error) {
+	return apkcore.ReadInstalled(root)
 }

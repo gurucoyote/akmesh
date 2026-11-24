@@ -157,7 +157,29 @@ func atoi64(s string) int64 {
 
 // WriteInstalled rewrites the database. apk's own order is alphabetical by
 // package name, which keeps diffs small and matches what a reader expects.
+// dedupeByName keeps the last occurrence of every package name, in order of the
+// first appearance.
+func dedupeByName(pkgs []*Installed) []*Installed {
+	last := map[string]*Installed{}
+	var order []string
+	for _, p := range pkgs {
+		if _, seen := last[p.Name]; !seen {
+			order = append(order, p.Name)
+		}
+		last[p.Name] = p
+	}
+	out := make([]*Installed, 0, len(order))
+	for _, n := range order {
+		out = append(out, last[n])
+	}
+	return out
+}
+
 func WriteInstalled(root string, pkgs []*Installed) error {
+	// One entry per name, last wins: add appends the new entry and must not
+	// leave the old version behind as a second block (measured 24.11.2026: a
+	// downgrade produced three P: lines for one package).
+	pkgs = dedupeByName(pkgs)
 	path := InstalledPath(root)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err

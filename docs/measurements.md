@@ -6340,3 +6340,41 @@ Antwortkopf. Danach lief dieselbe Installation in 66 Sekunden durch.
 Cargo ist ein eigenes Paket (usr/bin/cargo fehlte nach "rust"); es wurde nicht
 mitgemessen.
 
+
+
+## apkguard: Upgrade, Health-Check, ein Rueckfall (24.11.2026, acmesh-2p44)
+
+Ablauf, Ende zu Ende gemessen mit unserem apk als aufgerufenes apk (Symlink
+/tmp/demo/bin/apk -> akmesh) und einem eigenen Repo mit scprog 1.0.0-r0 und
+2.0.0-r0 ueber unseren httpd:
+
+    apkguard -p root -o bericht.jsonl --apk .../apk --health 'exit 1'
+      (1/1) Upgrading scprog (1.0.0-r0 -> 2.0.0-r0)
+      apkguard: health check failed: exit 1
+      (1/1) Downgrading scprog (2.0.0-r0 -> 1.0.0-r0)
+      apkguard: rolled back scprog=1.0.0-r0        exit 1
+    danach: apk info scprog -> scprog-1.0.0-r0
+    bericht.jsonl.state -> {"rollback_used":true,"pakete":["scprog=1.0.0-r0"]}
+    zweiter Lauf: "health failed ... rollback was already used; standing still",
+    kein zweiter Rueckfall, keine Endlosschleife.
+
+Der Bericht traegt genau eine Zeile je Paket und Lauf (nach dem Rueckfall den
+alten Stand), weil apkguard erst nach dem Rueckfall schreibt.
+
+Drei echte Fehler kamen dabei heraus und sind behoben
+1. "apk add pkg=1.0.0-r0" ignorierte den Pin und nahm die neueste Version; ohne
+   Pin kein Rueckfall. Jetzt waehlt ein Gleichheits-Pin genau diese Version,
+   sonst "apk: pkg=9.9.9-r0 (no such version)".
+2. "apk upgrade" fand nichts, weil add eine installierte Version immer als
+   erledigt ansah; jetzt vergleicht add und meldet Upgrading/Downgrading im
+   apk-Wortlaut (gemessen gegen apk-tools 2.14.9: "Downgrading scprog
+   (2.0.0-r0 -> 1.0.0-r0)").
+3. Ein Downgrade hinterliess mehrere P:-Eintraege fuer dasselbe Paket in
+   /lib/apk/db/installed; apkreport zaehlte das Paket dreimal. WriteInstalled
+   entdoppelt jetzt nach Namen (der letzte Stand gewinnt), Regressionstest
+   TestWriteInstalledKeepsOneEntryPerName.
+
+Grenzen: apkguard raeumt beim Rueckfall keine Dateien der neuen Version weg
+(das Paket wird ueber die alte entpackt); der Bericht kennt nur den Exit-Code
+von apk, nicht die genaue Ursache eines Fehlschlags.
+

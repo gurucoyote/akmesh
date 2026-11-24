@@ -150,6 +150,7 @@ var groups = map[string]string{
 	"apk":       System,
 	"apkbuild":  System,
 	"apkreport": System,
+	"apkguard":  System,
 	"mkpasswd":  System,
 	"killall":   System,
 	"pgrep":     System,

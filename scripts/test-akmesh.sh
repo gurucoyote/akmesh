@@ -1112,6 +1112,34 @@ if [ -z "$WINDOWS" ]; then
   printf 'x' | dd of="$BD/repo/x86_64/abhi-1.2.3-r0.apk" bs=1 seek=200 conv=notrunc 2>/dev/null
   run apk -p "$BD/root2" -X "$BD/repo" add abhi >/dev/null 2>&1
   check apkbuild-tamper-exit '1' "$([ $? -ne 0 ] && echo 1 || echo 0)"
+
+  # Zwei Versionen im Repo, wie beim Rueckfall: der Pin muss die aeltere waehlen.
+  B2="$WORK/ab2"; mkdir -p "$B2/src/usr/bin" "$B2/repo/x86_64" "$B2/r1/etc/apk/keys" "$B2/r2/etc/apk/keys"
+  cp "$BD/src/usr/bin/abhi" "$B2/src/usr/bin/"
+  cp "$BD/bkey.rsa.pub" "$B2/r1/etc/apk/keys/"; cp "$BD/bkey.rsa.pub" "$B2/r2/etc/apk/keys/"
+  printf 'pkgname = abhi\npkgver = 2.0.0\npkgrel = 0\npkgdesc = zweite version\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\n' > "$B2/manifest"
+  run apkbuild build --manifest "$BD/manifest" --source "$BD/src" -o "$B2/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+  run apkbuild build --manifest "$B2/manifest" --source "$B2/src" -o "$B2/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+  run apkbuild index -o "$B2/repo/x86_64/APKINDEX.tar.gz" "$B2"/repo/x86_64/*.apk --key "$BD/bkey.rsa" >/dev/null 2>&1
+  check apk-pin-newest '1' "$(run apk -p "$B2/r1" -X "$B2/repo" add abhi 2>&1 | tr -d '\r' | grep -c 'Installing abhi (2.0.0-r0)')"
+  check apk-pin-older '1' "$(run apk -p "$B2/r2" -X "$B2/repo" add abhi=1.2.3-r0 2>&1 | tr -d '\r' | grep -c 'abhi (1.2.3-r0)')"
+  check apk-pin-missing '1' "$(run apk -p "$B2/r2" -X "$B2/repo" add abhi=9.9.9-r0 2>&1 | tr -d '\r' | grep -c 'no such version')"
+
+  # Waechter (acmesh-2p44): ein Rueckfall, dann Stillstand. Nachgemachtes apk,
+  # damit die Batterie ohne Netz und ohne Container laeuft.
+  G="$WORK/guard"; mkdir -p "$G/root/lib/apk/db" "$G/root/etc/apk" "$G/bin"
+  printf 'P:gtest\nV:1.0.0-r0\nA:x86_64\nS:1\nI:1\n\n' > "$G/root/lib/apk/db/installed"
+  printf 'gtest@stable\n' > "$G/root/etc/apk/world"
+  printf '#!/bin/sh\necho "$*" >> %s/calls.log\ndb="$2/lib/apk/db/installed"\ncase "$*" in\n *upgrade*) sed -i "s/^V:1.0.0-r0/V:2.0.0-r0/" "$db" ;;\n *"add gtest=1.0.0-r0"*) sed -i "s/^V:2.0.0-r0/V:1.0.0-r0/" "$db" ;;\nesac\nexit 0\n' "$G" > "$G/bin/apk"; chmod 755 "$G/bin/apk"
+  printf '{"zeit":"2026-11-24T10:00:00Z","host":"h","paket":"gtest","version":"1.0.0-r0","ergebnis":"ok","health":"ok"}\n' > "$G/bericht.jsonl"
+  run apkguard -p "$G/root" -o "$G/bericht.jsonl" --apk "$G/bin/apk" --health 'exit 1' >/dev/null 2>&1
+  check apkguard-exit '1' "$([ $? -ne 0 ] && echo 1 || echo 0)"
+  check apkguard-rollback '1' "$(grep -c 'add gtest=1.0.0-r0' "$G/calls.log")"
+  check apkguard-state '1' "$(grep -c '"rollback_used":true' "$G/bericht.jsonl.state")"
+  check apkguard-report-fail '1' "$(tail -1 "$G/bericht.jsonl" | grep -c '"health":"fail"')"
+  : > "$G/calls.log"
+  run apkguard -p "$G/root" -o "$G/bericht.jsonl" --apk "$G/bin/apk" --health 'exit 1' >/dev/null 2>&1
+  check apkguard-no-second-rollback '0' "$(grep -c 'add gtest=' "$G/calls.log")"
 fi
 
 

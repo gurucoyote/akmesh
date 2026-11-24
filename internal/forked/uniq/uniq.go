@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 //
+// Forked from u-root 869f00f6b224ce02b1db51806159d6cd9c246f76, cmds/core/uniq/uniq.go.
+//
 // Local changes in akmesh (acmesh-6bq), all measured against GNU coreutils 9.7:
 //
 //   - -c prefixes the count in GNU's shape: right aligned in seven columns and

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 //
+// Forked from u-root 869f00f6b224ce02b1db51806159d6cd9c246f76, cmds/core/comm/comm.go.
+//
 // Local changes in akmesh (acmesh-y16), all measured against GNU coreutils 9.7:
 //
 //   - The flag package is gone, so the spellings GNU documents work: -12, -13,

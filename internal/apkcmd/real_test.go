@@ -59,7 +59,7 @@ func TestRealAbuildPackage(t *testing.T) {
 		t.Fatalf("package check: %v", err)
 	}
 	root := t.TempDir()
-	files, err := apkcore.Extract(apkData, idx.Packages[0], apkcore.ExtractOptions{Root: root})
+	files, _, err := apkcore.Extract(apkData, idx.Packages[0], apkcore.ExtractOptions{Root: root})
 	if err != nil {
 		t.Fatalf("extract: %v", err)
 	}

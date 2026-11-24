@@ -6630,3 +6630,38 @@ Trigger
 Batterie: 4 neue Pruefungen (Operator waehlt 2.0.0 statt 1.0.0, Trigger laeuft,
 Triggerinhalt, unerfuellbare Forderung gemeldet), 474 Linux, 0 Fehler.
 
+
+
+## Deinstallationsskripte und Geraeteknoten-Hinweis (24.11.2026)
+
+apk holt beim Entfernen das Paket erneut aus dem Repo, um .pre-deinstall und
+.post-deinstall auszufuehren. Ein Zielbaum, der nicht am Netz haengt, kann das
+nicht. Deshalb legt unser apk die beiden Skripte beim Installieren ab:
+
+    <root>/lib/apk/db/scripts/<name>-<version>.pre-deinstall
+    <root>/lib/apk/db/scripts/<name>-<version>.post-deinstall
+
+Gemessen mit einem Paket, dessen .post-deinstall "/deinstall.txt" schreibt:
+
+    apk -p root -X repo add deinstprog   -> Skript liegt in lib/apk/db/scripts
+    apk -p root del deinstprog           -> "Executing deinstprog-1.0.0-r0.post-deinstall",
+                                            /deinstall.txt existiert, Skriptdatei weg
+
+Grenze: apk speichert die Skripte nicht im Zielbaum; wer mit apk danach
+deinstalliert, findet sie dort nicht. Das ist eine Ergaenzung von uns, keine
+Nachbildung.
+
+Geraeteknoten: Extract hat Geraeteknoten bisher stillschweigend uebersprungen.
+Jetzt steht es im Klartext:
+
+    apk: <pkg>: 1 device node(s) not created (dev/console); that needs root and mknod
+
+Batterie: 3 neue Pruefungen (Skript abgelegt, Skript lief, Skriptdatei entfernt),
+477 Linux, 0 Fehler.
+
+Nebenbefund (nicht von dieser Arbeit): go test ./internal/forked scheiterte an
+fehlenden Herkunftszeilen (TestForkProvenance) - Marker fuer comm, find, grep/bre
+und uniq ergaenzt. Zwei andere Tests scheitern unveraendert auch ohne diese
+Aenderung: TestTacSeparatorAndRegexp und TestDiffAndPatchRoundTrip (diff haengt
+einen Zeitstempel an den Kopf). Dafuer ist ein eigenes Ticket vorgesehen.
+

@@ -1,3 +1,5 @@
+// Local addition, no upstream source: akmesh's own find tests a file against the pattern kinds.
+
 package find
 
 import (

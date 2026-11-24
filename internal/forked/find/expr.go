@@ -1,3 +1,5 @@
+// Local addition, no upstream source: akmesh's own find parses its expressions here.
+
 package find
 
 import (

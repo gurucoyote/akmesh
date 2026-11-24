@@ -30,6 +30,11 @@ func KeysDir(root string) string       { return joinRoot(root, "/etc/apk/keys") 
 func InstalledPath(root string) string { return joinRoot(root, "/lib/apk/db/installed") }
 func CacheDir(root string) string      { return joinRoot(root, "/var/cache/apk") }
 
+// ScriptsDir keeps the deinstall scripts of an installed package. apk fetches the
+// package again when removing; a tree that may be offline cannot, so the scripts
+// are stored at install time (our own directory, apk does not read it).
+func ScriptsDir(root string) string { return joinRoot(root, "/lib/apk/db/scripts") }
+
 func joinRoot(root, path string) string {
 	if root == "" || root == "/" {
 		return path
@@ -365,10 +370,10 @@ type ExtractOptions struct {
 
 // Extract writes the data stream of a package into the root and returns the
 // file records for the installed database.
-func Extract(data []byte, pkg *Package, opts ExtractOptions) ([]InstalledFile, error) {
+func Extract(data []byte, pkg *Package, opts ExtractOptions) ([]InstalledFile, []string, error) {
 	streams, err := splitStreams(data)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var dataStream *stream
 	var controlEntries map[string][]byte
@@ -384,18 +389,18 @@ func Extract(data []byte, pkg *Package, opts ExtractOptions) ([]InstalledFile, e
 		dataStream = s
 	}
 	if dataStream == nil {
-		return nil, fmt.Errorf("%s: no data segment", pkg.FullName())
+		return nil, nil, fmt.Errorf("%s: no data segment", pkg.FullName())
 	}
 	if !opts.NoScripts {
 		if scripts := Scripts(controlEntries); len(scripts) > 0 {
-			return nil, fmt.Errorf("%s: package has install scripts (%s) and this akmesh runs none; use --no-scripts to install the files only",
+			return nil, nil, fmt.Errorf("%s: package has install scripts (%s) and this akmesh runs none; use --no-scripts to install the files only",
 				pkg.FullName(), strings.Join(scripts, " "))
 		}
 	}
-	if err := extractTar(dataStream.raw, opts, pkg); err != nil {
-		return nil, err
+	if err := extractTar(dataStream.raw, &opts, pkg); err != nil {
+		return nil, nil, err
 	}
-	return dataStream.files(opts.Root), nil
+	return dataStream.files(opts.Root), opts.Skipped, nil
 }
 
 // files lists what the data stream contained, with the hashes the installed
@@ -432,7 +437,7 @@ func (s *stream) files(root string) []InstalledFile {
 	return out
 }
 
-func extractTar(raw []byte, opts ExtractOptions, pkg *Package) error {
+func extractTar(raw []byte, opts *ExtractOptions, pkg *Package) error {
 	gz := gzipReader(raw)
 	if gz == nil {
 		return fmt.Errorf("%s: unreadable data segment", pkg.FullName())

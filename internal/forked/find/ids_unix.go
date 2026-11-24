@@ -1,5 +1,7 @@
 //go:build !windows
 
+// Local addition, no upstream source: uid/gid names for find on unix.
+
 package find
 
 import (

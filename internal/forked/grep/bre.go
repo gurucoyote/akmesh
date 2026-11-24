@@ -1,3 +1,5 @@
+// Local addition, no upstream source: BRE translation layer for akmesh's grep.
+
 package grep
 
 // BRE, the default pattern language of GNU grep. Without -E, grep reads the

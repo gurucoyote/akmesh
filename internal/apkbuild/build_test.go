@@ -77,7 +77,7 @@ func TestBuildRoundTrip(t *testing.T) {
 		t.Fatalf("our own package does not verify: %v", err)
 	}
 	root := t.TempDir()
-	if _, err := apkcore.Extract(data, &apkcore.Package{Name: "akmesh-hello"}, apkcore.ExtractOptions{Root: root}); err != nil {
+	if _, _, err := apkcore.Extract(data, &apkcore.Package{Name: "akmesh-hello"}, apkcore.ExtractOptions{Root: root}); err != nil {
 		t.Fatalf("extract: %v", err)
 	}
 	body, err := os.ReadFile(filepath.Join(root, "usr/bin/akmesh-hello"))

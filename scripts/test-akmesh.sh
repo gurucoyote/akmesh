@@ -1225,6 +1225,20 @@ if [ -z "$WINDOWS" ]; then
   mkdir -p "$V/root2/etc/apk/keys"; cp "$BD/bkey.rsa.pub" "$V/root2/etc/apk/keys/"
   check apk-version-unsatisfied '1' "$(run apk -p "$V/root2" -X "$V/repo" add 'depbase>9.0' 2>&1 | tr -d '\r' | grep -c 'no package satisfies >9.0')"
 
+  # Deinstallationsskript und Geraeteknoten-Hinweis (acmesh-gk2i, 24.11.2026).
+  DZ="$WORK/deinst"; mkdir -p "$DZ/root/etc/apk/keys" "$DZ/repo/x86_64" "$DZ/src/usr/bin"
+  cp "$BD/bkey.rsa.pub" "$DZ/root/etc/apk/keys/"
+  printf 'x\n' > "$DZ/src/usr/bin/deinstprog"
+  printf '#!/bin/sh\necho weg > /deinstall.txt\n' > "$DZ/post-deinstall"; chmod 755 "$DZ/post-deinstall"
+  printf 'pkgname = deinstprog\npkgver = 1.0.0\npkgrel = 0\npkgdesc = deinstall\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\nscript = .post-deinstall:%s/post-deinstall\n' "$DZ" > "$DZ/manifest"
+  run apkbuild build --manifest "$DZ/manifest" --source "$DZ/src" -o "$DZ/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+  run apkbuild index -o "$DZ/repo/x86_64/APKINDEX.tar.gz" "$DZ"/repo/x86_64/*.apk --key "$BD/bkey.rsa" >/dev/null 2>&1
+  run apk -p "$DZ/root" -X "$DZ/repo" add deinstprog >/dev/null 2>&1
+  check apk-deinstall-stored '1' "$(ls "$DZ/root/lib/apk/db/scripts" 2>/dev/null | grep -c 'deinstprog-1.0.0-r0.post-deinstall')"
+  run apk -p "$DZ/root" del deinstprog >/dev/null 2>&1
+  check apk-deinstall-ran '1' "$([ -f "$DZ/root/deinstall.txt" ] && echo 1 || echo 0)"
+  check apk-deinstall-removed '0' "$(ls "$DZ/root/lib/apk/db/scripts" 2>/dev/null | grep -c 'deinstall')"
+
   # Waechter (acmesh-2p44): ein Rueckfall, dann Stillstand. Nachgemachtes apk,
   # damit die Batterie ohne Netz und ohne Container laeuft.
   G="$WORK/guard"; mkdir -p "$G/root/lib/apk/db" "$G/root/etc/apk" "$G/bin"

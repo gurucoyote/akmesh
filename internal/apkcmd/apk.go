@@ -484,6 +484,41 @@ func checkArch(p *apkcore.Package, want string) error {
 	return fmt.Errorf("%s: package is for %s, this target is %s", p.FullName(), p.Arch, want)
 }
 
+// runStoredScript runs a deinstall script saved at install time, in our shell
+// and with the same path rules as an install script.
+func runStoredScript(root string, p *apkcore.Installed, kind string, stdout, stderr io.Writer) error {
+	path := filepath.Join(apkcore.ScriptsDir(root), p.FullName()+kind)
+	body, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	fmt.Fprintf(stdout, "  Executing %s%s\n", p.FullName(), kind)
+	return apkscript.Run(apkscript.Script{Kind: kind, Body: body, Package: p.Name, Version: p.Version}, root, stdout, stderr)
+}
+
+// saveDeinstallScripts keeps .pre-deinstall/.post-deinstall for later, in
+// /lib/apk/db/scripts of the target (see apkcore.ScriptsDir).
+func saveDeinstallScripts(root string, p *apkcore.Package, scripts map[string][]byte) error {
+	for _, kind := range []string{".pre-deinstall", ".post-deinstall"} {
+		body, ok := scripts[kind]
+		if !ok {
+			continue
+		}
+		dir := apkcore.ScriptsDir(root)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+		path := filepath.Join(dir, p.FullName()+kind)
+		if err := os.WriteFile(path, body, 0o755); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // splitTag splits "pkg@testing" into name and channel tag.
 func splitTag(spec string) (string, string) {
 	if i := strings.Index(spec, "@"); i > 0 {
@@ -771,6 +806,13 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 			fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
 			return 1
 		}
+		// Removal happens without the package file, so its deinstall scripts are
+		// stored in the tree now; apk re-downloads instead, which a tree without
+		// network cannot.
+		if err := saveDeinstallScripts(o.root, p, scripts); err != nil {
+			fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+			return 1
+		}
 		// A fresh install runs the install scripts, a replacement the upgrade ones.
 		installKind, doneKind := ".pre-install", ".post-install"
 		if have[p.Name] {
@@ -786,12 +828,16 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 				}
 			}
 		}
-		files, err := apkcore.Extract(data, p, apkcore.ExtractOptions{
+		files, skippedDev, err := apkcore.Extract(data, p, apkcore.ExtractOptions{
 			Root: o.root, NoScripts: true, Now: time.Now(),
 		})
 		if err != nil {
 			fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
 			return 1
+		}
+		if len(skippedDev) > 0 {
+			fmt.Fprintf(stderr, "%s: %s: %d device node(s) not created (%s); that needs root and mknod\n",
+				cmd, p.FullName(), len(skippedDev), strings.Join(skippedDev, " "))
 		}
 		if !o.noScripts {
 			for _, kind := range []string{doneKind, ".trigger"} {
@@ -876,6 +922,12 @@ func del(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 	i := 0
 	for _, name := range names {
 		p := byName[name]
+		if !o.noScripts {
+			if err := runStoredScript(o.root, p, ".pre-deinstall", stdout, stderr); err != nil {
+				fmt.Fprintf(stderr, "%s: %s failed: %v\n", cmd, p.FullName(), err)
+				return 1
+			}
+		}
 		if _, kept, err := apkcore.RemoveFiles(o.root, p.Files); err != nil {
 			fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
 			return 1
@@ -886,6 +938,15 @@ func del(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		i++
 		if !o.quiet {
 			fmt.Fprintf(stdout, "(%d/%d) Purging %s (%s)\n", i, len(names), p.Name, p.Version)
+		}
+		if !o.noScripts {
+			if err := runStoredScript(o.root, p, ".post-deinstall", stdout, stderr); err != nil {
+				fmt.Fprintf(stderr, "%s: %s failed: %v\n", cmd, p.FullName(), err)
+				return 1
+			}
+		}
+		for _, kind := range []string{".pre-deinstall", ".post-deinstall"} {
+			_ = os.Remove(filepath.Join(apkcore.ScriptsDir(o.root), p.FullName()+kind))
 		}
 	}
 	// Drop from the database and from the world file.

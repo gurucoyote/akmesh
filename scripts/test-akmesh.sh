@@ -1035,5 +1035,38 @@ pkill -f "httpd -f -p 127.0.0.1:$FL_PORT" 2>/dev/null
 rm -rf "$FL_DIR"
 rm -rf "$CERT_DIR"
 
+
+# --- Benutzerwerkzeuge und rmdir (acmesh-uxf9). Die Konten laufen gegen eine
+# Wegwerf-/etc unter AKMESH_ROOT: die Batterie darf das echte /etc nie anfassen.
+if [ -z "$WINDOWS" ]; then
+  UE="$WORK/urootetc"; mkdir -p "$UE/etc"
+  printf 'root:x:0:0:root:/root:/bin/sh\n' > "$UE/etc/passwd"
+  printf 'root:x:0:\nwheel:x:100:\n' > "$UE/etc/group"
+  printf 'root:!:20781:0:99999:7:::\n' > "$UE/etc/shadow"
+  AKMESH_ROOT="$UE" run addgroup -S apkgrp >/dev/null 2>&1
+  check addgroup-system 'apkgrp:x:101:' "$(grep '^apkgrp:' "$UE/etc/group" | tr -d '\r')"
+  check addgroup-dup-in-use '1' "$(AKMESH_ROOT="$UE" run addgroup -S apkgrp 2>&1 | tr -d '\r' | grep -c "group 'apkgrp' in use")"
+  AKMESH_ROOT="$UE" run adduser -S -D -H -h /dev/null -s /sbin/nologin -G apkgrp svc >/dev/null 2>&1
+  check adduser-script-line 'svc:x:100:101::/dev/null:/sbin/nologin' "$(grep '^svc:' "$UE/etc/passwd" | tr -d '\r')"
+  check adduser-shadow-locked '1' "$(grep -c '^svc:!:' "$UE/etc/shadow" | tr -d '\r')"
+  check delgroup-primary '1' "$(AKMESH_ROOT="$UE" run delgroup apkgrp 2>&1 | tr -d '\r' | grep -c "still has 'apkgrp' as their primary group")"
+  checkcode delgroup-member 0 "$(AKMESH_ROOT="$UE" run delgroup svc apkgrp >/dev/null 2>&1; echo $?)"
+  checkcode deluser 0 "$(AKMESH_ROOT="$UE" run deluser svc >/dev/null 2>&1; echo $?)"
+  check deluser-shadow-gone '0' "$(grep -c '^svc:' "$UE/etc/shadow" | tr -d '\r')"
+
+  mkdir -p rd/a/b
+  run rmdir rd/a/b >/dev/null 2>&1
+  check rmdir-empty '0' "$([ -d rd/a/b ] && echo 1 || echo 0)"
+  mkdir -p pp/a/b; touch pp/keep
+  check rmdir-parents '1' "$(run rmdir -p pp/a/b 2>&1 | tr -d '\r' | grep -c "failed to remove directory 'pp': Directory not empty")"
+  check rmdir-parents-gone '0' "$([ -d pp/a ] && echo 1 || echo 0)"
+  mkdir -p rne; touch rne/x
+  check rmdir-nonempty-message '1' "$(run rmdir rne 2>&1 | tr -d '\r' | grep -c "failed to remove 'rne': Directory not empty")"
+  checkcode rmdir-nonempty-status 1 "$(run rmdir rne >/dev/null 2>&1; echo $?)"
+  checkcode rmdir-ignore-nonempty 0 "$(run rmdir --ignore-fail-on-non-empty rne >/dev/null 2>&1; echo $?)"
+  check rmdir-missing-message '1' "$(run rmdir nix 2>&1 | tr -d '\r' | grep -c "failed to remove 'nix': No such file or directory")"
+  check rmdir-missing-operand '1' "$(run rmdir 2>&1 | tr -d '\r' | grep -c 'rmdir: missing operand')"
+fi
+
 printf '%d checks, %d failures\n' "$checks" "$fails"
 [ "$fails" -eq 0 ]

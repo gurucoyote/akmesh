@@ -6026,3 +6026,63 @@ Signal an den Testprozess). Batterie 404 Linux, Windows siehe unten.
 Batterie 404 Linux / 372 Windows, beide 0 Fehler, help-audit gruen.
 Groessen: 19562723 Bytes Linux dynamisch, 18199552 Bytes Windows, beide
 gestrippt (+8192 und +2048 gegen den Stand davor).
+
+## Benutzerwerkzeuge und rmdir (24.11.2026, acmesh-uxf9)
+
+Vorbild: busybox 1.37.0 auf alpine:3.22 fuer adduser, addgroup, deluser,
+delgroup (Martins Entscheidung: "bei den user und group befehlen koennen und
+wollen wir uns an busybox / alpine linux orientieren"). rmdir folgt GNU
+coreutils 9.7 im gepinnten Image, weil --ignore-fail-on-non-empty und der
+Wortlaut "failed to remove" von dort kommen.
+
+Gebaut: adduser, addgroup, deluser, delgroup, rmdir. Die GNU-shadow-Werkzeuge
+(useradd, groupadd, userdel, groupdel) wurden bewusst NICHT gebaut: im
+Alpine-Grundsystem gibt es sie nicht, wer dort arbeitet tippt adduser.
+
+Gemessenes BusyBox-Verhalten, das die Umsetzung traegt:
+    addgroup -S sysg          -> naechste FREIE id im Systemfenster (100..999),
+                                 nicht die naechste nach der hoechsten
+    addgroup -g 4321 -S x     -> "addgroup: gid '4321' in use", Exit 1
+    addgroup dup              -> "addgroup: group 'bbgrp' in use", Exit 1
+    adduser -S -D -H -h /dev/null -s /sbin/nologin -G grp -g gecos name
+                              -> uid aus dem Systemfenster, gid der Gruppe, und
+                                 der Name landet zusaetzlich in der Mitgliederliste
+    adduser ohne -G           -> legt eine Gruppe gleichen Namens an, gid = uid
+    adduser -D -H             -> /home/name als Feld, aber kein Verzeichnis
+    deluser --remove-home     -> Zeilen aus passwd und shadow weg, aus allen
+                                 Gruppen entfernt, eigene Gruppe weg, Home weg
+    delgroup <primar-Gruppe>  -> "'svc' still has 'mk' as their primary group!"
+    delgroup USER GROUP       -> nimmt nur das Mitglied heraus
+
+Zeichengleicher Beweis gegen BusyBox, gleiche Ausgangsdateien (Alpine-Basis):
+    addgroup -S klogd; adduser -S -D -H -h /dev/null -s /sbin/nologin -G klogd -g klogd klogd
+    akmesh   klogd:x:100:101:klogd:/dev/null:/sbin/nologin  | klogd:x:101:klogd | klogd:!:20781:0:99999:7:::
+    busybox  klogd:x:100:101:klogd:/dev/null:/sbin/nologin  | klogd:x:101:klogd | klogd:!:20781:0:99999:7:::
+Das sind die Zeilen aus busybox .post-install und dbus .pre-install.
+
+rmdir gegen GNU coreutils 9.7 im gepinnten Image gemessen:
+    rmdir leeres Verzeichnis        -> Exit 0, still
+    rmdir volles                    -> "rmdir: failed to remove 'e': Directory not empty", Exit 1
+    --ignore-fail-on-non-empty      -> Exit 0, still
+    rmdir fehlt                     -> "rmdir: failed to remove 'x': No such file or directory"
+    rmdir ohne Argument             -> "rmdir: missing operand" + Try ... , Exit 1
+    rmdir -v                        -> "rmdir: removing directory, 'x'"
+    rmdir -p a/b/c                  -> entfernt c, b, a; ein voller Elternpfad
+                                       heisst "failed to remove directory 'a': ..."
+                                       (zweiter Wortlaut von GNU)
+
+Eigene Entscheidungen, offen benannt:
+    1. AKMESH_ROOT praefixt /etc/passwd und Co. Ohne das wuerde ein Paket-
+       skript unter fremder Wurzel die Konten des Hosts aendern. Zusatz gegen-
+       ueber busybox, und der Grund, warum die Batterie ueberhaupt testen darf.
+    2. Ohne -D wird das Passwort nicht abgefragt, sondern die Zeile bleibt auf
+       "!" gesperrt. busybox ruft hier passwd; ein Prompt an einer Pipe haengt.
+    3. In der Mitglieder-Meldung steht der aufgerufene Name ("adduser: unknown
+       group x"). busybox schreibt dort immer "addgroup:", auch wenn adduser
+       laeuft - ein Fehler in der Meldung, den wir nicht kopieren.
+    4. rmdir -p endet am Wurzelverzeichnis, statt es zu versuchen. GNU meldet
+       dort "failed to remove directory '/': Device or resource busy".
+
+Tests: internal/userdb (Parser, Append, Entfernen), internal/useradd (sieben
+Faelle, Wegwerf-/etc), internal/rmdir (vier Faelle). Batterie: 14 neue
+Pruefungen, 420 Linux / 372 Windows, beide 0 Fehler.

@@ -255,6 +255,36 @@ var Texts = map[string]Entry{
 			"  -v           print repeated blocks instead of a *\n" +
 			"  The form agents type, \"od -An -tx1\", works: hex bytes, no address.",
 	},
+	"adduser": {
+		"[-h DIR] [-g GECOS] [-s SHELL] [-G GRP] [-S] [-D] [-H] [-u UID] USER [GROUP]",
+		"  Creates an account in /etc/passwd and /etc/shadow, busybox style like\n" +
+			"  Alpine's: without -G a group of the same name is created, the home is\n" +
+			"  /home/USER unless -H, the shell /bin/sh unless -s, -S picks an id from\n" +
+			"  the system range (login.defs), -D leaves the password locked (\"!\").\n" +
+			"  With a second operand: add user USER to GROUP. Not on Windows.",
+	},
+	"addgroup": {
+		"[-g GID] [-S] [USER] GROUP",
+		"  Adds a group to /etc/group; -S takes the system id range, -g an explicit\n" +
+			"  gid. With a second operand: add USER to GROUP. Not on Windows.",
+	},
+	"deluser": {
+		"[--remove-home] USER",
+		"  Removes the account from passwd, shadow and every group, drops the group\n" +
+			"  that belonged to the account, and with --remove-home its home directory.\n" +
+			"  Not on Windows.",
+	},
+	"delgroup": {
+		"[USER] GROUP",
+		"  Removes a group, or with a USER operand only that member. A group that is\n" +
+			"  still someone's primary group is refused. Not on Windows.",
+	},
+	"rmdir": {
+		"[-p] [-v] [--ignore-fail-on-non-empty] DIRECTORY...",
+		"  Removes empty directories. -p removes the parents that become empty, -v\n" +
+			"  names every directory, --ignore-fail-on-non-empty keeps exit 0 for a\n" +
+			"  directory that still has entries (GNU coreutils wording).",
+	},
 	"passwd": {
 		"[USER]",
 		"  Sets a password: asks for it twice, hashes it with SHA-512 crypt and\n" +

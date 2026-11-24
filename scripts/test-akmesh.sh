@@ -1239,6 +1239,19 @@ if [ -z "$WINDOWS" ]; then
   check apk-deinstall-ran '1' "$([ -f "$DZ/root/deinstall.txt" ] && echo 1 || echo 0)"
   check apk-deinstall-removed '0' "$(ls "$DZ/root/lib/apk/db/scripts" 2>/dev/null | grep -c 'deinstall')"
 
+  # Skript ruft ein Programm, das der Zielbaum nicht hat (acmesh-3vco, 24.11.2026):
+  # der Name kommt aus unserem eigenen Werkzeugkasten, die Pfade sind schon
+  # in den Zielbaum geschrieben.
+  OT="$WORK/owntool"; mkdir -p "$OT/root/etc/apk/keys" "$OT/repo/x86_64" "$OT/src/usr/bin"
+  cp "$BD/bkey.rsa.pub" "$OT/root/etc/apk/keys/"
+  printf 'x\n' > "$OT/src/usr/bin/otprog"
+  printf '#!/bin/sh\nmkdir -p /var/lib/owntool\necho ok > /owntool.txt\n' > "$OT/script"; chmod 755 "$OT/script"
+  printf 'pkgname = otprog\npkgver = 1.0.0\npkgrel = 0\npkgdesc = eigener befehl\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\nscript = .post-install:%s/script\n' "$OT" > "$OT/manifest"
+  run apkbuild build --manifest "$OT/manifest" --source "$OT/src" -o "$OT/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
+  run apk -p "$OT/root" add "$OT"/repo/x86_64/otprog-1.0.0-r0.apk >/dev/null 2>&1
+  check apk-script-own-mkdir '1' "$([ -d "$OT/root/var/lib/owntool" ] && echo 1 || echo 0)"
+  check apk-script-own-redirect 'ok' "$(tr -d '\r' < "$OT/root/owntool.txt" 2>/dev/null)"
+
   # Waechter (acmesh-2p44): ein Rueckfall, dann Stillstand. Nachgemachtes apk,
   # damit die Batterie ohne Netz und ohne Container laeuft.
   G="$WORK/guard"; mkdir -p "$G/root/lib/apk/db" "$G/root/etc/apk" "$G/bin"

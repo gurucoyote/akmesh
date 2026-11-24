@@ -125,6 +125,16 @@ func PrepareRoot(root string) {
 	}
 }
 
+// OwnTool runs a command from akmesh's own table for a package script, in this
+// process and with the paths the script already carries. It is set by the command
+// table (package tools), because apkscript cannot import it: tools imports the
+// apk command, which imports this package. nil means "not available".
+//
+// A script's mkdir/cp/ln/rm are programs, not builtins of any shell. On Linux a
+// chroot runs the target's own copy; without root or on Windows there is none, and
+// this is the way out (acmesh-3vco).
+var OwnTool func(name string, args []string, stdin io.Reader, stdout, stderr io.Writer) (int, bool)
+
 // PrefixPaths rewrites absolute path literals in the parsed script to live under
 // root: "/etc/foo" becomes "<root>/etc/foo". Quoted strings, variables and
 // command substitution keep their text; only literal words are touched.
@@ -138,7 +148,11 @@ func PrefixPaths(node syntax.Node, root string) {
 			lit.Value = root
 			return true
 		}
-		lit.Value = root + lit.Value
+		// A Windows root carries backslashes, and a literal in the shell source
+		// would lose them (found 24.11.2026: the script's mkdir got
+		// "wsl.localhostgolangtmpwsc2/var/lib/xyz"). Forward slashes say the same
+		// thing on Windows and survive the parser; the path lookups clean them.
+		lit.Value = filepath.ToSlash(root) + lit.Value
 		return true
 	})
 }
@@ -172,8 +186,11 @@ func contains(root, full string) bool {
 // taken relative to the root; a relative one is taken relative to the current
 // directory, which Run keeps at the root. Paths that leave the root are an error.
 func Inside(root, path string) (string, error) {
-	if root != "/" && (path == root || strings.HasPrefix(path, root+string(filepath.Separator))) {
-		return filepath.Clean(path), nil
+	// Clean first: on Windows a prefixed path may carry "/" where the root has
+	// "\", and a plain HasPrefix then prefixed it a second time (24.11.2026).
+	cleanPath, cleanRoot := filepath.Clean(path), filepath.Clean(root)
+	if root != "/" && (cleanPath == cleanRoot || strings.HasPrefix(cleanPath, cleanRoot+string(filepath.Separator))) {
+		return cleanPath, nil
 	}
 	clean := filepath.Clean("/" + path)
 	full := filepath.Join(root, clean)
@@ -201,14 +218,6 @@ func chrootExec(root string, stderr io.Writer) interp.ExecHandlerFunc {
 			}
 			return nil
 		}
-		if runtime.GOOS == "windows" {
-			fmt.Fprintf(stderr, "apkscript: running other programs is not supported on Windows (there is no chroot); use --no-scripts to install the files only\n")
-			return interp.NewExitStatus(127)
-		}
-		if os.Geteuid() != 0 {
-			fmt.Fprintf(stderr, "apkscript: %s is not a shell builtin, running it needs root (chroot into %s); use --no-scripts to install the files only\n", args[0], root)
-			return interp.NewExitStatus(127)
-		}
 		// The script's absolute paths carry the root prefix (see PrefixPaths);
 		// inside the chroot the path must be the bare one again.
 		bin := args[0]
@@ -224,15 +233,29 @@ func chrootExec(root string, stderr io.Writer) interp.ExecHandlerFunc {
 					break
 				}
 			}
-			if found == "" {
-				if runtime.GOOS == "windows" {
-					fmt.Fprintf(stderr, "apkscript: running other programs is not supported on Windows; use --no-scripts to install the files only\n")
-					return interp.NewExitStatus(127)
-				}
-				fmt.Fprintf(stderr, "apkscript: %s is not in the target root's PATH, so the script cannot run it; use --no-scripts to install the files only\n", bin)
-				return interp.NewExitStatus(127)
-			}
 			bin = found
+		}
+		// The target has no such program (or we cannot start it here): our own
+		// command table takes over, with the paths already mapped into the tree.
+		if bin == "" || runtime.GOOS == "windows" {
+			if OwnTool != nil {
+				if code, ok := OwnTool(args[0], args[1:], hc.Stdin, hc.Stdout, hc.Stderr); ok {
+					if code != 0 {
+						return interp.NewExitStatus(uint8(code))
+					}
+					return nil
+				}
+			}
+			if runtime.GOOS == "windows" {
+				fmt.Fprintf(stderr, "apkscript: %s: running the target's own programs is not supported on Windows (there is no chroot); use --no-scripts to install the files only\n", args[0])
+			} else {
+				fmt.Fprintf(stderr, "apkscript: %s is not in the target root's PATH, so the script cannot run it; use --no-scripts to install the files only\n", args[0])
+			}
+			return interp.NewExitStatus(127)
+		}
+		if os.Geteuid() != 0 {
+			fmt.Fprintf(stderr, "apkscript: %s is not a shell builtin, running it needs root (chroot into %s); use --no-scripts to install the files only\n", args[0], root)
+			return interp.NewExitStatus(127)
 		}
 		full, err := Inside(root, bin)
 		if err != nil {

@@ -6665,3 +6665,38 @@ und uniq ergaenzt. Zwei andere Tests scheitern unveraendert auch ohne diese
 Aenderung: TestTacSeparatorAndRegexp und TestDiffAndPatchRoundTrip (diff haengt
 einen Zeitstempel an den Kopf). Dafuer ist ein eigenes Ticket vorgesehen.
 
+
+
+## Skripte rufen unsere eigenen Befehle (24.11.2026, acmesh-3vco)
+
+mkdop, cp, rm, ln sind in keiner Shell Builtins, sondern Programme. Bisher lief ein
+Skript nur dann weiter, wenn der Zielbaum das Programm selbst hatte (Linux: ueber
+chroot, also nur als root). Unter Windows ging es gar nicht.
+
+Jetzt: findet apkscript das Programm im Zielbaum nicht, ruft es unser eigenes
+Binary mit dem Namen als erstem Argument auf ("akmesh mkdir <pfad>"). Die Pfade
+traegt das Skript bereits mit dem Zielbaum-Praefix (PrefixPaths), es wird also
+nichts ausserhalb angefasst. Die Auswahl ist bewusst eng: nur Datei- und
+Textwerkzeuge (mkdir, cp, rm, ln, chmod, sed, grep, tar, ...). Ein Dienst, eine
+Shell oder ein Netzbefehl bleibt abgelehnt.
+
+Gemessen, Linux, Zielbaum ohne Programme:
+    Paket otprog, .post-install: mkdir -p /var/lib/owntool; echo ok > /owntool.txt
+    -> /var/lib/owntool existiert, /owntool.txt enthaelt "ok", "OK: ... in 1 package"
+
+Gemessen, Windows (echtes akmesh.exe, Ziel \\wsl.localhost\...):
+    derselbe Befehl
+    -> "Executing mktprog-1.0.0-r0.post-install", mkdir legt var/lib/xyz an,
+       mkrc.txt liegt im Zielbaum, "OK: 2 B in 1 package", rc 0
+
+Zwei Fehler kamen dabei heraus, beide behoben
+- Der Shell-Parser frass die Backslashes eines Windows-Pfads: aus
+  \\wsl.localhost\golang\tmp\wsc2 wurde wsl.localhostgolangtmpwsc2. Jetzt werden
+  die Pfade mit Vorwaertsschraegstrichen geschrieben, die Windows genauso versteht.
+- Ein bereits praefixierter Pfad wurde ein zweites Mal praefixiert (der
+  Praefixvergleich scheiterte an "/" gegen "\"). Inside() reinigt beide Seiten
+  vor dem Vergleich.
+
+Grenze: laeuft im selben Prozessbaum, nicht im Zielbaum; ein Programm, das der
+Zielbaum selbst mitbringt, wird weiterhin bevorzugt (Linux, als root).
+

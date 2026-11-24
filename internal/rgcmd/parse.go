@@ -46,6 +46,11 @@ type config struct {
 	pre        bool
 	preCommand string
 	preGlob    []string
+
+	// decompress/-z walks archives and compressed files; zmax is the number
+	// of expansion stages, ugrep's default of 1 (1..99).
+	decompress bool
+	zmax       int
 }
 
 // parse reads args like the tool the agent already knows. The dialect rules
@@ -53,7 +58,7 @@ type config struct {
 // takes the rest of its cluster or the next argument (-A3, -A 3), and a long
 // flag takes =value or the next argument (--glob=*.go).
 func parse(args []string) (config, error) {
-	var cfg config
+	cfg := config{zmax: 1}
 	var positional []string
 
 	// values are the single-letter flags that consume a value.
@@ -204,6 +209,13 @@ func parse(args []string) (config, error) {
 				if v, err = value(); err == nil {
 					cfg.preGlob = append(cfg.preGlob, v)
 				}
+			case "decompress":
+				cfg.decompress = true
+			case "zmax":
+				var v string
+				if v, err = value(); err == nil {
+					cfg.zmax, err = zmaxValue(v)
+				}
 			default:
 				return cfg, fmt.Errorf("unrecognized flag --%s", name)
 			}
@@ -232,6 +244,8 @@ func parse(args []string) (config, error) {
 					cfg.lineRegexp = true
 				case 'v':
 					cfg.invert = true
+				case 'z':
+					cfg.decompress = true
 				case 'n':
 					cfg.lineNumbers = true
 				case 'N':
@@ -301,6 +315,22 @@ func intValue(flag, v string) (int, error) {
 	n, err := strconv.Atoi(v)
 	if err != nil || n < 0 {
 		return 0, fmt.Errorf("invalid value for %s: %q", flag, v)
+	}
+	return n, nil
+}
+
+// zmaxValue accepts ugrep's range, 1 to 99. Both ends are refused with the
+// plain words ugrep uses, because 0 and 100 are the mistakes callers make.
+func zmaxValue(v string) (int, error) {
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return 0, fmt.Errorf("invalid value for --zmax: %q", v)
+	}
+	if n < 1 {
+		return 0, fmt.Errorf("invalid value for --zmax: %d (must be 1..99)", n)
+	}
+	if n > 99 {
+		return 0, fmt.Errorf("--zmax %d exceeds the upper limit of 99", n)
 	}
 	return n, nil
 }

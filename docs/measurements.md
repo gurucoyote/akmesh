@@ -6944,3 +6944,66 @@ nach einem apk del.
 Batterie: apk-replaces-file-gone, apk-replaces-file-kept, apk-replaces-record-gone,
 apk-trigger-quiet-own, apk-trigger-fires.
 
+
+## rg -z: Archive durchsuchen (acmesh-5nn, 24.11.2026)
+
+Vergleichswerkzeug: ugrep 7.8.5, /usr/bin/ugrep, Alpine-Repo, seit 23.11.2026
+auf diesem Host. Vorlage: ein Verzeichnis mit t.tar (a.txt, b.txt), t.tar.gz
+(derselbe tar), z.zip (in/a.txt, in/b.md), nested.zip (inner.zip mit deep.txt,
+top.txt), c.txt.gz und n.tar (c.txt.gz); gebaut mit tar, gzip und python3
+zipfile. Alle Laeufe im selben Verzeichnis, ohne Pfadangabe relativ.
+
+    ugrep -z hello t.tar        -> {a.txt}:hello alpha / {b.txt}:hello beta
+    ugrep -z hello t.tar.gz     -> {a.txt}:hello alpha / {b.txt}:hello beta
+    ugrep -z hello z.zip        -> {in/a.txt}:hello inner
+                                   {in/b.pdf}:%PDF hello pdf
+    ugrep -z hello nested.zip   -> {top.txt}:hello alpha
+                                   Binary file nested.zip{inner.zip} matches
+    ugrep -z --zmax=2 hello nested.zip
+                                -> {inner.zip:deep.txt}:hello deep
+    ugrep -z -l hello z.zip     -> z.zip{in/a.txt} / z.zip{in/b.md}
+    ugrep -z -c hello z.zip     -> z.zip{in/a.txt}:1 / z.zip{in/b.md}:1
+    ugrep -c hello a.txt        -> 1
+    ugrep -z hello a.txt.gz     -> hello alpha
+    ugrep -z hello .            -> a.txt:hello alpha
+                                   z.zip{in/a.txt}:hello inner
+                                   Binary file nested.zip{inner.zip} matches
+                                   t.tar{a.txt}:hello alpha
+                                   a.txt.gz:hello alpha
+                                   t.tar.gz{a.txt}:hello alpha
+    ugrep -z --zmax=0 ...       -> ugrep: invalid argument --zmax=0, rc 2
+    ugrep -z --zmax=100 ...     -> ugrep: option --zmax argument exceeds upper
+                                   limit, rc 2
+    gz im tar, --zmax=1         -> keine Ausgabe, rc 1
+    gz im tar, --zmax=2         -> {c.txt.gz}:hello alpha
+
+Daraus uebernommen: Etikettebenen mit Doppelpunkt, ein nur komprimiertes
+Argument druckt nackte Zeilen, ein Archiv auf der Kommandozeile laesst bei
+ugrep den Archivnamen im Treffer weg (im Walk steht er davor). Wir drucken
+immer das volle Etikett (t.tar{a.txt}, auch bei -l und -c), weil ein Treffer
+sonst nicht auflösbar ist - die einzige bewusste Abweichung in der Ausgabe.
+Golden: TestAgainstUgrep vergleicht bei einem Walk ueber . die Etiketten und
+Exitcodes; ohne ugrep auf PATH meldet er sich als uebersprungen.
+
+Groessen aus der report-Zeile des Baus (-s -w, gestrippt), vorher aus einem
+Arbeitsbaum auf 6645339 (beide Baeue mit derselben Toolchain und demselben
+Satz):
+
+    linux   vorher 19.0 MiB (19923171 Bytes) -> nachher 19.1 MiB (19988707 Bytes), statically linked, stripped
+    windows vorher 17.7 MiB (18525184 Bytes) -> nachher 17.7 MiB (18592768 Bytes), Windows PE, stripped
+
+Beide bleiben unter der Warnlinie 25 MB (die harte Grenze ist 30 MB); der
+Zuwachs sind 65 536 Bytes Linux und 67 584 Bytes Windows.
+
+Laufzeit, 20 docx (je ein Absatz) in akte.zip (52 095 Bytes), -l, bester von
+drei Laeufen auf dem gebauten linux-Binary:
+
+    ./akmesh rg -z --pre any2md -l 'endet am 31.12' akte.zip   0.02 s, rc 0, 20 Etiketten
+    ./akmesh rg -z -l 'endet am 31.12' akte.zip                0.00 s, rc 1
+
+Trefferform: akte.zip{akte/d1.docx}. Ohne --pre bleibt der docx-Text unsichtbar
+(Gegenprobe im selben Lauf), wie bei acmesh-idv.
+
+Batterie: 499 Linux / 386 Windows, 0 Fehler; die neuen Pruefungen sind
+rg-z-tar-label, rg-z-tar-list, rg-z-tar-no-hit, rg-z-bad-zmax. help-audit
+--check ./akmesh endet mit 0, -z und --zmax stehen im rg-Hilfetext.

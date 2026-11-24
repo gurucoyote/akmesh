@@ -1,9 +1,10 @@
 # rg: Archive durchsuchen wie ugrep
 
-Status: Entwurf, beschlossen als Vorhaben (Ticket acmesh-5nn, Stufe 1). Kein
-Code vorhanden. Die Semantik ist am 23.11.2026 gegen ein installiertes ugrep
-7.8.5 (alpine, mit zlib/bzip2/lzma/lz4/zstd/brotli/bzip3/7z/tar/cpio/zip)
-gemessen, nicht nur aus der Manpage gelesen; Messungen in docs/measurements.md.
+Status: Stufe 1 gebaut (24.11.2026, Ticket acmesh-5nn): zip/jar, tar, gz, bz2,
+tar.gz, tar.bz2, Etikett, --zmax, Grenzen, Zusammenspiel mit --pre. Die
+Semantik ist am 23.11.2026 gegen ein installiertes ugrep 7.8.5 (alpine, mit
+zlib/bzip2/lzma/lz4/zstd/brotli/bzip3/7z/tar/cpio/zip) gemessen, nicht nur aus
+der Manpage gelesen; Messungen in docs/measurements.md.
 
 ## Anlass
 
@@ -134,15 +135,25 @@ sinnvoll; cpio wäre mit `archive/tar`-artigem Eigenparser machbar, 7z nicht.
 
 ## Offene Entscheidungen
 
-1. xz/zstd: Fremdmodule ja/nein - erst nach Größenmessung.
+1. xz/zstd: Fremdmodule ja/nein - erst nach Größenmessung. ENTSCHIEDEN: nein für
+   Stufe 1, eigenes Ticket nach der Größenmessung (Fremdmodul-Kosten).
 2. `--files` über Archive: ugrep listet Mitglieder? Für uns offen, nicht in
    Stufe 1.
 3. `--zmax` Default 1 wie ugrep oder 2, weil ein Archiv im Archiv heute der
-   häufigste Fall ist? Vorschlag: ugrep folgen und den Default in der Hilfe
-   nennen.
+   häufigste Fall ist? ENTSCHIEDEN: ugrep folgen, Default 1, in der Hilfe
+   genannt.
 4. Exitcode bei kaputtem Archiv: ugrep endet gemessen mit 1, wir wollen 2
-   (rg-Vertrag). Das ist eine bewusste Abweichung und steht in der Hilfe.
+   (rg-Vertrag). ENTSCHIEDEN und gebaut: 2, in der Hilfe genannt.
 5. Ein eigener Schalter `--archive-types` analog zu `--filter`? Nicht jetzt.
+6. Etikett eines auf der Kommandozeile genannten Archivs: ugrep druckt nur
+   `{mitglied}`, im Walk dagegen `pfad{mitglied}`. ENTSCHIEDEN: wir drucken
+   immer das volle Etikett (auch bei -l und -c), weil ein Treffer sonst nicht
+   auflösbar ist. Das ist die einzige bewusste Abweichung in der Ausgabe; der
+   Golden-Test vergleicht deshalb einen Walk.
+7. Weiche Meldungen (Grenze, Link, verschlüsseltes Mitglied) setzen keinen
+   Fehler: sie gehen auf stderr, der Exitcode bleibt 0 oder 1. Ein kaputtes
+   Archiv ist dagegen ein Lesefehler und endet mit 2, auch wenn vorher Treffer
+   kamen - so hält es der heutige Code für jeden Lesefehler.
 
 ## Reihenfolge für den Fall, dass gebaut wird
 

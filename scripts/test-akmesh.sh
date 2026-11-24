@@ -436,6 +436,19 @@ check rg-re2-rejects "$(cd fdir && run rg 'beta(?= alpha)' r.txt 2>/dev/null; pr
 check rg-engine-default-rejects "$(cd fdir && run rg --engine=default 'beta(?= alpha)' r.txt 2>/dev/null; printf '%s' "$?")" "2"
 check rg-bad-engine "$(cd fdir && run rg --engine=nope alpha r.txt 2>/dev/null; printf '%s' "$?")" "2"
 check rg-pcre-word "$(cd fdir && run rg -Pw 'beta' r.txt | tr -d '\r')" "beta alpha"
+# rg -z (acmesh-5nn): Archivmitglieder werden einzeln durchsucht und im Etikett
+# genannt. Die Vorlage baut tar selbst; zip deckt der Go-Test ab, weil wir
+# keinen zip-Schreiber haben.
+ADIR=$(mktemp -d 2>/dev/null || echo /tmp/akmesh-rgz)
+mkdir -p "$ADIR/arc"
+printf 'archiv treffer\n' > "$ADIR/arc/m1.txt"
+printf 'kein wort\n' > "$ADIR/arc/m2.txt"
+( cd "$ADIR/arc" && run tar -cf ../ra.tar m1.txt m2.txt >/dev/null 2>&1 )
+check rg-z-tar-label "ra.tar{m1.txt}:archiv treffer" "$(cd "$ADIR" && run rg -z 'archiv treffer' ra.tar | tr -d '\r')"
+check rg-z-tar-list "ra.tar{m1.txt}" "$(cd "$ADIR" && run rg -z -l 'archiv treffer' ra.tar | tr -d '\r')"
+check rg-z-tar-no-hit "1" "$(cd "$ADIR" && run rg -z 'nichtvorhanden' ra.tar >/dev/null 2>&1; printf '%s' "$?")"
+check rg-z-bad-zmax "2" "$(cd "$ADIR" && run rg -z --zmax=0 'archiv' ra.tar >/dev/null 2>&1; printf '%s' "$?")"
+rm -rf "$ADIR"
 # wc: -L und die Spaltenbreite (acmesh-j66, acmesh-154). Fuer die Breite sorgt
 # eine Datei mit vielen Bytes und wenigen Zeilen: GNU richtet dann auch die
 # Zeilenspalte an deren Breite aus.

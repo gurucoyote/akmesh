@@ -97,6 +97,12 @@ func (p *preprocessor) text(name string) (string, error) {
 	return md, nil
 }
 
+// textBytes converts data that came out of an archive: there is no file to
+// hand to an external command, so only the built-in any2md applies.
+func (p *preprocessor) textBytes(name string, data []byte) (string, error) {
+	return p.convert(name, data)
+}
+
 func (p *preprocessor) convert(name string, data []byte) (string, error) {
 	if p.command == "" {
 		md, err := anymd.Convert(data)

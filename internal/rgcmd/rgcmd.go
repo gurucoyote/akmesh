@@ -9,6 +9,7 @@
 package rgcmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -270,6 +271,18 @@ func searchPaths(cfg config, matcher match.Matcher, globSet *glob.Set, requireMa
 	var pool sync.Pool
 	pool.New = func() any { return newWorker() }
 
+	// Archive members always carry their label (archive.zip{member}), even when
+	// the archive was the only PATH and plain files would print bare lines.
+	// That is what ugrep does, and without it a hit could not be told apart
+	// from one in the archive's own bytes.
+	memberWorker := newWorkerFactory(cfg, matcher, dest, true)
+	var memberPool sync.Pool
+	memberPool.New = func() any { return memberWorker() }
+
+	warn := func(msg string) {
+		fmt.Fprintf(stderr, "rg: %s\n", msg)
+	}
+
 	var anyMatched, anyErr atomic.Bool
 	reportErr := func(path string, err error) {
 		fmt.Fprintf(stderr, "rg: %s: %s\n", path, err)
@@ -295,6 +308,29 @@ func searchPaths(cfg config, matcher match.Matcher, globSet *glob.Set, requireMa
 			w.searcher.BinaryMode = search.BinaryConvert
 		}
 
+		// -z: a container is searched member by member and never as its own
+		// bytes. handled=false keeps the plain-file path below; plain then
+		// carries the decompressed bytes of a merely compressed file.
+		var plain []byte
+		if cfg.decompress {
+			exp := &expander{
+				zmax: cfg.zmax,
+				warn: warn,
+				visit: func(m member) {
+					searchMember(cfg, pre, dest, &memberPool, &anyMatched, m, warn)
+				},
+			}
+			handled, data, aerr := exp.expand(e.Path)
+			if aerr != nil {
+				reportErr(e.Path, aerr)
+				return walk.Continue
+			}
+			if handled {
+				return walk.Continue
+			}
+			plain = data
+		}
+
 		var reader io.Reader
 		if pre != nil && pre.applies(e.Path) {
 			// What is searched is the converted Markdown; the hit still names
@@ -308,6 +344,8 @@ func searchPaths(cfg config, matcher match.Matcher, globSet *glob.Set, requireMa
 			}
 			reader = strings.NewReader(md)
 			w.searcher.BinaryMode = search.BinaryNone
+		} else if plain != nil {
+			reader = stripBOM(bytes.NewReader(plain))
 		} else {
 			f, err := os.Open(e.Path)
 			if err != nil {
@@ -346,6 +384,42 @@ func searchPaths(cfg config, matcher match.Matcher, globSet *glob.Set, requireMa
 		return 0
 	}
 	return 1
+}
+
+// searchMember searches one stream from an archive under its printed label.
+// A member is handled like a discovered file (BinaryQuit): its bytes are what
+// they are, and a NUL means the search stops there. --pre applies to the
+// member's own name, so akt.zip{vertrag.docx} is converted, akt.zip{note.txt}
+// is not.
+func searchMember(cfg config, pre *preprocessor, dest *printer.Dest, pool *sync.Pool, matched *atomic.Bool, m member, warn func(string)) {
+	w := pool.Get().(*worker)
+	defer pool.Put(w)
+	w.searcher.BinaryMode = search.BinaryQuit
+
+	var reader io.Reader = bytes.NewReader(m.data)
+	if pre != nil && pre.command == "" && pre.applies(m.name) {
+		md, err := pre.textBytes(m.label, m.data)
+		if err != nil {
+			warn(fmt.Sprintf("%s: %v", m.label, err))
+			return
+		}
+		reader = strings.NewReader(md)
+		w.searcher.BinaryMode = search.BinaryNone
+	}
+
+	tracked := &binaryTracker{
+		Sink:           w.sink,
+		matched:        matched,
+		standard:       w.standard,
+		binMode:        w.searcher.BinaryMode,
+		showPath:       true,
+		contextEnabled: cfg.before > 0 || cfg.after > 0,
+		dest:           dest,
+		searcher:       w.searcher,
+	}
+	if err := w.searcher.Search(m.label, reader, tracked); err != nil {
+		warn(fmt.Sprintf("%s: %v", m.label, err))
+	}
 }
 
 // searchStdin searches the piped stream. The label "<stdin>" never appears:

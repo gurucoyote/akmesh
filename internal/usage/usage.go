@@ -459,7 +459,7 @@ var Texts = map[string]Entry{
 		"Print the current working directory.",
 	},
 	"rg": {
-		"[-i] [-F] [-P] [-w] [-n] [-l] [-c] [-o] [-A N] [-B N] [-C N] [-g GLOB] [-t TYPE] [--engine E] PATTERN [PATH...]",
+		"[-i] [-F] [-P] [-w] [-n] [-l] [-c] [-o] [-A N] [-B N] [-C N] [-g GLOB] [-t TYPE] [-z] [--zmax N] [--engine E] PATTERN [PATH...]",
 		"Recursive, gitignore-aware search over text files; no -r needed.\n" +
 			"Exit 0 on a match, 1 on none, 2 on an error.\n" +
 			"  -e PATTERN          add a pattern (repeatable)\n" +
@@ -494,6 +494,16 @@ var Texts = map[string]Entry{
 			"                      the converted text, not to the original file.\n" +
 			"      --pre-glob GLOB which files go through --pre (default: the any2md\n" +
 			"                      suffixes); everything else is searched raw\n" +
+			"  -z, --decompress    also search inside archives and compressed files:\n" +
+			"                      zip, jar, tar, tar.gz, tar.bz2, gz, bz2. A hit is\n" +
+			"                      labelled archive.zip{member}, nested\n" +
+			"                      a.zip{b.zip:c.txt}. Line and column numbers refer\n" +
+			"                      to the member's converted text.\n" +
+			"      --zmax N        expansion stages, 1..99 (default 1: a zip inside a\n" +
+			"                      zip counts as binary and is searched packed)\n" +
+			"                      A broken archive ends with 2 (ugrep says 1); --pre\n" +
+			"                      applies to the member name, but an external --pre\n" +
+			"                      command is not run on archive members.\n" +
 			"Not built (unlike ripgrep): --type-add/--type-clear, --encoding,\n" +
 			"and the global gitignore file (core.excludesFile).",
 	},

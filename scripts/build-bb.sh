@@ -278,7 +278,7 @@ export GOWORK="$WORKFILE"
 
 # Every name our own tools provide. Where u-root also builds the same name for
 # the target, u-root wins: it is already in the list and needs no extra bytes.
-OURS_ALL="adduser addgroup deluser delgroup rmdir id awk basename blkid init crond getty syslogd logger logread certinfo ls head find grep chmod cp echo false curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall pgrep pkill chown unzip od setsid sum su passwd mkpasswd login mkcert md5sum nl seq patch ps sed rg sha1sum sha256sum sha512sum shuf sort split stat sync uniq comm tac timeout truncate uname verify wget sh policy ssh scp pwd true xargs tar hexdump base64 wc tr touch tracedeps any2md html2md httpd docx2md rtf2md pdf2md md2txt-l md2pdf md2docx md2epub epub2md pdf2html html2docx html2epub epub2html"
+OURS_ALL="apk adduser addgroup deluser delgroup rmdir id awk basename blkid init crond getty syslogd logger logread certinfo ls head find grep chmod cp echo false curl cut df diff dirname du env file free hostname gosh iconv jq iconv kill killall pgrep pkill chown unzip od setsid sum su passwd mkpasswd login mkcert md5sum nl seq patch ps sed rg sha1sum sha256sum sha512sum shuf sort split stat sync uniq comm tac timeout truncate uname verify wget sh policy ssh scp pwd true xargs tar hexdump base64 wc tr touch tracedeps any2md html2md httpd docx2md rtf2md pdf2md md2txt-l md2pdf md2docx md2epub epub2md pdf2html html2docx html2epub epub2html"
 
 PROFILE_FILE="$ROOT/scripts/profiles/$PROFILE.txt"
 if [ ! -f "$PROFILE_FILE" ]; then

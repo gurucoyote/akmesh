@@ -11,6 +11,11 @@ if [ ! -f "$BIN" ]; then
 	exit 2
 fi
 
+# The repository root, resolved before the script changes directory: checks that
+# need a fixture from the repo (apk testdata) would otherwise look in $WORK.
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+REPO_DIR=$(cd "$SCRIPT_DIR/.." && pwd)
+
 # The battery runs against the akmesh binary for the target it was built for:
 # every check calls it as "akmesh <command> [args]".
 run() {
@@ -1066,6 +1071,27 @@ if [ -z "$WINDOWS" ]; then
   checkcode rmdir-ignore-nonempty 0 "$(run rmdir --ignore-fail-on-non-empty rne >/dev/null 2>&1; echo $?)"
   check rmdir-missing-message '1' "$(run rmdir nix 2>&1 | tr -d '\r' | grep -c "failed to remove 'nix': No such file or directory")"
   check rmdir-missing-operand '1' "$(run rmdir 2>&1 | tr -d '\r' | grep -c 'rmdir: missing operand')"
+fi
+
+
+# --- apk (acmesh-xwcm): ein echtes Repo aus abuild liegt in
+# internal/apkcmd/testdata/real. Die Pruefung installiert daraus in eine
+# Wegwerf-Wurzel, mit und ohne Schluessel.
+if [ -z "$WINDOWS" ]; then
+  APKDIR="$WORK/apk"; mkdir -p "$APKDIR/repo/x86_64" "$APKDIR/root/etc/apk/keys"
+  cp "$REPO_DIR"/internal/apkcmd/testdata/real/*.apk "$APKDIR/repo/x86_64/"
+  cp "$REPO_DIR"/internal/apkcmd/testdata/real/APKINDEX.tar.gz "$APKDIR/repo/x86_64/"
+  cp "$REPO_DIR"/internal/apkcmd/testdata/real/*.pub "$APKDIR/root/etc/apk/keys/"
+  check apk-add-line '1' "$(run apk -p "$APKDIR/root" -X "$APKDIR/repo" add akmesh-hello 2>/dev/null | tr -d '\r' | grep -c "(1/1) Installing akmesh-hello (0.0.1-r0)")"
+  check apk-file '1' "$(grep -c 'hallo aus dem eigenen paket' "$APKDIR/root/usr/bin/akmesh-hello" 2>/dev/null | tr -d '\r')"
+  check apk-world 'akmesh-hello' "$(tr -d '\r' < "$APKDIR/root/etc/apk/world" 2>/dev/null)"
+  check apk-installed-db '1' "$(grep -c '^P:akmesh-hello$' "$APKDIR/root/lib/apk/db/installed" 2>/dev/null | tr -d '\r')"
+  check apk-info '1' "$(run apk -p "$APKDIR/root" info akmesh-hello 2>/dev/null | tr -d '\r' | grep -c 'hello from our own apk repository')"
+  rm -f "$APKDIR/root/etc/apk/keys/"*.pub
+  check apk-unsigned-refused '1' "$(run apk -p "$APKDIR/root" -X "$APKDIR/repo" add foo 2>&1 | tr -d '\r' | grep -c 'UNTRUSTED signature')"
+  cp "$REPO_DIR"/internal/apkcmd/testdata/real/*.pub "$APKDIR/root/etc/apk/keys/"
+  check apk-del '1' "$(run apk -p "$APKDIR/root" del akmesh-hello 2>/dev/null | tr -d '\r' | grep -c 'Purging akmesh-hello')"
+  check apk-del-gone '0' "$([ -f "$APKDIR/root/usr/bin/akmesh-hello" ] && echo 1 || echo 0)"
 fi
 
 printf '%d checks, %d failures\n' "$checks" "$fails"

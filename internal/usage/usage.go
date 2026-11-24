@@ -255,6 +255,16 @@ var Texts = map[string]Entry{
 			"  -v           print repeated blocks instead of a *\n" +
 			"  The form agents type, \"od -An -tx1\", works: hex bytes, no address.",
 	},
+	"apk": {
+		"update | add PKG... | del PKG... | upgrade | info [PKG...] | list [PATTERN] | search WORD...",
+		"  Installs packages from signed apk repositories into a tree, without C\n" +
+			"  apk-tools. Options: -p/--root DIR (or AKMESH_ROOT), -X/--repository REPO\n" +
+			"  (repeatable), --allow-untrusted, --no-scripts, --no-cache, -q, -v.\n" +
+			"  Keys come from <root>/etc/apk/keys and /etc/apk/keys, repositories from\n" +
+			"  -X or <root>/etc/apk/repositories. Layout <repo>/<arch>/APKINDEX.tar.gz.\n" +
+			"  Stage one installs files only: a package with install scripts is\n" +
+			"  refused unless --no-scripts is given, and then its scripts do not run.",
+	},
 	"adduser": {
 		"[-h DIR] [-g GECOS] [-s SHELL] [-G GRP] [-S] [-D] [-H] [-u UID] USER [GROUP]",
 		"  Creates an account in /etc/passwd and /etc/shadow, busybox style like\n" +

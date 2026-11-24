@@ -71,6 +71,7 @@ var Commands = map[string]Func{
 	"deluser":   runDelUser,
 	"delgroup":  runDelGroup,
 	"rmdir":     runRmdir,
+	"apk":       runApk,
 	"patch":     runPatch,
 	"policy":    runPolicy,
 	"blkid":     runBlkid,

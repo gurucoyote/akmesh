@@ -6086,3 +6086,84 @@ Eigene Entscheidungen, offen benannt:
 Tests: internal/userdb (Parser, Append, Entfernen), internal/useradd (sieben
 Faelle, Wegwerf-/etc), internal/rmdir (vier Faelle). Batterie: 14 neue
 Pruefungen, 420 Linux / 372 Windows, beide 0 Fehler.
+
+## apk: Bibliothek gegen Eigenbau, Groessenmessung (24.11.2026, acmesh-xwcm)
+
+Gemessen, bevor entschieden wird. Ein Hallo-Programm, das nur
+chainguard.dev/apko/pkg/apk mit fs.DirFS und WithArch oeffnet:
+
+    leer (package main, func main() {})       1.619.109 Bytes
+    mit apko apk, ungestrippt                 28.756.312 Bytes
+    mit apko apk, gestrippt (-s -w)           19.611.911 Bytes
+    also Zuwachs gestrippt                    rund 18.4 MB
+
+Unser ganzes Binary ist heute 19.615.971 Bytes, gestrippt. Die Bibliothek
+verdoppelt es und reisst die harte Grenze in scripts/build-bb.sh (30 MB).
+Sie zieht k8s.io/apimachinery und sigs.k8s.io/release-utils mit, das ist
+Image-Bau, nicht Paketinstallation.
+
+Entscheidung: eigener schlanker Weg (Weg C aus dem frueheren Gespraech),
+kein apko. Ein .apk sind zwei bis drei gzip-Streams, die APKINDEX.tar.gz ist
+dasselbe Format - Lesen, Pruefen und Entpacken sind in Go ohne Fremdbaum
+machbar. Was wir dafuer selbst schreiben muessen, steht im Ticket.
+
+Nicht gemessen (offen, gehoert nachgetragen, wenn es soweit ist): Zeit fuer ein
+Repo mit 20 Paketen. Die Groesse allein entscheidet hier schon.
+
+## apk-Unterbefehl: Installieren aus einem signierten Repo (24.11.2026, acmesh-xwcm)
+
+Entscheidung: eigener Weg, keine apko-Bibliothek. Zahl und Begruendung stehen
+oben im Abschnitt "apk: Bibliothek gegen Eigenbau" (18,4 MB Zuwachs gestrippt).
+Unser apk kostet im Binary 163.036 Bytes: 19.718.371 statt 19.555.335.
+
+Format, gemessen an einem echten abuild-Paket (abuild 3.15.0-r1, alpine:3.22)
+    akmesh-hello-0.0.1-r0.apk   1479 Bytes, drei gzip-Member
+        Member 0  Signatur (.SIGN.RSA.<key>.rsa.pub)
+        Member 1  control (.PKGINFO)  428 Bytes entpackt
+        Member 2  data                43 Bytes Nutzinhalt
+    APKINDEX.tar.gz              979 Bytes, zwei Member (Signatur, APKINDEX)
+
+Zwei Hashregeln, beide hier zum ersten Mal belegt
+    C:Q1... im Index   sha1 ueber den ROHEN control-Member, base64
+    datahash           sha256 ueber den ROHEN data-Member, hex
+Die ganze Datei zu hashen ergab bei einem voellig intakten Paket eine
+"checksum mismatch" - der Index sagt Q14c9VPfT2oca91ogSYgnRWrVgY5g=, sha1 der
+Datei ist Q14GsHeDspV+THLx14tbD2Oy5sttQ=. Nur der control-Member trifft.
+
+Signatur
+    abuild-sign signiert SHA1 ueber die Bytes NACH dem Signatur-Member (RSA
+    PKCS1v15); apk prueft SHA1 und SHA256. Beides wird versucht. Ein Block von
+    einem Schluessel, den wir nicht haben, heisst UNTRUSTED und wird abgelehnt,
+    wie apk es tut - das war ein Fehler in der ersten Fassung: das Vorhandensein
+    einer Signatur wurde fuer eine geprueft Signatur gehalten.
+
+Gzip-Falle (kostete den ersten Durchlauf)
+    gzip.Reader liest mit bufio VORAUS, also war "wie viele Bytes hat dieses
+    Member verbraucht" zu gross und jeder Hash zeigte auf falsche Bytes. Der
+    Unit-Test mit einer selbstgebauten Datei merkte nichts, weil sie nur ein
+    Member hatte. Richtig: Header von Hand lesen, dann flate ueber bytes.Reader
+    (der implementiert flate.Reader, also kein Puffer, exakte Laenge).
+
+Ende-zu-Ende belegt
+    Repo in alpine:3.22 mit abuild gebaut, apk index + abuild-sign signiert.
+    In der Wegwerf-Wurzel:
+        (1/1) Installing akmesh-hello (0.0.1-r0)
+        OK: 43 B in 1 package
+    Datei /usr/bin/akmesh-hello (43 B, Mode 755) liegt da und laesst sich
+    ausfuehren; /etc/apk/world enthaelt "akmesh-hello"; /lib/apk/db/installed
+    traegt P:V:A:S:I:T plus F:/R:/Z:/a: je Datei. Ohne Schluessel im Ziel:
+    "UNTRUSTED signature", Exit 1.
+
+Was die erste Fassung NICHT tut (bewusst, eigenes Ticket)
+    - keine Konflikte, keine Versionsoperatoren in depends, keine Provider-
+      Prioritaeten jenseits von provides
+    - keine Paketskripte (Stufe 1): ein Paket mit Skripten wird ohne
+      --no-scripts abgelehnt, mit --no-scripts installiert es nur die Dateien
+    - keine Paketsignatur, nur Indexsignatur und Hashes
+    - kein mknod fuer Geraete (braucht root), solche Eintraege werden gezaehlt
+    - search liest /etc/apk/repositories des Hosts, nicht des Ziels
+
+Tests: internal/apkcmd mit echten Dateien aus abuild (testdata/real), dazu
+sechs Faelle mit selbstgebautem Repo (Installieren, Abhaengigkeit zuerst,
+del schuetzt Abhaengige, Hashfehler, Versionen). Batterie: 8 neue Pruefungen,
+428 Linux / 372 Windows, beide 0 Fehler.

@@ -280,3 +280,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 24.11.2026: apk-Unterbefehl gebaut (eigener Weg statt apko, 18.4 MB gemessen), Installation aus signiertem abuild-Repo belegt; Batterie 428 Linux / 372 Windows; acmesh-xwcm geschlossen, Rest in acmesh-gk2i.
 24.11.2026: apkbuild (Paket, Index, Signatur in Go) gebaut; von apk-tools 2.14.9 und 3.0.9 angenommen; Batterie 434 Linux / 372 Windows; acmesh-oolz geschlossen.
 24.11.2026: Rollout-Entscheidungen als docs/design/rollout.md festgehalten, apk-Pins und Kanaele gemessen, Indexfehler bei mehreren Versionen behoben (acmesh-o6ja offen fuer zwei Entscheidungen).
+24.11.2026: Rollout-Entscheidungen eingearbeitet (beides c), acmesh-o6ja geschlossen, Bau-Tickets acmesh-slyv (Bericht), acmesh-ke0r (Kanaele), acmesh-2p44 (Waechter) angelegt.

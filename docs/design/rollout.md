@@ -56,12 +56,26 @@ Signatur mit beiden Namen eine Zeit lang parallel, alter Schluessel erst aus
 muss der Host fuehren (Datei unter /etc/apk/keys), nicht der Server: der Server
 kann einem kompromittierten Host nichts befehlen.
 
-## Offene Entscheidungen (Martin)
+## Entscheidungen (Martin, 24.11.2026: "gehe mit allen empfehlung also immer c")
 
-1. Wer loest ein Update aus: ein Mensch per Befehl, ein Zeitplan, oder beides
-   (Zeitplan fuer den Kanal, Handgriff fuer den Sprung zwischen Kanaelen)?
-2. Wenn der Health-Check nach dem Update scheitert: automatisch auf die letzte
-   gute Version zurueck, oder stehenbleiben, melden und den Menschen holen?
+1. Ausloeser: Zeitplan fuer den laufenden Kanal, Kanalwechsel als Handgriff.
+   Der Zeitplan ist ausdruecklich auf den Kanal begrenzt; der Sprung von stable
+   nach testing (und zurueck) ist Handarbeit und nicht automatisierbar.
+2. Health-Check scheitert: einmal zurueck auf die letzte bekannte gute Version,
+   dann stehenbleiben und melden. Ein zweiter Fehlschlag wird nicht
+   automatisch gedreht - so gibt es keine Schleife aus Update und Rueckfall.
 
-Alles andere in diesem Dokument laesst sich unabhaengig davon bauen; diese zwei
-Punkte bestimmen, ob Baustein 3 ein Befehl oder ein Waechter wird.
+Damit ist Baustein 3 ein Waechter mit genau einem Rueckfall, kein blosser
+Befehl. Der Rueckfall muss geuebt sein, bevor er zaehlt: ein Trockenlauf gegen
+einen Testrechner gehoert zur Abnahme.
+
+Folge fuer die drei Bausteine:
+- Kanal-Dateien: ein Repo je Kanal, apkbuild baut sie, Kanalwahl steht in
+  /etc/apk/repositories. Der Zeitplan faehrt nur `apk upgrade` im gewaehlten
+  Kanal.
+- Bericht je Rechner: eine JSON-Zeile je Paket und Lauf, Quelle ist
+  /lib/apk/db/installed, plus Ergebnis des Health-Checks. Der Bericht ist die
+  Grundlage fuer "letzte bekannte gute Version".
+- Waechter: nach dem Update Health-Check, bei Fehlschlag genau ein
+  `apk add pkg=<letzte gute>`, danach Meldung in die Berichtsdatei und Stillstand
+  bis ein Mensch eingreift.

@@ -1,0 +1,53 @@
+Rollout von apk-Paketen: zwei Entscheidungen
+Stand 24.11.2026, Ticket acmesh-o6ja. Kommentare bitte mit >> an den Zeilenanfang
+schreiben; ich übernehme sie dann als Entscheidung.
+
+Was apk schon kann (gemessen mit apk-tools 2.14.9)
+Ein Pin in /etc/apk/world hält: apk add paket=1.0.0-r0 macht ein Downgrade und schreibt die Bedingung in die
+Datei.
+Ein so festgehaltener Stand bleibt bei apk upgrade stehen; lösen darf man ihn nur ausdrücklich mit einer neuen
+Version.
+Kanäle gehen über Repo-Etiketten: @stable in /etc/apk/repositories, danach apk add paket@stable.
+Was fehlt, ist der Ablauf drumherum: Auslöser, Bericht je Rechner, Rückfall.
+
+Frage 1: Wer löst ein Update aus?
+Möglichkeit a: nur ein Mensch, per Befehl oder Handgriff. Nichts passiert von selbst, kein Zeitplan.
+Vorteil: volle Kontrolle, ein Fehler trifft nie alle gleichzeitig.
+Nachteil: jemand muss daran denken, und ein Rechner kann lange auf einem alten Stand bleiben.
+
+Möglichkeit b: nur ein Zeitplan, etwa nächtlich je Kanal. Der Rechner zieht, was im Kanal liegt.
+Vorteil: kein Vergessen, gleichmäßiger Stand.
+Nachteil: ein schlechtes Paket verteilt sich, bevor jemand es merkt.
+
+Möglichkeit c: beides. Zeitplan für den laufenden Kanal, Handgriff für den Sprung zwischen den Kanälen.
+Vorteil: Alltag läuft von selbst, die riskanten Schritte bleiben in der Hand.
+Nachteil: zwei Wege, die man beide verstehen und beide dokumentieren muss.
+
+Meine Neigung: c. Der Zeitplan ist ausdrücklich auf den Kanal begrenzt, der Kanalwechsel ist Handarbeit.
+>>  c
+
+Frage 2: Was passiert, wenn der Health-Check nach dem Update scheitert?
+Gemeint ist der Blick nach dem Update: läuft der Dienst, antwortet er, steht das Erwartete im Protokoll.
+
+Möglichkeit a: automatisch zurück auf die letzte bekannte gute Version, sofort, ohne Rückfrage.
+Vorteil: der Dienst ist schnell wieder da.
+Nachteil: der Fehler verschwindet aus dem Blick, und eine Schleife aus Update und Rückfall kann sich drehen.
+
+Möglichkeit b: stehenbleiben, melden, auf einen Menschen warten. Kein automatischer Rückfall.
+Vorteil: der Fehlerzustand bleibt sichtbar, niemand verdeckt die Ursache.
+Nachteil: der Dienst bleibt kaputt, solange niemand hinsieht.
+
+Möglichkeit c: einmal zurück, dann stehenbleiben und melden. Ein zweiter Fehlschlag wird nicht mehr
+automatisch gedreht.
+Vorteil: schnelle Rettung, aber keine Schleife.
+Nachteil: etwas mehr Logik im Wächter, und der Rückfall muss geübt sein, bevor er zählt.
+
+Meine Neigung: c. Rückfall einmal, danach Stillstand mit Meldung in der eigenen Berichtsdatei.
+>> 
+ c
+Was ich unabhängig davon schon bauen kann
+Kanal-Dateien: ein Repo je Kanal, aufgebaut mit apkbuild, Kanalwahl in /etc/apk/repositories.
+Bericht je Rechner: eine Zeile je Paket und Lauf in einer eigenen Datei, Quelle ist /lib/apk/db/installed,
+kein Eventlog, keine Cloud.
+Rückfall-Befehl: nennt die letzte gute Version aus dem Bericht und ruft apk add paket=version.
+Details stehen in docs/design/rollout.md.

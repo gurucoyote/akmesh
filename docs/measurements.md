@@ -7424,3 +7424,35 @@ Windows, dieselben fuenf Binaries, gestrippt (`./scripts/build-bb.sh windows`):
     akmesh-write.exe   9796096 Bytes   9.3 MiB
     akmesh-net.exe    10759168 Bytes  10.3 MiB
     akmesh-shell.exe   9252864 Bytes   8.8 MiB
+
+### Teil-Binaries unter Windows, und zwei Batterie-Fehler (25.11.2026)
+
+    akmesh-net.exe    -c "curl wget ssh scp httpd mkcert verify certinfo"   25, 0 Fehler
+    akmesh-shell.exe  -c "sh gosh apk apkbuild apkreport apkguard"           3, 0 Fehler
+    akmesh-write.exe  -c "md2pdf md2docx md2epub html2docx html2epub"       15, 0 Fehler
+    akmesh-docs.exe   -c "<9 Leser + rg>"                                   42, 0 Fehler
+
+Die Shell-Gruppe hat unter Windows nur drei Faelle (sh-echo, sh-var, sh-status):
+die apk-Pruefungen brauchen eine Wurzel und laufen dort nicht.
+
+Drei Fehler auf dem Weg dorthin, alle in der Batterie, alle gemessen:
+
+1. httpd-detach-stopped schlug fehl, weil die Nachbarsuche im Temp-Ordner der
+   .exe-Kopie suchte - dort liegt kein zweites Binary. Jetzt merkt sich die
+   Batterie den Pfad, den der Aufrufer genannt hat (ORIG_BIN).
+2. Danach schlug es wieder fehl, weil ohne Endung gesucht wurde: neben
+   akmesh-net.exe liegt akmesh (Linux) und akmesh.exe (Windows), und das
+   Linux-Binary gewann - dessen kill erreicht eine Windows-pid nicht. Die Suche
+   nimmt jetzt $NSUF (.exe, wenn das gepruefte Binary eines ist).
+3. Zwei Laeufe gleichzeitig vertragen sich nicht: waehrend der Shell-Lauf lief,
+   aenderte ich das Skript, und beide Laeufe brachen mit Syntaxfehlern ab. Die
+   Ergebnisse solcher Laeufe sind keine Messung.
+
+Der eigentliche Grund fuer eine ganze Serie von Fehlschlaegen war die Umgebung,
+nicht der Code: WSL verlor die Interop-Registrierung, jede .exe endete mit
+"Exec format error", auch cmd.exe. Zurueck mit
+
+    echo ':WSLInterop:M::MZ::/init:PF' > /proc/sys/fs/binfmt_misc/register
+
+Danach waren net und shell sofort gruen. Die Registrierung haelt nur eine Weile;
+sie muss unmittelbar vor dem Lauf stehen.

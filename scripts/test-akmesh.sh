@@ -57,9 +57,17 @@ run() {
 # or a docx by converting it again need a reader. That is another package of the
 # split (or the full binary) next to the one under test; for the full binary and
 # for akmesh-docs it is the binary itself (acmesh-1zzk).
+# A neighbour must be the same kind of program as the one under test: on Windows
+# the lookalike Linux binary next to it is in PATH-style reach and answers, but
+# its kill and its pids belong to another world (measured 25.11.2026).
+case "${ORIG_BIN:-$BIN}" in
+*.exe) NSUF=.exe ;;
+*) NSUF= ;;
+esac
+NBR=$(dirname "${ORIG_BIN:-$BIN}")
 READ=$BIN
 if ! "$BIN" pdf2md -h >/dev/null 2>&1; then
-	for cand in "$(dirname "$BIN")/akmesh" "$(dirname "$BIN")/akmesh-docs"; do
+	for cand in "$NBR/akmesh$NSUF" "$NBR/akmesh-docs$NSUF"; do
 		if [ -x "$cand" ] && "$cand" pdf2md -h >/dev/null 2>&1; then
 			READ=$cand
 			break
@@ -75,7 +83,7 @@ read_doc() {
 # next to it - for the full binary and for akmesh-write that is itself.
 WRITE=$BIN
 if ! "$BIN" md2epub -h >/dev/null 2>&1; then
-	for cand in "$(dirname "$BIN")/akmesh" "$(dirname "$BIN")/akmesh-write"; do
+	for cand in "$NBR/akmesh$NSUF" "$NBR/akmesh-write$NSUF"; do
 		if [ -x "$cand" ] && "$cand" md2epub -h >/dev/null 2>&1; then
 			WRITE=$cand
 			break
@@ -91,7 +99,7 @@ write_doc() {
 # kept answering). A binary without kill takes the one next to it.
 KILLBIN=$BIN
 if "$BIN" kill 999999 2>&1 | grep -q 'unknown command'; then
-	for cand in "$(dirname "$BIN")/akmesh"; do
+	for cand in "$NBR/akmesh$NSUF"; do
 		if [ -x "$cand" ] && ! "$cand" kill 999999 2>&1 | grep -q 'unknown command'; then
 			KILLBIN=$cand
 			break
@@ -113,7 +121,7 @@ cd "$WORK" || exit 2
 # different behaviour). So the battery runs on a copy with a fresh path, which
 # is the same file.
 case "$BIN" in
-*.exe) cp "$BIN" "$WORK/acmesh-under-test.exe" && BIN="$WORK/acmesh-under-test.exe" && WINDOWS=1 ;;
+*.exe) ORIG_BIN=$BIN; cp "$BIN" "$WORK/acmesh-under-test.exe" && BIN="$WORK/acmesh-under-test.exe" && WINDOWS=1 ;;
 esac
 
 fails=0

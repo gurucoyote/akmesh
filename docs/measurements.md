@@ -7690,3 +7690,15 @@ Ohne Terminalinfo, mit ANSI:
 
 In der Distro nach dem Tausch: akmesh clear | od -c -> 033 [ H 033 [ 2 J 033 [ 3 J 033 [ H.
 help-audit --check gruen. Tar 25 978 880 Bytes, 187 Eintraege.
+
+### Namen brauchen einen Link in /bin (25.11.2026)
+
+Nach dem Tausch von /bin/akmesh allein war "clear" unbekannt, obwohl das Binary
+ihn enthaelt; der Link /bin/clear fehlte. scripts/wsl-links.sh legt ihn an:
+
+    rm -f /bin/clear; sh /tmp/links.sh
+    akmesh-wsl-links: 1 new links in /bin (from /bin/akmesh)
+    clear -x | od -c   ->  033 [ H 033 [ 2 J 033 [ H     (auch als akmesh)
+
+Das Skript benutzt rm und ln getrennt, weil unser ln zusammengezogene Kurzflags
+verweigert (acmesh-kf91).

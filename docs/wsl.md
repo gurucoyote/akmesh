@@ -188,6 +188,22 @@ Das Home gehoert dabei dem Nutzer (1000:1000); vorher war es root und "mkdir
 projects" scheiterte mit permission denied.
 
 
+## Wenn ein neues Binary in die laufende Distro kommt
+
+Ein Name ist in dieser Distro nicht nur im Binary, sondern auch ein Symlink in
+/bin: "/bin/clear -> akmesh". Ein frisch importiertes Image legt alle Links aus
+der Namensliste des Binaries an. Wird dagegen nur /bin/akmesh ersetzt, fehlt der
+Link für einen neuen Namen, und die Shell antwortet "not found", obwohl der
+Befehl im Binary steckt (gemessen 25.11.2026 mit clear).
+
+Dafür gibt es scripts/wsl-links.sh: es liest die Namen aus dem Binary und legt
+fehlende Links an, echte Dateien bleiben unangetastet (ein Paket bringt eigene
+Programme mit). In der Distro als root:
+
+    echo <base64 von scripts/wsl-links.sh> | base64 -d > /tmp/links.sh
+    sh /tmp/links.sh
+    akmesh-wsl-links: 1 new links in /bin (from /bin/akmesh)
+
 ## Tab vervollständigt
 
 Tab ergänzt im Zeileneditor das Wort unter dem Cursor (25.11.2026):

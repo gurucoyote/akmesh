@@ -404,7 +404,10 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stder
 				_ = runStatements(context.Background(), r, file)
 			}
 			out.WriteString("\n")
-		} else if runErr != nil {
+		} else if runErr != nil && !isExitStatus(runErr) {
+			// A command that ran and failed is not worth a line of its own: ash
+			// is silent there, and "sh: exit status 1" after "cd: no such file"
+			// says the same thing twice (measured 25.11.2026).
 			fmt.Fprintf(stderr, "sh: %v\n", runErr)
 		}
 		// The line editor prints its own prompt on the next readLine, so only
@@ -417,6 +420,13 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stder
 			return 0
 		}
 	}
+}
+
+// isExitStatus reports whether err is only a command's exit status, which the
+// shell reports through $? and not as a message.
+func isExitStatus(err error) bool {
+	var status interp.ExitStatus
+	return errors.As(err, &status)
 }
 
 // interruptedBySignal reports whether a command ended because the terminal
@@ -447,28 +457,30 @@ func promptString(r *interp.Runner, out *switchWriter) string {
 	// session's reader here.
 	_ = runSource(r, `printf '%s' "$PS1"`, "<prompt>")
 	ps1 := buf.String()
-	if ps1 == "" {
-		// The default prompt needs the shell's own values, not the Go process':
-		// "cd" moves the runner, not this process, so os.Getwd would keep
-		// showing the directory the session started in (measured 25.11.2026).
-		buf.Reset()
-		_ = runSource(r, `printf '%s\n%s\n%s' "$PWD" "$USER" "$HOME"`, "<prompt>")
-	}
+	// Both prompts need the shell's own view: "cd" moves the runner, not this
+	// process, so os.Getwd stays where the session started (measured
+	// 25.11.2026: the prompt kept showing the first directory).
+	buf.Reset()
+	_ = runSource(r, `pwd; printf '%s\n%s' "$USER" "$HOME"`, "<prompt>")
 	fields := buf.String()
 	out.swap(prevOut)
-	if ps1 != "" {
-		return expandPrompt(ps1)
-	}
 	parts := strings.SplitN(fields, "\n", 3)
 	for len(parts) < 3 {
 		parts = append(parts, "")
+	}
+	if ps1 != "" {
+		return expandPromptIn(ps1, parts[0])
 	}
 	return defaultPrompt(parts[0], parts[1], parts[2])
 }
 
 // expandPrompt turns the PS1 escapes ash understands into text. Without this a
 // profile that sets PS1 to "\[..\]\u@\h:\w\$" shows that string literally.
-func expandPrompt(p string) string {
+func expandPrompt(p string) string { return expandPromptIn(p, "") }
+
+// expandPromptIn is expandPrompt with the shell's current directory supplied:
+// \w and \W then name where the session is, not where the process started.
+func expandPromptIn(p, dir string) string {
 	var b strings.Builder
 	for i := 0; i < len(p); i++ {
 		c := p[i]
@@ -484,14 +496,20 @@ func expandPrompt(p string) string {
 				}
 				b.WriteString(h)
 			case 'w':
-				wd, _ := os.Getwd()
+				wd := dir
+				if wd == "" {
+					wd, _ = os.Getwd()
+				}
 				home := envOr("HOME", "")
 				if home != "" && strings.HasPrefix(wd, home) {
 					wd = "~" + wd[len(home):]
 				}
 				b.WriteString(wd)
 			case 'W':
-				wd, _ := os.Getwd()
+				wd := dir
+				if wd == "" {
+					wd, _ = os.Getwd()
+				}
 				if k := strings.LastIndexByte(wd, '/'); k >= 0 && k+1 < len(wd) {
 					wd = wd[k+1:]
 				}

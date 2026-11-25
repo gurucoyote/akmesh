@@ -7647,3 +7647,19 @@ zweimal gedruckt.
 
 Home in der Distro nach dem Reparaturschritt: drwxr-xr-x 2 akmesh akmesh.
 "mkdir projects" darin geht; vorher (root:root) "permission denied".
+
+### Prompt folgt dem Verzeichnis, keine Status-Nachrede (25.11.2026, zweite Runde)
+
+Der Prompt las os.Getwd und $PWD statt "pwd" der Shell; beides bleibt auf dem
+Startverzeichnis stehen, weil cd den Runner bewegt und nicht den Prozess. Jetzt
+fragt er die Shell: \w in PS1 und der Standard-Prompt nehmen das Ergebnis von
+"pwd". In der Distro mit argv[0]=-sh, interaktiv:
+
+    BSNB67:~ / akmesh$ cd pr          cd: no such file or directory: "pr"
+    BSNB67:~ / akmesh$ cd projects
+    BSNB67:~/projects / akmesh$ pwd   /home/akmesh/projects
+
+Vorher stand nach dem cd weiter "BSNB67:~" und hinter jedem Fehlschlag zusaetzlich
+"sh: exit status 1"; das ist jetzt still, wie in ash (nur der Befehl selbst
+meldet). Die Anfuehrungszeichen in der cd-Meldung stammen aus %q in mvdan/sh und
+sind als eigenes Ticket notiert.

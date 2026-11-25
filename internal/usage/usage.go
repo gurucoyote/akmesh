@@ -262,8 +262,10 @@ var Texts = map[string]Entry{
 			"  (repeatable), --allow-untrusted, --no-scripts, --no-cache, -q, -v.\n" +
 			"  Keys come from <root>/etc/apk/keys and /etc/apk/keys, repositories from\n" +
 			"  -X or <root>/etc/apk/repositories. Layout <repo>/<arch>/APKINDEX.tar.gz.\n" +
-			"  Stage one installs files only: a package with install scripts is\n" +
-			"  refused unless --no-scripts is given, and then its scripts do not run.",
+			"  Install scripts run in our shell; --no-scripts skips them.\n" +
+			"  A package that carries akmesh itself is written aside as .apk-new,\n" +
+			"  started once, and only then moved into place: a copy that does not run\n" +
+			"  leaves the old binary untouched.",
 	},
 	"apkreport": {
 		"[-p DIR] [-o FILE] [--host NAME] [--kanal NAME] [--health ok|fail|skip] [--apk-exit N]",

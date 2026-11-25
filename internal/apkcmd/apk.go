@@ -831,9 +831,13 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 				}
 			}
 		}
-		files, skippedDev, err := apkcore.Extract(data, p, apkcore.ExtractOptions{
-			Root: o.root, NoScripts: true, Now: time.Now(),
-		})
+		// The package that carries our own binary must not drop a broken one
+		// over the tool that repairs it: that file is written aside, checked
+		// and moved into place last (acmesh-ieh3).
+		expOpts := apkcore.ExtractOptions{Root: o.root, NoScripts: true, Now: time.Now()}
+		var deferred string
+		ownTarget, ownDeferred := deferOwnBinary(o.root, &expOpts, &deferred)
+		files, skippedDev, err := apkcore.Extract(data, p, expOpts)
 		if err != nil {
 			fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
 			return 1
@@ -869,6 +873,13 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 					fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
 					return 1
 				}
+			}
+		}
+		// Only now, with every file and every script of this package done, the
+		// checked copy replaces the running binary.
+		if ownDeferred && deferred != "" {
+			if err := installCheckedBinary(cmd, deferred, ownTarget, stdout, stderr); err != nil {
+				return 1
 			}
 		}
 		newFiles = append(newFiles, files...)

@@ -366,6 +366,15 @@ type ExtractOptions struct {
 	Skipped    []string
 	Now        time.Time
 	TotalBytes int64
+
+	// DeferTarget is an absolute path inside Root whose file must not be
+	// replaced while it is extracted: it is written next to itself as
+	// DeferTarget+".apk-new" and named in Deferred, so the caller can check the
+	// new file and only then move it into place. Used for the running binary,
+	// where a broken replacement would take away the tool that repairs it
+	// (acmesh-ieh3).
+	DeferTarget string
+	Deferred    *string
 }
 
 // Extract writes the data stream of a package into the root and returns the
@@ -472,6 +481,9 @@ func extractTar(raw []byte, opts *ExtractOptions, pkg *Package) error {
 			return fmt.Errorf("%s: %v", pkg.FullName(), err)
 		}
 		target := joinRoot(root, filepath.Join("/", hdr.Name))
+		// dest is where this member actually landed; it differs from target
+		// only for the deferred running binary.
+		dest := target
 		mode := os.FileMode(hdr.Mode & 0o7777)
 		switch hdr.Typeflag {
 		case tar.TypeDir:
@@ -505,27 +517,27 @@ func extractTar(raw []byte, opts *ExtractOptions, pkg *Package) error {
 				return err
 			}
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			dir := filepath.Dir(target)
+			if err := os.MkdirAll(dir, 0o755); err != nil {
 				return err
 			}
-			if err := os.RemoveAll(target); err != nil {
+			written := target
+			if opts.DeferTarget != "" && filepath.Clean(target) == filepath.Clean(opts.DeferTarget) {
+				// The running binary is written beside itself; the caller checks
+				// it and renames it over the old one (acmesh-ieh3).
+				written = target + ".apk-new"
+				if opts.Deferred != nil {
+					*opts.Deferred = written
+				}
+			}
+			if err := writeMember(dir, written, mode, tr); err != nil {
 				return err
 			}
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
-			if err != nil {
-				return err
-			}
-			if _, err := io.Copy(f, tr); err != nil {
-				f.Close()
-				return err
-			}
-			if err := f.Close(); err != nil {
-				return err
-			}
+			dest = written
 			// What actually landed on disk is the installed size apk reports.
 			pkg.Installed += hdr.Size
 			if !opts.Now.IsZero() {
-				_ = os.Chtimes(target, opts.Now, opts.Now)
+				_ = os.Chtimes(dest, opts.Now, opts.Now)
 			}
 		case tar.TypeChar, tar.TypeBlock, tar.TypeFifo:
 			// apk creates these with mknod; that needs privileges we do not
@@ -538,14 +550,63 @@ func extractTar(raw []byte, opts *ExtractOptions, pkg *Package) error {
 		// Ownership is best effort: without root the files stay ours, and apk
 		// behaves the same way with --usermode.
 		if hdr.Typeflag != tar.TypeSymlink {
-			_ = os.Lchown(target, hdr.Uid, hdr.Gid)
+			_ = os.Lchown(dest, hdr.Uid, hdr.Gid)
 		}
 		// Windows has no permission bits; record them in the ACL the way our
 		// chmod does, so an installed 0755 file counts as executable there too.
 		if hdr.Typeflag != tar.TypeSymlink {
-			_ = winmode.SetQuiet(target, fs.FileMode(hdr.Mode).Perm())
+			_ = winmode.SetQuiet(dest, fs.FileMode(hdr.Mode).Perm())
 		}
 	}
+}
+
+// writeMember writes one regular file of a package next to its target and moves
+// it into place in the last step (acmesh-vrt1).
+//
+// Why not in place: until 25.11.2026 the target was deleted and then written, so
+// a crash or a full disk left it missing or half done, and a file that is
+// currently being executed could not be written at all ("text file busy").
+// rename(2) replaces even a running executable - the running process keeps its
+// old inode - and either the old file or the complete new one is visible, never
+// something in between.
+func writeMember(dir, target string, mode os.FileMode, r io.Reader) error {
+	// A directory in the way is the one case rename cannot handle; remove it
+	// first, exactly like the old code did for every target.
+	if st, err := os.Lstat(target); err == nil && st.IsDir() {
+		if err := os.RemoveAll(target); err != nil {
+			return err
+		}
+	}
+	tmp, err := os.CreateTemp(dir, ".apk-*")
+	if err != nil {
+		return err
+	}
+	name := tmp.Name()
+	// On success the rename below consumes the name; every other path removes it.
+	defer os.Remove(name)
+	// 0700 while writing, the package's mode right before the rename, so a
+	// half-written file is never executable or readable by others.
+	if err := tmp.Chmod(0o600); err != nil {
+		tmp.Close()
+		return err
+	}
+	if _, err := io.Copy(tmp, r); err != nil {
+		tmp.Close()
+		return err
+	}
+	// Sync before the rename: otherwise a crash can leave the name pointing at
+	// an empty file on disk even though the rename itself was durable.
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(name, mode); err != nil {
+		return err
+	}
+	return os.Rename(name, target)
 }
 
 // RemoveFiles deletes the files of an installed package and prunes the

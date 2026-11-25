@@ -7139,3 +7139,34 @@ Befehle:
     GOTOOLCHAIN=auto ./scripts/build-bb.sh linux zz-cat    # keep cat
     GOTOOLCHAIN=auto ./scripts/build-bb.sh linux zz-grep   # keep grep
     GOTOOLCHAIN=auto ./scripts/build-bb.sh linux zz-crond  # keep crond
+
+## apk: atomares Schreiben und Selbst-Update (acmesh-vrt1, acmesh-ieh3, 25.11.2026)
+
+Vorher, gemessen in `/root/.hermes/cache/scratch/selfup` (linux, WSL2):
+
+    Schreibversuch auf ein laufendes Binary   -> "Text file busy"
+    rename ueber dasselbe laufende Binary     -> gelingt, Prozess laeuft weiter
+
+Daraus folgen die beiden Aenderungen: Nutzdateien werden als Temp-Datei im
+Zielverzeichnis geschrieben und per rename eingesetzt (acmesh-vrt1); das eigene
+Binary wird vor dem Ersetzen einmal gestartet (acmesh-ieh3).
+
+Groesse des vollen Binaries nach den beiden Aenderungen (linux amd64, go 1.27.4,
+Inlining an, gestrippt, aus der report-Zeile):
+
+    22507747 -> 22511843 Bytes   (+4096 Bytes fuer die Pruefung)
+
+Windows: 20600320 Bytes.
+
+Kosten der Pruefung, gemessen mit `./akmesh true` (das ist der Befehl, den die
+Pruefung selbst startet), je drei Laeufe:
+
+    0.00 s   0.00 s   0.00 s
+
+Die Pruefung ist damit im Rauschen; sie kostet einen Prozessstart.
+
+Batterie: 499 Pruefungen linux, 0 Fehler; Hilfe-Audit 0. Neue Go-Tests:
+TestWriteMemberKeepsTheOldFileWhenTheCopyFails, TestWriteMemberReplacesRunning
+Executable, TestExtractDefersTheRunningBinary, TestAddChecksTheOwnBinaryBefore
+ReplacingIt (zwei Faelle: gute Fassung wird eingesetzt, kaputte laesst die alte
+stehen und endet mit 1).

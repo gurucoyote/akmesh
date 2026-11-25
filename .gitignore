@@ -25,3 +25,4 @@
 /akmesh-ext*
 /akmesh-wsl.tar
 /.build/wsl/
+/mount

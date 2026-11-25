@@ -7264,3 +7264,39 @@ Zwei Nachbesserungen an der Batterie, die erst der zweite Verteiler zeigte:
 - Der rg-`-z`-Tar-Fixture wurde bisher mit dem eigenen `tar` gebaut. Ein
   Teil-Binary hat kein tar, die Pruefung schlug dann am Fixture fehl, nicht an
   rg. Jetzt faellt der Aufbau auf das tar des Wirts zurueck.
+
+## Leser und Schreiber getrennt (acmesh-1zzk, 25.11.2026)
+
+`internal/doccmd` fuehrt nur noch die Leser (any2md, pdf2md, docx2md, epub2md,
+rtf2md, html2md, pdf2html, epub2html, md2txt-l) und rg; die fuenf Schreiber
+(md2pdf, md2docx, md2epub, html2docx, html2epub) stehen in `internal/writecmd`.
+Der Verteiler selbst (Namensaufloesung, Liste, Policy) liegt in
+`internal/multicall` und wird von beiden benutzt, damit sie nicht auseinander
+laufen. Gebaut, gestrippt, Inlining an:
+
+    akmesh-docs       6070499 Bytes   5.8 MiB   (vorher 11612387)
+    akmesh-docs.exe   6206976 Bytes   5.9 MiB
+    akmesh-write      9609443 Bytes   9.2 MiB
+    akmesh-write.exe  9796096 Bytes   9.3 MiB
+    akmesh           22540515 Bytes  21.5 MiB   (unveraendert)
+
+Die Trennung bringt fuer den Lesefall 5.5 MiB weniger, fuenfzig Prozent des
+bisherigen Text-Binaries. Das Schreib-Binary ist mit 9.2 MiB fast so gross wie
+beide zusammen abzueglich Basis: es zahlt die Laufzeit und goldmark selbst, die
+im Leser schon stecken.
+
+Batterie, je mit `-c` Befehlsliste, linux:
+
+    akmesh-docs   -g documents -c "<9 Leser + rg>"   42 Pruefungen, 0 Fehler
+    akmesh-write  -g documents -c "<5 Schreiber>"    15 Pruefungen, 0 Fehler
+    akmesh        voll                              507 Pruefungen, 0 Fehler
+
+Zwei Nachbesserungen an der Batterie, die die Trennung erzwungen hat: eine
+Pruefung, die ihre Ausgabe zurueckliest, nimmt sich das Leser-Binary von
+nebenan (`read_doc`), eine Leser-Pruefung, die ein PDF oder EPUB als Fixture
+braucht, das Schreib-Binary von nebenan (`write_doc`). Beim vollen Binary und
+bei den jeweils zustaendigen Teil-Binaries ist das dasselbe Binary wie vorher.
+
+Antwort auf die Frage im Ticket: ein Harness, das Dokumente liest, braucht die
+Schreiber nicht - 5.8 statt 9.2 MiB. Wer Berichte erzeugt, installiert
+zusaetzlich akmesh-write.

@@ -91,7 +91,7 @@ func TestNoArgumentPrintsTheList(t *testing.T) {
 	if !strings.Contains(stderr, "usage: akmesh-docs COMMAND") {
 		t.Fatalf("keine Aufrufzeile: %q", stderr)
 	}
-	if !strings.Contains(stderr, "md2pdf") || !strings.Contains(stderr, "rg") {
+	if !strings.Contains(stderr, "pdf2md") || !strings.Contains(stderr, "rg") {
 		t.Fatalf("die Befehlsliste fehlt: %q", stderr)
 	}
 }
@@ -118,7 +118,10 @@ func TestEveryCommandAnswersHelp(t *testing.T) {
 // for the five document formats plus rg. A name that appears here by accident
 // costs a library, so the list is written down.
 func TestTableIsTheDocumentJob(t *testing.T) {
-	want := "any2md docx2md epub2html epub2md html2docx html2epub html2md md2docx md2epub md2pdf md2txt-l pdf2html pdf2md rg rtf2md"
+	// The writers left this binary on 25.11.2026 (acmesh-1zzk); what stays is
+	// the reading side plus md2txt-l, which is a reader in disguise, and rg,
+	// which needs the reader for --pre.
+	want := "any2md docx2md epub2html epub2md html2md md2txt-l pdf2html pdf2md rg rtf2md"
 	if got := strings.Join(Names(), " "); got != want {
 		t.Fatalf("Tabelle ist %q,\nerwartet     %q", got, want)
 	}

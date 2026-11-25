@@ -53,6 +53,39 @@ run() {
 	"$BIN" "$@"
 }
 
+# A writer binary cannot read its own output back: the checks that verify a PDF
+# or a docx by converting it again need a reader. That is another package of the
+# split (or the full binary) next to the one under test; for the full binary and
+# for akmesh-docs it is the binary itself (acmesh-1zzk).
+READ=$BIN
+if ! "$BIN" pdf2md -h >/dev/null 2>&1; then
+	for cand in "$(dirname "$BIN")/akmesh" "$(dirname "$BIN")/akmesh-docs"; do
+		if [ -x "$cand" ] && "$cand" pdf2md -h >/dev/null 2>&1; then
+			READ=$cand
+			break
+		fi
+	done
+fi
+read_doc() {
+	"$READ" "$@"
+}
+
+# The same in the other direction: a reader binary cannot produce the PDF or the
+# EPUB that a reader check wants to read, so the fixture comes from a writer
+# next to it - for the full binary and for akmesh-write that is itself.
+WRITE=$BIN
+if ! "$BIN" md2epub -h >/dev/null 2>&1; then
+	for cand in "$(dirname "$BIN")/akmesh" "$(dirname "$BIN")/akmesh-write"; do
+		if [ -x "$cand" ] && "$cand" md2epub -h >/dev/null 2>&1; then
+			WRITE=$cand
+			break
+		fi
+	done
+fi
+write_doc() {
+	"$WRITE" "$@"
+}
+
 # A profile without networking lacks curl, wget, ssh and scp; those checks are
 # skipped rather than failed, so the same battery serves every build.
 if "$BIN" curl -h >/dev/null 2>&1; then HAS_NET=1; else HAS_NET=0; fi
@@ -755,20 +788,20 @@ rm -rf "$HD_DIR"
 # rtf2md: a paragraph, a bold word and a code page byte.
 if command -v python3 >/dev/null 2>&1; then
   python3 /root/akmesh/scripts/make-test-rtf.py r-test.rtf
-  check rtf2md-paragraph "Eins" "$(run rtf2md r-test.rtf | tr -d '\r' | head -1)"
-  check rtf2md-bold "**Zwei**ä" "$(run rtf2md r-test.rtf | tr -d '\r' | tail -1)"
+  check rtf2md-paragraph "Eins" "$(read_doc rtf2md r-test.rtf | tr -d '\r' | head -1)"
+  check rtf2md-bold "**Zwei**ä" "$(read_doc rtf2md r-test.rtf | tr -d '\r' | tail -1)"
   check rtf2md-not-rtf "1" "$(printf 'kein rtf' | run rtf2md >/dev/null 2>&1; echo $?)"
   rm -f r-test.rtf
   # Table, link and list levels in one document: before acmesh-crc9 the cells of
   # a row ran together, a hyperlink took its text with it, and list items were
   # swallowed whole.
   python3 /root/akmesh/scripts/make-test-rtf-table.py rt-test.rtf
-  check rtf2md-table-header "| Name | Wert |" "$(run rtf2md rt-test.rtf | tr -d '\r' | grep -m1 'Name')"
-  check rtf2md-table-rule "| --- | --- |" "$(run rtf2md rt-test.rtf | tr -d '\r' | grep -m1 -- '---')"
-  check rtf2md-table-row "| Alpha | Eins |" "$(run rtf2md rt-test.rtf | tr -d '\r' | grep -m1 'Alpha')"
-  check rtf2md-link-text "Ein [Verweis](https://example.com/x) im Satz." "$(run rtf2md rt-test.rtf | tr -d '\r' | grep -m1 'Verweis')"
-  check rtf2md-list-numbered "1. Eins" "$(run rtf2md rt-test.rtf | tr -d '\r' | grep -m1 '^1\. Eins')"
-  check rtf2md-list-nested "  - Zwei" "$(run rtf2md rt-test.rtf | tr -d '\r' | grep -m1 -- '  - Zwei')"
+  check rtf2md-table-header "| Name | Wert |" "$(read_doc rtf2md rt-test.rtf | tr -d '\r' | grep -m1 'Name')"
+  check rtf2md-table-rule "| --- | --- |" "$(read_doc rtf2md rt-test.rtf | tr -d '\r' | grep -m1 -- '---')"
+  check rtf2md-table-row "| Alpha | Eins |" "$(read_doc rtf2md rt-test.rtf | tr -d '\r' | grep -m1 'Alpha')"
+  check rtf2md-link-text "Ein [Verweis](https://example.com/x) im Satz." "$(read_doc rtf2md rt-test.rtf | tr -d '\r' | grep -m1 'Verweis')"
+  check rtf2md-list-numbered "1. Eins" "$(read_doc rtf2md rt-test.rtf | tr -d '\r' | grep -m1 '^1\. Eins')"
+  check rtf2md-list-nested "  - Zwei" "$(read_doc rtf2md rt-test.rtf | tr -d '\r' | grep -m1 -- '  - Zwei')"
   # The same document through the search: rg --pre reads it with any2md, so a hit
   # proves the link text is searchable - before, the field swallowed it.
   check rg-pre-rtf-link "1" "$(run rg --pre any2md Verweis rt-test.rtf | tr -d '\r' | grep -c 'Verweis')"
@@ -780,53 +813,53 @@ fi
 # handle; the text operator is the claim.
 if command -v python3 >/dev/null 2>&1; then
   python3 /root/akmesh/scripts/make-test-pdf.py p-test.pdf
-  check pdf2md-text "Hallo PDF" "$(run pdf2md p-test.pdf | tr -d '\r' | head -1)"
+  check pdf2md-text "Hallo PDF" "$(read_doc pdf2md p-test.pdf | tr -d '\r' | head -1)"
   python3 /root/akmesh/scripts/make-test-pdf-table.py pt-test.pdf
-  check pdf2md-table "| Name: | Anna Beispiel |" "$(run pdf2md pt-test.pdf | tr -d '\r' | head -1)"
+  check pdf2md-table "| Name: | Anna Beispiel |" "$(read_doc pdf2md pt-test.pdf | tr -d '\r' | head -1)"
   python3 /root/akmesh/scripts/make-test-pdf-labels.py pl-test.pdf
-  check pdf2md-labels "| Ort: | Pumpkin Mart |" "$(run pdf2md pl-test.pdf | tr -d '\r' | head -1)"
-  check pdf2md-labels-rows "7" "$(run pdf2md pl-test.pdf | tr -d '\r' | grep -c '|')"
+  check pdf2md-labels "| Ort: | Pumpkin Mart |" "$(read_doc pdf2md pl-test.pdf | tr -d '\r' | head -1)"
+  check pdf2md-labels-rows "7" "$(read_doc pdf2md pl-test.pdf | tr -d '\r' | grep -c '|')"
   python3 /root/akmesh/scripts/make-test-pdf-form.py pf-test.pdf
-  check pdf2md-form-xobject "Feldtext" "$(run pdf2md pf-test.pdf | tr -d '\r' | head -1)"
+  check pdf2md-form-xobject "Feldtext" "$(read_doc pdf2md pf-test.pdf | tr -d '\r' | head -1)"
   check pdf2md-not-pdf "1" "$(printf 'kein pdf' | run pdf2md >/dev/null 2>&1; echo $?)"
   rm -f p-test.pdf pt-test.pdf pf-test.pdf pl-test.pdf
 fi
 
 # md2epub / epub2md: the book and its reader, both in the binary.
 printf '# Erstes\n\nEin Absatz.\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n# Zweites\n\nEnde.\n' > b.md
-run md2epub -o b.epub --title "Probe" b.md >/dev/null 2>&1
+write_doc md2epub -o b.epub --title "Probe" b.md >/dev/null 2>&1
 check md2epub-is-zip "PK" "$(head -c 2 b.epub)"
 # The first entry of an EPUB is the mimetype, stored, and a reader checks it
 # before anything else.
 check md2epub-mimetype "application/epub+zip" "$(unzip -p b.epub mimetype 2>/dev/null | tr -d '\r')"
 check md2epub-mimetype-first "mimetype" "$(unzip -l b.epub 2>/dev/null | sed -n '4p' | awk '{print $4}')"
-check md2epub-roundtrip "# Erstes" "$(run epub2md b.epub | tr -d '\r' | grep -m1 '^#' )"
-check epub2md-table "| A | B |" "$(run epub2md b.epub | tr -d '\r' | grep -o '| A | B |' | head -1)"
-check epub2md-chapter-count "2" "$(run epub2md b.epub | tr -d '\r' | grep -c '^# ')"
+check md2epub-roundtrip "# Erstes" "$(read_doc epub2md b.epub | tr -d '\r' | grep -m1 '^#' )"
+check epub2md-table "| A | B |" "$(read_doc epub2md b.epub | tr -d '\r' | grep -o '| A | B |' | head -1)"
+check epub2md-chapter-count "2" "$(read_doc epub2md b.epub | tr -d '\r' | grep -c '^# ')"
 check epub2md-refuses-zip "1" "$(printf 'kein epub' | run epub2md >/dev/null 2>&1; echo $?)"
 rm -f b.md b.epub
 
 # md2docx: Markdown to a Word document, written by our own package.
 printf '# Titel\n\nEin **fetter** Satz mit Umlauten: \303\244\303\266\303\274\303\237.\n\n- eins\n- zwei\n\n| Name | Ort |\n| --- | --- |\n| Anna | Bremen |\n' > m.docx.md
-run md2docx -o m-out.docx m.docx.md >/dev/null 2>&1
+write_doc md2docx -o m-out.docx m.docx.md >/dev/null 2>&1
 check md2docx-is-zip "PK" "$(head -c 2 m-out.docx)"
 # The round trip through our own reader: the document has to come back as the
 # Markdown it was written from.
-check md2docx-heading "# Titel" "$(run docx2md m-out.docx | tr -d '\r' | head -1)"
-check md2docx-bold "**fetter**" "$(run docx2md m-out.docx | tr -d '\r' | grep -o '\*\*fetter\*\*' | head -1)"
-check md2docx-list "- eins" "$(run docx2md m-out.docx | tr -d '\r' | grep -o -- '- eins' | head -1)"
-check md2docx-table "| Anna | Bremen |" "$(run docx2md m-out.docx | tr -d '\r' | grep -o '| Anna | Bremen |' | head -1)"
+check md2docx-heading "# Titel" "$(read_doc docx2md m-out.docx | tr -d '\r' | head -1)"
+check md2docx-bold "**fetter**" "$(read_doc docx2md m-out.docx | tr -d '\r' | grep -o '\*\*fetter\*\*' | head -1)"
+check md2docx-list "- eins" "$(read_doc docx2md m-out.docx | tr -d '\r' | grep -o -- '- eins' | head -1)"
+check md2docx-table "| Anna | Bremen |" "$(read_doc docx2md m-out.docx | tr -d '\r' | grep -o '| Anna | Bremen |' | head -1)"
 check md2docx-unknown-option "2" "$(run md2docx --frobnicate >/dev/null 2>&1; echo $?)"
 rm -f m.docx.md m-out.docx
 
 # md2pdf: Markdown to PDF, written by the slimmed goldmark-pdf fork.
 printf '# Titel\n\nEin Absatz mit Umlauten: äöüß.\n' > m.pdf.md
-run md2pdf -o m-out.pdf m.pdf.md >/dev/null 2>&1
+write_doc md2pdf -o m-out.pdf m.pdf.md >/dev/null 2>&1
 check md2pdf-is-pdf "%PDF-1." "$(head -c 8 m-out.pdf | cut -c1-7)"
 check md2pdf-has-eof "1" "$(grep -c '%%EOF' m-out.pdf | tr -d ' ')"
 # The round trip is the real proof: our own reader must find the text again.
-check md2pdf-roundtrip "Titel" "$(run pdf2md m-out.pdf | tr -d '\r' | grep -o 'Titel' | head -1)"
-check md2pdf-umlaut "äöüß" "$(run pdf2md m-out.pdf | tr -d '\r' | grep -o 'äöüß' | head -1)"
+check md2pdf-roundtrip "Titel" "$(read_doc pdf2md m-out.pdf | tr -d '\r' | grep -o 'Titel' | head -1)"
+check md2pdf-umlaut "äöüß" "$(read_doc pdf2md m-out.pdf | tr -d '\r' | grep -o 'äöüß' | head -1)"
 check md2pdf-unknown-option "2" "$(run md2pdf --frobnicate >/dev/null 2>&1; echo $?)"
 rm -f m.pdf.md m-out.pdf
 
@@ -843,8 +876,8 @@ rm -f m-test.md m-tab.md m-wrap.md
 # docx2md: a minimal docx (a zip with word/document.xml) in, Markdown out.
 if command -v python3 >/dev/null 2>&1; then
   python3 /root/akmesh/scripts/make-test-docx.py dx-test.docx
-  check docx2md-heading "## Kapitel" "$(run docx2md dx-test.docx | tr -d '\r' | head -1)"
-  check docx2md-text "Text" "$(run docx2md dx-test.docx | tr -d '\r' | tail -1)"
+  check docx2md-heading "## Kapitel" "$(read_doc docx2md dx-test.docx | tr -d '\r' | head -1)"
+  check docx2md-text "Text" "$(read_doc docx2md dx-test.docx | tr -d '\r' | tail -1)"
   check docx2md-not-a-docx "1" "$(printf 'kein zip' | run docx2md >/dev/null 2>&1; echo $?)"
   rm -f dx-test.docx
 fi

@@ -192,6 +192,16 @@ vorhanden" - das ist die Regel, die schon bei acmesh-7s9 galt.
    sobald die Pakete die Auswahl treffen; sie bleiben nur, solange das
    Einzel-Binary der Standard ist.
 
+## Stand 25.11.2026, zweiter Schritt: Leser und Schreiber getrennt (acmesh-1zzk)
+
+    akmesh         21.5 MiB   Sockel, voll
+    akmesh-docs     5.8 MiB   Leser plus md2txt-l und rg
+    akmesh-write    9.2 MiB   md2pdf, md2docx, md2epub, html2docx, html2epub
+
+Der Verteiler ist ein Paket (`internal/multicall`), die Tabellen sind je Binary
+eine (`internal/doccmd`, `internal/writecmd`). Ein Harness, das Dokumente liest,
+installiert 5,8 MiB statt 21,5; wer Berichte schreibt, nimmt akmesh-write dazu.
+
 ## Stand 25.11.2026: der zweite Verteiler steht (acmesh-h3ux)
 
 `cmd/akmesh-docs` ist gebaut, mit eigener Tabelle in `internal/doccmd`, eigenem

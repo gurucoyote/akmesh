@@ -519,19 +519,22 @@ report_size() {
 }
 report_size
 
-# The document binary (acmesh-h3ux): its own dispatcher and its own table, built
-# from the repository instead of through makebb - it does not use u-root's
-# dispatcher at all. A profile build skips it: a profile asks what the full
-# binary weighs without a block, not what a second binary weighs.
-DOCS="akmesh-docs"
-case "$GOOS" in windows) DOCS="akmesh-docs.exe" ;; esac
+# The split binaries: their own dispatchers and their own tables, built from the
+# repository instead of through makebb - they do not use u-root's dispatcher at
+# all. A profile build skips them: a profile asks what the full binary weighs
+# without a block, not what a second binary weighs.
+SPLIT="akmesh-docs akmesh-write"
 case "$PROFILE" in
 full | "")
-	( cd "$ROOT" && GOTOOLCHAIN=auto GOOS="$GOOS" GOARCH="$GOARCH" \
-		go build -trimpath -ldflags "-s -w -buildid=" -o "$ROOT/$DOCS" ./cmd/akmesh-docs ) || {
-		echo "akmesh-docs did not build" >&2
-		exit 1
-	}
-	report_size "$DOCS"
+	for pkg in $SPLIT; do
+		out="$pkg"
+		case "$GOOS" in windows) out="$pkg.exe" ;; esac
+		( cd "$ROOT" && GOTOOLCHAIN=auto GOOS="$GOOS" GOARCH="$GOARCH" \
+			go build -trimpath -ldflags "-s -w -buildid=" -o "$ROOT/$out" "./cmd/$pkg" ) || {
+			echo "$pkg did not build" >&2
+			exit 1
+		}
+		report_size "$out"
+	done
 	;;
 esac

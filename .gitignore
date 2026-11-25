@@ -6,6 +6,9 @@
 /akmesh-docs
 /akmesh-docs.exe
 /akmesh-docs-*
+/akmesh-write
+/akmesh-write.exe
+/akmesh-write-*
 /.build/
 /.cache/
 /.gopath/

@@ -73,7 +73,7 @@ func VerifyPackage(data []byte, p *Package, keys ...*Key) error {
 
 // field reads one "key = value" line out of .PKGINFO.
 func field(pkginfo, key string) string {
-	for _, line := range strings.Split(pkginfo, "\n") {
+	for line := range strings.SplitSeq(pkginfo, "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "#") {
 			continue

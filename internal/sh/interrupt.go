@@ -29,9 +29,7 @@ type interrupter struct {
 func newInterrupter() *interrupter {
 	it := &interrupter{ch: make(chan os.Signal, 1), quit: make(chan struct{})}
 	signal.Notify(it.ch, os.Interrupt)
-	it.wg.Add(1)
-	go func() {
-		defer it.wg.Done()
+	it.wg.Go(func() {
 		for {
 			select {
 			case <-it.quit:
@@ -40,7 +38,7 @@ func newInterrupter() *interrupter {
 				it.handle(sig)
 			}
 		}
-	}()
+	})
 	return it
 }
 

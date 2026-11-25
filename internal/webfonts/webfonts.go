@@ -93,7 +93,7 @@ func FS(v []byte) (uint16, bool) {
 	}
 	numTables := int(v[4])<<8 | int(v[5])
 	const os2Tag = "OS/2"
-	for i := 0; i < numTables; i++ {
+	for i := range numTables {
 		rec := 12 + i*16
 		if rec+16 > len(v) {
 			return 0, false

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 )
 
@@ -94,8 +95,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	if err := cmd.Run(); err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			return exitErr.ExitCode()
 		}
 		fmt.Fprintf(stderr, "env: %v\n", err)
@@ -105,12 +105,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 }
 
 func contains(list []string, name string) bool {
-	for _, item := range list {
-		if item == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, name)
 }
 
 func removeEnv(env []string, name string) []string {
@@ -128,10 +123,10 @@ func removeEnv(env []string, name string) []string {
 func dedupeEnv(env []string, name string) []string {
 	last := ""
 	seenLast := false
-	for i := len(env) - 1; i >= 0; i-- {
-		key, _, _ := strings.Cut(env[i], "=")
+	for _, e := range slices.Backward(env) {
+		key, _, _ := strings.Cut(e, "=")
 		if key == name && !seenLast {
-			last = env[i]
+			last = e
 			seenLast = true
 			break
 		}

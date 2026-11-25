@@ -320,8 +320,8 @@ func buildBody(opts netOptions) ([]byte, string, error) {
 			if !ok {
 				return nil, "", fmt.Errorf("bad form field %q, want name=value", item)
 			}
-			if strings.HasPrefix(value, "@") {
-				path := strings.TrimPrefix(value, "@")
+			if after, ok0 := strings.CutPrefix(value, "@"); ok0 {
+				path := after
 				f, err := os.Open(path)
 				if err != nil {
 					return nil, "", err
@@ -598,10 +598,7 @@ func writeCookieFile(path string, client *http.Client, rawURL string) error {
 		if domain == "" {
 			domain = u.Hostname()
 		}
-		expiry := c.Expires.Unix()
-		if expiry < 0 {
-			expiry = 0
-		}
+		expiry := max(c.Expires.Unix(), 0)
 		fmt.Fprintf(&b, "%s\tFALSE\t/\tFALSE\t%d\t%s\t%s\n", domain, expiry, c.Name, c.Value)
 	}
 	return os.WriteFile(path, []byte(b.String()), 0o644)

@@ -127,7 +127,7 @@ func startHelper(t *testing.T) *exec.Cmd {
 		_, _ = cmd.Process.Wait()
 	})
 	// The process has to be visible in /proc before the search can find it.
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		if p, err := os.FindProcess(cmd.Process.Pid); err == nil && p != nil {
 			if _, err := os.ReadFile("/proc/" + strconv.Itoa(cmd.Process.Pid) + "/cmdline"); err == nil {
 				break

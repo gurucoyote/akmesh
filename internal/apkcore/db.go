@@ -81,7 +81,7 @@ func ReadInstalled(root string) ([]*Installed, error) {
 		}
 		cur = nil
 	}
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		line = strings.TrimRight(line, "\r")
 		if line == "" {
 			flush()
@@ -382,10 +382,10 @@ type ExtractOptions struct {
 // pkgInfoTriggers reads the "triggers = " lines out of a .PKGINFO body.
 func pkgInfoTriggers(body []byte) []string {
 	var out []string
-	for _, line := range strings.Split(string(body), "\n") {
+	for line := range strings.SplitSeq(string(body), "\n") {
 		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "triggers = ") {
-			out = append(out, strings.Fields(strings.TrimPrefix(line, "triggers = "))...)
+		if after, ok := strings.CutPrefix(line, "triggers = "); ok {
+			out = append(out, strings.Fields(after)...)
 		}
 	}
 	return out

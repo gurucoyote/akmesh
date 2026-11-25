@@ -15,7 +15,7 @@ import (
 // than only where the ACL is real.
 func TestSpecRoundTrip(t *testing.T) {
 	for _, dir := range []bool{false, true} {
-		for perm := 0; perm < 0o1000; perm++ {
+		for perm := range 0o1000 {
 			mode := fs.FileMode(perm)
 			spec := specOf(mode, dir)
 			got := fs.FileMode(permOf(spec.ownerAllow)<<6 |

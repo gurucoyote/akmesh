@@ -151,7 +151,7 @@ func TestWriteMemberReplacesRunningExecutable(t *testing.T) {
 	}()
 	// Wait until the kernel really executes the file, not just until the fork.
 	alive := false
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		if _, err := os.Stat("/proc/" + strconv.Itoa(proc.Process.Pid)); err == nil {
 			alive = true
 			break

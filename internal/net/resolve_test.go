@@ -172,7 +172,7 @@ func retryCapture(t *testing.T, fn CmdFunc, args []string) (string, int) {
 	t.Helper()
 	var out string
 	var code int
-	for attempt := 0; attempt < 3; attempt++ {
+	for range 3 {
 		out, code = capture(t, fn, args)
 		if code == 0 {
 			return out, code

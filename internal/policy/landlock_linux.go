@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"unsafe"
 
@@ -178,12 +179,7 @@ func addRule(rulesetFD int, path string, rights uint64) (bool, error) {
 // isSystemPath keeps the default system directories quiet when one of them is
 // absent; a missing path from the policy file itself is worth a warning.
 func isSystemPath(path string) bool {
-	for _, item := range systemPaths {
-		if item == path {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(systemPaths, path)
 }
 
 // Supported reports whether this kernel can enforce a policy, for the policy

@@ -76,7 +76,7 @@ func mountType(name string) string {
 		return "unknown"
 	}
 	best, bestType := "", "unknown"
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) < 3 {
 			continue
@@ -123,7 +123,7 @@ func groupName(gid uint64) string {
 	want := strconv.FormatUint(gid, 10)
 	data, err := os.ReadFile("/etc/group")
 	if err == nil {
-		for _, line := range strings.Split(string(data), "\n") {
+		for line := range strings.SplitSeq(string(data), "\n") {
 			parts := strings.Split(line, ":")
 			if len(parts) >= 3 && parts[2] == want {
 				return parts[0]

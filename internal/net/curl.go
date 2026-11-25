@@ -72,8 +72,8 @@ func runCurl(args []string, stdin *os.File, stdout, stderr *os.File) int {
 				if !ok {
 					return curlUsage(stderr, "--data-binary needs a value")
 				}
-				if strings.HasPrefix(v, "@") {
-					opts.DataFile = strings.TrimPrefix(v, "@")
+				if after, ok0 := strings.CutPrefix(v, "@"); ok0 {
+					opts.DataFile = after
 				} else {
 					opts.DataRaw = v
 				}

@@ -27,7 +27,7 @@ func TestHistoryRoundTrip(t *testing.T) {
 
 	// A file with more lines than the limit keeps the newest ones.
 	var many []string
-	for i := 0; i < historyLimit+50; i++ {
+	for i := range historyLimit + 50 {
 		many = append(many, "cmd"+string(rune('a'+i%26)))
 	}
 	if err := os.WriteFile(name, []byte(strings.Join(many, "\n")+"\n"), 0o600); err != nil {

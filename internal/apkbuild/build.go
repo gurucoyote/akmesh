@@ -633,7 +633,7 @@ func ReadIndexFile(path string) ([]IndexEntry, error) {
 		cur = nil
 	}
 	var fields map[string]string
-	for _, line := range strings.Split(decompress(data), "\n") {
+	for line := range strings.SplitSeq(decompress(data), "\n") {
 		if line == "" {
 			if cur != nil && fields != nil {
 				cur.ControlSHA = fields["C"]

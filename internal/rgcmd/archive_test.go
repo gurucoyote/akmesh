@@ -360,7 +360,7 @@ func asExitError(err error, target **exec.ExitError) bool {
 // walk's order does not matter.
 func labelSet(out string) []string {
 	var labels []string
-	for _, line := range strings.Split(strings.TrimSuffix(out, "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSuffix(out, "\n"), "\n") {
 		if line == "" {
 			continue
 		}

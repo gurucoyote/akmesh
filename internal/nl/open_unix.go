@@ -15,8 +15,7 @@ func openFile(name string) (*os.File, error) {
 // sentence is the system's reason with glibc's capital letter, the way GNU
 // prints it after the file name.
 func sentence(err error) string {
-	var pe *os.PathError
-	if errors.As(err, &pe) {
+	if pe, ok := errors.AsType[*os.PathError](err); ok {
 		err = pe.Err
 	}
 	msg := err.Error()

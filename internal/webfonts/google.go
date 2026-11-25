@@ -246,7 +246,7 @@ func Detect(source []byte) string {
 			continue
 		}
 		// A declaration can list several families; the first usable one wins.
-		for _, part := range strings.Split(name, ",") {
+		for part := range strings.SplitSeq(name, ",") {
 			cand := strings.Trim(strings.TrimSpace(part), `'"`)
 			if cand == "" || generic[strings.ToLower(cand)] {
 				continue

@@ -30,8 +30,8 @@ func markdownOf(t *testing.T, page string) string {
 func pngBytes(t *testing.T, w, h int) []byte {
 	t.Helper()
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
-	for x := 0; x < w; x++ {
-		for y := 0; y < h; y++ {
+	for x := range w {
+		for y := range h {
 			img.Set(x, y, color.RGBA{R: 200, G: 30, B: 30, A: 255})
 		}
 	}

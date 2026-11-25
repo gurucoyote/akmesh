@@ -344,10 +344,7 @@ func dump(w io.Writer, data []byte, radix rune, formats []format, squash bool, b
 	var prev []byte
 	starred := false
 	for off := 0; off < len(data); off += perLine {
-		end := off + perLine
-		if end > len(data) {
-			end = len(data)
-		}
+		end := min(off+perLine, len(data))
 		chunk := data[off:end]
 		if squash && prev != nil && string(prev) == string(chunk) {
 			if !starred {

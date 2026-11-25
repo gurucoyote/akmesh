@@ -322,8 +322,8 @@ func (n *nulWriter) finish() error {
 func awkParseError(err error) string {
 	msg := err.Error()
 	const marker = "undefined function "
-	if i := strings.Index(msg, marker); i >= 0 {
-		name := strings.Trim(msg[i+len(marker):], `\"`)
+	if _, after, ok := strings.Cut(msg, marker); ok {
+		name := strings.Trim(after, `\"`)
 		if j := strings.IndexAny(name, " \t"); j >= 0 {
 			name = name[:j]
 		}

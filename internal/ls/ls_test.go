@@ -107,7 +107,7 @@ func TestReverseAndSortBySize(t *testing.T) {
 	out, _, _ = run(t, "-S", dir)
 	// b.txt (5) wins; the directory and a.txt (2) tie at different sizes on
 	// Linux because a directory reports 4096 bytes, so only the head is fixed.
-	if got := strings.Split(out, "\n")[0]; got != "b.txt" && got != "sub" {
+	if got, _, _ := strings.Cut(out, "\n"); got != "b.txt" && got != "sub" {
 		t.Fatalf("-S first entry is %q", got)
 	}
 }

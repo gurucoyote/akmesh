@@ -314,7 +314,7 @@ func readFiles0(path string) ([]string, error) {
 		return nil, err
 	}
 	var names []string
-	for _, part := range strings.Split(string(data), "\x00") {
+	for part := range strings.SplitSeq(string(data), "\x00") {
 		if part != "" {
 			names = append(names, part)
 		}

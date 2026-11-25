@@ -38,9 +38,9 @@ func writePDF(t *testing.T, source string) (string, int) {
 	if err != nil {
 		t.Fatalf("pdfinfo: %v", err)
 	}
-	for _, line := range strings.Split(string(out), "\n") {
-		if strings.HasPrefix(line, "Pages:") {
-			n, err := strconv.Atoi(strings.TrimSpace(strings.TrimPrefix(line, "Pages:")))
+	for line := range strings.SplitSeq(string(out), "\n") {
+		if after, ok := strings.CutPrefix(line, "Pages:"); ok {
+			n, err := strconv.Atoi(strings.TrimSpace(after))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -66,7 +66,7 @@ func pageText(t *testing.T, path string, page int) string {
 func longDoc() string {
 	var b strings.Builder
 	b.WriteString("# Titel über Öl\n\n")
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		b.WriteString("Zeile mit etwas Text, damit die Seite voll wird und die Umbrüche geprüft werden können.\n")
 	}
 	return b.String()

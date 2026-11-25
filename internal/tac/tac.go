@@ -18,6 +18,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -118,8 +119,8 @@ func reverse(o options, data []byte) string {
 		}
 	}
 	var b strings.Builder
-	for i := len(records) - 1; i >= 0; i-- {
-		b.WriteString(records[i])
+	for _, record := range slices.Backward(records) {
+		b.WriteString(record)
 	}
 	return b.String()
 }
@@ -240,8 +241,7 @@ Write each FILE to standard output, last line first.
 
 // sentence is the system's reason with glibc's capital letter.
 func sentence(err error) string {
-	var pe *os.PathError
-	if errors.As(err, &pe) {
+	if pe, ok := errors.AsType[*os.PathError](err); ok {
 		err = pe.Err
 	}
 	msg := err.Error()

@@ -222,7 +222,7 @@ type span struct {
 func parseList(list string) ([]span, error) {
 	var spans []span
 	const open = 1 << 30
-	for _, part := range strings.Split(list, ",") {
+	for part := range strings.SplitSeq(list, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue

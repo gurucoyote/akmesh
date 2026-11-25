@@ -70,7 +70,7 @@ func canonical(r io.Reader, w io.Writer) error {
 		}
 		line := buf[:n]
 		field := &strings.Builder{}
-		for i := 0; i < 16; i++ {
+		for i := range 16 {
 			if i < n {
 				fmt.Fprintf(field, "%02x ", line[i])
 			} else {

@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 
@@ -47,12 +48,7 @@ func (p *preprocessor) applies(name string) bool {
 	base := filepath.Base(name)
 	if len(p.globs) == 0 {
 		ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(name), "."))
-		for _, e := range anymd.Extensions {
-			if ext == e {
-				return true
-			}
-		}
-		return false
+		return slices.Contains(anymd.Extensions, ext)
 	}
 	matched := false
 	for _, pattern := range p.globs {

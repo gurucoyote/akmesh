@@ -136,7 +136,7 @@ func parseIndexBody(body []byte) ([]*Package, error) {
 		}
 		cur = nil
 	}
-	for _, line := range strings.Split(string(body), "\n") {
+	for line := range strings.SplitSeq(string(body), "\n") {
 		line = strings.TrimRight(line, "\r")
 		if line == "" {
 			flush()

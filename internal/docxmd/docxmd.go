@@ -643,8 +643,8 @@ func headingLevel(style string) int {
 		return 2
 	}
 	for _, prefix := range []string{"heading", "berschrift", "ueberschrift"} {
-		if strings.HasPrefix(s, prefix) {
-			rest := strings.TrimPrefix(s, prefix)
+		if after, ok := strings.CutPrefix(s, prefix); ok {
+			rest := after
 			rest = strings.TrimLeft(rest, "-_")
 			if n, err := strconv.Atoi(rest); err == nil && n >= 1 && n <= 6 {
 				return n

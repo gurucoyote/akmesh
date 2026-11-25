@@ -56,7 +56,7 @@ func readMemTotalKB() int64 {
 	if err != nil {
 		return 0
 	}
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		if !strings.HasPrefix(line, "MemTotal:") {
 			continue
 		}
@@ -78,7 +78,7 @@ func readBootTime() time.Time {
 	if err != nil {
 		return time.Now()
 	}
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		if !strings.HasPrefix(line, "btime ") {
 			continue
 		}
@@ -149,7 +149,7 @@ func readProc(pid int, bootTime time.Time, users map[string]string, now time.Tim
 		info.CmdLine = strings.TrimSpace(strings.ReplaceAll(strings.TrimRight(string(data), "\x00"), "\x00", " "))
 	}
 	if data, err := os.ReadFile(filepath.Join(dir, "status")); err == nil {
-		for _, line := range strings.Split(string(data), "\n") {
+		for line := range strings.SplitSeq(string(data), "\n") {
 			if !strings.HasPrefix(line, "Uid:") {
 				continue
 			}

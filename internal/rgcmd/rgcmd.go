@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -117,10 +118,8 @@ func buildMatcher(cfg config) (match.Matcher, error) {
 				return m, nil
 			}
 		}
-		for _, pat := range cfg.patterns {
-			if looksLikePCREOnly(pat) {
-				return newPCREMatcher(mc)
-			}
+		if slices.ContainsFunc(cfg.patterns, looksLikePCREOnly) {
+			return newPCREMatcher(mc)
 		}
 		return m, err
 	}

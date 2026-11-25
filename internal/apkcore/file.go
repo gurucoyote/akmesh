@@ -63,7 +63,7 @@ func ParsePackageFile(data []byte, src string, trusted []*Key) (*Package, bool, 
 	if v := field(pkginfo, "builddate"); v != "" {
 		p.BuildTime, _ = strconv.ParseInt(v, 10, 64)
 	}
-	for _, line := range strings.Split(pkginfo, "\n") {
+	for line := range strings.SplitSeq(pkginfo, "\n") {
 		line = strings.TrimSpace(line)
 		switch {
 		case strings.HasPrefix(line, "depend = "):

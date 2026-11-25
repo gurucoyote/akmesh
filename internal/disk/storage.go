@@ -3,6 +3,7 @@ package disk
 import (
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -350,15 +351,16 @@ func printDfTable(stdout *os.File, header []string, table [][]string) {
 		}
 	}
 	write := func(cells []string) {
-		line := fmt.Sprintf("%-*s", nameWidth, cells[0])
+		var line strings.Builder
+		line.WriteString(fmt.Sprintf("%-*s", nameWidth, cells[0]))
 		for i, c := range cells[1:] {
 			if i == len(cells)-2 {
-				line += " " + c
+				line.WriteString(" " + c)
 				continue
 			}
-			line += fmt.Sprintf(" %*s", widths[i+1], c)
+			line.WriteString(fmt.Sprintf(" %*s", widths[i+1], c))
 		}
-		fmt.Fprintln(stdout, line)
+		fmt.Fprintln(stdout, line.String())
 	}
 	write(header)
 	for _, row := range table {
@@ -588,10 +590,8 @@ func duPath(root, name string) string {
 // used for switches whose meaning is not just a unit (-b measures differently).
 func hasAnyFlag(args []string, names ...string) bool {
 	for _, a := range args {
-		for _, n := range names {
-			if a == n {
-				return true
-			}
+		if slices.Contains(names, a) {
+			return true
 		}
 	}
 	return false

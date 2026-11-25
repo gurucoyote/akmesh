@@ -18,7 +18,7 @@ func readMemory() (mem memInfo, swap memInfo, err error) {
 		return mem, swap, err
 	}
 	values := map[string]int64{}
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		key, rest, ok := strings.Cut(line, ":")
 		if !ok {
 			continue
@@ -41,10 +41,7 @@ func readMemory() (mem memInfo, swap memInfo, err error) {
 		Available: values["MemAvailable"],
 		Known:     true,
 	}
-	mem.Used = mem.Total - mem.Free - mem.BuffCache
-	if mem.Used < 0 {
-		mem.Used = 0
-	}
+	mem.Used = max(mem.Total-mem.Free-mem.BuffCache, 0)
 	if mem.Available == 0 {
 		mem.Available = mem.Free + mem.BuffCache
 	}
@@ -68,7 +65,7 @@ func readFileSystems() ([]diskRow, error) {
 	}
 	seen := map[string]bool{}
 	var rows []diskRow
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}

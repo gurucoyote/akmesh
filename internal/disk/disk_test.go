@@ -162,7 +162,7 @@ func TestDfAndFreeRejectUnknown(t *testing.T) {
 		t.Fatalf("df -h output:\n%s", out)
 	}
 	// Every line must keep the same shape, so column based parsing works.
-	for _, line := range strings.Split(strings.TrimRight(out, "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.TrimRight(out, "\n"), "\n") {
 		if len(strings.Fields(line)) < 6 {
 			t.Fatalf("line with too few fields: %q", line)
 		}

@@ -369,7 +369,7 @@ func TestCheckReportsDisorder(t *testing.T) {
 func TestRandomSortGroupsIdenticalKeys(t *testing.T) {
 	const in = "b 1\na 2\nb 3\nc 4\nb 5\n"
 	var seen []string
-	for attempt := 0; attempt < 5; attempt++ {
+	for range 5 {
 		code, out, errText := runSort(t, []string{"-R"}, in)
 		if code != 0 {
 			t.Fatalf("exit %d, stderr %q", code, errText)

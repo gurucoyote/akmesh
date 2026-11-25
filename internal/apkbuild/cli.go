@@ -87,8 +87,8 @@ func (f *flags) parse(args []string) error {
 		}
 		name, val, hasVal := a, "", false
 		if strings.HasPrefix(a, "--") {
-			if eq := strings.Index(a, "="); eq >= 0 {
-				name, val, hasVal = a[:eq], a[eq+1:], true
+			if before, after, ok := strings.Cut(a, "="); ok {
+				name, val, hasVal = before, after, true
 			}
 		}
 		if !f.known[name] {
@@ -261,7 +261,7 @@ func entryForPackage(path string, when time.Time) (IndexEntry, error) {
 }
 
 func fieldOf(pkginfo, key string) string {
-	for _, line := range strings.Split(pkginfo, "\n") {
+	for line := range strings.SplitSeq(pkginfo, "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "#") {
 			continue

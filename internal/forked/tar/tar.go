@@ -344,7 +344,7 @@ func modeString(mode int64) string {
 	case mode&0120000 != 0:
 		b[0] = 'l'
 	}
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		if mode&(1<<uint(8-i)) != 0 {
 			b[i+1] = letters[i]
 		}

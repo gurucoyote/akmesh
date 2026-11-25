@@ -67,7 +67,7 @@ func (s *SyslogSink) Start() error {
 				// The daemon may still be starting: give it half a second
 				// before the line is given up, so the first lines of the first
 				// service are not the ones that disappear.
-				for attempt := 0; attempt < 5; attempt++ {
+				for range 5 {
 					c, err := net.Dial("unixgram", s.Socket)
 					if err == nil {
 						conn = c

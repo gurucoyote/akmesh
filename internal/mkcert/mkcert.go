@@ -78,7 +78,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			if !ok {
 				return 1
 			}
-			for _, h := range strings.Split(v, ",") {
+			for h := range strings.SplitSeq(v, ",") {
 				if h = strings.TrimSpace(h); h != "" {
 					o.hosts = append(o.hosts, h)
 				}
@@ -137,7 +137,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			if !ok {
 				return 1
 			}
-			for _, d := range strings.Split(v, ",") {
+			for d := range strings.SplitSeq(v, ",") {
 				if d = strings.TrimSpace(d); d != "" {
 					if !strings.HasPrefix(d, ".") {
 						// Handing out "local" would also allow "notlocal"; the

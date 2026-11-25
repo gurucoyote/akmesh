@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -114,10 +115,8 @@ func readSSHConfig(path string) []sshConfigKey {
 // configFor returns the first block whose pattern matches the host.
 func configFor(blocks []sshConfigKey, host string) *sshConfigKey {
 	for i := range blocks {
-		for _, pattern := range blocks[i].Patterns {
-			if pattern == host {
-				return &blocks[i]
-			}
+		if slices.Contains(blocks[i].Patterns, host) {
+			return &blocks[i]
 		}
 	}
 	for i := range blocks {
@@ -435,7 +434,7 @@ func applyConfig(opts *sshOptions) error {
 		opts.AcceptHosts = true
 	}
 	if block.KnownFile != "" && len(opts.KnownHosts) == 0 {
-		for _, item := range strings.Fields(block.KnownFile) {
+		for item := range strings.FieldsSeq(block.KnownFile) {
 			if item == "/dev/null" {
 				opts.AcceptHosts = true
 				continue
@@ -466,7 +465,7 @@ func applyOverrides(opts *sshOptions, overrides map[string]string, stderr *os.Fi
 				opts.AcceptHosts = true
 			}
 		case "userknownhostsfile":
-			for _, item := range strings.Fields(value) {
+			for item := range strings.FieldsSeq(value) {
 				if item == "/dev/null" {
 					opts.AcceptHosts = true
 					continue

@@ -206,8 +206,8 @@ func worldChannels(root string) map[string]string {
 		// The entry is "pkg", "pkg@testing" or "pkg=1.0.0-r0"; the channel is the
 		// @tag, the constraint is not a channel.
 		spec := e
-		if at := strings.Index(spec, "@"); at >= 0 {
-			out[apkcore.EntryName(spec[:at])] = spec[at+1:]
+		if before, after, ok := strings.Cut(spec, "@"); ok {
+			out[apkcore.EntryName(before)] = after
 		}
 	}
 	return out

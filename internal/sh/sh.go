@@ -196,7 +196,7 @@ func chainCall(handlers ...interp.CallHandlerFunc) interp.CallHandlerFunc {
 // stays an error: a shell that swallows every typo hides what went wrong.
 func parseArgs(args []string, stdout, stderr io.Writer) (invocation, bool) {
 	var inv invocation
-	for i := 0; i < len(args); i++ {
+	for i := range args {
 		a := args[i]
 		switch {
 		case a == "-c":

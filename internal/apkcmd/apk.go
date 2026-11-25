@@ -215,16 +215,16 @@ func readRepos(root string) ([]Repo, error) {
 		return nil, err
 	}
 	var out []Repo
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
 		// apk's syntax: "@tag url" or "url"; an "@tag" may also follow the url.
 		var r Repo
-		for _, field := range strings.Fields(line) {
-			if strings.HasPrefix(field, "@") {
-				r.Tag = strings.TrimPrefix(field, "@")
+		for field := range strings.FieldsSeq(line) {
+			if after, ok := strings.CutPrefix(field, "@"); ok {
+				r.Tag = after
 				continue
 			}
 			if r.URL == "" {
@@ -928,7 +928,7 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 // them ("usr/share/icons/*" or a directory).
 func triggerPaths(body []byte) []string {
 	var out []string
-	for _, line := range strings.Split(string(body), "\n") {
+	for line := range strings.SplitSeq(string(body), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
@@ -1319,7 +1319,7 @@ func matchAny(patterns []string, name, text string) bool {
 		return true
 	}
 	for _, pat := range patterns {
-		for _, part := range strings.Split(pat, ",") {
+		for part := range strings.SplitSeq(pat, ",") {
 			part = strings.TrimSpace(part)
 			if part == "" {
 				continue

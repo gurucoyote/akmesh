@@ -224,12 +224,9 @@ Print numbers from FIRST to LAST, in steps of INCREMENT.
 	if step == 0 {
 		return bad(fmt.Errorf("invalid Zero increment value: '0'"))
 	}
-	n := int(math.Floor((last-first)/step+1e-9)) + 1
-	if n < 0 {
-		n = 0
-	}
+	n := max(int(math.Floor((last-first)/step+1e-9))+1, 0)
 	var b strings.Builder
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if i > 0 {
 			b.WriteString(sep)
 		}

@@ -45,7 +45,7 @@ func lines(t *testing.T, file string) []Line {
 		t.Fatal(err)
 	}
 	var out []Line
-	for _, raw := range bytes.Split(bytes.TrimSpace(data), []byte("\n")) {
+	for raw := range bytes.SplitSeq(bytes.TrimSpace(data), []byte("\n")) {
 		var l Line
 		if err := json.Unmarshal(raw, &l); err != nil {
 			t.Fatalf("Zeile ist kein JSON: %q (%v)", raw, err)

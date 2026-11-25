@@ -32,6 +32,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -235,12 +236,7 @@ func IDCommand(w, errw io.Writer, flags *flags, u User) (missingName bool) {
 }
 
 func hasGroup(groups []int, gid int) bool {
-	for _, g := range groups {
-		if g == gid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(groups, gid)
 }
 
 // knownName says whether the database knew the name. Without /etc/passwd the

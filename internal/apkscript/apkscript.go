@@ -212,7 +212,7 @@ func chrootExec(root string, stderr io.Writer) interp.ExecHandlerFunc {
 			cmd.Stdin, cmd.Stdout, cmd.Stderr = hc.Stdin, hc.Stdout, hc.Stderr
 			if err := cmd.Run(); err != nil {
 				if ee, ok := err.(*exec.ExitError); ok {
-					return interp.NewExitStatus(uint8(ee.ExitCode()))
+					return error(interp.ExitStatus(uint8(ee.ExitCode())))
 				}
 				return err
 			}
@@ -241,7 +241,7 @@ func chrootExec(root string, stderr io.Writer) interp.ExecHandlerFunc {
 			if OwnTool != nil {
 				if code, ok := OwnTool(args[0], args[1:], hc.Stdin, hc.Stdout, hc.Stderr); ok {
 					if code != 0 {
-						return interp.NewExitStatus(uint8(code))
+						return error(interp.ExitStatus(uint8(code)))
 					}
 					return nil
 				}
@@ -251,20 +251,20 @@ func chrootExec(root string, stderr io.Writer) interp.ExecHandlerFunc {
 			} else {
 				fmt.Fprintf(stderr, "apkscript: %s is not in the target root's PATH, so the script cannot run it; use --no-scripts to install the files only\n", args[0])
 			}
-			return interp.NewExitStatus(127)
+			return error(interp.ExitStatus(uint8(127)))
 		}
 		if os.Geteuid() != 0 {
 			fmt.Fprintf(stderr, "apkscript: %s is not a shell builtin, running it needs root (chroot into %s); use --no-scripts to install the files only\n", args[0], root)
-			return interp.NewExitStatus(127)
+			return error(interp.ExitStatus(uint8(127)))
 		}
 		full, err := Inside(root, bin)
 		if err != nil {
 			fmt.Fprintf(stderr, "apkscript: %v\n", err)
-			return interp.NewExitStatus(127)
+			return error(interp.ExitStatus(uint8(127)))
 		}
 		if _, err := os.Stat(full); err != nil {
 			fmt.Fprintf(stderr, "apkscript: %s is not part of the target root, so the script cannot run it; use --no-scripts to install the files only\n", args[0])
-			return interp.NewExitStatus(127)
+			return error(interp.ExitStatus(uint8(127)))
 		}
 		cmd := exec.Command("chroot", append([]string{root, bin}, args[1:]...)...)
 		cmd.Stdin = hc.Stdin
@@ -272,7 +272,7 @@ func chrootExec(root string, stderr io.Writer) interp.ExecHandlerFunc {
 		cmd.Stderr = hc.Stderr
 		if err := cmd.Run(); err != nil {
 			if ee, ok := err.(*exec.ExitError); ok {
-				return interp.NewExitStatus(uint8(ee.ExitCode()))
+				return error(interp.ExitStatus(uint8(ee.ExitCode())))
 			}
 			return err
 		}

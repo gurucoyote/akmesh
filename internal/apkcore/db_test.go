@@ -12,9 +12,9 @@ import (
 func TestWriteInstalledKeepsOneEntryPerName(t *testing.T) {
 	root := t.TempDir()
 	pkgs := []*Installed{
-		{Package: Package{Name: "rotest", Version: "1.0.0-r0"}},
-		{Package: Package{Name: "anderes", Version: "1.0.0-r0"}},
-		{Package: Package{Name: "rotest", Version: "2.0.0-r0"}},
+		{Name: "rotest", Version: "1.0.0-r0"},
+		{Name: "anderes", Version: "1.0.0-r0"},
+		{Name: "rotest", Version: "2.0.0-r0"},
 	}
 	if err := WriteInstalled(root, pkgs); err != nil {
 		t.Fatal(err)

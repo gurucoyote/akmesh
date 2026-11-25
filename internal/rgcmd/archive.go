@@ -208,11 +208,11 @@ func innerOf(label, outer string) string {
 	if label == outer {
 		return ""
 	}
-	i := strings.Index(label, "{")
-	if i < 0 {
+	_, after, ok := strings.Cut(label, "{")
+	if !ok {
 		return ""
 	}
-	return strings.TrimSuffix(label[i+1:], "}")
+	return strings.TrimSuffix(after, "}")
 }
 
 // container walks tar or zip bytes. level is the stage of the members: the

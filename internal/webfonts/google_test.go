@@ -227,7 +227,7 @@ func os2Offset(v []byte) int {
 		return -1
 	}
 	n := int(v[4])<<8 | int(v[5])
-	for i := 0; i < n; i++ {
+	for i := range n {
 		rec := 12 + i*16
 		if rec+16 > len(v) {
 			return -1

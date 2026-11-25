@@ -154,10 +154,7 @@ func wrap(stdout io.Writer, data []byte, width int) error {
 		return err
 	}
 	for len(data) > 0 {
-		end := width
-		if end > len(data) {
-			end = len(data)
-		}
+		end := min(width, len(data))
 		if _, err := stdout.Write(data[:end]); err != nil {
 			return err
 		}
@@ -252,8 +249,7 @@ func parse(args []string) (p params, rest []string, err error) {
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	p, rest, err := parse(args)
 	if err != nil {
-		var uo unknownOption
-		if errors.As(err, &uo) {
+		if uo, ok := errors.AsType[unknownOption](err); ok {
 			return akusage.BadOption("base64", uo.opt, stderr, 1)
 		}
 		fmt.Fprintf(stderr, "base64: %v\n", err)
@@ -268,8 +264,7 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(rest) == 1 && rest[0] != "-" {
 		f, err := os.Open(rest[0])
 		if err != nil {
-			var pe *os.PathError
-			if errors.As(err, &pe) {
+			if pe, ok := errors.AsType[*os.PathError](err); ok {
 				// GNU capitalises the reason: "No such file or directory".
 				reason := pe.Err.Error()
 				if reason != "" {

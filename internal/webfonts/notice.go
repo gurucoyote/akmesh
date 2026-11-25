@@ -78,7 +78,7 @@ func NoticeOf(f Face) Notice {
 	if strOff > len(tab) {
 		return n
 	}
-	for i := 0; i < count; i++ {
+	for i := range count {
 		rec := 6 + i*12
 		if rec+12 > len(tab) {
 			break
@@ -143,7 +143,7 @@ func table(d []byte, tag string) (int, int, bool) {
 		return 0, 0, false
 	}
 	n := int(be16(d[4:6]))
-	for i := 0; i < n; i++ {
+	for i := range n {
 		rec := 12 + i*16
 		if rec+16 > len(d) {
 			return 0, 0, false
@@ -197,7 +197,7 @@ func NoticeFile(families []Family) string {
 		b.WriteString(n.String() + "\n")
 		if n.LicenseText != "" {
 			b.WriteString("\n")
-			for _, line := range strings.Split(n.LicenseText, "\n") {
+			for line := range strings.SplitSeq(n.LicenseText, "\n") {
 				b.WriteString("  " + strings.TrimRight(line, " ") + "\n")
 			}
 		}

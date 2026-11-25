@@ -85,7 +85,7 @@ func TestFileWriterRotates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		if _, err := w.Write([]byte("0123456789\n")); err != nil {
 			t.Fatal(err)
 		}

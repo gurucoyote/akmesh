@@ -144,10 +144,7 @@ func (b *builder) blocks(n ast.Node) {
 func (b *builder) block(n ast.Node) {
 	switch v := n.(type) {
 	case *ast.Heading:
-		level := v.Level
-		if level > 6 {
-			level = 6
-		}
+		level := min(v.Level, 6)
 		b.out.WriteString("<w:p><w:pPr><w:pStyle w:val=\"Heading" + strconv.Itoa(level) + "\"/></w:pPr>")
 		b.inline(n)
 		b.out.WriteString("</w:p>")
@@ -187,10 +184,7 @@ func (b *builder) list(l *ast.List) {
 	if l.IsOrdered() {
 		numID = 3
 	}
-	level := b.listDepth
-	if level > 8 {
-		level = 8
-	}
+	level := min(b.listDepth, 8)
 	b.listDepth++
 	for item := l.FirstChild(); item != nil; item = item.NextSibling() {
 		if item.Kind() != ast.KindListItem {
@@ -614,19 +608,19 @@ var bulletLevels = levels(func(i int) string {
 
 // decimalLevels is nine levels of numbers: 1., then 1.1., then 1.1.1.
 var decimalLevels = levels(func(i int) string {
-	text := ""
+	var text strings.Builder
 	for k := 0; k <= i; k++ {
-		text += "%" + strconv.Itoa(k+1) + "."
+		text.WriteString("%" + strconv.Itoa(k+1) + ".")
 	}
 	return `<w:lvl w:ilvl="` + strconv.Itoa(i) + `"><w:start w:val="1"/><w:numFmt w:val="decimal"/>` +
-		`<w:lvlText w:val="` + text + `"/><w:lvlJc w:val="left"/>` +
+		`<w:lvlText w:val="` + text.String() + `"/><w:lvlJc w:val="left"/>` +
 		`<w:pPr><w:ind w:left="` + strconv.Itoa(720*(i+1)) + `" w:hanging="360"/></w:pPr></w:lvl>`
 })
 
 // levels builds nine level definitions.
 func levels(f func(i int) string) string {
 	var b strings.Builder
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		b.WriteString(f(i))
 	}
 	return b.String()

@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -305,7 +306,7 @@ func loadConf(name string) ([]confEntry, error) {
 		return nil, err
 	}
 	var out []confEntry
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
@@ -629,10 +630,5 @@ func detachArgv(exe, argv0 string, args []string) []string {
 // hasFlag says whether the argument list contains that flag, so that a second
 // -f is not added on every restart.
 func hasFlag(args []string, flag string) bool {
-	for _, a := range args {
-		if a == flag {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(args, flag)
 }

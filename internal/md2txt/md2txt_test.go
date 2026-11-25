@@ -99,7 +99,7 @@ func TestHorizontalRuleIsSeventyTwoDashes(t *testing.T) {
 func TestParagraphIsWrappedAt72(t *testing.T) {
 	long := "Ein langer Absatz, der deutlich mehr als zweiundsiebzig Zeichen enthaelt und deshalb umgebrochen werden muss, wenn pandoc ihn als reinen Text ausgibt, was hier geprueft wird."
 	got := Convert(long + "\n")
-	for _, line := range strings.Split(strings.TrimRight(got, "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.TrimRight(got, "\n"), "\n") {
 		if len([]rune(line)) > 72 {
 			t.Errorf("Zeile laenger als 72 Zeichen (%d): %q", len([]rune(line)), line)
 		}

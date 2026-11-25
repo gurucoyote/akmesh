@@ -258,7 +258,7 @@ func TestResolveReadsTheCertificateForALocalName(t *testing.T) {
 	// suite runs, and that is not a verdict about --resolve.
 	var out string
 	var code int
-	for attempt := 0; attempt < 3; attempt++ {
+	for range 3 {
 		out, code = runCertinfo(t, "--resolve", "test1.local:"+port+":127.0.0.1", "test1.local:"+port)
 		if code == 0 {
 			break

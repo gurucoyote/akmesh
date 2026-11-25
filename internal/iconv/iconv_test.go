@@ -14,7 +14,7 @@ func TestSingleByteRoundTrip(t *testing.T) {
 			t.Fatalf("lookup %s: %v", name, err)
 		}
 		checked := 0
-		for b := 0; b < 256; b++ {
+		for b := range 256 {
 			in := []byte{byte(b)}
 			text, err := cs.decode(in)
 			if err != nil {

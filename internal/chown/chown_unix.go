@@ -156,7 +156,7 @@ func lookupUser(s string) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("invalid user '%s': cannot read /etc/passwd: %v", s, err)
 	}
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		f := strings.Split(line, ":")
 		if len(f) < 4 || f[0] != s {
 			continue
@@ -180,7 +180,7 @@ func lookupGroup(s string) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("invalid group '%s': cannot read /etc/group: %v", s, err)
 	}
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		f := strings.Split(line, ":")
 		if len(f) < 3 || f[0] != s {
 			continue

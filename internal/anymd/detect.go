@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -29,12 +30,7 @@ var Formats = []Format{PDF, DOCX, EPUB, RTF, HTML}
 // names maps a format to the words Detect accepts for it, so that "-f" and the
 // messages cannot drift from the exported constants.
 func valid(f Format) bool {
-	for _, x := range Formats {
-		if x == f {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(Formats, f)
 }
 
 // ParseFormat turns the word an agent typed into a format. The empty string is

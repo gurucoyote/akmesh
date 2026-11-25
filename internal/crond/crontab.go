@@ -114,8 +114,8 @@ func isVarName(s string) bool {
 func splitSpec(text string) (spec, command string, ok bool) {
 	if strings.HasPrefix(text, "@") {
 		// @every carries its duration: "@every 10s cmd" is spec + command.
-		if strings.HasPrefix(text, "@every ") {
-			fields := strings.SplitN(strings.TrimPrefix(text, "@every "), " ", 2)
+		if after, ok0 := strings.CutPrefix(text, "@every "); ok0 {
+			fields := strings.SplitN(after, " ", 2)
 			if len(fields) < 2 {
 				return "", "", false
 			}

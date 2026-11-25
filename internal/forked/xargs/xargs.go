@@ -526,10 +526,9 @@ func (c *cmd) run(args ...string) int {
 		if err == nil {
 			return
 		}
-		var exitErr *exec.ExitError
 		mu.Lock()
 		defer mu.Unlock()
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			if exitErr.ExitCode() == 255 {
 				code = 124
 			} else if code == 0 {

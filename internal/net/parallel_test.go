@@ -14,9 +14,9 @@ import (
 // TestParallelRepeatHitsTheServerThatOften: --repeat counts, -Z parallelises and
 // tells the truth about it (acmesh-730).
 func TestParallelRepeatHitsTheServerThatOften(t *testing.T) {
-	var hits int64
+	var hits atomic.Int64
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt64(&hits, 1)
+		hits.Add(1)
 		w.Write([]byte("ok\n"))
 	}))
 	defer server.Close()
@@ -25,7 +25,7 @@ func TestParallelRepeatHitsTheServerThatOften(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d", code)
 	}
-	if got := atomic.LoadInt64(&hits); got != 120 {
+	if got := hits.Load(); got != 120 {
 		t.Fatalf("the server saw %d requests, want 120", got)
 	}
 }

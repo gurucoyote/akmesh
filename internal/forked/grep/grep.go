@@ -113,8 +113,7 @@ func (e unknownOption) Error() string { return "unrecognized option '" + e.opt +
 // errText turns a *os.PathError into the wording GNU prints: the bare reason,
 // first letter capitalised, without the Go "stat " or "open " prefix.
 func errText(err error) string {
-	var pe *os.PathError
-	if errors.As(err, &pe) {
+	if pe, ok := errors.AsType[*os.PathError](err); ok {
 		err = pe.Err
 	}
 	s := err.Error()
@@ -885,8 +884,7 @@ func (p *params) run(stdin io.Reader, stdout, stderr io.Writer) int {
 func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	p, err := parse(args)
 	if err != nil {
-		var uo unknownOption
-		if errors.As(err, &uo) {
+		if uo, ok := errors.AsType[unknownOption](err); ok {
 			return akusage.BadOption("grep", uo.opt, stderr, 2)
 		}
 		fmt.Fprintf(stderr, "grep: %v\n", err)

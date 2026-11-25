@@ -29,17 +29,17 @@ func shaCrypt(password, setting string) (string, error) {
 	explicitRounds := false
 	if strings.HasPrefix(rest, "rounds=") {
 		n := rest[len("rounds="):]
-		i := strings.IndexByte(n, '$')
-		if i < 0 {
+		before, after, ok := strings.Cut(n, "$")
+		if !ok {
 			return "", errors.New("bad rounds field")
 		}
-		v, err := strconv.Atoi(n[:i])
+		v, err := strconv.Atoi(before)
 		if err != nil {
 			return "", errors.New("bad rounds field")
 		}
 		rounds = clampRounds(v)
 		explicitRounds = true
-		rest = n[i+1:]
+		rest = after
 	}
 	if i := strings.IndexByte(rest, '$'); i >= 0 {
 		rest = rest[:i]
@@ -129,7 +129,7 @@ func shaCryptDigest(p, s []byte, rounds int, is512 bool) []byte {
 	// step 3 hashes P len(P) *times*, step 4 hashes S 16+A[0] *times*.
 	times := func(src []byte, n int) []byte {
 		out := make([]byte, 0, len(src)*n)
-		for i := 0; i < n; i++ {
+		for range n {
 			out = append(out, src...)
 		}
 		return out
@@ -142,7 +142,7 @@ func shaCryptDigest(p, s []byte, rounds int, is512 bool) []byte {
 	sBytes := repeat(hs(times(s, 16+int(a[0]))), len(s))
 
 	// 5. the rounds loop
-	for i := 0; i < rounds; i++ {
+	for i := range rounds {
 		var parts [][]byte
 		if i&1 == 1 {
 			parts = append(parts, pBytes)

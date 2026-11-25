@@ -32,9 +32,9 @@ func pinnedCommit(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("read build script: %v", err)
 	}
-	for _, line := range strings.Split(string(data), "\n") {
-		if strings.HasPrefix(line, "UROOT_COMMIT=") {
-			return strings.TrimSpace(strings.TrimPrefix(line, "UROOT_COMMIT="))
+	for line := range strings.SplitSeq(string(data), "\n") {
+		if after, ok := strings.CutPrefix(line, "UROOT_COMMIT="); ok {
+			return strings.TrimSpace(after)
 		}
 	}
 	t.Fatal("UROOT_COMMIT not found in scripts/build-bb.sh")

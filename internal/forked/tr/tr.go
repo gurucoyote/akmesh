@@ -48,6 +48,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -350,7 +351,7 @@ func parse(args []string, p params) (*transformer, error) {
 		return inside[r]
 	}
 	sorted := append([]rune(nil), arg1...)
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	slices.Sort(sorted)
 	return &transformer{transform: func(r rune) rune {
 		if inSet(r) {
 			return r
@@ -390,7 +391,7 @@ func expandRepeats(in []rune) ([]rune, error) {
 				if err != nil {
 					return nil, err
 				}
-				for n := 0; n < count; n++ {
+				for range count {
 					out = append(out, in[i+1])
 				}
 				i = end
@@ -479,7 +480,7 @@ func classChars(name Set) ([]rune, bool) {
 		return nil, false
 	}
 	var out []rune
-	for r := rune(0); r < 256; r++ {
+	for r := range rune(256) {
 		if f(r) {
 			out = append(out, r)
 		}

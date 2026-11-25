@@ -114,8 +114,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		if err == nil {
 			return 0
 		}
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			return exitErr.ExitCode()
 		}
 		fmt.Fprintf(stderr, "timeout: %v\n", err)

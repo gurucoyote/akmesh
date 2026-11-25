@@ -63,7 +63,7 @@ type params struct {
 // (-12, -123) are one word, long options may carry =VALUE.
 func parse(args []string) (*params, error) {
 	p := &params{delim: "\t"}
-	for i := 0; i < len(args); i++ {
+	for i := range args {
 		a := args[i]
 		switch {
 		case a == "--":
@@ -186,7 +186,7 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	// suppressed. A record of a suppressed column is not printed at all.
 	prefix := func(col int) string {
 		var b strings.Builder
-		for c := 0; c < col; c++ {
+		for c := range col {
 			if !p.sup[c] {
 				b.WriteString(p.delim)
 			}

@@ -26,8 +26,8 @@ func bookOf(t *testing.T, markdown, baseDir string) []byte {
 func testImage(t *testing.T) []byte {
 	t.Helper()
 	img := image.NewRGBA(image.Rect(0, 0, 16, 8))
-	for x := 0; x < 16; x++ {
-		for y := 0; y < 8; y++ {
+	for x := range 16 {
+		for y := range 8 {
 			img.Set(x, y, color.RGBA{R: 90, G: 20, B: 20, A: 255})
 		}
 	}

@@ -124,7 +124,7 @@ func run(stdin io.Reader, stdout, stderr io.Writer, header int, printBytes, zero
 				}
 				return nil
 			}
-			for c := 0; c < count; c++ {
+			for range count {
 				rec, err := next()
 				if rec != "" {
 					io.WriteString(stdout, rec)

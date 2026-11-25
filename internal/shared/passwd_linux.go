@@ -15,7 +15,7 @@ func ReadPasswd() map[string]string {
 	if err != nil {
 		return users
 	}
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		parts := strings.Split(line, ":")
 		if len(parts) < 3 {
 			continue

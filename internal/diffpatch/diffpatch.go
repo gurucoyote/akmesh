@@ -362,11 +362,7 @@ func diffLines(a, b []string, opts diffOptions) ([]opLine, error) {
 				table[i][j] = table[i+1][j+1] + 1
 				continue
 			}
-			if table[i+1][j] >= table[i][j+1] {
-				table[i][j] = table[i+1][j]
-			} else {
-				table[i][j] = table[i][j+1]
-			}
+			table[i][j] = max(table[i+1][j], table[i][j+1])
 		}
 	}
 	var ops []opLine
@@ -426,17 +422,11 @@ func hunks(ops []opLine) []hunk {
 
 	out := make([]hunk, 0, len(groups))
 	for _, g := range groups {
-		from := g[0] - contextLines
-		if from < 0 {
-			from = 0
-		}
-		to := g[1] + contextLines
-		if to > len(ops)-1 {
-			to = len(ops) - 1
-		}
+		from := max(g[0]-contextLines, 0)
+		to := min(g[1]+contextLines, len(ops)-1)
 		h := hunk{}
 		aLine, bLine := 1, 1
-		for k := 0; k < from; k++ {
+		for k := range from {
 			if ops[k].kind != opInsert {
 				aLine++
 			}
@@ -469,7 +459,7 @@ func hunks(ops []opLine) []hunk {
 func headerNames(text string) []string {
 	var names []string
 	var pending string
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		switch {
 		case strings.HasPrefix(line, "--- "):
 			pending = strings.TrimSpace(strings.TrimPrefix(line, "--- "))

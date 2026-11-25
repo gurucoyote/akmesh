@@ -595,7 +595,7 @@ func parseW(raw string, out map[uint32]float64) {
 		if i+1 < len(f) && strings.HasPrefix(f[i+1], "[") {
 			list := strings.Trim(f[i+1], "[]")
 			w := 0
-			for _, tok := range strings.Fields(list) {
+			for tok := range strings.FieldsSeq(list) {
 				if v, e := strconv.ParseFloat(tok, 64); e == nil {
 					out[uint32(c+w)] = v
 					w++

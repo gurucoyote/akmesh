@@ -2,6 +2,7 @@ package proc
 
 import (
 	"akmesh/internal/shared"
+	"slices"
 
 	"fmt"
 	"os"
@@ -390,7 +391,7 @@ func unknownPSFlag(a string) error {
 
 func parsePIDs(s string) ([]int, error) {
 	var out []int
-	for _, part := range strings.Split(s, ",") {
+	for part := range strings.SplitSeq(s, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
@@ -458,7 +459,7 @@ func runPS(args []string, stdin *os.File, stdout, stderr *os.File) int {
 // splitList splits a comma separated list the way procps takes -u and -C.
 func splitList(s string) []string {
 	var out []string
-	for _, part := range strings.Split(s, ",") {
+	for part := range strings.SplitSeq(s, ",") {
 		if part = strings.TrimSpace(part); part != "" {
 			out = append(out, part)
 		}
@@ -482,12 +483,7 @@ func userWanted(p procInfo, users []string, byUID map[string]string) bool {
 
 // commWanted matches -C: the command name exactly, as procps does.
 func commWanted(p procInfo, comms []string) bool {
-	for _, want := range comms {
-		if p.Comm == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(comms, p.Comm)
 }
 
 // selectProcs applies the filters of the request; several selectors at once are

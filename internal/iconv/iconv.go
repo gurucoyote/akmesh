@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"unicode/utf16"
 	"unicode/utf8"
@@ -89,10 +90,8 @@ func lookupCharset(name string) (*charset, error) {
 		if cs.name == clean {
 			return cs, nil
 		}
-		for _, a := range cs.alias {
-			if a == clean {
-				return cs, nil
-			}
+		if slices.Contains(cs.alias, clean) {
+			return cs, nil
 		}
 	}
 	return nil, fmt.Errorf("unsupported character set %q", name)

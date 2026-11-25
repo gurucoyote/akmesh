@@ -175,20 +175,14 @@ func splitChunks(r *os.File, chunks int, next func() (*os.File, error), stderr *
 	if size == 0 {
 		return 0
 	}
-	chunkSize := (size + chunks - 1) / chunks
-	if chunkSize < 1 {
-		chunkSize = 1
-	}
+	chunkSize := max((size+chunks-1)/chunks, 1)
 	for pos := 0; pos < size; {
 		out, err := next()
 		if err != nil {
 			fmt.Fprintf(stderr, "split: %v\n", err)
 			return 1
 		}
-		end := pos + chunkSize
-		if end > size {
-			end = size
-		}
+		end := min(pos+chunkSize, size)
 		if end < size && data[end-1] != '\n' {
 			// We stopped inside a line: finish it, but never add a line that
 			// belongs to the next chunk.
@@ -255,10 +249,7 @@ func splitBytes(r *os.File, size int64, next func() (*os.File, error), stderr *o
 				}
 				written = 0
 			}
-			chunk := int64(n)
-			if chunk > size-written {
-				chunk = size - written
-			}
+			chunk := min(int64(n), size-written)
 			if _, werr := out.Write(buf[:chunk]); werr != nil {
 				fmt.Fprintf(stderr, "split: %v\n", werr)
 				return 1

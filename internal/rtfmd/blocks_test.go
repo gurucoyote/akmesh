@@ -32,7 +32,7 @@ func TestTableBecomesAPipeTable(t *testing.T) {
 func TestTableRowWithoutTrailingCell(t *testing.T) {
 	body := `\trowd\cellx1000\cellx2000 A\cell B\cell\row` + `\trowd\cellx1000\cellx2000 C\cell D\row`
 	got := mustConvert(t, rtf(body))
-	for _, line := range strings.Split(got, "\n") {
+	for line := range strings.SplitSeq(got, "\n") {
 		if strings.Count(line, "|") != 3 && line != "" {
 			t.Errorf("line %q has %d pipes, want 3", line, strings.Count(line, "|"))
 		}

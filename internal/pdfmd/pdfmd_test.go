@@ -286,8 +286,8 @@ func TestTableFromRectangles(t *testing.T) {
 	// Two columns, two rows of 100x20 cells, with a 0.5 scale transform.
 	b.WriteString(".5 0 0 .5 0 0 cm ")
 	cells := [][2]string{{"A1", "B1"}, {"A2", "B2"}}
-	for row := 0; row < 2; row++ {
-		for col := 0; col < 2; col++ {
+	for row := range 2 {
+		for col := range 2 {
 			x := 100 + col*100
 			y := 600 - row*40
 			b.WriteString(fmt.Sprintf("%d %d 100 20 re f ", x, y))

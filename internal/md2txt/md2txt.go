@@ -365,7 +365,7 @@ func wrapInline(text, prefix string) string {
 	text = strings.TrimSpace(text)
 	// A hard break is a line end with two spaces or a backslash before it.
 	var hard []string
-	for _, l := range strings.Split(text, "\n") {
+	for l := range strings.SplitSeq(text, "\n") {
 		hard = append(hard, l)
 	}
 	var paragraphs []string

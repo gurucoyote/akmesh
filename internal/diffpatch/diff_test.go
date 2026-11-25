@@ -12,7 +12,7 @@ import (
 func TestDiffReplaysToTarget(t *testing.T) {
 	rng := rand.New(rand.NewSource(7))
 	alphabet := []string{"a", "b", "c", "d", "e", ""}
-	for round := 0; round < 200; round++ {
+	for range 200 {
 		a := randomLines(rng, alphabet)
 		b := randomLines(rng, alphabet)
 		ops, err := diffLines(a, b, diffOptions{})
@@ -47,7 +47,7 @@ func TestDiffReplaysToTarget(t *testing.T) {
 func TestHunkHeaderCounts(t *testing.T) {
 	rng := rand.New(rand.NewSource(11))
 	alphabet := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"}
-	for round := 0; round < 100; round++ {
+	for range 100 {
 		a := randomLines(rng, alphabet)
 		b := randomLines(rng, alphabet)
 		ops, err := diffLines(a, b, diffOptions{})

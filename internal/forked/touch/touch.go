@@ -274,12 +274,11 @@ func Run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		when = info.ModTime()
 	}
 
-	c := &cmd{params: params{
+	c := &cmd{
 		time:         when,
 		access:       access || (!access && !modification),
 		modification: modification || (!access && !modification),
-		create:       noCreate,
-	}, args: files}
+		create:       noCreate, args: files}
 	if err := c.run(); err != nil {
 		fmt.Fprintf(stderr, "touch: %v\n", err)
 		return 1

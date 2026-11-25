@@ -211,8 +211,8 @@ func headingLevel(name string) int {
 		return 2
 	}
 	for _, prefix := range []string{"heading", "berschrift", "ueberschrift"} {
-		if strings.HasPrefix(s, prefix) {
-			rest := strings.TrimLeft(strings.TrimPrefix(s, prefix), "-_")
+		if after, ok := strings.CutPrefix(s, prefix); ok {
+			rest := strings.TrimLeft(after, "-_")
 			if n, err := strconv.Atoi(rest); err == nil && n >= 1 && n <= 6 {
 				return n
 			}
@@ -345,10 +345,7 @@ func (p *parser) write(s string) {
 	// they have to go, and they can arrive as text as well as one by one.
 	if p.pendingSki > 0 {
 		runes := []rune(s)
-		n := p.pendingSki
-		if n > len(runes) {
-			n = len(runes)
-		}
+		n := min(p.pendingSki, len(runes))
 		p.pendingSki -= n
 		s = string(runes[n:])
 		if s == "" {
@@ -593,13 +590,7 @@ func (p *parser) endParagraph() {
 	}
 	p.pendingList, p.pendingLevel = NoList, 0
 	if listLevel > 0 && listKind != NoList {
-		listLevel = (listLevel + 719) / 720
-		if listLevel < 1 {
-			listLevel = 1
-		}
-		if listLevel > 6 {
-			listLevel = 6
-		}
+		listLevel = min(max((listLevel+719)/720, 1), 6)
 	} else {
 		listLevel = 0
 	}

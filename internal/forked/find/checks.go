@@ -44,7 +44,7 @@ func statTime(file string) (time.Time, error) {
 // GNU allows.
 func typeCheck(letters string) (func(os.FileInfo) bool, error) {
 	var checks []func(os.FileInfo) bool
-	for _, one := range strings.Split(letters, ",") {
+	for one := range strings.SplitSeq(letters, ",") {
 		check, err := singleType(one)
 		if err != nil {
 			return nil, err
@@ -233,7 +233,7 @@ func parsePerm(spec string) (mode uint32, all bool, any bool, err error) {
 // symbolicPerm converts a mode like "u+x", "a=rw" or "go-w" to bits.
 func symbolicPerm(spec string) (uint32, error) {
 	var mode uint32
-	for _, clause := range strings.Split(spec, ",") {
+	for clause := range strings.SplitSeq(spec, ",") {
 		i := strings.IndexAny(clause, "+-=")
 		if i < 0 {
 			return 0, fmt.Errorf("invalid mode %q", spec)

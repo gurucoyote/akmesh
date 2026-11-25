@@ -74,7 +74,7 @@ func modeString(m os.FileMode) string {
 		b[0] = '-'
 	}
 	const rwx = "rwxrwxrwx"
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		if m.Perm()&(1<<uint(8-i)) != 0 {
 			b[i+1] = rwx[i]
 		} else {
@@ -186,11 +186,4 @@ func indicator(m os.FileMode) string {
 		return "*"
 	}
 	return ""
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

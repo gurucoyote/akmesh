@@ -210,11 +210,8 @@ func monthCompare(a, b string) int {
 
 func compareFraction(a, b string) int {
 	na, nb := len(a), len(b)
-	n := na
-	if nb < n {
-		n = nb
-	}
-	for i := 0; i < n; i++ {
+	n := min(nb, na)
+	for i := range n {
 		if a[i] != b[i] {
 			if a[i] < b[i] {
 				return -1

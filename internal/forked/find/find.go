@@ -113,8 +113,7 @@ func (r *runner) exec(argv []string, e *entry) {
 	cmd := exec.Command(replaced[0], replaced[1:]...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = r.stdin, r.out, r.errOut
 	if err := cmd.Run(); err != nil {
-		var exitErr *exec.ExitError
-		if !errors.As(err, &exitErr) {
+		if _, ok := errors.AsType[*exec.ExitError](err); !ok {
 			fmt.Fprintf(r.errOut, "find: %v\n", err)
 			r.code = 1
 		}
@@ -147,8 +146,7 @@ func (r *runner) runPlus() {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = r.stdin, r.out, r.errOut
 	if err := cmd.Run(); err != nil {
-		var exitErr *exec.ExitError
-		if !errors.As(err, &exitErr) {
+		if _, ok := errors.AsType[*exec.ExitError](err); !ok {
 			fmt.Fprintf(r.errOut, "find: %v\n", err)
 			r.code = 1
 		}

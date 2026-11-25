@@ -1,5 +1,17 @@
 #!/bin/sh
 BIN=${1:-./akmesh}
+# -g/--group limits the run to one block of commands (documents, files, system,
+# services, network, shell, other), so a change to one tool does not need the
+# whole battery. The names come from the binary itself: the list it prints for
+# an unknown command is the same table internal/cmdlist uses, so the filter
+# cannot drift from the build (acmesh-58me).
+GROUP=""
+case "${2:-}" in
+-g | --group)
+	GROUP=${3:-}
+	[ -n "$GROUP" ] || { echo "-g needs a group name" >&2; exit 2; }
+	;;
+esac
 # The checks run inside a scratch directory, so the binary path must be
 # absolute before we change directory.
 case "$BIN" in
@@ -41,9 +53,52 @@ esac
 
 fails=0
 checks=0
+skipped=0
+
+# The group filter: a check belongs to the command its name starts with
+# (rg-pcre-lookahead -> rg, apk-replaces-file-gone -> apk). Everything else is
+# counted as skipped, so a group run says what it did not cover instead of
+# pretending the rest passed.
+GROUP_NAMES=""
+if [ -n "$GROUP" ]; then
+	GROUP_NAMES=$(
+		"$BIN" __akmesh_group_probe__ 2>&1 | awk -v want="$GROUP" '
+			/^ - / { if (cur == want) print $2; next }
+			/:$/ { g = $0; sub(/:$/, "", g); split(g, w, " "); cur = tolower(w[1]) }
+		'
+	)
+	if [ -z "$GROUP_NAMES" ]; then
+		# A single command name works too: -g rg covers every check whose
+		# name starts with rg, which is the unit work actually happens in.
+		if "$BIN" __akmesh_group_probe__ 2>&1 | awk '/^ - / { print $2 }' | grep -qx "$GROUP"; then
+			GROUP_NAMES=$GROUP
+		else
+			echo "unknown group or command '$GROUP'; groups: documents, files, system, services, network, shell, other" >&2
+			exit 2
+		fi
+	fi
+	echo "group $GROUP: $(echo $GROUP_NAMES | wc -w | tr -d ' ') commands"
+fi
+
+# in_group reports whether a check name belongs to the selected block. A case
+# pattern list cannot come from a variable (spaces are not separators there), so
+# this is a loop; 64 words times 500 checks cost nothing.
+in_group() {
+	[ -n "$GROUP" ] || return 0
+	for want in $GROUP_NAMES; do
+		case "$1" in
+		"$want" | "$want"-*) return 0 ;;
+		esac
+	done
+	return 1
+}
 
 check() {
 	name=$1
+	if ! in_group "$name"; then
+		skipped=$((skipped + 1))
+		return 0
+	fi
 	want=$2
 	got=$3
 	checks=$((checks + 1))
@@ -55,6 +110,10 @@ check() {
 
 checkcode() {
 	name=$1
+	if ! in_group "$name"; then
+		skipped=$((skipped + 1))
+		return 0
+	fi
 	want=$2
 	got=$3
 	checks=$((checks + 1))
@@ -1340,4 +1399,5 @@ if [ -z "$WINDOWS" ]; then
 fi
 
 printf '%d checks, %d failures\n' "$checks" "$fails"
+[ -z "$GROUP" ] || printf '%d skipped (group %s)\n' "$skipped" "$GROUP"
 [ "$fails" -eq 0 ]

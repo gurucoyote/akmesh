@@ -7219,3 +7219,48 @@ Batterie: 507 Pruefungen linux (vorher 499; neu: 6 x rtf2md Tabelle/Link/Liste,
 `go test ./internal/rtfmd` mit den alten Fixtures unveraendert gruen; neun neue
 Tests fuer Tabelle, Zeile ohne \\cell, Link mit und ohne Ziel, Listenebenen,
 Link-Ziel mit Leerzeichen, \\ucN-Ersatz im Textlauf, fremde Code page.
+
+## Zweiter Verteiler akmesh-docs (acmesh-h3ux, 25.11.2026)
+
+`cmd/akmesh-docs` mit eigener Tabelle in `internal/doccmd`, gebaut in
+`scripts/build-bb.sh` neben dem vollen Binary (linux und windows, gestrippt,
+Inlining an):
+
+    akmesh-docs      11612387 Bytes  11.1 MiB
+    akmesh-docs.exe  11817984 Bytes  11.3 MiB
+    (voll, zum Vergleich: 22540515 / 20625920 Bytes)
+
+Die Erwartung im Ticket war 10-11 MiB gegen 15,0 MiB fuer ein Text-Binary; die
+Messung liegt mit 11,1 MiB knapp darueber und deutlich unter dem vollen Binary.
+
+Wovon die Groesse kommt, gemessen als Wegwerf-Tabellen (gleiche Flags, gestrippt):
+
+    volle Tabelle (14 Namen + rg)                 11612387
+    ohne rg                                       10264803   (rg:   1347584)
+    ohne die Schreiber (md2pdf, md2docx, md2epub,  6070499   (Schreiber: 5541888)
+      html2docx, html2epub)
+    ohne die Leser (any2md, *2md, pdf2html,       11550947   (Leser: 61440)
+      epub2html)
+
+Die Leser kosten in diesem Binary fast nichts, weil die Schreiber dieselben
+Bibliotheken ziehen (goldmark, goldmark-pdf, gofpdf, Schriftarten, go-epub,
+docx). Wer nur liest, also any2md plus rg, liegt bei 6,1 MiB - deshalb ist der
+Vorschlag "Schreiber in ein eigenes Paket" als Ticket acmesh-... vermerkt.
+
+Batterie mit Befehlsliste (`-c`, neu):
+
+    ./scripts/test-akmesh.sh ./akmesh-docs -g documents -c "<14 Namen + rg>"
+    linux:   57 Pruefungen, 0 Fehler
+    windows: 57 Pruefungen, 0 Fehler
+
+Volles Binary unveraendert: 22540515 Bytes, Batterie 507 Pruefungen, 0 Fehler.
+Die Gruppe `documents` der vollen Batterie hat 44 Pruefungen; die 13 weiteren
+hier kommen von den rg-Pruefungen, die bei `-g documents` nicht mitlaufen.
+
+Zwei Nachbesserungen an der Batterie, die erst der zweite Verteiler zeigte:
+
+- `-c/--commands LIST` gibt die Befehlsliste vor, statt sie dem Binary
+  abzufragen; ein Verteiler ohne Gruppen-Sonde braucht das.
+- Der rg-`-z`-Tar-Fixture wurde bisher mit dem eigenen `tar` gebaut. Ein
+  Teil-Binary hat kein tar, die Pruefung schlug dann am Fixture fehl, nicht an
+  rg. Jetzt faellt der Aufbau auf das tar des Wirts zurueck.

@@ -2,6 +2,10 @@
 /akmesh.exe
 /akmesh-ext
 /akmesh-ext.exe
+# The document binary of the split (acmesh-h3ux) is built, not tracked.
+/akmesh-docs
+/akmesh-docs.exe
+/akmesh-docs-*
 /.build/
 /.cache/
 /.gopath/

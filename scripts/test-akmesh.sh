@@ -6,12 +6,31 @@ BIN=${1:-./akmesh}
 # an unknown command is the same table internal/cmdlist uses, so the filter
 # cannot drift from the build (acmesh-58me).
 GROUP=""
-case "${2:-}" in
--g | --group)
-	GROUP=${3:-}
-	[ -n "$GROUP" ] || { echo "-g needs a group name" >&2; exit 2; }
-	;;
-esac
+COMMANDS=""
+shift || true
+while [ $# -gt 0 ]; do
+	case "$1" in
+	-g | --group)
+		GROUP=${2:-}
+		[ -n "$GROUP" ] || { echo "-g needs a group name" >&2; exit 2; }
+		shift 2
+		;;
+	# -c/--commands takes the command list as an argument instead of asking the
+	# binary. A dispatcher of its own (akmesh-docs) has no group probe, and a
+	# list written down here cannot drift: it is the table of that binary
+	# (docs/design/split.md, step 3).
+	-c | --commands)
+		COMMANDS=${2:-}
+		[ -n "$COMMANDS" ] || { echo "-c needs a command list" >&2; exit 2; }
+		[ -n "$GROUP" ] || GROUP=list
+		shift 2
+		;;
+	*)
+		echo "unknown argument $1" >&2
+		exit 2
+		;;
+	esac
+done
 # The checks run inside a scratch directory, so the binary path must be
 # absolute before we change directory.
 case "$BIN" in
@@ -60,7 +79,10 @@ skipped=0
 # counted as skipped, so a group run says what it did not cover instead of
 # pretending the rest passed.
 GROUP_NAMES=""
-if [ -n "$GROUP" ]; then
+if [ -n "$COMMANDS" ]; then
+	GROUP_NAMES=$COMMANDS
+	echo "list $GROUP: $(echo $GROUP_NAMES | wc -w | tr -d " ") commands"
+elif [ -n "$GROUP" ]; then
 	GROUP_NAMES=$(
 		"$BIN" __akmesh_group_probe__ 2>&1 | awk -v want="$GROUP" '
 			/^ - / { if (cur == want) print $2; next }
@@ -510,7 +532,12 @@ ADIR=$(mktemp -d 2>/dev/null || echo /tmp/akmesh-rgz)
 mkdir -p "$ADIR/arc"
 printf 'archiv treffer\n' > "$ADIR/arc/m1.txt"
 printf 'kein wort\n' > "$ADIR/arc/m2.txt"
-( cd "$ADIR/arc" && run tar -cf ../ra.tar m1.txt m2.txt >/dev/null 2>&1 )
+# The fixture is built with the binary's own tar when it has one; a partial
+# binary (akmesh-docs) does not, and the host's tar makes the same file. The
+# check is about rg -z, not about tar.
+if ! ( cd "$ADIR/arc" && run tar -cf ../ra.tar m1.txt m2.txt >/dev/null 2>&1 ); then
+	( cd "$ADIR/arc" && tar -cf ../ra.tar m1.txt m2.txt )
+fi
 check rg-z-tar-label "ra.tar{m1.txt}:archiv treffer" "$(cd "$ADIR" && run rg -z 'archiv treffer' ra.tar | tr -d '\r')"
 check rg-z-tar-list "ra.tar{m1.txt}" "$(cd "$ADIR" && run rg -z -l 'archiv treffer' ra.tar | tr -d '\r')"
 check rg-z-tar-no-hit "1" "$(cd "$ADIR" && run rg -z 'nichtvorhanden' ra.tar >/dev/null 2>&1; printf '%s' "$?")"

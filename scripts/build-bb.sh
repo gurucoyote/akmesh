@@ -494,7 +494,8 @@ debug_sections() {
 	fi
 }
 report_size() {
-	f="$ROOT/$OUT"
+	name="${1:-$OUT}"
+	f="$ROOT/$name"
 	[ -f "$f" ] || return 0
 	b=$(stat -c %s "$f" 2>/dev/null || stat -f %z "$f")
 	dbg=$(debug_sections "$f")
@@ -514,6 +515,23 @@ report_size() {
 		fi
 		;;
 	esac
-	echo "report: $OUT is $(human_size "$b") ($b bytes), $kind, $strip_word"
+	echo "report: $name is $(human_size "$b") ($b bytes), $kind, $strip_word"
 }
 report_size
+
+# The document binary (acmesh-h3ux): its own dispatcher and its own table, built
+# from the repository instead of through makebb - it does not use u-root's
+# dispatcher at all. A profile build skips it: a profile asks what the full
+# binary weighs without a block, not what a second binary weighs.
+DOCS="akmesh-docs"
+case "$GOOS" in windows) DOCS="akmesh-docs.exe" ;; esac
+case "$PROFILE" in
+full | "")
+	( cd "$ROOT" && GOTOOLCHAIN=auto GOOS="$GOOS" GOARCH="$GOARCH" \
+		go build -trimpath -ldflags "-s -w -buildid=" -o "$ROOT/$DOCS" ./cmd/akmesh-docs ) || {
+		echo "akmesh-docs did not build" >&2
+		exit 1
+	}
+	report_size "$DOCS"
+	;;
+esac

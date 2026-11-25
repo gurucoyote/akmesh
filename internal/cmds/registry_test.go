@@ -94,6 +94,21 @@ func TestCommandTableMatchesEntryPoints(t *testing.T) {
 			}
 			continue
 		}
+		// cmd/akmesh-<block> is a dispatcher of its own, not a command of this
+		// binary (docs/design/split.md, acmesh-h3ux). It has its own table, and
+		// it must not reach back into the collect table - that would undo the
+		// split by pulling every block into the document binary.
+		if strings.HasPrefix(name, "akmesh-") {
+			src, err := os.ReadFile(filepath.Join(root, name, "main.go"))
+			if err != nil {
+				t.Errorf("cmd/%s/main.go: %v", name, err)
+				continue
+			}
+			if strings.Contains(string(src), "internal/cmds") {
+				t.Errorf("cmd/%s imports the collect table instead of its own", name)
+			}
+			continue
+		}
 		t.Errorf("cmd/%s exists but the table has no %q: Main answers \"unknown command\"", name, name)
 	}
 }

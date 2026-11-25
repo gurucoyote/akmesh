@@ -192,6 +192,30 @@ vorhanden" - das ist die Regel, die schon bei acmesh-7s9 galt.
    sobald die Pakete die Auswahl treffen; sie bleiben nur, solange das
    Einzel-Binary der Standard ist.
 
+## Stand 25.11.2026: der zweite Verteiler steht (acmesh-h3ux)
+
+`cmd/akmesh-docs` ist gebaut, mit eigener Tabelle in `internal/doccmd`, eigenem
+Verteilertext und `policy.Enter()` am Anfang. `scripts/build-bb.sh` baut es
+neben dem vollen Binary fuer beide Ziele, eine Profil-Messung ueberspringt es.
+
+    akmesh-docs      11.1 MiB (11612387 Bytes), gestrippt
+    akmesh-docs.exe  11.3 MiB (11817984 Bytes)
+    akmesh            21.5 MiB, unveraendert
+
+Die Erwartung von 10-11 MiB war knapp zu niedrig, aber die Aussage stimmt: ein
+Text-Binary kostet ein Drittel des vollen. Der Grund ist gemessen und nicht
+geraten: die Dokument-Schreiber (md2pdf, md2docx, md2epub, html2docx,
+html2epub) machen 5,5 MiB aus, die Leser dagegen fast nichts, weil sie dieselben
+Bibliotheken benutzen. Wer nur liest (any2md plus rg), liegt bei 6,1 MiB.
+
+Batterie: `scripts/test-akmesh.sh` kennt jetzt `-c/--commands LIST` und laeuft
+gegen einen beliebigen Verteiler; `-g documents -c "<Liste>"` ergibt 57
+Pruefungen auf beiden Zielen, 0 Fehler.
+
+Noch offen aus dieser Stufe: die Pakete selbst (Schritt 4) und der Symlink-Satz
+im Image - heute liegt akmesh-docs als eigenes Binary neben `akmesh`, das Image
+wird weiter aus dem vollen Binary gebaut.
+
 ## Offene Fragen
 
 1. `rg` ohne `--pre` als eigenes, kleines Paket (geschaetzt 6-7 MiB)?

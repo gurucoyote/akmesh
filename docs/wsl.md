@@ -64,31 +64,41 @@ Entfernen, ohne Rückstände:
 Damit ist die Distribution samt ihrer VHD weg; im Registry bleibt nichts, was
 nicht auch ein normaler `wsl --import` angelegt hätte.
 
-## Der C:-Mount: warum automount aus ist
+## Der C:-Mount: wie er jetzt geht
 
-Beim ersten Start kam bei jedem Aufruf:
+Beim ersten Start kam bei jedem Aufruf
 
     wsl: Failed to mount C:\, see dmesg for more details.
 
-Untersucht, mit Belegen:
+und `/mnt/c` blieb leer. Die Recherche (wsl.dev/technical-documentation/drvfs,
+src/linux/init/drvfs.cpp) und drei Messungen haben den Weg freigelegt:
 
-- WSL ist 3.0.5.0, Kernel 6.18.58.1. Die Distribution startet dabei sauber, nur
-  `/mnt/c` bleibt leer.
-- In der funktionierenden `golang`-Distro steht in `/proc/mounts`
-  `9p ... aname=drvfs;path=C:\;...;trans=fd`. Es ist also ein 9p-Mount mit einem
-  Deskriptor, den WSL bereitstellt.
-- WSL ruft dafür **nicht** das `mount` der Distribution auf: eine Sonde an
-  `/bin/mount`, die jeden Aufruf mitschrieb, wurde kein einziges Mal
-  ausgeführt - auch nicht, als die Sonde `drvfs` in ihrer Hilfe nannte.
-- Ohne unser `mount` (Datei entfernt) bleibt der Fehler derselbe. Er hängt also
-  nicht an unserer Implementierung, sondern an WSL.
-- Unser `mount` kennt `drvfs` ohnehin nicht: `mount -t drvfs C: /mnt/c` endet mit
-  "unknown filesystem drvfs" und dann mit ENODEV.
+- WSL startet die Distribution nicht mit einem eigenen Mount, sondern ruft
+  `/bin/mount --internal-only -t drvfs C: /mnt/c -o <Optionen>`. Im Kernel-Log
+  stand dazu `/bin/mount failed with status 0x200`, also unser Exitcode 2.
+- `drvfs` ist kein Kernel-Dateisystem. WSL bedient es über den Einstiegspunkt
+  `mount.drvfs` in seinem eigenen `/init`, ausgewählt über `argv[0]`
+  (`MountDrvfsEntry`). Ohne diesen Umweg gibt es nur "unknown filesystem drvfs".
+- `/init` ruft bei diesem Umweg erneut `/bin/mount` auf, diesmal mit
+  `-i -t 9p ... -o trans=fd,rfd=3,wfd=3`. Der Deskriptor 3 ist der Plan9-Server,
+  den WSL bereitstellt.
 
-Mit `enabled = false` ist der Start still, und es entsteht kein leerer Ordner,
-der wie ein funktionierendes Laufwerk aussieht. Windows-Interop fällt damit
-weg, weil es ohne `/mnt/c` keinen Pfad zu einem Windows-Programm gibt. Ein
-Ticket hält den offenen Punkt fest.
+Deshalb gibt es jetzt unseren eigenen `mount` (internal/mount, Linux-only,
+acmesh-2p6w) statt u-roots:
+
+- `-t drvfs` wird an `/init` mit `argv[0] = mount.drvfs` übergeben.
+- util-linux-Flags, die hier nichts ändern (`-i`, `-n`, `-v`, `-f`, `-s`, `-w`,
+  `-l`, `-a`, `--internal-only`), werden angenommen. Ohne das wurde `-i` als
+  Quellpfad gelesen und der Mount landete auf dem falschen Pfad.
+- Alles andere geht als `mount(2)` raus, Optionen wie bei mount(8) aufgeteilt.
+
+Damit hängt WSL C: beim Start von selbst ein, `ls /mnt/c` zeigt die Platte, und
+`[interop] appendWindowsPath = true` funktioniert wieder: ein Windows-Programm
+startet aus der Distribution heraus.
+
+Nicht mehr dabei, was u-roots mount hatte: `-o loop`, das Schreiben von mtab und
+das Abarbeiten von `/etc/fstab` ohne Argumente. Für den Fall, um den es hier
+geht, braucht es keines davon; was fehlt, fehlt bewusst.
 
 ## Der Start in WSL, gemessen
 

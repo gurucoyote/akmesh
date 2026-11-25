@@ -7549,3 +7549,33 @@ jeden Aufruf mitschrieb, wurde nie ausgefuehrt; ohne das mount der Distribution
 bleibt der Fehler gleich. In der golang-Distro steht /mnt/c als
 "9p ... aname=drvfs;path=C:\;...;trans=fd". Unser mount kennt drvfs nicht
 (ENODEV). automount deshalb aus; Start danach ohne Warnung.
+
+### C:-Mount in der WSL-Distro (25.11.2026)
+
+Vorzustand: "wsl: Failed to mount C:\" bei jedem Start, /mnt/c leer.
+Kernel-Log (alle Distros teilen den Ringpuffer, gelesen aus golang):
+
+    WSL (1 - init(akmesh)) ERROR: UtilCreateProcessAndWait:744: /bin/mount failed with status 0x200
+
+0x200 ist Exitcode 2 - unser mount kannte drvfs nicht. WSL ruft also
+"/bin/mount --internal-only -t drvfs C: /mnt/c -o ..." (belegt in
+src/linux/init/drvfs.cpp, MountFilesystem) und drvfs selbst ist der
+Einstiegspunkt "mount.drvfs" von /init (argv[0]).
+
+Mit dem neuen internal/mount:
+
+    /bin/mount -t drvfs C: /mnt/c -o uid=1000,gid=1000
+    -> /proc/mounts: C: /mnt/c 9p rw,relatime,
+       aname=drvfs;path=C:;uid=1000;gid=1000;symlinkroot=/mnt/,cache=0x5,
+       access=client,msize=65536,trans=fd,rfd=3,wfd=3
+
+Nach Neustart der Distro ohne Handgriff:
+
+    wsl -d akmesh -- sh -c 'ls /mnt/c | head -3'    $Recycle.Bin, $WINDOWS.~BT, BG
+    wsl -d akmesh -- sh -c 'grep -c "/mnt/c " /proc/mounts'   1
+    wsl -d akmesh -- sh -c '/mnt/c/Windows/System32/cmd.exe /c echo interop-ok'   interop-ok
+
+Batterie danach 520 Pruefungen, 0 Fehler; staticcheck leer.
+
+Nebenbefund: unser ln versteht "-sf" nicht zusammengezogen (wie sh "-lc"),
+sondern nur "-s -f".

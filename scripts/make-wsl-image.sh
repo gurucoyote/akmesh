@@ -131,18 +131,18 @@ cat > "$ROOTFS/etc/wsl.conf" <<EOF
 default=$WSL_USER
 
 [automount]
-# Off on purpose (measured 25.11.2026): WSL 3.0.5 cannot mount C: for this rootfs
-# and says so at every start. It never calls the distro's /bin/mount while trying;
-# a probe left there was not executed once. With the flag off the start is silent
-# and honest - no empty /mnt/c that looks like a working drive. Turn it on again
-# once our mount speaks drvfs, or to try a newer WSL.
-enabled = false
+# On, and it works because our own mount speaks drvfs (acmesh-2p6w): WSL starts
+# the distribution with "/bin/mount --internal-only -t drvfs C: /mnt/c -o ..."
+# and that case is handed to WSL's /init. See docs/wsl.md.
+enabled = true
 mountFsTab = false
 root = /mnt/
 
 [interop]
+# appendWindowsPath is on: a daily driver types "cmd.exe" and "explorer.exe",
+# and the Windows paths only resolve now that /mnt/c is mounted.
 enabled = true
-appendWindowsPath = false
+appendWindowsPath = true
 
 [network]
 generateResolvConf = true

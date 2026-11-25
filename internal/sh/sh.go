@@ -499,12 +499,32 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
-// defaultPrompt is what ash prints when no profile set PS1.
+// defaultPrompt is what the shell prints when no profile set PS1. ash prints a
+// bare "$ ", which says nothing about who and where you are; a session that
+// opens in /mnt/c/Users/... and shows "$ " is the reason this is not ash's
+// answer any more (25.11.2026). The shape is what a shell prompt looks like
+// everywhere else: user@host:directory, with ~ for the home directory.
 func defaultPrompt() string {
+	sign := "$ "
 	if os.Geteuid() == 0 {
-		return "# "
+		sign = "# "
 	}
-	return "$ "
+	user := envOr("USER", "")
+	if user == "" {
+		user = "root"
+	}
+	host, _ := os.Hostname()
+	if k := strings.IndexByte(host, '.'); k > 0 {
+		host = host[:k]
+	}
+	dir, _ := os.Getwd()
+	if home := envOr("HOME", ""); home != "" && (dir == home || strings.HasPrefix(dir, home+"/")) {
+		dir = "~" + dir[len(home):]
+	}
+	if host == "" {
+		return user + ":" + dir + sign
+	}
+	return user + "@" + host + ":" + dir + sign
 }
 
 // withoutVar returns the environment with every definition of name removed.

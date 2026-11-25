@@ -91,7 +91,7 @@ func changeMode(path string, mode os.FileMode, octval uint64, mask uint64) error
 		return err
 	}
 	mode = info.Mode() & os.FileMode(mask)
-	mode = mode | os.FileMode(octval)
+	mode = mode | modeBits(octval)
 
 	if err := os.Chmod(path, mode); err != nil {
 		return err
@@ -99,15 +99,34 @@ func changeMode(path string, mode os.FileMode, octval uint64, mask uint64) error
 	return recordMode(path, mode)
 }
 
+// modeBits translates an octal mode the way the shell and GNU chmod spell it
+// (0755, 4755, 2755, 1777) into the bit layout Go uses, where setuid, setgid and
+// the sticky bit live above the nine permission bits.
+func modeBits(v uint64) os.FileMode {
+	m := os.FileMode(v & 0o777)
+	if v&0o4000 != 0 {
+		m |= os.ModeSetuid
+	}
+	if v&0o2000 != 0 {
+		m |= os.ModeSetgid
+	}
+	if v&0o1000 != 0 {
+		m |= os.ModeSticky
+	}
+	return m
+}
+
 func calculateMode(modeString string) (mode os.FileMode, octval uint64, mask uint64, err error) {
 	octval, err = strconv.ParseUint(modeString, 8, 32)
 	if err == nil {
-		if octval > 0o777 {
-			return mode, octval, mask, fmt.Errorf("%w: invalid octal value %0o. Value should be less than or equal to 0777", strconv.ErrRange, octval)
+		// akmesh: 4755 is what "make su setuid" looks like, and GNU accepts it.
+		// Refusing anything above 0777 made a setuid bit impossible to set.
+		if octval > 0o7777 {
+			return mode, octval, mask, fmt.Errorf("%w: invalid octal value %0o. Value should be less than or equal to 07777", strconv.ErrRange, octval)
 		}
 		// a fully described octal mode was supplied, signal that with a special value for mask
 		mask = special
-		mode = os.FileMode(octval)
+		mode = modeBits(octval)
 		return
 	}
 
@@ -121,7 +140,7 @@ func calculateMode(modeString string) (mode os.FileMode, octval uint64, mask uin
 	// This can't be done in the first regexp: if the match for m[3] is restricted to [rwx]*,
 	// `a=9` and `a=` would be indistinguishable: m[3] would be empty.
 	// `a=` is a valid (but destructive) operation. Do not turn a typo into that.
-	reMode = regexp.MustCompile("^[rwx]*$")
+	reMode = regexp.MustCompile("^[rwxst]*$")
 	if len(m) < 3 || !reMode.MatchString(m[3]) {
 		return mode, octval, mask, fmt.Errorf("invalid mode: '%s'", modeString)
 	}
@@ -136,6 +155,29 @@ func calculateMode(modeString string) (mode os.FileMode, octval uint64, mask uin
 	}
 	if strings.Contains(m[3], "x") {
 		octvalDigit++
+	}
+
+	// setuid, setgid and sticky: "u+s", "g+s", "o+t" (and "a+s", GNU's
+	// "chmod +s"). Go keeps these in high mode bits, not in the octal digit, so
+	// they are collected apart from the rwx bits and folded in by modeBits.
+	if strings.Contains(m[3], "s") {
+		class := uint64(0o4000) // u
+		switch {
+		case strings.Contains(m[1], "a"):
+			class = 0o6000
+		case strings.Contains(m[1], "g") && !strings.Contains(m[1], "u"):
+			class = 0o2000
+		}
+		if m[2] == "-" {
+			return mode, octval, mask, fmt.Errorf("removing setuid/setgid is not supported yet")
+		}
+		octval |= class
+	}
+	if strings.Contains(m[3], "t") {
+		if m[2] == "-" {
+			return mode, octval, mask, fmt.Errorf("removing the sticky bit is not supported yet")
+		}
+		octval |= 0o1000
 	}
 
 	// m[2] is [-+=]
@@ -171,7 +213,7 @@ func calculateMode(modeString string) (mode os.FileMode, octval uint64, mask uin
 	// The mode is fully described, signal that with a special value for mask
 	if operator == "=" && strings.Contains(m[1], "a") {
 		mask = special
-		mode = os.FileMode(octval)
+		mode = modeBits(octval)
 	}
 	return mode, octval, mask, nil
 }

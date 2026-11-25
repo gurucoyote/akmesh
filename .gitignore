@@ -19,3 +19,7 @@
 /.cache/
 /.gopath/
 *.test
+/bb.exe
+/akmesh-services-off
+/akmesh-services-off.exe
+/akmesh-ext*

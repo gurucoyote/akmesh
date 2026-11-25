@@ -158,11 +158,21 @@ dass es nicht unterstützt wird, statt es still zu tun.
 
 ## Der Prompt
 
-Die Shell setzt den Prompt selbst: `nutzer@rechner:verzeichnis$ `, mit `~` für
-das Home. Vorher stand dort das nackte `$ ` von ash, das nichts über Nutzer und
-Ort sagt. Das hängt an einem Befund: Zuweisungen aus `/etc/profile` kommen in
-der WSL-Distro nicht an, im chroot dagegen schon (Ticket acmesh-eqfy, P2). Der Prompt
-verlässt sich deshalb nicht mehr auf PS1 aus dem Profil.
+Zwei Zeilen, die Form, die Martin auch in seiner golang-Distro hat:
+
+    BSNB67:/mnt/c/Users/Spernau
+    akmesh$ 
+
+Die erste Zeile nennt Rechner und Verzeichnis (mit ~ fuer das Home), die zweite
+Nutzer und Zeichen ($ fuer den Nutzer, # fuer root). Dazu setzt die Shell den
+Fenstertitel auf "rechner verzeichnis"; ein Terminal schluckt das, ein
+Screenreader liest es nie vor.
+
+Vorher stand dort das nackte `$ ` von ash, das nichts ueber Nutzer und Ort sagt.
+Der Prompt haengt an einem Befund: Zuweisungen aus `/etc/profile` kommen in der
+WSL-Distro nicht an, im chroot dagegen schon (Ticket acmesh-eqfy, P2). Deshalb
+verlaesst sich der Prompt nicht mehr auf PS1 aus dem Profil.
+
 
 ## Was geprüft ist und was nicht
 

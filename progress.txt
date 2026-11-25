@@ -317,3 +317,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 25.11.2026: eigener mount-Befehl (Linux-only) gibt drvfs an WSLs /init weiter; C: haengt beim Start, Interop laeuft, WSL-Image neu importiert und geprueft.
 25.11.2026: Verteiler nimmt "-sh" an (Login-Shell aus /etc/passwd), Patch in build-bb.sh mit Absicherung; WSL-Start interaktiv geprueft.
 25.11.2026: WSL-Image mit Alpine-edge-Repos, eigenen apk-Schluesseln, setuid-su und eigenem Prompt; go und rust in der Distro installiert und gestartet; chmod kann setuid/setgid/sticky.
+25.11.2026: Prompt zweizeilig (Rechner und Pfad, dann Nutzer und Zeichen) mit Fenstertitel; Binary in die laufende Distro getauscht, tar erneuert.

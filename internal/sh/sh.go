@@ -502,8 +502,12 @@ func envOr(key, fallback string) string {
 // defaultPrompt is what the shell prints when no profile set PS1. ash prints a
 // bare "$ ", which says nothing about who and where you are; a session that
 // opens in /mnt/c/Users/... and shows "$ " is the reason this is not ash's
-// answer any more (25.11.2026). The shape is what a shell prompt looks like
-// everywhere else: user@host:directory, with ~ for the home directory.
+// answer any more (25.11.2026).
+//
+// Two lines, the shape Martin's own prompt has: the place first, then who and
+// the sign, so the command line starts at the left edge under a short line
+// instead of after a long one. The leading escape sequence sets the window
+// title; a terminal swallows it, a screenreader never reads it.
 func defaultPrompt() string {
 	sign := "$ "
 	if os.Geteuid() == 0 {
@@ -521,10 +525,9 @@ func defaultPrompt() string {
 	if home := envOr("HOME", ""); home != "" && (dir == home || strings.HasPrefix(dir, home+"/")) {
 		dir = "~" + dir[len(home):]
 	}
-	if host == "" {
-		return user + ":" + dir + sign
-	}
-	return user + "@" + host + ":" + dir + sign
+	place := host + ":" + dir
+	title := "\x1b]0;" + host + " " + dir + "\a"
+	return title + place + "\n" + user + sign
 }
 
 // withoutVar returns the environment with every definition of name removed.

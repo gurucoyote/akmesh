@@ -7617,3 +7617,13 @@ gesehen: root@BSNB67:/root/akmesh#).
 Befund: in der WSL-Distro kommen Variablenzuweisungen aus /etc/profile nicht an
 (echo im Profil zeigt sie, danach sind sie weg), im chroot bleiben sie. Ticket
 angelegt; der Prompt haengt deshalb nicht mehr an PS1.
+
+### Prompt zweizeilig (25.11.2026)
+
+In einer PTY mit der neuen Binary, ohne PS1 in der Umgebung:
+
+    ESC]0;BSNB67 /root/akmesh BEL  BSNB67:/root/akmesh NL akmesh# 
+
+Also Fenstertitel, dann Rechner und Pfad, dann in neuer Zeile Nutzer und Zeichen.
+Binary in der Distro und im Bau gleich (md5 fce9dad35cbed4d0dfa69c09131b4284),
+damit zeigt auch "wsl -d akmesh" diese Form.

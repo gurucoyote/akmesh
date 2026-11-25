@@ -7,9 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/rwtodd/Go.Sed/sed"
 	"github.com/benhoyt/goawk/interp"
 	"github.com/benhoyt/goawk/parser"
+	"github.com/rwtodd/Go.Sed/sed"
 )
 
 // runSed implements sed through the Go.Sed engine: -e, -f, -n, -i and -E.

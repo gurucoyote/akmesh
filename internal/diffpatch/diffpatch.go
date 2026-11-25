@@ -595,7 +595,7 @@ func runPatch(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			file = reverseFile(file)
 		}
 		if idx < len(oldNames) && oldNames[idx] != "" {
-			file.OldName, file.NewName = oldNames[idx], file.NewName
+			file.OldName = oldNames[idx]
 		}
 		name := target
 		if name == "" {

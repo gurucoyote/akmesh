@@ -7579,3 +7579,17 @@ Batterie danach 520 Pruefungen, 0 Fehler; staticcheck leer.
 
 Nebenbefund: unser ln versteht "-sf" nicht zusammengezogen (wie sh "-lc"),
 sondern nur "-s -f".
+
+### Login-Shell in WSL (25.11.2026)
+
+    C:\Users\Spernau>wsl -d akmesh
+    Failed to run command: command is not present in akmesh: -sh
+
+WSL startet die Shell aus /etc/passwd mit argv[0]="-sh". Nach dem Patch in
+scripts/build-bb.sh (Strich nur fuer das Nachschlagen abschneiden, an beiden
+Namensstellen):
+
+    ./akmesh -sh -c 'echo login-ok'     login-ok
+    wsl -d akmesh  (stdin /dev/null)    keine Meldung mehr, Login-Shell startet
+
+Nebenbefund: unser ln versteht "-sf" nicht zusammengezogen (nur "-s -f").

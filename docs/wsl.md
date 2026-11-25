@@ -115,6 +115,21 @@ geht, braucht es keines davon; was fehlt, fehlt bewusst.
 plus `search busys.local fritz.box` - dieselben Werte wie in Ubuntu und golang.
 DNS und HTTPS funktionieren damit ohne jede Netzwerkkonfiguration im Image.
 
+## Der Login-Strich: warum "wsl -d akmesh" erst scheiterte
+
+Der erste interaktive Start kam als
+
+    Failed to run command: command is not present in akmesh: -sh
+
+WSL startet die Shell aus /etc/passwd als Login-Shell und übergibt dabei
+`argv[0] = "-sh"`. Unser Verteiler (gobusybox) schlug den Namen wörtlich nach und
+fand ihn nicht. Behoben in `scripts/build-bb.sh`, an beiden Stellen, die den
+Namen bilden: der erste Versuch aus argv[0] und der Rückfall aus argv[1] bei
+"akmesh command". Der Strich wird nur für das Nachschlagen abgeschnitten,
+`os.Args[0]` bleibt "-sh", damit unser sh weiterhin eine Login-Shell erkennt und
+/etc/profile liest. Der Build prüft, ob die Änderung in makebb angekommen ist,
+und bricht sonst ab.
+
 ## Was geprüft ist und was nicht
 
 Geprüft im Rootfs selbst, per `chroot`, vor dem Verpacken:

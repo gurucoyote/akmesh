@@ -241,6 +241,46 @@ for file in $DISPATCHER_FILES; do
 	sed -i 's/"\([A-Za-z0-9_.-]*\) dispatched %q/"'"$NAME"' dispatched %q/' "$file"
 done
 
+# A login shell is started with argv[0] = "-sh"; WSL does exactly that for the
+# shell in /etc/passwd, and so does "su -". The dispatcher looked the name up
+# verbatim and answered "command is not present in akmesh: -sh" (25.11.2026).
+# The dash is stripped for the lookup only: os.Args[0] keeps it, so our sh still
+# sees a login shell and reads /etc/profile.
+LOGIN_FIX='name := strings.TrimPrefix(filepath.Base(os.Args[0]), "-")'
+LOGIN_FALLBACK='bbmain.Run(strings.TrimPrefix(filepath.Base(os.Args[0]), "-"))'
+DISPATCH_MAIN_FILES="$UROOT_DIR/vendor/github.com/u-root/gobusybox/src/pkg/bb/bbmain/cmd/main.go
+$(ls -d "$GOPATH"/pkg/mod/github.com/u-root/gobusybox/*/pkg/bb/bbmain/cmd/main.go 2>/dev/null || true)"
+login_fix_applied=0
+for file in $DISPATCH_MAIN_FILES; do
+	[ -f "$file" ] || continue
+	# Two places compute the name: the first try from argv[0], the fallback from
+	# argv[1] when the binary was called as "akmesh <command>". Both need the
+	# dash stripped; "akmesh -sh" takes the fallback and still failed with it.
+	if ! grep -qF "$LOGIN_FIX" "$file"; then
+		grep -qF 'name := filepath.Base(os.Args[0])' "$file" || {
+			echo "u-root no longer writes \"name := filepath.Base(os.Args[0])\" in $file: the dispatcher changed" >&2
+			exit 1
+		}
+		sed -i "s|name := filepath.Base(os.Args\[0\])|$LOGIN_FIX|" "$file"
+		login_fix_applied=1
+	fi
+	if ! grep -qF "$LOGIN_FALLBACK" "$file"; then
+		grep -qF 'bbmain.Run(filepath.Base(os.Args[0]))' "$file" || {
+			echo "u-root no longer writes the argv[1] fallback in $file: the dispatcher changed" >&2
+			exit 1
+		}
+		sed -i "s|bbmain.Run(filepath.Base(os.Args\[0\]))|$LOGIN_FALLBACK|" "$file"
+		login_fix_applied=1
+	fi
+done
+if [ "$login_fix_applied" -eq 1 ]; then
+	install_makebb
+fi
+if ! tr -d '\000' < "$MAKEBB" | grep -qF 'TrimPrefix(filepath.Base'; then
+	echo "makebb does not carry the login-shell fix: the dispatcher would refuse \"-sh\"" >&2
+	exit 1
+fi
+
 # makebb embeds that source with //go:embed, so a tool installed before the
 # rename still carries the old word. Rebuild it once now that the source is
 # patched; if the word survives anyway, stop rather than ship it.

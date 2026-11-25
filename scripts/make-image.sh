@@ -18,10 +18,16 @@
 # and no udev in this binary.
 #
 # Usage:
-#   ./scripts/make-image.sh              # build, assemble, import
+#   ./scripts/make-image.sh              # build, assemble, import (one binary)
+#   ./scripts/make-image.sh --split      # the image with the split binaries
 #   TAG=akmesh:test ./scripts/make-image.sh
 #   PROFILE=services-off ./scripts/make-image.sh   # any profile from scripts/
 #   ./scripts/make-image.sh --verify-only          # only run the checks
+#
+# Two image variants on purpose (Martin, 25.11.2026): the one-binary image is
+# what a container usually wants, because its /bin is one file of 21.5 MiB; the
+# split image is what shows the size for a single job - /bin/akmesh-docs is
+# 5.8 MiB, and a harness that only reads documents never loads the rest.
 #
 # Requires podman. Nothing is pulled: the rootfs is tarred here and imported.
 
@@ -30,13 +36,23 @@ cd "$(dirname "$0")/.."
 ROOT=$PWD
 
 PROFILE=${PROFILE:-full}
-TAG=${TAG:-${AKMESH_NAME:-akmesh}:latest}
+SPLIT=0
+case "${1:-}" in
+--split) SPLIT=1 ;;
+esac
+SPLIT_BINS="akmesh-docs akmesh-write akmesh-net akmesh-shell"
+if [ "$SPLIT" -eq 1 ]; then
+	TAG=${TAG:-${AKMESH_NAME:-akmesh}-split:latest}
+else
+	TAG=${TAG:-${AKMESH_NAME:-akmesh}:latest}
+fi
 IMAGE_DIR="$ROOT/.build/image"
 ROOTFS="$IMAGE_DIR/rootfs"
 TAR="$IMAGE_DIR/rootfs.tar"
 BIN="$ROOT/akmesh"
 VERIFY_ONLY=0
 [ "${1:-}" = "--verify-only" ] && VERIFY_ONLY=1
+SPLIT_ARG=${SPLIT:-0}
 
 command -v podman >/dev/null 2>&1 || {
 	echo "make-image: podman is required" >&2
@@ -48,6 +64,13 @@ command -v podman >/dev/null 2>&1 || {
 if [ "$VERIFY_ONLY" -eq 0 ]; then
 	echo "make-image: building the static binary (profile $PROFILE)"
 	CGO_ENABLED=0 ./scripts/build-bb.sh linux "$PROFILE"
+	if [ "$SPLIT" -eq 1 ]; then
+		for p in $SPLIT_BINS; do
+			echo "make-image: building $p (static)"
+			CGO_ENABLED=0 GOTOOLCHAIN=auto go build -trimpath \
+				-ldflags "-s -w -buildid=" -o "$ROOT/$p" "./cmd/$p"
+		done
+	fi
 fi
 
 [ -f "$BIN" ] || {
@@ -75,6 +98,28 @@ for name in $NAMES; do
 	ln -sf akmesh "$ROOTFS/bin/$name"
 done
 echo "make-image: $COUNT names linked into /bin"
+
+# The split layout: each binary has its own name set, and the symlinks for a
+# split binary replace the ones from the full binary, so the same name is
+# answered by the binary that owns it.
+if [ "$SPLIT" -eq 1 ]; then
+	for p in $SPLIT_BINS; do
+		[ -f "$ROOT/$p" ] || { echo "make-image: $p is missing; build it first" >&2; exit 2; }
+		cp "$ROOT/$p" "$ROOTFS/bin/$p"
+		chmod 0755 "$ROOTFS/bin/$p"
+		# The names come from the binary too: it prints them when started
+		# without a command.
+		snames=$(set +e; "$ROOT/$p" 2>&1 | sed -n 's/^commands: //p')
+		[ -n "$snames" ] || {
+			echo "make-image: $p names no commands; the dispatcher changed shape" >&2
+			exit 2
+		}
+		for name in $snames; do
+			ln -sf "$p" "$ROOTFS/bin/$name"
+		done
+		echo "make-image: $p with $(printf '%s\n' $snames | grep -c .) names linked"
+	done
+fi
 
 # 3. The few files a shell session expects to find.
 cat > "$ROOTFS/etc/passwd" <<'EOF'
@@ -169,6 +214,19 @@ check "sh --version path" sh -c 'echo $PATH'
 check "uname" uname -s
 check "cat /etc/passwd" sh -c 'head -1 /etc/passwd'
 check "date" date -u +%Y-%m-%d
+if [ "$SPLIT" -eq 1 ]; then
+	# Each name must reach the binary that owns it; a symlink to the wrong
+	# binary answers "unknown command" and that is the failure this proves.
+	for pair in any2md=akmesh-docs md2pdf=akmesh-write curl=akmesh-net sh=akmesh-shell cat=akmesh; do
+		name=${pair%%=*}
+		want=${pair#*=}
+		got_link=$(podman run --rm "$TAG" sh -c "readlink /bin/$name" 2>&1) || true
+		printf '  %-28s %s\n' "/bin/$name ->" "$got_link"
+		[ "$got_link" = "$want" ] || { echo "make-image: /bin/$name points at $got_link, want $want" >&2; fail=1; }
+	done
+	check "any2md via symlink" any2md -h
+	check "md2pdf via symlink" md2pdf -h
+fi
 check "awk" sh -c 'echo "x 2" | awk "{print \$2}"'
 check "grep" sh -c 'echo hallo | grep -c hallo'
 # ps must see this container's own process, not nothing: the header alone is a

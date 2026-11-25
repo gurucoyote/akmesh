@@ -9,6 +9,12 @@
 /akmesh-write
 /akmesh-write.exe
 /akmesh-write-*
+/akmesh-net
+/akmesh-net.exe
+/akmesh-net-*
+/akmesh-shell
+/akmesh-shell.exe
+/akmesh-shell-*
 /.build/
 /.cache/
 /.gopath/

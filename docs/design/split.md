@@ -234,6 +234,32 @@ bleiben in ihren Paketen, die Tabelle und der Einstieg sind neu. Groesse
 unveraendert (A/B gemessen), aber die Grenze ist jetzt explizit, und die Gruppe
 services hat 13 Batterie-Pruefungen statt keiner.
 
+## Stand 25.11.2026, vierter Schritt: fuenf Binaries und zwei Images
+
+    akmesh         21.5 MiB   Sockel, alles in einem
+    akmesh-docs     5.8 MiB   Leser plus md2txt-l und rg
+    akmesh-write    9.2 MiB   die fuenf Dokument-Schreiber
+    akmesh-net     10.0 MiB   curl, wget, ssh, scp, httpd, mkcert, verify, certinfo
+    akmesh-shell    8.6 MiB   sh, gosh und die vier apk-Befehle
+
+Alle vier Teil-Binaries laufen ueber `internal/multicall` (Namensaufloesung,
+Liste mit Hinweis auf die anderen Pakete, `policy.Enter`, `os.Args[0]` auf den
+Befehlsnamen). Gebaut werden sie in `scripts/build-bb.sh`; ein Profil-Bau
+ueberspringt sie.
+
+Zwei Image-Varianten (Martin, 25.11.2026):
+
+    ./scripts/make-image.sh           -> akmesh:latest        21.5 MiB Binary
+    ./scripts/make-image.sh --split   -> akmesh-split:latest  57.8 MB, 5 Binaries
+
+Das Ein-Binary-Image bleibt der Standard: in einem Container ist ein /bin aus
+einer Datei einfacher. Das geteilte Image zeigt, was ein einzelner Job wirklich
+kostet - /bin/any2md zeigt auf akmesh-docs mit 5.8 MiB, nicht auf 21.5.
+
+Abhaengigkeiten im geteilten Image, gemessen und nicht vermutet: akmesh-shell
+braucht den Sockel fuer die Befehle, die ein apk-Skript aufruft (mkdir im Test);
+akmesh-docs, akmesh-write und akmesh-net brauchen ihn nicht.
+
 ## Offene Fragen
 
 1. `rg` ohne `--pre` als eigenes, kleines Paket (geschaetzt 6-7 MiB)?

@@ -7358,3 +7358,42 @@ Go-Regexp mit klarer Fehlermeldung reicht. Antwort nach Messung und Code:
 - Verhalten unveraendert: kein stiller Rueckfall auf die Go-Engine. Ein Muster,
   das PCRE2 nicht uebersetzt, endet mit 2 und nennt den Fehler. `--engine`
   gibt es nur bei rg, nicht bei grep - das ist GNU-konform.
+
+## Netz- und Shell-Binary und ein Verteiler-Fehler (25.11.2026)
+
+`internal/netcmd` (curl, wget, ssh, scp, httpd, mkcert, verify, certinfo) und
+`internal/shellcmd` (sh, gosh, apk, apkbuild, apkreport, apkguard) mit
+`cmd/akmesh-net` und `cmd/akmesh-shell`; beide ueber denselben Verteiler
+`internal/multicall`. Gebaut, gestrippt, linux:
+
+    akmesh        22540515 Bytes  21.5 MiB
+    akmesh-docs    6070499 Bytes   5.8 MiB
+    akmesh-write   9609443 Bytes   9.2 MiB
+    akmesh-net    10477795 Bytes  10.0 MiB
+    akmesh-shell   8986851 Bytes   8.6 MiB
+    Summe         57.68 MiB in fuenf Binaries (voll steckt in jedem mit drin)
+
+Batterie, je mit `-c` Befehlsliste, linux:
+
+    akmesh-net    -c "curl wget ssh scp httpd mkcert verify certinfo"   25, 0 Fehler
+    akmesh-shell  -c "sh gosh apk apkbuild apkreport apkguard"          62, 0 Fehler
+    akmesh  voll                                                       520, 0 Fehler
+
+Drei Befunde, die erst die Teil-Binaries zeigten:
+
+1. `httpd` ohne `-f` koppelt sich ab, indem es dasselbe Binary mit `httpd -f ...`
+   erneut startet, und nimmt den Befehlsnamen aus `os.Args[0]`. Der
+   u-root-Verteiler setzt `os.Args[0]` auf den Befehlsnamen, der eigene Verteiler
+   tat es nicht - das Kind startete als `akmesh-net -f ...`, der Verteiler las
+   `-f` als Befehl, und der Server gab eine pid aus und bediente nie. Behoben in
+   `internal/multicall` (os.Args wird vor dem Aufruf auf den Befehlsnamen
+   gesetzt), Test `TestCommandSeesItsOwnName`; akmesh-net danach 25 Pruefungen,
+   0 Fehler.
+2. Ein apk-Installationsskript ruft `mkdir`, und mkdir liegt im Sockel:
+   akmesh-shell braucht akmesh fuer die Befehle, die ein Skript aufruft. Die
+   Pruefung apk-script-own-mkdir laeuft deshalb nur, wenn das gepruefte Binary
+   mkdir wirklich kann (`mkdir -p` auf ein Probedirectory, nicht `--help`: bei
+   u-root endet `--help` mit 1 und haette die Pruefung still verschluckt).
+3. Beide Binaries brauchen fuer ihre Ruecklesepruefungen ein Nachbar-Binary
+   (read_doc/write_doc), sichtbar in den Pruefungszahlen: net 25 statt mehr,
+   shell 62.

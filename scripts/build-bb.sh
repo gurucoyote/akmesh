@@ -523,7 +523,7 @@ report_size
 # repository instead of through makebb - they do not use u-root's dispatcher at
 # all. A profile build skips them: a profile asks what the full binary weighs
 # without a block, not what a second binary weighs.
-SPLIT="akmesh-docs akmesh-write"
+SPLIT="akmesh-docs akmesh-write akmesh-net akmesh-shell"
 case "$PROFILE" in
 full | "")
 	for pkg in $SPLIT; do

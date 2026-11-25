@@ -76,6 +76,30 @@ func TestDispatchByProgramName(t *testing.T) {
 	}
 }
 
+// TestCommandSeesItsOwnName: after the dispatch, argv[0] is the command name,
+// not the binary's path. A command that restarts itself (httpd -f detach) reads
+// the name from there, and a dispatcher that leaves the path in place starts the
+// child with no command at all.
+func TestCommandSeesItsOwnName(t *testing.T) {
+	defer func(old []string) { os.Args = old }(os.Args)
+	in, out, errOut, _ := streams(t)
+	prog := Prog{
+		Name: "akmesh-probe",
+		Commands: map[string]cmdrun.Func{"eins": func(args []string, stdin, stdout, stderr *os.File) int {
+			if len(os.Args) == 0 || os.Args[0] != "eins" {
+				stdout.WriteString("argv0=" + strings.Join(os.Args, " ") + "\n")
+			}
+			return 0
+		}},
+	}
+	if code := prog.Run([]string{"/bin/akmesh-probe", "eins", "x"}, in, out, errOut); code != 0 {
+		t.Fatalf("Aufruf endet mit %d", code)
+	}
+	if len(os.Args) != 2 || os.Args[0] != "eins" || os.Args[1] != "x" {
+		t.Fatalf("os.Args ist %q, erwartet [eins x]", os.Args)
+	}
+}
+
 // TestUnknownNameListsAndPointsAtTheOthers: a name this binary does not have is
 // an error with the list and with the other packages, never a silent success.
 func TestUnknownNameListsAndPointsAtTheOthers(t *testing.T) {

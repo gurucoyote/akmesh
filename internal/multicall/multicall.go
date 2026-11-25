@@ -73,6 +73,12 @@ func (p Prog) Run(argv []string, stdin, stdout, stderr *os.File) int {
 			return 2
 		}
 	}
+	// The command sees itself under its own name, the way u-root's dispatcher
+	// presents it. httpd and other daemons detach by starting this binary again
+	// and pass the name along from os.Args[0]; without this line the child would
+	// start as "<binary> -f ..." and the dispatcher would read "-f" as a command
+	// (measured 25.11.2026: httpd in akmesh-net printed a pid and never served).
+	os.Args = append([]string{name}, args...)
 	return cmdrun.RunArgs(p.Commands, name, args, stdin, stdout, stderr)
 }
 

@@ -1448,7 +1448,12 @@ if [ -z "$WINDOWS" ]; then
   printf 'pkgname = otprog\npkgver = 1.0.0\npkgrel = 0\npkgdesc = eigener befehl\narch = x86_64\nlicense = MIT\nsource_date_epoch = 1764000000\nscript = .post-install:%s/script\n' "$OT" > "$OT/manifest"
   run apkbuild build --manifest "$OT/manifest" --source "$OT/src" -o "$OT/repo/x86_64" --key "$BD/bkey.rsa" >/dev/null 2>&1
   run apk -p "$OT/root" add "$OT"/repo/x86_64/otprog-1.0.0-r0.apk >/dev/null 2>&1
-  check apk-script-own-mkdir '1' "$([ -d "$OT/root/var/lib/owntool" ] && echo 1 || echo 0)"
+  # The script uses mkdir, a command of the socket binary: akmesh-shell depends
+  # on akmesh for the commands a script calls. A build without the socket cannot
+  # prove this check, and pretending it passed would hide the dependency.
+  if "$BIN" mkdir -p "$WORK/mkprobe" >/dev/null 2>&1 && [ -d "$WORK/mkprobe" ]; then
+    check apk-script-own-mkdir '1' "$([ -d "$OT/root/var/lib/owntool" ] && echo 1 || echo 0)"
+  fi
   check apk-script-own-redirect 'ok' "$(tr -d '\r' < "$OT/root/owntool.txt" 2>/dev/null)"
 
   # Waechter (acmesh-2p44): ein Rueckfall, dann Stillstand. Nachgemachtes apk,

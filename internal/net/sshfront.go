@@ -5,7 +5,6 @@ package net
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"os/user"
@@ -505,29 +504,4 @@ Non-interactive use: with stdin not a terminal there is no pty and no password
 prompt; a missing key is an error, not a question. The remote exit status is
 returned as the exit status of this command.
 `)
-}
-
-// pipeThrough is the helper scp uses: run a command over an existing client and
-// hand back its streams.
-func pipeThrough(client *ssh.Client, command string, stderr io.Writer) (*ssh.Session, io.WriteCloser, io.Reader, error) {
-	session, err := client.NewSession()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	writer, err := session.StdinPipe()
-	if err != nil {
-		session.Close()
-		return nil, nil, nil, err
-	}
-	reader, err := session.StdoutPipe()
-	if err != nil {
-		session.Close()
-		return nil, nil, nil, err
-	}
-	session.Stderr = stderr
-	if err := session.Start(command); err != nil {
-		session.Close()
-		return nil, nil, nil, err
-	}
-	return session, writer, reader, nil
 }

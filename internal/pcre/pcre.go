@@ -34,7 +34,6 @@ type Regexp struct {
 	expr string
 	utf  *pcre2.Code // UTF-8 and Unicode properties, the normal case
 	raw  *pcre2.Code // byte mode, for input that is not valid UTF-8
-	md   *pcre2.MatchData
 	mc   *pcre2.MatchContext
 }
 

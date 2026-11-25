@@ -188,8 +188,4 @@ func keyOf(info os.FileInfo) (fileKey, bool) {
 
 func absPath(p string) (string, error) { return filepath.Abs(p) }
 
-func joinPath(root, name string) (string, error) {
-	return filepath.Join(root, name), nil
-}
-
 var _ = fmt.Sprintf // keep fmt available for platform tweaks

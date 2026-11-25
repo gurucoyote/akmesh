@@ -744,15 +744,6 @@ func parseCMap(s string) map[uint32]rune {
 	return out
 }
 
-// textOf interprets one content stream.
-//
-// The text matrix matters: "Td 1 0" between two pieces is how many writers put
-// one glyph after another, so a space may only be inserted where the gap is
-// wider than a word space. Without that, a heading comes out as "W o r l d".
-func textOf(content []byte, fonts map[string]*font) string {
-	return textOfPage(nil, content, fonts, "")
-}
-
 // textOfPage reads one page with the document at hand, so that the text inside
 // a form XObject is read too.
 func textOfPage(d map[string]*object, content []byte, fonts map[string]*font, resources string) string {
@@ -1621,13 +1612,6 @@ func renderTable(rows []textLine) string {
 		}
 	}
 	return out.String()
-}
-
-// renderLines turns the collected lines into Markdown. Aligned rows become a
-// table, a line set clearly larger than the body text becomes a heading (the
-// size tiers pdf-inspector uses), and the rest is text.
-func renderLines(lines []textLine) string {
-	return renderLinesWithBody(lines, bodySize(lines))
 }
 
 // bodySize is the size most of the text is set in: the letters, not the count

@@ -40,9 +40,6 @@ var facilities = []string{
 	"local6", "local7",
 }
 
-// levels is the severity table, index = number.
-var levels = []string{"emerg", "alert", "crit", "err", "warning", "notice", "info", "debug"}
-
 // levelAliases are the spellings tools accept (syslog.h names and the common
 // abbreviations).
 var levelAliases = map[string]int{

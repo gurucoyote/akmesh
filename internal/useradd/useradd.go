@@ -24,7 +24,6 @@ import (
 // "addgroup:" even from adduser, which is a quirk and not worth copying.
 type runner struct {
 	cmd    string
-	args   []string
 	stdin  io.Reader
 	stdout io.Writer
 	stderr io.Writer

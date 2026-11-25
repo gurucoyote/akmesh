@@ -264,7 +264,6 @@ type frame struct {
 	link                    string
 	skip                    bool // this group is a destination not shown
 	field                   int  // 0 outside a field, 1 collecting fldinst, 2 showing fldrslt
-	cellStart               int  // number of cells in the row when this group opened
 	starNext                bool // the next control word names a \* destination
 }
 

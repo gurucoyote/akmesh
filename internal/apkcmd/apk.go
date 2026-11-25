@@ -21,15 +21,14 @@ import (
 )
 
 type options struct {
-	root       string
-	repos      []string
-	allowUntr  bool
-	noScripts  bool
-	noCache    bool
-	arch       string
-	quiet      bool
-	verbose    bool
-	updateOnly bool
+	root      string
+	repos     []string
+	allowUntr bool
+	noScripts bool
+	noCache   bool
+	arch      string
+	quiet     bool
+	verbose   bool
 }
 
 // Run answers "apk <subcommand>".
@@ -413,12 +412,6 @@ func bestSatisfying(indexes []*apkcore.Index, d depSpec, tag string) *apkcore.Pa
 	return found
 }
 
-// best returns the newest package of that name, optionally only from one
-// channel tag ("" means any repository).
-func best(indexes []*apkcore.Index, name string) *apkcore.Package {
-	return bestTagged(indexes, name, "")
-}
-
 func bestTagged(indexes []*apkcore.Index, name, tag string) *apkcore.Package {
 	var found *apkcore.Package
 	for _, idx := range indexes {
@@ -537,20 +530,6 @@ func channelOf(world []string, name string) string {
 		}
 	}
 	return ""
-}
-
-// depPin returns the version of an "name=version" constraint, or "" when the
-// constraint is absent or not an equality. Other operators are ticket acmesh-gk2i.
-func depPin(spec string) string {
-	if i := strings.Index(spec, "="); i > 0 {
-		return strings.TrimPrefix(spec[i+1:], "=")
-	}
-	return ""
-}
-
-// exact finds the named package at exactly that version.
-func exact(indexes []*apkcore.Index, name, version string) *apkcore.Package {
-	return exactTagged(indexes, name, version, "")
 }
 
 func exactTagged(indexes []*apkcore.Index, name, version, tag string) *apkcore.Package {

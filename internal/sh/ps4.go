@@ -26,19 +26,6 @@ func newPS4Writer(w io.Writer, runner func() *interp.Runner) *ps4Writer {
 	return &ps4Writer{w: w, runner: runner}
 }
 
-// traceOn reports whether xtrace is active. "$-" carries the flags, exactly as
-// in a real shell.
-func (p *ps4Writer) traceOn() bool {
-	r := p.runner()
-	if r == nil {
-		return false
-	}
-	if v, ok := r.Vars["-"]; ok {
-		return strings.ContainsRune(v.String(), 'x')
-	}
-	return false
-}
-
 // ps4 is the expanded prefix: $PS4 with the escape sequences we also expand in
 // PS1, defaulting to "+ " like ash.
 func (p *ps4Writer) ps4() string {

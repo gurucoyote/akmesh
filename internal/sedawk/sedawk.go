@@ -255,7 +255,6 @@ func linesToNul(w io.Writer, st *termState) io.Writer {
 type nulWriter struct {
 	w    io.Writer
 	st   *termState
-	last byte // the previous byte, for the two-byte escapes
 	held bool // a 0x01 waiting for its second byte
 	// pendingNul holds the last NUL back: it is written only when more output
 	// follows or when the input ended with a terminator itself.

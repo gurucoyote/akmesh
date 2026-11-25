@@ -31,8 +31,6 @@ import (
 	"time"
 )
 
-var errUsage = errors.New("usage: find [PATH...] [EXPRESSION]")
-
 func usage(w io.Writer) {
 	fmt.Fprintln(w, "usage: find [PATH...] [EXPRESSION]")
 	fmt.Fprintln(w, "  tests:      -name PAT -iname PAT -path PAT -ipath PAT -regex RE")

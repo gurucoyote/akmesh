@@ -106,8 +106,6 @@ func squeezeSet(args []string, p params) func(rune) bool {
 	}
 }
 
-const name = "tr"
-
 var escapeChars = map[rune]rune{
 	'\\': '\\',
 	'a':  '\a',

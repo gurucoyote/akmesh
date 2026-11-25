@@ -637,24 +637,3 @@ func (l *lineReader) readLine() (string, error) {
 		}
 	}
 }
-
-// switchReader does the same for input: the prompt needs the shell to run
-// without touching the session's stdin.
-type switchReader struct {
-	mu sync.Mutex
-	r  io.Reader
-}
-
-func (s *switchReader) Read(p []byte) (int, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.r.Read(p)
-}
-
-func (s *switchReader) swap(r io.Reader) io.Reader {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	prev := s.r
-	s.r = r
-	return prev
-}

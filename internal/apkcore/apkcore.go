@@ -22,7 +22,6 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -541,6 +540,3 @@ func (s stream) SortedNames() []string {
 	sort.Strings(out)
 	return out
 }
-
-// encodeBase64 helper kept for the signature test in the docs example.
-func base64Block(b []byte) string { return base64.StdEncoding.EncodeToString(b) }

@@ -19,7 +19,6 @@ type pgrepOpts struct {
 	ppid    int    // -P: only children of this pid
 	newest  bool   // -n: only the youngest match
 	oldest  bool   // -o: only the oldest match
-	showPID bool   // -l/-a imply the pid is shown as well
 	name    bool   // -l: print the name too
 	args    bool   // -a: print the full command line
 	count   bool   // -c: print the number of matches

@@ -251,13 +251,6 @@ func verOrder(c byte) int {
 	return int(c) + 256
 }
 
-func verByte(s string, i int) byte {
-	if i < len(s) {
-		return s[i]
-	}
-	return 0
-}
-
 // verrevcmp is gnulib's verrevcmp: non-digit runs compare by verOrder, digit
 // runs by length after leading zeros, with the first differing digit breaking
 // a tie.

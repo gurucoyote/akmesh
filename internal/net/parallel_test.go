@@ -34,7 +34,6 @@ func TestParallelRepeatHitsTheServerThatOften(t *testing.T) {
 // have to take clearly less than 20 sequential ones. This is what proves the
 // goroutines are real and not a loop dressed up as a flood.
 func TestParallelIsFasterThanSequential(t *testing.T) {
-	const n = 20
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(50 * time.Millisecond)
 		w.Write([]byte("ok\n"))

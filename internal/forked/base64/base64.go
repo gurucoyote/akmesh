@@ -38,21 +38,11 @@ import (
 	akusage "akmesh/internal/usage"
 )
 
-type cmd struct {
-	stdin  io.Reader
-	stdout io.Writer
-	stderr io.Writer
-	params
-	args []string
-}
-
 type params struct {
 	decode bool
 	wrap   int
 	ignore bool
 }
-
-var errBadUsage = errors.New("usage: base64 [-d] [file]")
 
 // errInvalidInput is GNU's wording for data that is not base64 at all.
 var errInvalidInput = errors.New("invalid input")

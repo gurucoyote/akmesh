@@ -26,11 +26,6 @@ func decimals(s string) int {
 	return 0
 }
 
-// width is the number of characters a literal takes, sign included.
-func width(s string) int {
-	return len(strings.TrimSuffix(s, "-"))
-}
-
 // formatNumber writes v with exactly d decimals.
 func formatNumber(v float64, d int) string {
 	return strconv.FormatFloat(v, 'f', d, 64)

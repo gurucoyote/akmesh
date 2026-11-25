@@ -171,23 +171,6 @@ func Run(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) i
 	return 0
 }
 
-// bad prints an od error and returns the exit code od uses for a usage error.
-func bad(stderr io.Writer, msg string) int {
-	fmt.Fprintf(stderr, "od: %s\n", msg)
-	return 1
-}
-
-func valueOrNext(a, flag string, args []string, i *int) (string, bool) {
-	if v := strings.TrimPrefix(a, flag); v != "" {
-		return v, true
-	}
-	*i++
-	if *i >= len(args) {
-		return "", false
-	}
-	return args[*i], true
-}
-
 // parseCount reads a decimal or 0x hexadecimal count.
 func parseCount(s string) (int64, error) {
 	base := 10
@@ -244,36 +227,6 @@ func parseTypePrefix(s string) (format, int, error) {
 		return format{kind: kind, size: size, width: widthFor(kind, size)}, j, nil
 	}
 	return format{}, 0, fmt.Errorf("-t %s: unknown type", s)
-}
-
-// parseType reads one -t value such as x1, c, d4 or a.
-func parseType(s string) (format, error) {
-	if s == "" {
-		return format{}, fmt.Errorf("-t without a type")
-	}
-	switch s[0] {
-	case 'a':
-		return format{kind: 'a', size: 1}, nil
-	case 'c':
-		return format{kind: 'c', size: 1}, nil
-	case 'd', 'o', 'u', 'x', 'f':
-		size := 4
-		if len(s) > 1 {
-			n, err := strconv.Atoi(s[1:])
-			if err != nil {
-				return format{}, fmt.Errorf("-t %s: unknown size", s)
-			}
-			size = n
-		}
-		if s[0] == 'f' && size != 4 && size != 8 {
-			return format{}, fmt.Errorf("-t %s: floats are 4 or 8 bytes", s)
-		}
-		if s[0] != 'f' && size != 1 && size != 2 && size != 4 && size != 8 {
-			return format{}, fmt.Errorf("-t %s: sizes are 1, 2, 4 and 8", s)
-		}
-		return format{kind: s[0], size: size, width: widthFor(s[0], size)}, nil
-	}
-	return format{}, fmt.Errorf("-t %s: unknown type", s)
 }
 
 // widthFor is the printed width of one field, as GNU lays it out.

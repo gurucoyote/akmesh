@@ -138,8 +138,7 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 // source yields uniformly distributed indices. It reads from --random-source
 // when given, so a test or a script can make a run reproducible.
 type source struct {
-	file   *os.File
-	stream []byte
+	file *os.File
 }
 
 func newSource(path string) (*source, error) {

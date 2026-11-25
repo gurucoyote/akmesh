@@ -86,6 +86,19 @@ write_doc() {
 	"$WRITE" "$@"
 }
 
+# And once more for stopping a process: the pid a Windows .exe prints is a
+# Windows pid, and only our own kill reaches it from WSL (measured: the server
+# kept answering). A binary without kill takes the one next to it.
+KILLBIN=$BIN
+if "$BIN" kill 999999 2>&1 | grep -q 'unknown command'; then
+	for cand in "$(dirname "$BIN")/akmesh"; do
+		if [ -x "$cand" ] && ! "$cand" kill 999999 2>&1 | grep -q 'unknown command'; then
+			KILLBIN=$cand
+			break
+		fi
+	done
+fi
+
 # A profile without networking lacks curl, wget, ssh and scp; those checks are
 # skipped rather than failed, so the same battery serves every build.
 if "$BIN" curl -h >/dev/null 2>&1; then HAS_NET=1; else HAS_NET=0; fi
@@ -769,7 +782,7 @@ check httpd-detach-serves "1" "$(curl -s -m 5 http://127.0.0.1:$BG_PORT/index.ht
 # Stop it with our own kill: the pid printed by the .exe is a Windows pid, and
 # the shell's kill does not reach that from WSL (measured: the server kept
 # answering). Our kill knows both worlds.
-"$BIN" kill "$BG_PID" 2>/dev/null
+"$KILLBIN" kill "$BG_PID" 2>/dev/null
 kill "$BG_PID" 2>/dev/null
 pkill -f "httpd -f -p 127.0.0.1:$BG_PORT" 2>/dev/null
 # The .exe takes a moment to disappear through the interop layer, so poll

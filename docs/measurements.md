@@ -7334,3 +7334,27 @@ services mit 13 Pruefungen, die vorher gar keine hatte:
     crond-bad-line, crond-bad-line-names-it            kaputte Crontab, Exit 1 und Zeile
     logger-no-socket                                   Fehler statt stillem Verschwinden
     syslogd-chain                                      syslogd schreibt, logger sendet, logread liest
+
+## grep -P bleibt, und es ist echtes PCRE2 (acmesh-cv6h, 25.11.2026)
+
+Die Frage im Ticket war, ob `grep -P` ueberhaupt gebraucht wird oder ob eine
+Go-Regexp mit klarer Fehlermeldung reicht. Antwort nach Messung und Code:
+`-P` bleibt, und es ist keine Notloesung.
+
+- `internal/forked/grep` haengt `-P` an `internal/pcre`, und das ist
+  github.com/go-regexp/pcre2 v0.1.0, reines Go ohne cgo. Lookahead,
+  Lookbehind, `\K` und possessive Quantoren laufen, gemessen in der Batterie
+  mit vier Pruefungen: grep-pcre-lookahead, grep-pcre-k, grep-pcre-possessive,
+  grep-pcre-bad-pattern (Exit 2 mit Meldung).
+- Die Entscheidung steht schon in docs/pcre-recherche.md (25.11.): pcre2 statt
+  regexp2, weil regexp2 die .NET-Engine ist und genau `\K` und die possessiven
+  Quantoren nicht kennt - also die Faelle, fuer die ein Agent `-P` ueberhaupt
+  tippt.
+- groesse: Profil nur grep 4 210 915 Bytes gegen Profil nur cat 2 457 827
+  Bytes, also rund 1,75 MiB fuer grep samt PCRE2 und der forked-Grep-Umsetzung.
+  Eine Fassung ohne `-P` waere nur ueber einen eigenen Block zu haben
+  (grep-pcre), und der kostet mehr Pflege als er spart, solange grep im Sockel
+  liegt und dort ohnehin gebraucht wird.
+- Verhalten unveraendert: kein stiller Rueckfall auf die Go-Engine. Ein Muster,
+  das PCRE2 nicht uebersetzt, endet mit 2 und nennt den Fehler. `--engine`
+  gibt es nur bei rg, nicht bei grep - das ist GNU-konform.

@@ -319,6 +319,12 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stder
 	var ed *editor
 	if editing {
 		ed = newEditor(f, out)
+		// Completion looks where the session is and along its PATH, not where
+		// this process started: both are asked of the runner.
+		ed.dir = func() string { return shellValue(r, out, `pwd`) }
+		ed.getenv = func(name string) string {
+			return shellValue(r, out, `printf '%s' "${`+name+`}"`)
+		}
 	} else {
 		out.WriteString(promptString(r, out))
 	}
@@ -420,6 +426,16 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stder
 			return 0
 		}
 	}
+}
+
+// shellValue runs a small command in the session and returns what it printed,
+// without letting the output reach the terminal.
+func shellValue(r *interp.Runner, out *switchWriter, src string) string {
+	var b strings.Builder
+	prev := out.swap(&b)
+	_ = runSource(r, src, "<complete>")
+	out.swap(prev)
+	return strings.TrimRight(b.String(), "\n")
 }
 
 // isExitStatus reports whether err is only a command's exit status, which the

@@ -188,6 +188,22 @@ Das Home gehoert dabei dem Nutzer (1000:1000); vorher war es root und "mkdir
 projects" scheiterte mit permission denied.
 
 
+## Tab vervollständigt
+
+Tab ergänzt im Zeileneditor das Wort unter dem Cursor (25.11.2026):
+
+- Erstes Wort einer Zeile: Befehlsnamen aus dem PATH der Shell.
+- Jedes weitere Wort: Pfade, gesehen aus dem Verzeichnis der Shell, nicht aus
+  dem, in dem der Prozess gestartet ist. Verzeichnisse bekommen einen
+  Schrägstrich, ein eindeutiger Name ein Leerzeichen danach.
+- Mehrere Kandidaten mit gleichem Anfang: der gemeinsame Teil wird ergänzt, sonst
+  werden die Kandidaten untereinander aufgelistet und die Zeile bleibt stehen.
+- Dateien mit Punkt am Anfang erst, wenn man den Punkt selbst tippt.
+
+    cd pr<Tab>        privat/  projects/
+    cd proj<Tab>      cd projects/
+    pro<Tab>          Befehle aus PATH, z.B. progress
+
 ## Was geprüft ist und was nicht
 
 Geprüft im Rootfs selbst, per `chroot`, vor dem Verpacken:

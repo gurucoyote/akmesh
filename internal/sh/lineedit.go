@@ -89,13 +89,19 @@ type editor struct {
 	// override is the continuation prompt (PS2) for the next line, set while a
 	// statement is still incomplete.
 	override string
+	// dir and getenv answer with the shell's own values, not this process':
+	// tab completion has to look where the session is, and along its PATH
+	// (measured 25.11.2026: cd moves the runner, not the process).
+	dir    func() string
+	getenv func(string) string
 }
 
 // setPrompt overrides the prompt for the next readLine, once.
 func (e *editor) setPrompt(p string) { e.override = p }
 
 func newEditor(f *os.File, out io.Writer) *editor {
-	return &editor{fd: int(f.Fd()), file: f, out: out, history: loadHistory()}
+	return &editor{fd: int(f.Fd()), file: f, out: out, history: loadHistory(),
+		dir: func() string { d, _ := os.Getwd(); return d }, getenv: os.Getenv}
 }
 
 // readKey reads one byte; escape sequences are read on demand by the caller.
@@ -201,6 +207,8 @@ func (e *editor) readLine(prompt string) (string, error) {
 			pos = start
 		case 0x0c: // Ctrl-L
 			fmt.Fprint(e.out, "\x1b[H\x1b[2J")
+		case 0x09: // Tab: complete a command name or a path
+			buf, pos = e.completeLine(buf, pos, prompt)
 		case 0x1b: // escape sequence
 			second, err := e.readByte()
 			if err != nil {

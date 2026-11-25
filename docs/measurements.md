@@ -7663,3 +7663,18 @@ Vorher stand nach dem cd weiter "BSNB67:~" und hinter jedem Fehlschlag zusaetzli
 "sh: exit status 1"; das ist jetzt still, wie in ash (nur der Befehl selbst
 meldet). Die Anfuehrungszeichen in der cd-Meldung stammen aus %q in mvdan/sh und
 sind als eigenes Ticket notiert.
+
+### Tab-Vervollstaendigung im Zeileneditor (25.11.2026)
+
+Vorher behandelte der Editor Tab gar nicht. Jetzt: erstes Wort aus PATH, sonst
+Pfade aus dem Verzeichnis der Shell (gefragt per pwd), Verzeichnisse mit
+Schraegstrich, eindeutiger Name mit Leerzeichen, Mehrdeutiges aufgelistet.
+Gemessen in einer PTY mit HOME=/tmp/ctest (dort ./privat und ./projects):
+
+    cd pr<Tab>      privat/  projects/      (Zeile bleibt "cd pr")
+    oj<Tab>         -> "cd projects/"       (nach dem obigen Tab)
+    Enter, pwd      /tmp/ctest/projects
+    Prompt          BSNB67:~/projects / akmesh$
+
+Fuenf neue Tests im Paket sh (TestComplete*), alle gruen. Binary in der Distro
+ist dasselbe (md5 ea278a0e3341aae6da7bb621c647f41a), tar 25 978 880 Bytes.

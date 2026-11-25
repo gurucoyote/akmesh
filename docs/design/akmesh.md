@@ -344,6 +344,11 @@ großen Zahl zu verschwinden.
 
 ## Lizenz
 
+akmesh selbst steht unter BSD-3-Clause (Datei `LICENSE`, "The akmesh authors",
+2026) - dieselbe Lizenz, unter der u-root steht, von dem der Grossteil der
+Befehle stammt. Damit kennt die Weitergabe nur eine Sorte Text neben den
+Fremdhinweisen in `NOTICE`.
+
 BSD-3-Clause fuer mvdan/sh, u-root und gobusybox, auch fuer die nach
 internal/forked kopierten Befehle (der Copyright-Kopf bleibt dort stehen).
 Ebenso BSD-3-Clause: internal/winmode, uebernommen aus der Gabel qiangli/sh

@@ -7064,3 +7064,40 @@ brach mit "exit status 1" ab, ohne Meldung. Nach dem Zuruecksetzen von
 GOFLAGS auf `-tags=$TAGS` und GOWORK auf den eigenen Workspace baut fs wieder:
 vorher Abbruch, nachher 17723619 Bytes.
 
+
+## Paketgrenze in internal/tools (acmesh-58me, 25.11.2026)
+
+Umbau ohne Verhaltensaenderung: die schweren Befehlsgruppen (apk, Netz, Shell,
+jq) liegen in eigenen Paketen mit eigener Tabelle, `internal/tools` behaelt den
+Sockel. Der gemeinsame Einstieg (Policy, Hilfe-Gatter) steht in
+`internal/cmdrun`; `internal/cmds` ist die Sammeltabelle fuer Tests.
+
+Gemessen mit Wegwerf-Profilen (`scripts/profiles/zz-*.txt`, danach geloescht),
+linux amd64, go 1.27.4, Inlining an, gestrippt; Zahlen aus der report-Zeile,
+"vorher" aus der Messung vom 24.11.2026 im Abschnitt darueber:
+
+    nur Text (37 Namen)   15728867 -> 8028387 Bytes
+    nur Shell (sh, gosh)  15130851 -> 4817123 Bytes
+    nur apk (4 Namen)      9208035 -> 9208035 Bytes
+    voll                  22511843 -> 22507747 Bytes
+
+Befehle:
+
+    GOTOOLCHAIN=auto ./scripts/build-bb.sh linux zz-text
+    GOTOOLCHAIN=auto ./scripts/build-bb.sh linux zz-apk
+    GOTOOLCHAIN=auto ./scripts/build-bb.sh linux zz-sh
+
+Testbatterie, neuer Gruppenmodus (`-g NAME`), linux:
+
+    documents  38 Pruefungen, 0 Fehler
+    files     246 Pruefungen, 0 Fehler
+    system    148 Pruefungen, 0 Fehler
+    network    21 Pruefungen, 0 Fehler
+    shell       5 Pruefungen, 0 Fehler
+    services    0 Pruefungen (die Batterie hat keine Faelle fuer die Daemons)
+    voll      499 Pruefungen, 0 Fehler
+
+Ein einzelner Befehl geht auch: `./scripts/test-akmesh.sh ./akmesh -g rg` sind
+11 Pruefungen, `-g sed` auf dem Windows-Binary 12. Die Gruppen- und
+Befehlsnamen kommen aus der Liste, die das Binary fuer einen unbekannten Namen
+ausgibt; ein unbekannter Name endet mit Exit 2 statt mit 0 Pruefungen.

@@ -214,3 +214,48 @@ vorhanden" - das ist die Regel, die schon bei acmesh-7s9 galt.
 - Alles in ein Plugin-System mit Loader zu giessen. Go-Binaries teilen keinen
   Code zur Laufzeit; die Aufteilung in Pakete ist der billigere Weg.
 - TinyGo. Bleibt eine eigene, spaetere Frage.
+
+## Stand 25.11.2026: die Paketgrenze ist gezogen
+
+Schritt 1 ist gebaut (acmesh-58me). `internal/tools` ist nicht mehr das eine
+Paket, das alles importiert; die schweren Bloecke liegen daneben, jede mit
+eigener Tabelle und eigenem `Run`:
+
+    internal/cmdrun   Policy, Hilfe-Gatter, Programmname - der gemeinsame
+                      Einstieg, damit jedes Paket dieselben drei Zeilen hat
+    internal/tools    der Sockel: Datei- und Textbefehle, ps/df/du, Dienste,
+                      sed/awk (Go.Sed, goawk), diff/patch (go-gitdiff), tar
+    internal/toolpkg  apk, apkbuild, apkguard, apkreport
+    internal/toolnet  curl, wget, ssh, scp (nur ohne nonet) und die Zertifikate
+    internal/toolsh   sh, gosh
+    internal/tooljq   jq
+    internal/cmds     die Sammeltabelle fuer Tests und Hilfe-Audit; ein
+                      cmd/<name>/main.go darf sie nie importieren, sonst zieht
+                      dieses eine Binary wieder alle Bloecke herein
+
+Der Eigene-Werkzeug-Haken fuer Paketskripte (`apkscript.OwnTool`) sitzt jetzt in
+`internal/apkcmd`, weil er nur dort gebraucht wird: ein Paketskript laeuft in
+der apk-Familie, nicht im Sockel. Vorher hing er an `internal/tools`; das war
+auch der eine rote Batteriefall nach dem Umbau (apk-script-own-mkdir).
+
+Gemessen mit denselben Wegwerf-Profilen wie in der Analyse (linux, gestrippt):
+
+    nur Text (37 Namen)   vorher 15 728 867 -> 8 028 387 Bytes  (-7,5 MiB, -48 %)
+    nur Shell (sh,gosh)   vorher 15 130 851 -> 4 817 123 Bytes  (-10,2 MiB, -68 %)
+    nur apk (4 Namen)     vorher  9 208 035 -> 9 208 035 Bytes  (unveraendert)
+    voll                  vorher 22 511 843 -> 22 507 747 Bytes (gleich)
+
+apk bleibt gleich, und das ist richtig so: apk fuehrt Paketskripte in unserer
+Shell aus, mvdan/sh bleibt also in diesem Binary - nur eben nicht mehr in allen
+anderen.
+
+Was noch im Sockel steckt und den naechsten Schnitt lohnt: `sed`/`awk` ziehen
+Go.Sed und goawk herein, `diff`/`patch` go-gitdiff, `tar` den tar-Schreiber.
+Das Text-Binary ist deshalb 7,7 statt der geschaetzten 5,5 MiB. Ein eigener
+Block dafuer ist ein Folgeticket; die Messung oben ist der Vergleichswert.
+
+Tests: `scripts/test-akmesh.sh` laeuft jetzt auch pro Block oder pro Befehl
+(`-g files`, `-g rg`), die Namen kommen aus der Liste, die das Binary fuer einen
+unbekannten Namen selbst ausgibt. Stand am 25.11.2026: documents 38, files 246,
+system 148, network 21, shell 5, services 0 Pruefungen (fuer die Daemons hat die
+Batterie noch keine Faelle - das ist eine Luecke, keine Auslassung).

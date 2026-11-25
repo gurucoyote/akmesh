@@ -89,6 +89,14 @@ in_group() {
 		case "$1" in
 		"$want" | "$want"-*) return 0 ;;
 		esac
+		# A short name in the battery stands for the command with the suffix:
+		# md2txt-covers md2txt-l, a check author's shorthand.
+		case "$want" in
+		*-l)
+			short=${want%-l}
+			case "$1" in "$short"-*) return 0 ;; esac
+			;;
+		esac
 	done
 	return 1
 }

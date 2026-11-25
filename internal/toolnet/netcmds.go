@@ -1,6 +1,6 @@
 //go:build !nonet
 
-package tools
+package toolnet
 
 import (
 	"os"
@@ -27,16 +27,11 @@ func runWget(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	return net.Run("wget", args, stdin, stdout, stderr)
 }
 
-// netCommands is the set the registry test checks against cmd/<name>.
-var netCommands = map[string]Func{
-	"curl": runCurl,
-	"scp":  runScp,
-	"ssh":  runSSH,
-	"wget": runWget,
-}
-
+// Commands is filled in init: the certificate commands live in table.go, and
+// these four are absent from a nonet build entirely.
 func init() {
-	for name, fn := range netCommands {
-		Commands[name] = fn
-	}
+	Commands["curl"] = runCurl
+	Commands["scp"] = runScp
+	Commands["ssh"] = runSSH
+	Commands["wget"] = runWget
 }

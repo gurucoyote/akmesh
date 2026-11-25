@@ -5,12 +5,12 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/tools"
+	"akmesh/internal/toolsh"
 
 	"akmesh/internal/policy"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(tools.Run("gosh"))
+	os.Exit(toolsh.Run("gosh"))
 }

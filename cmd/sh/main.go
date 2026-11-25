@@ -1,16 +1,16 @@
-// Command sh is the sh tool from internal/tools, reachable as its own
+// Command sh is the shell from internal/sh, reachable as its own
 // command inside the akmesh binary.
 package main
 
 import (
 	"os"
 
-	"akmesh/internal/tools"
+	"akmesh/internal/toolsh"
 
 	"akmesh/internal/policy"
 )
 
 func main() {
 	policy.Enter()
-	os.Exit(tools.Run("sh"))
+	os.Exit(toolsh.Run("sh"))
 }

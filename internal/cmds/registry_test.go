@@ -1,4 +1,4 @@
-package tools
+package cmds
 
 import (
 	"os"
@@ -30,7 +30,7 @@ func TestCommandTableMatchesEntryPoints(t *testing.T) {
 		t.Fatalf("read cmd directory: %v", err)
 	}
 
-	for name := range Commands {
+	for name := range All {
 		path := filepath.Join(root, name, "main.go")
 		src, err := os.ReadFile(path)
 		if err != nil {
@@ -67,7 +67,7 @@ func TestCommandTableMatchesEntryPoints(t *testing.T) {
 		}
 	}
 
-	// Commands is the table for the commands that this package implements. The
+	// All is the table for the commands that this package implements. The
 	// document and server commands are whole packages of their own with their own
 	// signature; the multicall binary reaches them through cmd/<name>, and the
 	// loop above already proved that their main calls that package. Demanding a
@@ -75,7 +75,7 @@ func TestCommandTableMatchesEntryPoints(t *testing.T) {
 	// the package-level standalone map, shared with the help tests.
 	for _, e := range entries {
 		name := e.Name()
-		if _, ok := Commands[name]; ok {
+		if _, ok := All[name]; ok {
 			continue
 		}
 		if standalone[name] {
@@ -94,22 +94,8 @@ func TestCommandTableMatchesEntryPoints(t *testing.T) {
 			}
 			continue
 		}
-		if len(netCommands) == 0 && isNetCommand(name) {
-			// The network commands are registered in init from
-			// netcommands_net.go and are absent in a nonet build on purpose,
-			// while the package still exists.
-			continue
-		}
 		t.Errorf("cmd/%s exists but the table has no %q: Main answers \"unknown command\"", name, name)
 	}
-}
-
-func isNetCommand(name string) bool {
-	switch name {
-	case "curl", "wget", "ssh", "scp":
-		return true
-	}
-	return false
 }
 
 // TestRunUnknownCommandNamesTheProgram pins the message a mistyped command
@@ -144,7 +130,7 @@ func TestRunUnknownCommandNamesTheProgram(t *testing.T) {
 // TestNoEmptyCommandName keeps a typo in the table from becoming a command the
 // binary answers to and prints as a blank line.
 func TestNoEmptyCommandName(t *testing.T) {
-	for name := range Commands {
+	for name := range All {
 		if name == "" || strings.TrimSpace(name) != name {
 			t.Fatalf("bad command name %q in the table", name)
 		}

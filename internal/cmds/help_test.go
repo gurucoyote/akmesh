@@ -1,4 +1,4 @@
-package tools
+package cmds
 
 import (
 	"os"
@@ -52,7 +52,7 @@ func readBack(t *testing.T, f *os.File) string {
 // still fails for the command the author meant.
 func TestEveryUsageTextBelongsToACommand(t *testing.T) {
 	for name := range usage.Texts {
-		if _, ok := Commands[name]; ok {
+		if _, ok := All[name]; ok {
 			continue
 		}
 		if standalone[name] {

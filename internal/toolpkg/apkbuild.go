@@ -1,4 +1,4 @@
-package tools
+package toolpkg
 
 import (
 	"os"

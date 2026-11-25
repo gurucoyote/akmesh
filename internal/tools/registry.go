@@ -12,10 +12,9 @@
 package tools
 
 import (
-	"fmt"
 	"os"
-	"path/filepath"
 
+	"akmesh/internal/cmdrun"
 	"akmesh/internal/policy"
 	"akmesh/internal/shuf"
 	"akmesh/internal/sort"
@@ -33,7 +32,6 @@ var Commands = map[string]Func{
 	"awk":       runAwk,
 	"base64":    runBase64,
 	"basename":  runBasename,
-	"certinfo":  runCertinfo,
 	"chmod":     runChmod,
 	"chown":     runChown,
 	"cp":        runCp,
@@ -54,7 +52,6 @@ var Commands = map[string]Func{
 	"free":      runFree,
 	"hexdump":   runHexdump,
 	"iconv":     runIconv,
-	"jq":        runJq,
 	"login":     runLogin,
 	"ls":        runLs,
 	"kill":      runKill,
@@ -62,7 +59,6 @@ var Commands = map[string]Func{
 	"pgrep":     runPgrep,
 	"pkill":     runPkill,
 	"md5sum":    runSum("md5"),
-	"mkcert":    runMkcert,
 	"nl":        runNl,
 	"od":        runOdCommand,
 	"passwd":    runPasswd,
@@ -71,10 +67,6 @@ var Commands = map[string]Func{
 	"deluser":   runDelUser,
 	"delgroup":  runDelGroup,
 	"rmdir":     runRmdir,
-	"apk":       runApk,
-	"apkbuild":  runApkbuild,
-	"apkreport": runApkreport,
-	"apkguard":  runApkguard,
 	"patch":     runPatch,
 	"policy":    runPolicy,
 	"blkid":     runBlkid,
@@ -90,7 +82,6 @@ var Commands = map[string]Func{
 	"sha1sum":   runSum("sha1"),
 	"sha256sum": runSum("sha256"),
 	"sha512sum": runSum("sha512"),
-	"sh":        runSh,
 	"shuf":      shufcmd.Run,
 	"sort":      sortcmd.Run,
 	"split":     runSplit,
@@ -109,13 +100,11 @@ var Commands = map[string]Func{
 	"uniq":      runUniq,
 	"seq":       runSeq,
 	"uname":     runUname,
-	"verify":    runVerify,
 	"id":        runID,
 	"mkpasswd":  runMkpasswd,
 	"unzip":     runUnzip,
 	"wc":        runWc,
 	"xargs":     runXargs,
-	"gosh":      runSh,
 }
 
 // policyOnce makes sure the policy is applied exactly once per process, before
@@ -129,36 +118,10 @@ func ensurePolicy() { policy.Enter() }
 // with, minus argv[0]. It is the entry point for the per-command main packages.
 func Run(name string) int {
 	ensurePolicy()
-	var args []string
-	if len(os.Args) > 1 {
-		args = os.Args[1:]
-	}
-	return RunArgs(name, args, os.Stdin, os.Stdout, os.Stderr)
+	return cmdrun.Run(Commands, name)
 }
 
-// RunArgs executes one command the way the dispatcher does: the shared --help
-// answer first, then the command's own parser. Tests call it so that they
-// exercise the same path as the binary (acmesh-py8).
-//
-// The help is answered here and not inside each command, so a broken option
-// parser cannot swallow "--help" as an operand: before this, hostname read it
-// as a new host name and sync as a file to flush.
+// RunArgs executes one command the way the dispatcher does; see cmdrun.RunArgs.
 func RunArgs(name string, args []string, stdin, stdout, stderr *os.File) int {
-	fn, ok := Commands[name]
-	if !ok {
-		// Only reachable through a table that disagrees with cmd/<name>; the
-		// message names the program that was actually started.
-		fmt.Fprintf(os.Stderr, "%s: unknown command %q\n", programName(), name)
-		return 2
-	}
-	return usage.Run(name, args, stdin, stdout, stderr, fn)
-}
-
-// programName is the name the program was invoked as, so a message never claims
-// to come from a binary that does not exist.
-func programName() string {
-	if len(os.Args) == 0 || os.Args[0] == "" {
-		return "akmesh"
-	}
-	return filepath.Base(os.Args[0])
+	return cmdrun.RunArgs(Commands, name, args, stdin, stdout, stderr)
 }

@@ -1,4 +1,4 @@
-package tools
+package cmds
 
 import (
 	"reflect"
@@ -22,7 +22,7 @@ func TestNoCommandSharesAnotherImplementation(t *testing.T) {
 	sums := map[string]bool{"md5sum": true, "sha1sum": true, "sha256sum": true, "sha512sum": true}
 
 	owner := map[uintptr]string{}
-	for name, fn := range Commands {
+	for name, fn := range All {
 		ptr := reflect.ValueOf(fn).Pointer()
 		first, ok := owner[ptr]
 		if !ok {
@@ -52,7 +52,7 @@ func TestSumsAreWiredToTheirOwnAlgorithm(t *testing.T) {
 			"2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
 	}
 	for name, digest := range want {
-		fn, ok := Commands[name]
+		fn, ok := All[name]
 		if !ok {
 			t.Fatalf("%q is missing from the table", name)
 		}

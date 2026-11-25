@@ -69,3 +69,18 @@ func captureIn(t *testing.T, fn Func, args []string, input string) (string, int)
 	}
 	return string(data), code
 }
+
+// readBack reads a file a command wrote, from its beginning. It lived in
+// help_test.go until the wiring tests moved to internal/cmds (acmesh-58me);
+// files_test.go still needs it here.
+func readBack(t *testing.T, f *os.File) string {
+	t.Helper()
+	if _, err := f.Seek(0, 0); err != nil {
+		t.Fatalf("seek: %v", err)
+	}
+	b, err := os.ReadFile(filepath.Clean(f.Name()))
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	return string(b)
+}

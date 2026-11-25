@@ -29,7 +29,6 @@ type Func = usage.Func
 
 // Commands maps a command name to its implementation.
 var Commands = map[string]Func{
-	"awk":       runAwk,
 	"base64":    runBase64,
 	"basename":  runBasename,
 	"chmod":     runChmod,
@@ -37,7 +36,6 @@ var Commands = map[string]Func{
 	"cp":        runCp,
 	"comm":      runComm,
 	"cut":       runCut,
-	"diff":      runDiff,
 	"dirname":   runDirname,
 	"echo":      runEcho,
 	"false":     runFalse,
@@ -67,7 +65,6 @@ var Commands = map[string]Func{
 	"deluser":   runDelUser,
 	"delgroup":  runDelGroup,
 	"rmdir":     runRmdir,
-	"patch":     runPatch,
 	"policy":    runPolicy,
 	"blkid":     runBlkid,
 	"init":      runInit,
@@ -78,7 +75,6 @@ var Commands = map[string]Func{
 	"logread":   runLogread,
 	"ps":        runPS,
 	"pwd":       runPwd,
-	"sed":       runSed,
 	"sha1sum":   runSum("sha1"),
 	"sha256sum": runSum("sha256"),
 	"sha512sum": runSum("sha512"),
@@ -94,7 +90,6 @@ var Commands = map[string]Func{
 	"timeout":   runTimeout,
 	"truncate":  runTruncate,
 	"true":      runTrue,
-	"tar":       runTar,
 	"touch":     runTouch,
 	"tr":        runTr,
 	"uniq":      runUniq,

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"akmesh/internal/usage"
 )
 
 // runFileCommand is runThroughDispatcher with stdin content and a working
@@ -45,7 +47,26 @@ func runFileCommand(t *testing.T, dir, stdin, name string, args ...string) (stdo
 		}
 	}()
 
-	code = RunArgs(name, args, stdinF, out, errf)
+	// diff and patch left this table with acmesh-rnyu; the compatibility tests
+	// still call them through the dispatcher, so the lookup falls back to the
+	// shims in shims_test.go and keeps the help gate in the path.
+	fn := Commands[name]
+	if fn == nil {
+		switch name {
+		case "diff":
+			fn = runDiff
+		case "patch":
+			fn = runPatch
+		case "sed":
+			fn = runSed
+		case "tar":
+			fn = runTar
+		}
+	}
+	if fn == nil {
+		t.Fatalf("no command %q in the table and no shim for it", name)
+	}
+	code = usage.Run(name, args, stdinF, out, errf, fn)
 	return readBack(t, out), readBack(t, errf), code
 }
 

@@ -11,15 +11,18 @@ import (
 	"os"
 
 	"akmesh/internal/cmdrun"
+	"akmesh/internal/tooldiff"
 	"akmesh/internal/tooljq"
 	"akmesh/internal/toolnet"
 	"akmesh/internal/toolpkg"
 	"akmesh/internal/tools"
+	"akmesh/internal/toolsed"
 	"akmesh/internal/toolsh"
+	"akmesh/internal/tooltar"
 )
 
 // All is every command the full binary carries, keyed by name.
-var All = merge(tools.Commands, toolpkg.Commands, toolnet.Commands, toolsh.Commands, tooljq.Commands)
+var All = merge(tools.Commands, toolsed.Commands, tooldiff.Commands, toolpkg.Commands, toolnet.Commands, toolsh.Commands, tooljq.Commands, tooltar.Commands)
 
 // merge joins the block tables and refuses a name that two blocks claim: two
 // entries would mean one of them is dead code that looks alive.

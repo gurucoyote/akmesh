@@ -7110,3 +7110,32 @@ Windows kann dieselbe Aufteilung: derselbe Schnitt, dasselbe Profil
 Der Schnitt haengt also nicht an den Build-Tags des Linux-Zweigs; die Bloecke
 sind gewoehnliche Pakete und gelten fuer beide Ziele. Vorher-Wert fuer Windows
 liegt nicht vor (die Analyse vom 24.11.2026 hat nur linux gemessen).
+
+## Zweiter Schnitt: sed/awk und diff/patch als eigene Bloecke (acmesh-rnyu, 25.11.2026)
+
+Wegwerfprofile in `scripts/profiles/zz-*.txt` (danach geloescht), linux amd64,
+go 1.27.4, Inlining an, gestrippt, Zahlen aus der report-Zeile:
+
+    Text mit sed/awk/diff/patch   8028387 -> 7860451 Bytes
+    Text ohne sie und ohne tar    6881507 Bytes
+    nur cat                       2457827 Bytes
+    nur cat und tar               3752163 Bytes
+    nur grep                      4210915 Bytes
+    nur crond                     3911907 Bytes
+    voll                         22507747 Bytes (unveraendert)
+    voll, Windows                20593152 Bytes
+
+Was die Zahlen sagen: pcre2 (grep -P) kostet rund 1,75 MiB, der Dienst-Unterbau
+mit robfig/cron rund 1,45 MiB, Go.Sed und goawk zusammen rund 0,8 MiB. tar
+kostet allein neben cat 1,29 MiB, im Text-Profil aber nur 164 KiB, weil die
+Dateiwerkzeuge seine Abhaengigkeiten schon bezahlen. Die Textwerkzeuge sind
+damit nicht der schwere Teil des Sockels - die naechsten beiden Schnitte sind
+Dienste (acmesh-rk8i) und pcre2.
+
+Befehle:
+
+    GOTOOLCHAIN=auto ./scripts/build-bb.sh linux zz-text   # keep ...
+    GOTOOLCHAIN=auto ./scripts/build-bb.sh linux zz-base   # ohne sed/awk/diff/patch
+    GOTOOLCHAIN=auto ./scripts/build-bb.sh linux zz-cat    # keep cat
+    GOTOOLCHAIN=auto ./scripts/build-bb.sh linux zz-grep   # keep grep
+    GOTOOLCHAIN=auto ./scripts/build-bb.sh linux zz-crond  # keep crond

@@ -4,12 +4,10 @@ import (
 	"os"
 
 	"akmesh/internal/corecmd"
-	"akmesh/internal/diffpatch"
 	"akmesh/internal/env"
 	"akmesh/internal/file"
 	"akmesh/internal/iconv"
 	"akmesh/internal/policycmd"
-	"akmesh/internal/sedawk"
 )
 
 // The last command implementations moved into their own packages in acmesh-mq1;
@@ -42,22 +40,6 @@ func runFile(args []string, stdin *os.File, stdout, stderr *os.File) int {
 
 func runIconv(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	return iconv.Run(args, stdin, stdout, stderr)
-}
-
-func runSed(args []string, stdin *os.File, stdout, stderr *os.File) int {
-	return sedawk.Run("sed", args, stdin, stdout, stderr)
-}
-
-func runAwk(args []string, stdin *os.File, stdout, stderr *os.File) int {
-	return sedawk.Run("awk", args, stdin, stdout, stderr)
-}
-
-func runDiff(args []string, stdin *os.File, stdout, stderr *os.File) int {
-	return diffpatch.Run("diff", args, stdin, stdout, stderr)
-}
-
-func runPatch(args []string, stdin *os.File, stdout, stderr *os.File) int {
-	return diffpatch.Run("patch", args, stdin, stdout, stderr)
 }
 
 func runPolicy(args []string, stdin *os.File, stdout, stderr *os.File) int {

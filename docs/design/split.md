@@ -259,3 +259,39 @@ Tests: `scripts/test-akmesh.sh` laeuft jetzt auch pro Block oder pro Befehl
 unbekannten Namen selbst ausgibt. Stand am 25.11.2026: documents 38, files 246,
 system 148, network 21, shell 5, services 0 Pruefungen (fuer die Daemons hat die
 Batterie noch keine Faelle - das ist eine Luecke, keine Auslassung).
+
+## Stand 25.11.2026, zweiter Schnitt: sed/awk und diff/patch (acmesh-rnyu)
+
+`sed` und `awk` liegen jetzt in `internal/toolsed`, `diff` und `patch` in
+`internal/tooldiff` - beide als gewoehnliche Bloecke mit eigener Tabelle, die
+Sammeltabelle `internal/cmds` nennt sie mit. Die Kompatibilitaetstests gegen GNU
+bleiben in `internal/tools` und erreichen die Umsetzungen ueber Test-Shims; sie
+pruefen Verhalten, nicht Verdrahtung.
+
+Gemessen (linux, gestrippt):
+
+    Text mit sed/awk/diff/patch  8 028 387 -> 7 860 451 Bytes
+    Text ohne sie und ohne tar   6 881 507 Bytes   (neu)
+    nur cat                      2 457 827 Bytes
+    nur cat und tar              3 752 163 Bytes
+    voll                        22 507 747 Bytes   (unveraendert)
+
+tar ist ebenfalls ausgezogen (internal/tooltar), bringt im Text-Binary aber nur
+164 KiB: allein neben cat kostet es 1,29 MiB, in einem Binary mit vielen
+Dateiwerkzeugen ist das meiste davon schon bezahlt. Der kleine Wert ist das
+Ergebnis, nicht die Enttaeuschung - ein Profil ohne tar wird trotzdem kleiner,
+und die Grenze ist jetzt dort, wo die Bibliothek liegt.
+
+Der Gewinn an dieser Stelle ist klein (168 KiB fuer das Text-Binary), und das
+ist die wichtigere Erkenntnis: Go.Sed und goawk wiegen zusammen etwa 815 KiB
+(Text ohne sie gegen Text mit ihnen). Die restlichen 3,8 MiB ueber dem Sockel
+kommen nicht aus den Textwerkzeugen:
+
+    nur grep       4 210 915 Bytes  (+1,75 MiB durch pcre2 fuer grep -P)
+    nur crond      3 911 907 Bytes  (+1,45 MiB durch robfig/cron und den
+                                    Dienst-Unterbau, der heute im Sockel liegt)
+
+Damit ist die naechste Reihenfolge belegt statt geraten: erst die Dienste
+(crond, syslogd, logger, logread, init) in einen eigenen Block, dann pcre2
+hinter `grep -P` - oder beides in ein eigenes Binary, das nur wer braucht. Beide
+sind eigene Tickets; dieser Schnitt ist mit dem oben gemessenen Stand fertig.

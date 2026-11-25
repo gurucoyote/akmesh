@@ -23,3 +23,5 @@
 /akmesh-services-off
 /akmesh-services-off.exe
 /akmesh-ext*
+/akmesh-wsl.tar
+/.build/wsl/

@@ -7502,3 +7502,30 @@ Groesse nach allem, linux, gestrippt:
     akmesh-write   9617635
     akmesh-net    10485987
     akmesh-shell   9015523
+
+### WSL-Image (25.11.2026)
+
+    ./scripts/make-wsl-image.sh
+
+    report: akmesh is 21.5 MiB (22511740 bytes), statically linked, stripped
+    143 Namen nach /bin gelinkt
+    CA-Bundle 224008 Bytes
+    Rootfs 178 Eintraege, tar 22 835 200 Bytes
+
+Im Rootfs per chroot geprueft, alle Pruefungen bestanden:
+
+    sh -c 'echo shell-ok'                      shell-ok
+    sh -l -c 'echo $PATH'                      /usr/local/sbin:...:/bin
+    grep -c . /etc/passwd                      3
+    grep '^akmesh:' /etc/passwd                akmesh:x:1000:1000:...
+    akmesh ls /etc                             group hosts nsswitch.conf ...
+    akmesh uname -s                            Linux
+    echo akmesh | akmesh su akmesh -c 'id -un' akmesh
+
+Das Netzwerk ist bewusst nicht konfiguriert: Ubuntu-24.04 und golang tragen in
+/etc/wsl.conf nur [boot] bzw. [automount], und WSL schreibt beiden die
+resolv.conf mit "nameserver 10.255.255.254" plus den Windows-Suchdomaenen. Das
+Image setzt generateResolvConf = true und generateHosts = true, also dasselbe.
+
+Befund: unser sh kennt "-l -c", aber nicht "-lc". Die Pruefung im Skript nutzt
+deshalb die getrennte Form.

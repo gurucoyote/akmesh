@@ -312,3 +312,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 25.11.2026: grep -P als echtes PCRE2 belegt und dokumentiert (28 grep-Pruefungen gruen, 1,75 MiB gegen cat), acmesh-cv6h geschlossen.
 25.11.2026: net- und shell-Binary gebaut, Verteilerfehler (os.Args[0]) gefunden und behoben, zwei Images gebaut (22,8 MB alles-in-einem, 57,8 MB geteilt); suntoad-ahy fuer den Parser-Rueckfluss angelegt.
 25.11.2026: Go-Pruefkette komplett gefahren (gofmt, build, vet, test, go fix, staticcheck, govulncheck); zwei Schwachstellen behoben, ein echter httpd-Fehlerpfad repariert, 34 tote Deklarationen entfernt, 101 Dateien modernisiert.
+25.11.2026: WSL-Image gebaut (scripts/make-wsl-image.sh, Nutzer akmesh/akmesh, Auto-Login ueber /etc/wsl.conf, Netzwerk wie die anderen Distros), per chroot geprueft.

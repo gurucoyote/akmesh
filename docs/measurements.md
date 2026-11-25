@@ -7101,3 +7101,12 @@ Ein einzelner Befehl geht auch: `./scripts/test-akmesh.sh ./akmesh -g rg` sind
 11 Pruefungen, `-g sed` auf dem Windows-Binary 12. Die Gruppen- und
 Befehlsnamen kommen aus der Liste, die das Binary fuer einen unbekannten Namen
 ausgibt; ein unbekannter Name endet mit Exit 2 statt mit 0 Pruefungen.
+
+Windows kann dieselbe Aufteilung: derselbe Schnitt, dasselbe Profil
+
+    GOTOOLCHAIN=auto ./scripts/build-bb.sh windows zz-text
+    -> report: akmesh-zz-text.exe is 6.9 MiB (7268352 bytes), Windows PE, stripped
+
+Der Schnitt haengt also nicht an den Build-Tags des Linux-Zweigs; die Bloecke
+sind gewoehnliche Pakete und gelten fuer beide Ziele. Vorher-Wert fuer Windows
+liegt nicht vor (die Analyse vom 24.11.2026 hat nur linux gemessen).

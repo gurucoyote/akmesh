@@ -7170,3 +7170,52 @@ TestWriteMemberKeepsTheOldFileWhenTheCopyFails, TestWriteMemberReplacesRunning
 Executable, TestExtractDefersTheRunningBinary, TestAddChecksTheOwnBinaryBefore
 ReplacingIt (zwei Faelle: gute Fassung wird eingesetzt, kaputte laesst die alte
 stehen und endet mit 1).
+
+## RTF: Blöcke, Tabellen, Links, Listenebenen (acmesh-crc9, 25.11.2026)
+
+Dieselbe Datei (2x2-Tabelle, ein HYPERLINK-Feld, eine zweistufige Liste),
+gelesen vom Binary vor und nach dem Umbau.
+
+Vorher, `./akmesh any2md datei.rtf`:
+
+    # Rueckfluss
+
+    Vor der Tabelle.
+
+    NameWertAlphaEinsBetaZweiNach der Tabelle.
+
+    Ein  im Satz.
+
+Nachher, `./akmesh any2md datei.rtf`:
+
+    # Rueckfluss
+
+    Vor der Tabelle.
+
+    | Name | Wert |
+    | --- | --- |
+    | Alpha | Eins |
+    | Beta | Zwei |
+
+    Nach der Tabelle.
+
+    Ein [Verweis](https://example.com/x) im Satz.
+
+    1. Eins
+      - Zwei
+
+    Ende.
+
+Gesucht, `./akmesh rg --pre any2md Verweis datei.rtf`: vorher kein Treffer
+(der Linktext war weg), nachher `Ein [Verweis](https://example.com/x) im Satz.`
+
+Groesse des vollen Binaries (linux amd64, go 1.27.4, Inlining an, gestrippt):
+
+    22511843 -> 22540515 Bytes   (+28672 Bytes fuer Parser und Tabellenschreiber)
+    Windows:     20600320 -> 20625920 Bytes
+
+Batterie: 507 Pruefungen linux (vorher 499; neu: 6 x rtf2md Tabelle/Link/Liste,
+2 x rg --pre auf demselben Dokument), 0 Fehler. Hilfe-Audit 0.
+`go test ./internal/rtfmd` mit den alten Fixtures unveraendert gruen; neun neue
+Tests fuer Tabelle, Zeile ohne \\cell, Link mit und ohne Ziel, Listenebenen,
+Link-Ziel mit Leerzeichen, \\ucN-Ersatz im Textlauf, fremde Code page.

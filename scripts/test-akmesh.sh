@@ -732,6 +732,21 @@ if command -v python3 >/dev/null 2>&1; then
   check rtf2md-bold "**Zwei**ä" "$(run rtf2md r-test.rtf | tr -d '\r' | tail -1)"
   check rtf2md-not-rtf "1" "$(printf 'kein rtf' | run rtf2md >/dev/null 2>&1; echo $?)"
   rm -f r-test.rtf
+  # Table, link and list levels in one document: before acmesh-crc9 the cells of
+  # a row ran together, a hyperlink took its text with it, and list items were
+  # swallowed whole.
+  python3 /root/akmesh/scripts/make-test-rtf-table.py rt-test.rtf
+  check rtf2md-table-header "| Name | Wert |" "$(run rtf2md rt-test.rtf | tr -d '\r' | grep -m1 'Name')"
+  check rtf2md-table-rule "| --- | --- |" "$(run rtf2md rt-test.rtf | tr -d '\r' | grep -m1 -- '---')"
+  check rtf2md-table-row "| Alpha | Eins |" "$(run rtf2md rt-test.rtf | tr -d '\r' | grep -m1 'Alpha')"
+  check rtf2md-link-text "Ein [Verweis](https://example.com/x) im Satz." "$(run rtf2md rt-test.rtf | tr -d '\r' | grep -m1 'Verweis')"
+  check rtf2md-list-numbered "1. Eins" "$(run rtf2md rt-test.rtf | tr -d '\r' | grep -m1 '^1\. Eins')"
+  check rtf2md-list-nested "  - Zwei" "$(run rtf2md rt-test.rtf | tr -d '\r' | grep -m1 -- '  - Zwei')"
+  # The same document through the search: rg --pre reads it with any2md, so a hit
+  # proves the link text is searchable - before, the field swallowed it.
+  check rg-pre-rtf-link "1" "$(run rg --pre any2md Verweis rt-test.rtf | tr -d '\r' | grep -c 'Verweis')"
+  check rg-pre-rtf-list "1" "$(run rg --pre any2md Zwei rt-test.rtf | tr -d '\r' | grep -c 'Zwei')"
+  rm -f rt-test.rtf
 fi
 
 # pdf2md: a PDF without compression is the smallest thing a reader has to

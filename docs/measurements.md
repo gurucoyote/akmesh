@@ -7416,3 +7416,11 @@ Ein Fehlversuch, der hier hingehört: der erste Bau des Ein-Binary-Images lief
 gleichzeitig mit dem Windows-Bau und scheiterte an fehlenden Dateien im
 gemeinsamen .build-Ordner. Zwei Bauten im selben Baum vertragen sich nicht; der
 zweite Lauf allein war gruen.
+
+Windows, dieselben fuenf Binaries, gestrippt (`./scripts/build-bb.sh windows`):
+
+    akmesh.exe        20625920 Bytes  19.7 MiB
+    akmesh-docs.exe    6207488 Bytes   5.9 MiB
+    akmesh-write.exe   9796096 Bytes   9.3 MiB
+    akmesh-net.exe    10759168 Bytes  10.3 MiB
+    akmesh-shell.exe   9252864 Bytes   8.8 MiB

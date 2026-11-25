@@ -1,15 +1,13 @@
-// Command logger sends one message to /dev/log; on Windows it appends to a local
-// file instead (acmesh-g7n).
+// Command logger is part of the services block; see internal/toolsvc for why the
+// daemons and the console sit together.
 package main
 
 import (
 	"os"
 
-	"akmesh/internal/logger"
-	"akmesh/internal/policy"
+	"akmesh/internal/toolsvc"
 )
 
 func main() {
-	policy.Enter()
-	os.Exit(logger.Run("logger", os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(toolsvc.Run("logger"))
 }

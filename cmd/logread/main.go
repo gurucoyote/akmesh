@@ -1,14 +1,13 @@
-// Command logread prints the log file, optionally following it (acmesh-g7n).
+// Command logread is part of the services block; see internal/toolsvc for why the
+// daemons and the console sit together.
 package main
 
 import (
 	"os"
 
-	"akmesh/internal/logread"
-	"akmesh/internal/policy"
+	"akmesh/internal/toolsvc"
 )
 
 func main() {
-	policy.Enter()
-	os.Exit(logread.Run("logread", os.Args[1:], os.Stdout, os.Stderr))
+	os.Exit(toolsvc.Run("logread"))
 }

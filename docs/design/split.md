@@ -226,6 +226,14 @@ Noch offen aus dieser Stufe: die Pakete selbst (Schritt 4) und der Symlink-Satz
 im Image - heute liegt akmesh-docs als eigenes Binary neben `akmesh`, das Image
 wird weiter aus dem vollen Binary gebaut.
 
+## Stand 25.11.2026, dritter Schritt: die Dienste als eigener Block (acmesh-rk8i)
+
+`internal/toolsvc` haelt init, getty, login, crond, syslogd, logger und logread -
+genau die Namen, die die Befehlsliste als "Services" druckt. Die Umsetzungen
+bleiben in ihren Paketen, die Tabelle und der Einstieg sind neu. Groesse
+unveraendert (A/B gemessen), aber die Grenze ist jetzt explizit, und die Gruppe
+services hat 13 Batterie-Pruefungen statt keiner.
+
 ## Offene Fragen
 
 1. `rg` ohne `--pre` als eigenes, kleines Paket (geschaetzt 6-7 MiB)?

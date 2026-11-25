@@ -1,16 +1,13 @@
-// Command syslogd writes /dev/log lines into a log file and rotates it
-// (acmesh-g7n). It imports internal/syslogd and not internal/tools: the table
-// there pulls every tool we own into the binary.
+// Command syslogd is part of the services block; see internal/toolsvc for why the
+// daemons and the console sit together.
 package main
 
 import (
 	"os"
 
-	"akmesh/internal/policy"
-	"akmesh/internal/syslogd"
+	"akmesh/internal/toolsvc"
 )
 
 func main() {
-	policy.Enter()
-	os.Exit(syslogd.Run("syslogd", os.Args[1:], os.Stdout, os.Stderr))
+	os.Exit(toolsvc.Run("syslogd"))
 }

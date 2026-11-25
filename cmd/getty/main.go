@@ -1,15 +1,13 @@
-// Command getty owns a terminal: it prints /etc/issue, asks for the user name and
-// starts login. init respawns it after a logout (acmesh-bu1).
+// Command getty is part of the services block; see internal/toolsvc for why the
+// daemons and the console sit together.
 package main
 
 import (
 	"os"
 
-	"akmesh/internal/getty"
-	"akmesh/internal/policy"
+	"akmesh/internal/toolsvc"
 )
 
 func main() {
-	policy.Enter()
-	os.Exit(getty.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(toolsvc.Run("getty"))
 }

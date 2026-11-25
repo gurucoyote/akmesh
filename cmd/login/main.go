@@ -1,15 +1,13 @@
-// Command login starts a session as another user, reachable as its own command
-// inside the akmesh binary.
+// Command login is part of the services block; see internal/toolsvc for why the
+// daemons and the console sit together.
 package main
 
 import (
 	"os"
 
-	"akmesh/internal/login"
-	"akmesh/internal/policy"
+	"akmesh/internal/toolsvc"
 )
 
 func main() {
-	policy.Enter()
-	os.Exit(login.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+	os.Exit(toolsvc.Run("login"))
 }

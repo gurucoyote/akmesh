@@ -7300,3 +7300,37 @@ bei den jeweils zustaendigen Teil-Binaries ist das dasselbe Binary wie vorher.
 Antwort auf die Frage im Ticket: ein Harness, das Dokumente liest, braucht die
 Schreiber nicht - 5.8 statt 9.2 MiB. Wer Berichte erzeugt, installiert
 zusaetzlich akmesh-write.
+
+## Dienste als eigener Block (acmesh-rk8i, 25.11.2026)
+
+`internal/toolsvc` fuehrt die sieben Namen der Gruppe "Services": init, getty,
+login, crond, syslogd, logger, logread. Die Umsetzungen (internal/akinit,
+internal/getty, internal/login, internal/crond, internal/syslog) bleiben, wo sie
+sind; die sieben Zeilen in `internal/tools/registry.go` sind weg, cmd/<name>
+ruft `toolsvc.Run`. Damit ist die Blockgrenze auch eine Linkergrenze, wie bei
+den anderen Bloecken seit a310842.
+
+Neutralitaet, gemessen per Zwischenbau (A/B, gleiche Flags, gestrippt, linux):
+
+                              vor dem Verschieben   nach dem Verschieben
+    volles Binary                      22540515             22540515
+    Profil nur cat                      2457827              2457827
+    Profil nur crond                    4317411              4317411
+
+Das Verschieben aendert an Groessen nichts - es macht die Grenze nur explizit
+und gibt der Gruppe eine eigene Tabelle.
+
+Die frueher notierte Zahl 3911907 fuer "nur crond" (25.11., vor tar/sed/Aufteilung)
+gilt nicht mehr; 4317411 ist der Stand heute. Der Unterschied von rund 405 KB
+kommt aus dem Code der Dienste (Crontab-Verzeichnis, Signale), nicht aus dem
+Block - der Vergleich oben zeigt, dass das Verschieben selbst nichts kostet.
+crond kostet damit 1.86 MB gegen ein Binary mit nur cat.
+
+Batterie: 520 Pruefungen linux (vorher 507), 0 Fehler; neu ist die Gruppe
+services mit 13 Pruefungen, die vorher gar keine hatte:
+
+    init/getty/login/crond/syslogd/logger/logread -h   je eine Pruefung
+    logread-all, logread-tail                          gespeicherte Zeilen und -n
+    crond-bad-line, crond-bad-line-names-it            kaputte Crontab, Exit 1 und Zeile
+    logger-no-socket                                   Fehler statt stillem Verschwinden
+    syslogd-chain                                      syslogd schreibt, logger sendet, logread liest

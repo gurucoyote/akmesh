@@ -1481,6 +1481,41 @@ if [ -z "$WINDOWS" ]; then
   check apkreport-vorher '2.0.0-r0' "$(printf 'P:rotest\nV:3.0.0-r0\nA:x86_64\nS:966\nI:28\n\n' > "$RP/root/lib/apk/db/installed"; run apkreport -p "$RP/root" -o "$RP/b.jsonl" --health ok -q 2>/dev/null; tail -1 "$RP/b.jsonl" | sed -n 's/.*"vorher":"\([^"]*\)".*/\1/p')"
 fi
 
+# --- Services (acmesh-rk8i): the booted system. Before this block existed the
+# group had no checks at all, which is how a broken daemon stays invisible.
+if [ -z "$WINDOWS" ]; then
+  for n in init getty login crond syslogd logger logread; do
+    check "$n-help" "0" "$(run "$n" -h >/dev/null 2>&1; echo $?)"
+  done
+
+  # logread reads what the daemon stored, and -n takes the tail.
+  SVD="$WORK/svc"; mkdir -p "$SVD"
+  printf '<13>Nov 25 12:00:00 host prog: erste\n<13>Nov 25 12:00:01 host prog: zweite\n' > "$SVD/log.txt"
+  check logread-all "2" "$(run logread -O "$SVD/log.txt" 2>/dev/null | grep -c 'prog:')"
+  check logread-tail "zweite" "$(run logread -n 1 -O "$SVD/log.txt" 2>/dev/null | tr -d '\r' | sed -n 's/.*prog: \(.*\)/\1/p')"
+
+  # A broken crontab is a clear refusal with the line, not a silent empty daemon.
+  printf 'kaputte zeile\n' > "$SVD/ct.txt"
+  check crond-bad-line "1" "$(run crond -c "$SVD/ct.txt" -n >/dev/null 2>&1; echo $?)"
+  check crond-bad-line-names-it "1" "$(run crond -c "$SVD/ct.txt" -n 2>&1 | grep -c 'line 1')"
+
+  # logger without a socket is an error, not a message that vanishes.
+  check logger-no-socket "1" "$(run logger -S "$SVD/kein-sock" hallo >/dev/null 2>&1; echo $?)"
+
+  # The whole chain in one go: the daemon listens, logger sends, logread reads.
+  run syslogd -S "$SVD/sock" -O "$SVD/messages" >/dev/null 2>&1 &
+  SV_PID=$!
+  sv_wait=0
+  while [ ! -S "$SVD/sock" ] && [ $sv_wait -lt 40 ]; do sleep 0.1; sv_wait=$((sv_wait+1)); done
+  run logger -S "$SVD/sock" -t probe "hallo welt" >/dev/null 2>&1
+  sleep 0.3
+  check syslogd-chain "1" "$(run logread -O "$SVD/messages" 2>/dev/null | grep -c 'probe.*hallo welt')"
+  run kill "$SV_PID" >/dev/null 2>&1
+  kill "$SV_PID" 2>/dev/null
+  wait "$SV_PID" 2>/dev/null
+  rm -rf "$SVD"
+fi
+
 printf '%d checks, %d failures\n' "$checks" "$fails"
 [ -z "$GROUP" ] || printf '%d skipped (group %s)\n' "$skipped" "$GROUP"
 [ "$fails" -eq 0 ]

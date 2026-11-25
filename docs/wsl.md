@@ -156,22 +156,36 @@ Dabei fiel auf, dass unser chmod alles über 0777 ablehnte, also auch `4755` und
 in der symbolischen Form. Das Entfernen (`u-s`, `u-t`) meldet noch ausdrücklich,
 dass es nicht unterstützt wird, statt es still zu tun.
 
-## Der Prompt
+## Der Prompt, und warum die Sitzung im Home beginnt
 
 Zwei Zeilen, die Form, die Martin auch in seiner golang-Distro hat:
 
-    BSNB67:/mnt/c/Users/Spernau
+    BSNB67:~ 
     akmesh$ 
 
 Die erste Zeile nennt Rechner und Verzeichnis (mit ~ fuer das Home), die zweite
 Nutzer und Zeichen ($ fuer den Nutzer, # fuer root). Dazu setzt die Shell den
 Fenstertitel auf "rechner verzeichnis"; ein Terminal schluckt das, ein
-Screenreader liest es nie vor.
+Screenreader liest es nie vor. Das /etc/profile im Image setzt dafuer
+PS1='\e]0;\h \w\a\h:\w\n\u\$ '; ohne Profil (z.B. im Container) baut die
+Shell denselben Text selbst.
 
-Vorher stand dort das nackte `$ ` von ash, das nichts ueber Nutzer und Ort sagt.
-Der Prompt haengt an einem Befund: Zuweisungen aus `/etc/profile` kommen in der
-WSL-Distro nicht an, im chroot dagegen schon (Ticket acmesh-eqfy, P2). Deshalb
-verlaesst sich der Prompt nicht mehr auf PS1 aus dem Profil.
+Dafuer musste ein echter Fehler weg: WSL startet die Shell als Login-Shell mit
+argv[0]="-sh", der Verteiler schnitt den Strich fuer die Namenssuche ab, und
+/bin/sh bekam nur "sh". Die Shell hielt sich damit fuer keine Login-Shell, las
+kein /etc/profile - und deshalb fehlten PS1 und der Sprung ins Home. cmd/sh
+reicht den Strich jetzt ueber AKMESH_SH_LOGIN weiter. Zwei Folgen davon waren
+ebenfalls Fehler: der Prompt wurde einmal beim Start eingefroren (nach "cd" stand
+weiter das alte Verzeichnis), und er wurde pro Befehl zweimal gedruckt.
+
+Gemessen in der Distro (25.11.2026):
+
+    /tmp/x/-sh -c 'echo PS1=[$PS1]'     PS1=[\u@\h:\w\$ ]   (Profil greift)
+    printf 'pwd\nmkdir projects\nexit\n' | /tmp/x/-sh -i
+        BSNB67:~ / akmesh$ /home/akmesh / BSNB67:~ / akmesh$ / projects
+
+Das Home gehoert dabei dem Nutzer (1000:1000); vorher war es root und "mkdir
+projects" scheiterte mit permission denied.
 
 
 ## Was geprüft ist und was nicht

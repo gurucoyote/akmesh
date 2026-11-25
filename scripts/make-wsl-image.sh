@@ -199,7 +199,7 @@ cat > "$ROOTFS/etc/profile" <<EOF
 # anywhere expects; they are all symlinks to /bin.
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
-PS1='\u@\h:\w\$ '
+PS1='\e]0;\h \w\a\h:\w\n\u\$ '
 export PS1
 [ -d "/home/$WSL_USER" ] && cd "/home/$WSL_USER" 2>/dev/null
 EOF
@@ -238,6 +238,7 @@ else
 	echo "make-wsl: no apk keys in $KEYS_SRC; apk would answer UNTRUSTED signature" >&2
 fi
 
+chown -R "$UID_USER:$GID_USER" "$ROOTFS/home/$WSL_USER"
 chmod 1777 "$ROOTFS/tmp"
 chown "$UID_USER:$GID_USER" "$ROOTFS/home/$WSL_USER"
 chmod 0755 "$ROOTFS/home/$WSL_USER"

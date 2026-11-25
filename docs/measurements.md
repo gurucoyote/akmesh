@@ -7627,3 +7627,23 @@ In einer PTY mit der neuen Binary, ohne PS1 in der Umgebung:
 Also Fenstertitel, dann Rechner und Pfad, dann in neuer Zeile Nutzer und Zeichen.
 Binary in der Distro und im Bau gleich (md5 fce9dad35cbed4d0dfa69c09131b4284),
 damit zeigt auch "wsl -d akmesh" diese Form.
+
+### Login-Shell, Prompt und Home in WSL (25.11.2026)
+
+Ursache der fehlenden Startdatei-Wirkung: argv[0]="-sh" wurde beim Dispatch auf
+"sh" gekuerzt, die Shell las kein Profil.
+
+    /tmp/x/-sh -c 'echo "0=[$0] PS1=[$PS1]"'   vorher: 0=[sh] PS1=[]
+    /tmp/x/-sh -c 'echo "0=[$0] PS1=[$PS1]"'   nachher: 0=[-sh] PS1=[\u@\h:\w\$ ]
+    /bin/sh -l -c 'echo "PS1=[$PS1] PWD=[$PWD]"'  PS1=[\u@\h:\w\$ ] PWD=[/home/akmesh]
+
+Prompt folgt dem Verzeichnis (PTY, ohne PS1 in der Umgebung):
+
+    cd /tmp  -> BSNB67:/tmp / akmesh# 
+    cd       -> BSNB67:~ / akmesh#      (HOME=/tmp/emptyhome im Test)
+
+Vorher blieb der Prompt auf dem Startverzeichnis stehen und wurde pro Befehl
+zweimal gedruckt.
+
+Home in der Distro nach dem Reparaturschritt: drwxr-xr-x 2 akmesh akmesh.
+"mkdir projects" darin geht; vorher (root:root) "permission denied".

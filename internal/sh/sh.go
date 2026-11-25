@@ -57,7 +57,9 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 		inv.interactive = true
 	}
 	base := filepath.Base(argv0)
-	login := inv.login || strings.HasPrefix(base, "-")
+	// A leading dash in argv[0] means a login shell, as in ash. A dispatcher that
+	// strips the dash for name lookup passes it on through the environment.
+	login := inv.login || strings.HasPrefix(base, "-") || os.Getenv("AKMESH_SH_LOGIN") == "1"
 	bash := base == "bash" || base == "-bash"
 
 	out := &switchWriter{w: stdout}
@@ -87,9 +89,11 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 	env = append(env, "0="+shellName)
 	if inv.interactive {
 		// The parent process may export its own PS1; a shell must not inherit
-		// it. Start from the ash default, and let the profile override it.
+		// it. Nothing is put in its place: promptString falls back to
+		// defaultPrompt on every prompt, so the directory in it stays current
+		// (measured 25.11.2026: with PS1 set once at startup, "cd /tmp" left
+		// the prompt showing the old directory forever).
 		env = withoutVar(env, "PS1")
-		env = append(env, "PS1="+defaultPrompt())
 	}
 	// The tracer writes "+ " where ash writes PS4; the wrapper rewrites that
 	// while xtrace is on (acmesh-89s9).
@@ -335,7 +339,9 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stder
 			// a fresh one instead of ending the session.
 			pending.Reset()
 			out.WriteString("\n")
-			out.WriteString(promptString(r, out))
+			if ed == nil {
+				out.WriteString(promptString(r, out))
+			}
 			continue
 		}
 		if line == "" && readErr != nil {
@@ -364,7 +370,9 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stder
 			}
 			fmt.Fprintf(stderr, "sh: %v\n", err)
 			pending.Reset()
-			out.WriteString(promptString(r, out))
+			if ed == nil {
+				out.WriteString(promptString(r, out))
+			}
 			if readErr != nil {
 				return 0
 			}
@@ -399,7 +407,12 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stder
 		} else if runErr != nil {
 			fmt.Fprintf(stderr, "sh: %v\n", runErr)
 		}
-		out.WriteString(promptString(r, out))
+		// The line editor prints its own prompt on the next readLine, so only
+		// the plain reader needs one here; otherwise the prompt appeared twice
+		// per command (measured 25.11.2026 in a pty).
+		if ed == nil {
+			out.WriteString(promptString(r, out))
+		}
 		if readErr != nil {
 			return 0
 		}
@@ -433,11 +446,24 @@ func promptString(r *interp.Runner, out *switchWriter) string {
 	// printf writes to the buffer and reads no input, so the shell may keep the
 	// session's reader here.
 	_ = runSource(r, `printf '%s' "$PS1"`, "<prompt>")
-	out.swap(prevOut)
-	if s := buf.String(); s != "" {
-		return expandPrompt(s)
+	ps1 := buf.String()
+	if ps1 == "" {
+		// The default prompt needs the shell's own values, not the Go process':
+		// "cd" moves the runner, not this process, so os.Getwd would keep
+		// showing the directory the session started in (measured 25.11.2026).
+		buf.Reset()
+		_ = runSource(r, `printf '%s\n%s\n%s' "$PWD" "$USER" "$HOME"`, "<prompt>")
 	}
-	return defaultPrompt()
+	fields := buf.String()
+	out.swap(prevOut)
+	if ps1 != "" {
+		return expandPrompt(ps1)
+	}
+	parts := strings.SplitN(fields, "\n", 3)
+	for len(parts) < 3 {
+		parts = append(parts, "")
+	}
+	return defaultPrompt(parts[0], parts[1], parts[2])
 }
 
 // expandPrompt turns the PS1 escapes ash understands into text. Without this a
@@ -476,6 +502,10 @@ func expandPrompt(p string) string {
 				} else {
 					b.WriteByte('$')
 				}
+			case 'e':
+				b.WriteByte(0x1b)
+			case 'a':
+				b.WriteByte(0x07)
 			case 'n':
 				b.WriteByte('\n')
 			case '\\':
@@ -508,21 +538,22 @@ func envOr(key, fallback string) string {
 // the sign, so the command line starts at the left edge under a short line
 // instead of after a long one. The leading escape sequence sets the window
 // title; a terminal swallows it, a screenreader never reads it.
-func defaultPrompt() string {
+func defaultPrompt(dir, user, home string) string {
 	sign := "$ "
 	if os.Geteuid() == 0 {
 		sign = "# "
 	}
-	user := envOr("USER", "")
 	if user == "" {
 		user = "root"
+	}
+	if dir == "" {
+		dir, _ = os.Getwd()
 	}
 	host, _ := os.Hostname()
 	if k := strings.IndexByte(host, '.'); k > 0 {
 		host = host[:k]
 	}
-	dir, _ := os.Getwd()
-	if home := envOr("HOME", ""); home != "" && (dir == home || strings.HasPrefix(dir, home+"/")) {
+	if home != "" && (dir == home || strings.HasPrefix(dir, home+"/")) {
 		dir = "~" + dir[len(home):]
 	}
 	place := host + ":" + dir

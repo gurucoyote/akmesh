@@ -19,6 +19,10 @@
 #   /etc/wsl.conf      [user] default=<user>, so "wsl -d akmesh" opens as him
 #   /etc/nsswitch.conf, /etc/profile, /etc/resolv.conf, /etc/hosts
 #   /etc/ssl/certs/ca-certificates.crt            so curl and wget speak TLS
+#   /etc/apk/repositories, /etc/apk/keys          edge main and community, with
+#                                                 Alpine's own public keys, so
+#                                                 "apk add go" and "apk add rust"
+#                                                 install real packages (25.11.2026)
 #   /home/<user>       with a .profile
 #   /tmp (1777), /proc, /sys, /dev, /mnt, /run, /root, /var/log
 #
@@ -84,6 +88,24 @@ for name in $NAMES; do
 	ln -sf akmesh "$ROOTFS/bin/$name"
 done
 echo "make-wsl: $COUNT names linked into /bin"
+# su must be setuid root, or a normal user can neither read /etc/shadow nor
+# become root: "apk add" would stop at the password prompt forever. Alpine ships
+# busybox su setuid for exactly this reason (measured 25.11.2026: the right
+# password was answered with "su: Authentication failure").
+#
+# A copy of the whole binary would be 22 MB, so su is built on its own: it is
+# one command and 3 MB. If the Go toolchain is not at hand, the fallback is the
+# copy - correct, only large.
+if CGO_ENABLED=0 GOOS=linux GOTOOLCHAIN=auto \
+	sh -c 'cd "$1" && go build -ldflags "-s -w" -trimpath -o "$2" ./cmd/su' _ "$ROOT" "$IMAGE_DIR/su" 2>/dev/null; then
+	cp "$IMAGE_DIR/su" "$ROOTFS/bin/su"
+else
+	echo "make-wsl: no Go toolchain for cmd/su; falling back to a copy of akmesh" >&2
+	cp "$ROOTFS/bin/akmesh" "$ROOTFS/bin/su"
+fi
+chown 0:0 "$ROOTFS/bin/su"
+chmod 4755 "$ROOTFS/bin/su"
+echo "make-wsl: /bin/su is setuid root (mode $(stat -c %a "$ROOTFS/bin/su"), $(stat -c %s "$ROOTFS/bin/su") bytes)"
 
 # A PATH like the one a script inherits (/usr/local/bin:...:/bin) must resolve
 # inside this rootfs too, otherwise every apk install script fails on "mkdir not
@@ -111,8 +133,14 @@ nobody:x:65534:65534:nobody:/nonexistent:/bin/sh
 EOF
 # Root stays locked: nothing in a WSL distro needs a root password, "wsl -u root"
 # gets there, and a locked account is honest about it.
+# Root has a password too, and it is the same initial one. apk needs root, and a
+# locked root would leave the user with no way to install anything from inside
+# the distribution: "wsl -u root" works from Windows, but inside the shell every
+# "apk add" would stop at the password prompt. The distribution is a local test
+# system; the password is in docs/wsl.md and can be changed with "passwd".
+ROOT_HASH=$(set +e; "$BIN" mkpasswd -m sha-512 "$WSL_PASSWORD" 2>&1)
 cat > "$ROOTFS/etc/shadow" <<EOF
-root:!:::::::
+root:${ROOT_HASH:-!}:::::::
 $WSL_USER:$HASH:19000:0:99999:7:::
 nobody:!:::::::
 EOF
@@ -190,6 +218,24 @@ if [ -n "$CA" ]; then
 	echo "make-wsl: CA bundle from $CA ($(wc -c < "$ROOTFS/etc/ssl/certs/ca-certificates.crt") bytes)"
 else
 	echo "make-wsl: no CA bundle on this host; curl and wget will fail on https" >&2
+fi
+
+# Alpine's repositories and the keys that sign them. Without both, "apk add"
+# answers "no repositories configured" - a distribution whose package manager is
+# the reason it exists cannot start that way (25.11.2026). edge is the rolling
+# tree, which is what has go and rust at their current versions.
+mkdir -p "$ROOTFS/etc/apk/keys"
+cat > "$ROOTFS/etc/apk/repositories" <<'EOF'
+# edge: the rolling Alpine tree, which carries go and rust at current versions.
+https://dl-cdn.alpinelinux.org/alpine/edge/main
+https://dl-cdn.alpinelinux.org/alpine/edge/community
+EOF
+KEYS_SRC=${APK_KEYS:-/etc/apk/keys}
+if ls "$KEYS_SRC"/*.rsa.pub >/dev/null 2>&1; then
+	cp "$KEYS_SRC"/*.rsa.pub "$ROOTFS/etc/apk/keys/"
+	echo "make-wsl: $(ls "$ROOTFS/etc/apk/keys" | wc -l) apk keys from $KEYS_SRC"
+else
+	echo "make-wsl: no apk keys in $KEYS_SRC; apk would answer UNTRUSTED signature" >&2
 fi
 
 chmod 1777 "$ROOTFS/tmp"

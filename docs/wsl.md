@@ -130,6 +130,40 @@ Namen bilden: der erste Versuch aus argv[0] und der Rückfall aus argv[1] bei
 /etc/profile liest. Der Build prüft, ob die Änderung in makebb angekommen ist,
 und bricht sonst ab.
 
+## Pakete: Alpine edge, mit echten Paketen
+
+Das Image bringt `/etc/apk/repositories` mit edge main und community und
+Alpines eigene öffentliche Schlüssel in `/etc/apk/keys`. Damit installiert unser
+eigenes apk echte Alpine-Pakete, mit Signaturprüfung:
+
+    apk update        OK: 28559 distinct packages available
+    su -c "apk add tree"    tree 2.3.2 mit musl 1.2.6, laeuft
+    su -c "apk add go"      go1.27.4, 752.8 MiB in 17 Paketen, "go version" geht
+    su -c "apk add rust cargo"  rustc 1.100.0 und cargo 1.100.0, 870.9 MiB in 24
+
+Warum edge: es ist der rollende Zweig, und dort liegen go und rust in den
+Fassungen, die man heute erwartet.
+
+Für `su` musste noch etwas passieren: ohne setuid-Bit kann ein normaler Nutzer
+weder `/etc/shadow` lesen noch root werden, also scheiterte jedes `apk add` an
+der Passwortabfrage ("su: Authentication failure", gemessen). Alpine liefert
+busybox su genau deshalb setuid aus. Hier ist `/bin/su` jetzt ein eigenes
+kleines Binary (3,1 MB, aus `cmd/su` gebaut) mit Modus 4755. Root hat dafür ein
+Passwort: dasselbe Initialpasswort wie der Nutzer, aenderbar mit `passwd`.
+
+Dabei fiel auf, dass unser chmod alles über 0777 ablehnte, also auch `4755` und
+`u+s`. Das ist behoben: setuid, setgid und sticky gehen jetzt als Oktalzahl und
+in der symbolischen Form. Das Entfernen (`u-s`, `u-t`) meldet noch ausdrücklich,
+dass es nicht unterstützt wird, statt es still zu tun.
+
+## Der Prompt
+
+Die Shell setzt den Prompt selbst: `nutzer@rechner:verzeichnis$ `, mit `~` für
+das Home. Vorher stand dort das nackte `$ ` von ash, das nichts über Nutzer und
+Ort sagt. Das hängt an einem Befund: Zuweisungen aus `/etc/profile` kommen in
+der WSL-Distro nicht an, im chroot dagegen schon (Ticket acmesh-eqfy, P2). Der Prompt
+verlässt sich deshalb nicht mehr auf PS1 aus dem Profil.
+
 ## Was geprüft ist und was nicht
 
 Geprüft im Rootfs selbst, per `chroot`, vor dem Verpacken:

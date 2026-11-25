@@ -7593,3 +7593,27 @@ Namensstellen):
     wsl -d akmesh  (stdin /dev/null)    keine Meldung mehr, Login-Shell startet
 
 Nebenbefund: unser ln versteht "-sf" nicht zusammengezogen (nur "-s -f").
+
+### WSL-Image: Alpine-Pakete, su und Prompt (25.11.2026)
+
+Image nach den Aenderungen: 25 968 640 Bytes, 186 Eintraege, /bin/su setuid
+(mode 4755, 3 129 504 Bytes aus cmd/su), 5 apk keys.
+
+    apk update                                   OK: 28559 distinct packages available
+    echo akmesh | su -c "apk add tree"           musl 1.2.6 + tree 2.3.2, OK: 1.4 MiB in 2
+    tree --version                               tree v2.3.2
+    su -c "apk add go"                           go 1.27.4-r0, 752.8 MiB in 17 Paketen
+    go version                                   go version go1.27.4 linux/amd64
+    su -c "apk add rust cargo"                   rustc/cargo 1.100.0-r0, 870.9 MiB in 24
+    rustc --version                              rustc 1.100.0 (Alpine Linux Rust 1.100.0-r0)
+
+chmod vorher: "value out of range: invalid octal value 4755 ... <= 0777" und
+"invalid mode: 'u+s'". Nachher: 4755 -> -rwsr-xr-x, u+s -> -rwsrwxrwx,
+1777 -> -rwxrwxrwt.
+
+Prompt: defaultPrompt liefert jetzt nutzer@rechner:verzeichnis$ (in einer PTY
+gesehen: root@BSNB67:/root/akmesh#).
+
+Befund: in der WSL-Distro kommen Variablenzuweisungen aus /etc/profile nicht an
+(echo im Profil zeigt sie, danach sind sie weg), im chroot bleiben sie. Ticket
+angelegt; der Prompt haengt deshalb nicht mehr an PS1.

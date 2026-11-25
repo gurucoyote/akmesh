@@ -7456,3 +7456,49 @@ nicht der Code: WSL verlor die Interop-Registrierung, jede .exe endete mit
 
 Danach waren net und shell sofort gruen. Die Registrierung haelt nur eine Weile;
 sie muss unmittelbar vor dem Lauf stehen.
+
+## Go-Pruefkette ueber den ganzen Baum (25.11.2026)
+
+Anlass: alle Pruefungen aus `go-idioms` einmal komplett, nicht nur vet und test.
+Toolchain zuerst: go.mod fuehrt go 1.27.4, installiert war go1.27.4, und go.dev
+bot nichts Neueres an - es gab nichts anzuheben.
+
+Fuenf Schritte, je ein Commit:
+
+    7456eca  brotli 1.2.6 -> 1.2.7, klauspost/compress 1.17.4 -> 1.20.2
+    1a20ae2  gofmt sedawk, Selbstzuweisung in diffpatch (vet)
+    6b8a0a4  go fix ueber 101 Dateien, +231/-340 Zeilen
+    b3e88e6  34 unbenutzte Deklarationen entfernt
+    3b7a36f  abgekuendigte APIs, httpd-Fehlerpfad, Rest von staticcheck
+
+Ergebnis nach dem letzten Schritt: gofmt leer, go build leer, go vet leer,
+go test -count=1 ./... gruen, staticcheck ohne einen Fund, govulncheck
+"No vulnerabilities found", Batterie 520 Pruefungen 0 Fehler.
+
+Was die Werkzeuge fanden, das kein Test gezeigt haette:
+
+- govulncheck, zwei erreichbare Schwachstellen: GO-2026-6888 in
+  andybalholm/brotli 1.2.6 (behoben in 1.2.7) und GO-2026-6865 in
+  klauspost/compress 1.17.4 (behoben in 1.20.2), beide ueber xargs und iconv
+  erreichbar. Nach dem Anheben meldet govulncheck nichts mehr.
+- staticcheck, ein echter Fehler: internal/httpd kaufte im CA-Zweig
+  `signer, err := newSNISigner(...)`, und das `err = s.ServeTLS(...)` danach
+  schrieb in diese verschattete Variable - ein Fehler von ServeTLS mit eigenem
+  Zertifikat wurde also verschluckt. Jetzt heisst die innere Variable sErr.
+- staticcheck, 34 unbenutzte Deklarationen, darunter vier Funktionen in apkcmd,
+  ein ganzer unbenutzter Typ samt zwei Methoden in sh, drei Funktionen in odump
+  und zwei in pdfmd. Zwei Dateien (tools/platform_unix.go und
+  platform_windows.go) enthielten nur noch diese beiden toten Funktionen und
+  sind entfallen.
+- go fix: strings.Cut 40 Stellen, strings.SplitSeq 41, errors.AsType 11,
+  slices.Backward 2, for i := range n 13, min/max 14. Sauber, Tests gruen.
+- Fuenf GNU-Fehlertexte (tr, useradd) tragen absichtlich Zeilenumbruch und
+  Ausrufezeichen; sie sind mit //lint:ignore ST1005 samt Grund versehen, statt
+  den Wortlaut zu verbiegen.
+
+Groesse nach allem, linux, gestrippt:
+
+    akmesh        22573283   (vorher 22540515, +32 KB durch compress 1.20.2)
+    akmesh-write   9617635
+    akmesh-net    10485987
+    akmesh-shell   9015523

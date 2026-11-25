@@ -67,7 +67,11 @@ func Run(s Script, root string, stdout, stderr io.Writer) error {
 			"PKG_VERSION="+s.Version,
 		)),
 		interp.OpenHandler(rooted(root)),
-		interp.ExecHandler(chrootExec(root, stderr)),
+		// ExecHandlers ist die Nachfolge-API: die alte ExecHandler-Option ist
+		// abgekuendigt und ersetzt den Handler, statt ihn zu umschliessen.
+		interp.ExecHandlers(func(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
+			return chrootExec(root, stderr)
+		}),
 		// apk passes the package version as $1 to its scripts.
 		interp.Params(s.Version),
 	)

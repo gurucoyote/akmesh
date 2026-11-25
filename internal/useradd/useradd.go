@@ -409,6 +409,7 @@ func (r *runner) delGroup(args []string) error {
 		}
 		for _, u := range users {
 			if u.GID == g.GID {
+				//lint:ignore ST1005 GNU-Wortlaut mit Ausrufezeichen, absichtlich so gedruckt
 				return fmt.Errorf("'%s' still has '%s' as their primary group!", u.Name, group)
 			}
 		}

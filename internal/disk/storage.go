@@ -120,12 +120,12 @@ func runFree(args []string, stdin *os.File, stdout, stderr *os.File) int {
 		}
 	}
 	human, unit, rest, _ := parseUnitFlags(kept)
-	for _, a := range rest {
-		if strings.HasPrefix(a, "-") {
+	if len(rest) > 0 {
+		if a := rest[0]; strings.HasPrefix(a, "-") {
 			fmt.Fprintf(stderr, "free: unknown option %q\n", a)
-			return 2
+		} else {
+			fmt.Fprintf(stderr, "free: unexpected argument %q\n", a)
 		}
-		fmt.Fprintf(stderr, "free: unexpected argument %q\n", a)
 		return 2
 	}
 	mem, swap, err := readMemory()

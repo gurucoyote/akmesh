@@ -257,15 +257,19 @@ func parse(args []string, p params) (*transformer, error) {
 
 	switch {
 	case narg == 0:
+		//lint:ignore ST1005 GNU-Wortlaut mit Zeilenumbruch, absichtlich so gedruckt
 		return nil, fmt.Errorf("missing operand\nTry 'tr --help' for more information.")
 	case narg == 1 && del:
 		// -d alone needs one SET; -ds needs two, as GNU says.
 		if p.squeeze {
+			//lint:ignore ST1005 GNU-Wortlaut mit Zeilenumbruch, absichtlich so gedruckt
 			return nil, fmt.Errorf("missing operand after '%s'\nTwo strings must be given when both deleting and squeezing repeats.\nTry 'tr --help' for more information.", args[0])
 		}
 	case narg == 1 && !del && !p.squeeze:
+		//lint:ignore ST1005 GNU-Wortlaut mit Zeilenumbruch, absichtlich so gedruckt
 		return nil, fmt.Errorf("missing operand after '%s'\nTwo strings must be given when translating.\nTry 'tr --help' for more information.", args[0])
 	case narg > 1 && del:
+		//lint:ignore ST1005 GNU-Wortlaut mit Zeilenumbruch, absichtlich so gedruckt
 		return nil, fmt.Errorf("extra operand '%s'\nTry 'tr --help' for more information.", args[0])
 	case narg > 2:
 		return nil, fmt.Errorf("extra operand '%s'", args[1])

@@ -427,8 +427,6 @@ func streamNoEnd(files map[string][]byte, when time.Time) ([]byte, error) {
 	// A tar entry always ends on a 512-byte boundary; keep the last block.
 	if r := len(trimmed) % 512; r != 0 {
 		trimmed = trimmed[:len(trimmed)+(512-r)]
-	} else if len(trimmed) < len(plain) {
-		trimmed = trimmed[:len(trimmed)]
 	}
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)

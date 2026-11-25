@@ -99,7 +99,7 @@ func TestRunMissingFileReportsIt(t *testing.T) {
 		t.Fatalf("exit: want nonzero for a missing file, got 0")
 	}
 	msg, _ := os.ReadFile(errFile.Name())
-	if msg == nil || len(msg) == 0 {
+	if len(msg) == 0 {
 		t.Errorf("no message on stderr")
 	}
 }

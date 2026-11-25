@@ -297,7 +297,7 @@ func (e *expander) tarMembers(data []byte, outer, inner string, level int) error
 		case tar.TypeSymlink, tar.TypeLink:
 			e.warn(fmt.Sprintf("%s: link, not searched", archiveLabel(outer, joinInner(inner, hdr.Name))))
 			continue
-		case tar.TypeReg, tar.TypeRegA:
+		case tar.TypeReg:
 		default:
 			continue
 		}

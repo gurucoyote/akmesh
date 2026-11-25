@@ -2,6 +2,7 @@ package sh
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -408,8 +409,8 @@ func interactiveLoop(r *interp.Runner, stdin io.Reader, out *switchWriter, stder
 // interruptedBySignal reports whether a command ended because the terminal
 // sent it SIGINT. ash prints nothing there, only a new prompt.
 func interruptedBySignal(err error) bool {
-	status, ok := interp.IsExitStatus(err)
-	return ok && status == 130
+	var status interp.ExitStatus
+	return errors.As(err, &status) && status == 130
 }
 
 // promptString is PS1 when the profile set one, otherwise the ash default. The
@@ -539,7 +540,8 @@ func runStatements(ctx context.Context, r *interp.Runner, file *syntax.File) err
 			return last
 		}
 		if last != nil {
-			if _, ok := interp.IsExitStatus(last); !ok {
+			var st interp.ExitStatus
+			if !errors.As(last, &st) {
 				return last
 			}
 		}
@@ -552,7 +554,8 @@ func finish(_ *interp.Runner, err error, stderr io.Writer) int {
 	if err == nil {
 		return 0
 	}
-	if status, ok := interp.IsExitStatus(err); ok {
+	var status interp.ExitStatus
+	if errors.As(err, &status) {
 		return int(status)
 	}
 	fmt.Fprintf(stderr, "sh: %v\n", err)
@@ -560,7 +563,8 @@ func finish(_ *interp.Runner, err error, stderr io.Writer) int {
 }
 
 func exitCode(err error) int {
-	if status, ok := interp.IsExitStatus(err); ok {
+	var status interp.ExitStatus
+	if errors.As(err, &status) {
 		return int(status)
 	}
 	return 0

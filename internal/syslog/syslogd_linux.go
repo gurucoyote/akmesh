@@ -190,7 +190,7 @@ func RunSyslogd(name string, args []string, stdout, stderr io.Writer) int {
 	}()
 
 	fmt.Fprintf(stdout, "syslogd: %s -> %s\n", socket, path)
-	if err := d.serve(conn); err != nil && !errors.Is(err, net.ErrClosed) {
+	if err := d.serve(conn); !errors.Is(err, net.ErrClosed) {
 		fmt.Fprintf(stderr, "%s: %v\n", name, err)
 		return 1
 	}

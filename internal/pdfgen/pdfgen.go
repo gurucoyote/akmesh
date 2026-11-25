@@ -51,8 +51,11 @@ func firstTitle(source []byte) string {
 		}
 		var b strings.Builder
 		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
-			if c.Kind().String() == "Text" || c.Kind().String() == "String" {
-				b.Write(c.Text(source))
+			switch t := c.(type) {
+			case *ast.Text:
+				b.Write(t.Segment.Value(source))
+			case *ast.String:
+				b.Write(t.Value)
 			}
 		}
 		return strings.TrimSpace(html.UnescapeString(b.String()))

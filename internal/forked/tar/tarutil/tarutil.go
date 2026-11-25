@@ -139,7 +139,7 @@ func ExtractToStdout(r io.Reader, w io.Writer, opts *Opts, names []string) error
 		return false
 	}
 	return applyToArchive(r, func(tr *tar.Reader, hdr *tar.Header) error {
-		if hdr.Typeflag != tar.TypeReg && hdr.Typeflag != tar.TypeRegA {
+		if hdr.Typeflag != tar.TypeReg {
 			return nil
 		}
 		if !passesFilters(hdr, opts.Filters) || !wanted(hdr.Name) {

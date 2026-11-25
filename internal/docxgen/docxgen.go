@@ -194,9 +194,9 @@ func (b *builder) list(l *ast.List) {
 		// follows as further paragraphs with the deeper level.
 		first := true
 		for c := item.FirstChild(); c != nil; c = c.NextSibling() {
-			switch c.(type) {
+			switch c := c.(type) {
 			case *ast.List:
-				b.list(c.(*ast.List))
+				b.list(c)
 				continue
 			}
 			if first {

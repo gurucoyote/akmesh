@@ -238,9 +238,9 @@ func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {
 			fmt.Fprintln(stderr, "httpd: --tls-ca signs its own leaves, so -S has no place here")
 			return 1
 		}
-		signer, err := newSNISigner(opts.CACert, opts.Key)
-		if err != nil {
-			fmt.Fprintf(stderr, "httpd: %v\n", err)
+		signer, sErr := newSNISigner(opts.CACert, opts.Key)
+		if sErr != nil {
+			fmt.Fprintf(stderr, "httpd: %v\n", sErr)
 			return 1
 		}
 		s.TLSConfig = signer.tlsConfig()

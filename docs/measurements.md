@@ -7678,3 +7678,15 @@ Gemessen in einer PTY mit HOME=/tmp/ctest (dort ./privat und ./projects):
 
 Fuenf neue Tests im Paket sh (TestComplete*), alle gruen. Binary in der Distro
 ist dasselbe (md5 ea278a0e3341aae6da7bb621c647f41a), tar 25 978 880 Bytes.
+
+### clear (25.11.2026)
+
+Neu als eigener Befehl (internal/clear, cmd/clear, Registry und Hilfetext).
+Ohne Terminalinfo, mit ANSI:
+
+    ./akmesh clear      ->  ESC[H ESC[2J ESC[3J ESC[H
+    ./akmesh clear -x   ->  ESC[H ESC[2J ESC[H        (Scrollback bleibt)
+    ./akmesh clear -q   ->  exit 2, Meldung "unrecognised option"
+
+In der Distro nach dem Tausch: akmesh clear | od -c -> 033 [ H 033 [ 2 J 033 [ 3 J 033 [ H.
+help-audit --check gruen. Tar 25 978 880 Bytes, 187 Eintraege.

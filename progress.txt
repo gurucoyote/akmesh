@@ -321,3 +321,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 25.11.2026: Login-Shell erkennt argv0=-sh (AKMESH_SH_LOGIN), Profil greift, Start im Home, Prompt folgt cd und wird nur einmal gedruckt; Home gehoert dem Nutzer.
 25.11.2026: Prompt nimmt das Verzeichnis aus pwd der Shell, Status-Nachrede ("sh: exit status 1") entfernt; in der Distro geprueft, Ticket fuer die cd-Meldung angelegt.
 25.11.2026: Tab-Vervollstaendigung fuer Befehle (PATH) und Pfade im Zeileneditor, mit Kandidatenliste und Schraegstrich fuer Verzeichnisse; Tests und PTY-Messung.
+25.11.2026: Befehl clear (ANSI, -x laesst den Scrollback) als eigenes Paket mit Einstieg, Registry, Hilfetext und drei Tests; in der Distro geprueft.

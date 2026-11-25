@@ -3,6 +3,7 @@ package tools
 import (
 	"os"
 
+	"akmesh/internal/clear"
 	"akmesh/internal/corecmd"
 	"akmesh/internal/env"
 	"akmesh/internal/file"
@@ -13,6 +14,10 @@ import (
 // The last command implementations moved into their own packages in acmesh-mq1;
 // these wrappers keep the command table intact, which is the single place that
 // names every command.
+
+func runClear(args []string, stdin *os.File, stdout, stderr *os.File) int {
+	return clear.Run(args, stdin, stdout, stderr)
+}
 
 func runEcho(args []string, stdin *os.File, stdout, stderr *os.File) int {
 	return corecmd.Run("echo", args, stdin, stdout, stderr)

@@ -70,6 +70,7 @@ var groups = map[string]string{
 	"cat":       Files,
 	"chown":     Files,
 	"chmod":     Files,
+	"clear":     Files,
 	"cmp":       Files,
 	"comm":      Files,
 	"cp":        Files,

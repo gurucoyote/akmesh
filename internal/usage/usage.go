@@ -107,6 +107,11 @@ var Texts = map[string]Entry{
 		"NAME...",
 		"  -z, --zero   end each line with NUL, not newline",
 	},
+	"clear": {
+		"[-x]",
+		"clears the screen\n" +
+			"  -x, --no-save-lines  do not clear the scrollback",
+	},
 	"du": {
 		"[-h] [-s] [-k|-m|-g|-b] [-d DEPTH] [FILE...]",
 		"  -h, --human-readable  sizes with a unit suffix\n" +

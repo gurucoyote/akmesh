@@ -33,6 +33,7 @@ var Commands = map[string]Func{
 	"basename":  runBasename,
 	"chmod":     runChmod,
 	"chown":     runChown,
+	"clear":     runClear,
 	"cp":        runCp,
 	"comm":      runComm,
 	"cut":       runCut,

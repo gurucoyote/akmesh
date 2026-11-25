@@ -7529,3 +7529,23 @@ Image setzt generateResolvConf = true und generateHosts = true, also dasselbe.
 
 Befund: unser sh kennt "-l -c", aber nicht "-lc". Die Pruefung im Skript nutzt
 deshalb die getrennte Form.
+
+### WSL-Import und erster Start (25.11.2026)
+
+    WSL-Version 3.0.5.0, Kernel 6.18.58.1-1
+    wsl --import akmesh C:\temp\akmesh \\wsl.localhost\golang\root\akmesh\akmesh-wsl.tar
+    -> erfolgreich, DISTRO akmesh in "wsl -l -v"
+
+    wsl -d akmesh -- id                uid=1000(akmesh) gid=1000(akmesh) groups=1000(akmesh)
+    wsl -d akmesh -- sh -c 'echo $USER $HOME'   akmesh /home/akmesh
+    wsl -d akmesh -- uname -s -r       Linux 6.18.58.1-microsoft-standard-WSL2
+    wsl -d akmesh -- akmesh curl -s -o /dev/null -w '%{http_code}' https://example.com
+                                       https=200
+    /etc/resolv.conf (von WSL geschrieben)      nameserver 10.255.255.254
+                                               search busys.local fritz.box
+
+C:-Mount: "wsl: Failed to mount C:\" bei jedem Start. Sonde an /bin/mount, die
+jeden Aufruf mitschrieb, wurde nie ausgefuehrt; ohne das mount der Distribution
+bleibt der Fehler gleich. In der golang-Distro steht /mnt/c als
+"9p ... aname=drvfs;path=C:\;...;trans=fd". Unser mount kennt drvfs nicht
+(ENODEV). automount deshalb aus; Start danach ohne Warnung.

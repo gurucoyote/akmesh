@@ -23,9 +23,8 @@ tägliche Shell testen, ohne dem Harness eine einzelne Datei unterzuschieben.
   Konto lügt nicht.
 - `/etc/wsl.conf` mit `[user] default=akmesh`. Das ist der ganze Auto-Login: WSL
   startet die Shell des eingetragenen Nutzers, es braucht kein getty und kein
-  login. Dazu `[automount]` wie in den anderen Distros (`root = /mnt/`,
-  `mountFsTab = false`) und `[interop] enabled = true`, damit `wsl.exe` und
-  Windows-Programme von innen weiter funktionieren.
+  login. Dazu `[interop] enabled = true`. `[automount]` steht bewusst auf
+  `enabled = false`, siehe "Der C:-Mount" unten.
 - `/etc/nsswitch.conf` mit `hosts: files dns`, `/etc/profile` samt `PS1` und
   PATH, ein `.profile` im Home, und der CA-Bundle des Hosts, damit curl und wget
   HTTPS sprechen.
@@ -65,6 +64,47 @@ Entfernen, ohne Rückstände:
 Damit ist die Distribution samt ihrer VHD weg; im Registry bleibt nichts, was
 nicht auch ein normaler `wsl --import` angelegt hätte.
 
+## Der C:-Mount: warum automount aus ist
+
+Beim ersten Start kam bei jedem Aufruf:
+
+    wsl: Failed to mount C:\, see dmesg for more details.
+
+Untersucht, mit Belegen:
+
+- WSL ist 3.0.5.0, Kernel 6.18.58.1. Die Distribution startet dabei sauber, nur
+  `/mnt/c` bleibt leer.
+- In der funktionierenden `golang`-Distro steht in `/proc/mounts`
+  `9p ... aname=drvfs;path=C:\;...;trans=fd`. Es ist also ein 9p-Mount mit einem
+  Deskriptor, den WSL bereitstellt.
+- WSL ruft dafür **nicht** das `mount` der Distribution auf: eine Sonde an
+  `/bin/mount`, die jeden Aufruf mitschrieb, wurde kein einziges Mal
+  ausgeführt - auch nicht, als die Sonde `drvfs` in ihrer Hilfe nannte.
+- Ohne unser `mount` (Datei entfernt) bleibt der Fehler derselbe. Er hängt also
+  nicht an unserer Implementierung, sondern an WSL.
+- Unser `mount` kennt `drvfs` ohnehin nicht: `mount -t drvfs C: /mnt/c` endet mit
+  "unknown filesystem drvfs" und dann mit ENODEV.
+
+Mit `enabled = false` ist der Start still, und es entsteht kein leerer Ordner,
+der wie ein funktionierendes Laufwerk aussieht. Windows-Interop fällt damit
+weg, weil es ohne `/mnt/c` keinen Pfad zu einem Windows-Programm gibt. Ein
+Ticket hält den offenen Punkt fest.
+
+## Der Start in WSL, gemessen
+
+    wsl --import akmesh C:\temp\akmesh \\wsl.localhost\golang\root\akmesh\akmesh-wsl.tar
+
+    wsl -d akmesh -- id                            uid=1000(akmesh) gid=1000(akmesh)
+    wsl -d akmesh -- sh -c 'echo $USER $HOME'      akmesh /home/akmesh
+    wsl -d akmesh -- cat /etc/passwd               root, akmesh, nobody
+    wsl -d akmesh -- uname -s -r                   Linux 6.18.58.1-microsoft-standard-WSL2
+    wsl -d akmesh -- akmesh curl -s -o /dev/null \
+        -w '%{http_code}' https://example.com      https=200
+
+`/etc/resolv.conf` schrieb WSL beim Start selbst: `nameserver 10.255.255.254`
+plus `search busys.local fritz.box` - dieselben Werte wie in Ubuntu und golang.
+DNS und HTTPS funktionieren damit ohne jede Netzwerkkonfiguration im Image.
+
 ## Was geprüft ist und was nicht
 
 Geprüft im Rootfs selbst, per `chroot`, vor dem Verpacken:
@@ -76,9 +116,8 @@ Geprüft im Rootfs selbst, per `chroot`, vor dem Verpacken:
 - und der Punkt, an dem ein falsch geschriebener Hash auffällt:
   `su akmesh -c 'id -un'` mit eingegebenem Passwort endet als `akmesh`.
 
-Nicht geprüft, weil es Windows braucht: der erste Start über `wsl --import`.
-Der Import lässt sich nicht aus einer WSL heraus ohne Zielverzeichnis auf der
-Windows-Seite fahren, und ein Verzeichnis auf `C:` legen wir nicht ungefragt an.
+Der Import und der Start sind inzwischen auch gelaufen (siehe oben), mit dem
+Zielordner `C:\temp\akmesh`. Offen bleibt allein der C:-Mount.
 
 ## Ein Befund am Rande
 

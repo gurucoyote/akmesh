@@ -131,7 +131,12 @@ cat > "$ROOTFS/etc/wsl.conf" <<EOF
 default=$WSL_USER
 
 [automount]
-enabled = true
+# Off on purpose (measured 25.11.2026): WSL 3.0.5 cannot mount C: for this rootfs
+# and says so at every start. It never calls the distro's /bin/mount while trying;
+# a probe left there was not executed once. With the flag off the start is silent
+# and honest - no empty /mnt/c that looks like a working drive. Turn it on again
+# once our mount speaks drvfs, or to try a newer WSL.
+enabled = false
 mountFsTab = false
 root = /mnt/
 

@@ -310,3 +310,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 25.11.2026: akmesh-docs als zweiter Verteiler gebaut und gemessen (11,1 MiB Linux, 11,3 MiB Windows, voll 21,5 MiB unveraendert); Batterie kann jetzt mit -c eine Befehlsliste fahren, beide Ziele gruen; Folgeticket acmesh-1zzk fuer die Schreiber.
 25.11.2026: Leser und Schreiber getrennt - akmesh-docs 5,8 MiB, akmesh-write 9,2 MiB, Verteiler in internal/multicall; Batterien mit -c gruen, acmesh-1zzk geschlossen.
 25.11.2026: grep -P als echtes PCRE2 belegt und dokumentiert (28 grep-Pruefungen gruen, 1,75 MiB gegen cat), acmesh-cv6h geschlossen.
+25.11.2026: net- und shell-Binary gebaut, Verteilerfehler (os.Args[0]) gefunden und behoben, zwei Images gebaut (22,8 MB alles-in-einem, 57,8 MB geteilt); suntoad-ahy fuer den Parser-Rueckfluss angelegt.

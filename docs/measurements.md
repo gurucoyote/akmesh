@@ -7397,3 +7397,22 @@ Drei Befunde, die erst die Teil-Binaries zeigten:
 3. Beide Binaries brauchen fuer ihre Ruecklesepruefungen ein Nachbar-Binary
    (read_doc/write_doc), sichtbar in den Pruefungszahlen: net 25 statt mehr,
    shell 62.
+
+### Zwei Images (25.11.2026)
+
+    ./scripts/make-image.sh           akmesh:latest        22.8 MB
+    ./scripts/make-image.sh --split   akmesh-split:latest  57.8 MB
+
+Beide geprueft mit podman (ls /, sort, uname, cat /etc/passwd, date, awk, grep,
+ps -e mit Prozessen). Im geteilten Image zeigt der Symlink auf das richtige
+Binary: /bin/any2md -> akmesh-docs, /bin/md2pdf -> akmesh-write, /bin/curl ->
+akmesh-net, /bin/sh -> akmesh-shell, /bin/cat -> akmesh; any2md -h und md2pdf -h
+antworten ueber den Symlink.
+
+    Startdauer, 5 Laeufe:   ein-Binary 1034 ms, geteilt 703 ms
+    50 x /bin/true:         23.82 ms           20.22 ms
+
+Ein Fehlversuch, der hier hingehört: der erste Bau des Ein-Binary-Images lief
+gleichzeitig mit dem Windows-Bau und scheiterte an fehlenden Dateien im
+gemeinsamen .build-Ordner. Zwei Bauten im selben Baum vertragen sich nicht; der
+zweite Lauf allein war gruen.

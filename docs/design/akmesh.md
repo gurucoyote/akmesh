@@ -344,7 +344,7 @@ großen Zahl zu verschwinden.
 
 ## Lizenz
 
-akmesh selbst steht unter BSD-3-Clause (Datei `LICENSE`, "The akmesh authors",
+akmesh selbst steht unter BSD-3-Clause (Datei `LICENSE`, "Guru Coyote",
 2026) - dieselbe Lizenz, unter der u-root steht, von dem der Grossteil der
 Befehle stammt. Damit kennt die Weitergabe nur eine Sorte Text neben den
 Fremdhinweisen in `NOTICE`.

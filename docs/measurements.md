@@ -7809,3 +7809,19 @@ gemessen, normale Sitzung (C:\temp\amtest3):
 Der erhoehte Fall braucht eine UAC-Bestaetigung auf dem Bildschirm und wurde
 deshalb hier nicht gemessen; die Verzweigung ist durch einen Test mit
 umgestellter isElevated-Funktion abgedeckt (Spernau# / martin#).
+
+### Lokales .apk im Buendel (26.11.2026)
+
+Eine von Hand gebaute .apk (control.tar.gz mit .PKGINFO + data.tar.gz), arch = x86_64:
+
+    apk add --allow-untrusted hello2.apk
+      (1/1) Installing hello (1.0-r0)
+      OK: 6 B in 1 package
+    ls $AKMESH_ROOT/usr/bin     hello.txt
+    apk list                    hello-1.0-r0 x86_64 installed
+    apk del hello               (1/1) Purging hello (1.0-r0)  OK: 6 B freed
+
+Fund dabei: `apk add ./hello-win.apk`, waehrend die Datei nicht da war, wurde als
+Name an winget weitergereicht ("Es wurde kein Paket gefunden"). Behoben: ein Wort
+mit Pfadtrenner, fuehrendem Punkt oder Doppelpunkt geht nie an winget
+(looksLikePath), es endet als "no such package".

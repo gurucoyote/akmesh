@@ -329,3 +329,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 26.11.2026: PATH-Reihenfolge im Buendel gedreht - installierte Werkzeuge (apk-Pakete, winget-Pakete) antworten vor akmesh eigenen Namen; auf Windows mit jq und find gemessen.
 26.11.2026: Shell nennt sich auf Windows nach dem Windows-Benutzer (USER/LOGNAME aus USERNAME, Prompt \u), nicht mehr root; id bleibt offen (acmesh-1779).
 26.11.2026: Prompt zeigt erhoehte Rechte auf Windows mit # (Token-Abfrage), Administrator ist kein root; nicht-erhoehter Fall gemessen, erhoehter per Test.
+26.11.2026: lokale .apk im Buendel geprueft (installieren, listen, entfernen); Pfade gehen nicht mehr an winget; Tickets acmesh-c474 und acmesh-mdd8 angelegt.

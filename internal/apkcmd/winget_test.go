@@ -192,3 +192,35 @@ func readCalls(t *testing.T, path string) string {
 	}
 	return string(data)
 }
+
+// A path must never be handed to winget: it is a file, not a package id.
+func TestAPathIsNotHandedToWinget(t *testing.T) {
+	calls := writeWingetStub(t)
+	root := rootWithWinget(t, "winget")
+	var out, errOut bytes.Buffer
+	code := Run("apk", []string{"-p", root, "add", "./hello-win.apk"}, nil, &out, &errOut)
+	if code == 0 {
+		t.Fatalf("a missing local file must fail, not install something")
+	}
+	if _, err := os.Stat(calls); err == nil {
+		t.Fatalf("winget was called for a path: %q", readCalls(t, calls))
+	}
+	if !strings.Contains(errOut.String(), "no such package") {
+		t.Fatalf("message: %q", errOut.String())
+	}
+}
+
+func TestLooksLikePath(t *testing.T) {
+	for _, s := range []string{"./tool.apk", "C:\\x\\tool.apk", "sub/tool.apk", ".hidden", "winget:msstore"} {
+		if !looksLikePath(s) {
+			t.Errorf("%q should look like a path", s)
+		}
+	}
+	// "so:" names never reach this check (they are answered earlier), and a
+	// colon means a drive or a stream here.
+	for _, s := range []string{"jq", "MikeFarah.yq", "python3", "go-yq"} {
+		if looksLikePath(s) {
+			t.Errorf("%q must not look like a path", s)
+		}
+	}
+}

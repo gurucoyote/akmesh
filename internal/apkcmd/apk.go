@@ -633,6 +633,12 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 	return 0
 }
 
+// looksLikePath reports whether a word can only be a file, never a package name:
+// a separator, a leading dot or a colon (a drive letter, a stream).
+func looksLikePath(s string) bool {
+	return strings.ContainsAny(s, "/\\") || strings.HasPrefix(s, ".") || strings.Contains(s, ":")
+}
+
 // addPackages is apk's own side of "add": local files, indexes, dependencies,
 // scripts, the database. Names that no apk repository knows are put into
 // wingetFallback when it is not nil, instead of ending the command.
@@ -754,7 +760,10 @@ func addPackages(cmd string, c *apkcore.Client, o options, names []string, winge
 			case strings.HasPrefix(d.name, "so:") || strings.HasPrefix(d.name, "cmd:"):
 				fmt.Fprintf(stderr, "%s: %s requires %s, which no repository provides\n", cmd, d.by, d.name)
 			default:
-				if wingetFallback != nil && top {
+				// Only a name can be a winget package. A path is a file that is
+				// not there, and handing "./tool.apk" to winget installed nothing
+				// but a German "no matching package" (measured 26.11.2026).
+				if wingetFallback != nil && top && !looksLikePath(d.name) {
 					*wingetFallback = append(*wingetFallback, d.name)
 					return 0
 				}

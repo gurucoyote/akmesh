@@ -73,11 +73,19 @@ nichts starten. Deshalb trägt es im `.PKGINFO` eine eigene Arch-Angabe
 - winget prüft Pakete nicht gegen unseren Schlüssel. Das ist seine Grenze; im
   Hilfetext steht sie, statt daß wir sie verschweigen.
 
-## Offene Punkte für den Bau
+## Entschieden beim Bau (26.11.2026)
 
-1. Reihenfolge beim `upgrade`: nur apk-Pakete, oder mit `--all` auch
-   `winget upgrade --all`? Ich neige zu: nur mit `--all`, weil ein
-   unbeaufsichtigtes Upgrade sonst fremde Programme anfaßt.
-2. `apk list` braucht bei installiertem winget einen Aufruf, der ein paar
-   Sekunden dauert. Ich würde es nur auf Verlangen (`apk list --all`) machen und
-   sonst nur die apk-Datenbank zeigen.
+1. `upgrade` faßt winget nur mit `--all` an - ein unbeaufsichtigtes Upgrade soll
+   keine fremden Programme mitziehen.
+2. `apk list` fragt winget nur mit `--all`; ohne den Schalter zeigt es allein die
+   apk-Datenbank, weil der winget-Aufruf Sekunden kostet.
+
+## Offen
+
+- Eigenes apk-Repository für Windows-Pakete: Index, Schlüssel, Bau-Skript
+  (acmesh-c474). Eine lokale `.apk` läuft schon, gemessen mit arch = x86_64;
+  die geplante Arch-Angabe `windows-amd64` verlangt `apk --arch windows-amd64`.
+- Mehrere winget-Zeilen: gelesen werden alle, benutzt wird die erste
+  (acmesh-mdd8).
+- `apk upgrade --all` gegen echtes winget ist auf der Maschine nicht gemessen;
+  das würde installierte Windows-Programme anfassen.

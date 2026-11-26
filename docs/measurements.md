@@ -7883,3 +7883,18 @@ Buildinfo und Fehlertexten laenger ist.
 
 Im Klon fehlen .build, .gopath und alle Artefakte (ignoriert); der Bau laeuft
 trotzdem, das Repo ist also fuer sich vollstaendig.
+
+### Veroeffentlicht: github.com/gurucoyote/akmesh (26.11.2026)
+
+    gh --version                  2.32.1 (2023-07-24)
+    gh auth status                gurucoyote, Token-Scopes gist, read:org, repo, workflow
+    gh repo create gurucoyote/akmesh --public --source . --remote origin --push
+    gh repo view                  visibility PUBLIC, defaultBranch main, isEmpty false
+    git rev-list --count HEAD     426 Commits gepusht
+    gh api repos/...             license BSD-3-Clause, size (KB) 0 im ersten Abruf
+    Inhalt oben: .beads .gitattributes .gitignore .trivyignore AGENTS.md LICENSE
+                 NOTICE README.md cmd docs examples go.mod go.sum internal learnings.txt
+
+Kein Geheimnis in der Veroeffentlichung: die einzigen langen Hashes sind
+Testvektoren aus internal/login/crypt_test.go ("Hello world!", "anderes");
+Passwoerter kommen nur ueber die Umgebungsvariable AKMESH_ROOT_HASH ins Image.

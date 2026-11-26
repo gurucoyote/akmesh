@@ -8,10 +8,10 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/uname"
+	"github.com/gurucoyote/akmesh/internal/uname"
 
-	"akmesh/internal/policy"
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 func main() {

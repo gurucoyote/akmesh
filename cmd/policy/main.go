@@ -7,8 +7,8 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/policy"
-	"akmesh/internal/policycmd"
+	"github.com/gurucoyote/akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/policycmd"
 )
 
 func main() {

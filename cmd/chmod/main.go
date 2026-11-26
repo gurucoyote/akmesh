@@ -9,9 +9,9 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/forked/chmod"
+	"github.com/gurucoyote/akmesh/internal/forked/chmod"
 
-	"akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/policy"
 )
 
 func main() {

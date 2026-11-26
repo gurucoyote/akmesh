@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"akmesh/internal/imgload"
-	"akmesh/internal/webfonts"
+	"github.com/gurucoyote/akmesh/internal/imgload"
+	"github.com/gurucoyote/akmesh/internal/webfonts"
 )
 
 // Pictures in a book.

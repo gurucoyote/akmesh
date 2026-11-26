@@ -1,6 +1,6 @@
 package toolnet
 
-import "akmesh/internal/cmdrun"
+import "github.com/gurucoyote/akmesh/internal/cmdrun"
 
 // Commands is the network block's table: certificates here, the socket commands
 // from netcmds.go (and absent in a nonet build).

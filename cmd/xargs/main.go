@@ -9,9 +9,9 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/forked/xargs"
+	"github.com/gurucoyote/akmesh/internal/forked/xargs"
 
-	"akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/policy"
 )
 
 func main() {

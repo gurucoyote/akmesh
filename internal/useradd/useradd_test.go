@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"akmesh/internal/userdb"
+	"github.com/gurucoyote/akmesh/internal/userdb"
 )
 
 // fakeEtc points the package at a throwaway tree and fills it with the base

@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/ls"
+	"github.com/gurucoyote/akmesh/internal/ls"
 )
 
 // ls lives in internal/ls since acmesh-wx6: the u-root command was patched, then

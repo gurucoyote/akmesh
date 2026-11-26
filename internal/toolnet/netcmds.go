@@ -5,7 +5,7 @@ package toolnet
 import (
 	"os"
 
-	"akmesh/internal/net"
+	"github.com/gurucoyote/akmesh/internal/net"
 )
 
 // The network commands live in internal/net since acmesh-mq1. They are still

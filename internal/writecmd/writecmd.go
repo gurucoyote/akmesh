@@ -10,11 +10,11 @@ package writecmd
 import (
 	"os"
 
-	"akmesh/internal/cmdrun"
-	"akmesh/internal/docxgen"
-	"akmesh/internal/epubgen"
-	"akmesh/internal/multicall"
-	"akmesh/internal/pdfgen"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/docxgen"
+	"github.com/gurucoyote/akmesh/internal/epubgen"
+	"github.com/gurucoyote/akmesh/internal/multicall"
+	"github.com/gurucoyote/akmesh/internal/pdfgen"
 )
 
 // Prog is this binary.

@@ -7852,3 +7852,23 @@ MSYS-Schreibweise /c/ ist nicht vorhanden und wird nicht uebersetzt.
 
 Der PATH-Eintrag aus profile.sh ist gemischt (Windows-HOME plus /.local/bin);
 Windows akzeptiert das, weil beide Trenner in Pfaden erlaubt sind.
+
+### Modulpfad auf GitHub umgestellt (26.11.2026)
+
+    module github.com/gurucoyote/akmesh        (vorher: module akmesh)
+
+234 Go-Dateien umgeschrieben (nur echte Paketpfade; "akmesh/apk" als User-Agent
+und "akmesh/0.1 (curl compatible)" blieben stehen), ldflags in build-bb.sh auf
+-X github.com/gurucoyote/akmesh/internal/appname.Name.
+
+    gofmt -l            leer
+    go vet ./...        leer
+    go build ./...      ok (linux und windows)
+    go test ./...       gruen
+    Batterie Linux      520 checks, 0 failures
+    Batterie Windows    394 checks, 0 failures
+    akmesh              21.6 MiB (22610044 bytes), statically linked, stripped
+    akmesh.exe          19.8 MiB (20764672 bytes), Windows PE, stripped
+
+Groesser als vorher (22548604 bzw. 20708352 Bytes), weil der Modulpfad in
+Buildinfo und Fehlertexten laenger ist.

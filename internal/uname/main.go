@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 type unameFlags struct {

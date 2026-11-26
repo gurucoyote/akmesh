@@ -7,9 +7,9 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/diffpatch"
-	"akmesh/internal/policy"
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/diffpatch"
+	"github.com/gurucoyote/akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 func main() {

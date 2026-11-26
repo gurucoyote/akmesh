@@ -9,7 +9,7 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/writecmd"
+	"github.com/gurucoyote/akmesh/internal/writecmd"
 )
 
 func main() {

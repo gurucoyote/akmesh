@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"akmesh/internal/winmode"
+	"github.com/gurucoyote/akmesh/internal/winmode"
 )
 
 type options struct {

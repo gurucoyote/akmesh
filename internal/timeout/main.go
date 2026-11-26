@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"akmesh/internal/proc"
-	"akmesh/internal/shared"
+	"github.com/gurucoyote/akmesh/internal/proc"
+	"github.com/gurucoyote/akmesh/internal/shared"
 	"time"
 )
 

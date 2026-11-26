@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"akmesh/internal/login"
+	"github.com/gurucoyote/akmesh/internal/login"
 )
 
 // Paths and functions are variables so a test can point them somewhere else.

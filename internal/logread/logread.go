@@ -5,7 +5,7 @@ package logread
 import (
 	"io"
 
-	"akmesh/internal/syslog"
+	"github.com/gurucoyote/akmesh/internal/syslog"
 )
 
 // Run is the command entry point.

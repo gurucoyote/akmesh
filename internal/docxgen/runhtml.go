@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"akmesh/internal/htmlmd"
+	"github.com/gurucoyote/akmesh/internal/htmlmd"
 )
 
 const usageHTML = `usage: html2docx [-o FILE.docx] [FILE...]

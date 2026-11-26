@@ -3,7 +3,7 @@ package toolpkg
 import (
 	"os"
 
-	"akmesh/internal/apkcmd"
+	"github.com/gurucoyote/akmesh/internal/apkcmd"
 )
 
 func runApk(args []string, stdin, stdout, stderr *os.File) int {

@@ -5,8 +5,8 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/policy"
-	"akmesh/internal/tracedeps"
+	"github.com/gurucoyote/akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/tracedeps"
 )
 
 func main() {

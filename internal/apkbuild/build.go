@@ -32,12 +32,12 @@ import (
 	"path/filepath"
 	"sort"
 
-	"akmesh/internal/winmode"
+	"github.com/gurucoyote/akmesh/internal/winmode"
 	"strconv"
 	"strings"
 	"time"
 
-	"akmesh/internal/apkcore"
+	"github.com/gurucoyote/akmesh/internal/apkcore"
 )
 
 // Manifest is what a package says about itself. The file uses "key = value"

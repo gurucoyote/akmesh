@@ -2,7 +2,7 @@
 
 package tools
 
-import "akmesh/internal/mount"
+import "github.com/gurucoyote/akmesh/internal/mount"
 
 // mount is ours and not u-root's (acmesh-2p6w): WSL starts its distribution
 // with "/bin/mount --internal-only -t drvfs", and drvfs has to be handed to

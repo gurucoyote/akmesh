@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"akmesh/internal/apkcore"
-	"akmesh/internal/apkscript"
+	"github.com/gurucoyote/akmesh/internal/apkcore"
+	"github.com/gurucoyote/akmesh/internal/apkscript"
 )
 
 type options struct {

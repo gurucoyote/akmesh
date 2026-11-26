@@ -10,16 +10,16 @@ import (
 	"fmt"
 	"os"
 
-	"akmesh/internal/cmdrun"
-	"akmesh/internal/tooldiff"
-	"akmesh/internal/tooljq"
-	"akmesh/internal/toolnet"
-	"akmesh/internal/toolpkg"
-	"akmesh/internal/tools"
-	"akmesh/internal/toolsed"
-	"akmesh/internal/toolsh"
-	"akmesh/internal/toolsvc"
-	"akmesh/internal/tooltar"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/tooldiff"
+	"github.com/gurucoyote/akmesh/internal/tooljq"
+	"github.com/gurucoyote/akmesh/internal/toolnet"
+	"github.com/gurucoyote/akmesh/internal/toolpkg"
+	"github.com/gurucoyote/akmesh/internal/tools"
+	"github.com/gurucoyote/akmesh/internal/toolsed"
+	"github.com/gurucoyote/akmesh/internal/toolsh"
+	"github.com/gurucoyote/akmesh/internal/toolsvc"
+	"github.com/gurucoyote/akmesh/internal/tooltar"
 )
 
 // All is every command the full binary carries, keyed by name.

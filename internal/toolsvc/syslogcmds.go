@@ -3,7 +3,7 @@ package toolsvc
 import (
 	"os"
 
-	"akmesh/internal/syslog"
+	"github.com/gurucoyote/akmesh/internal/syslog"
 )
 
 // The three logging commands share one package but keep their own entry point,

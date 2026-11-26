@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/forked/id"
+	"github.com/gurucoyote/akmesh/internal/forked/id"
 )
 
 // runID is the glue between the command table and the forked u-root id.

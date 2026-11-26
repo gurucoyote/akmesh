@@ -197,7 +197,7 @@ Wie der Name reist:
 
 - `internal/appname.Name` ist eine var (keine const, nur eine var ist per
   Linker setzbar). `scripts/build-bb.sh` liest `AKMESH_NAME`, schreibt den Namen
-  in `-ldflags "-X akmesh/internal/appname.Name=..."`, in den Dateinamen des
+  in `-ldflags "-X github.com/gurucoyote/akmesh/internal/appname.Name=..."`, in den Dateinamen des
   Binaries und in die zwei Dispatcher-Meldungen aus gobusybox.
 - Die zwei Meldungen sind Zeichenketten in einer fremden Datei. Der Build
   ersetzt in ihnen das Wort, das ein frueherer Build hinterlassen hat, statt
@@ -213,8 +213,11 @@ Wie der Name reist:
   `jq -V`, der User-Agent von curl/wget (`bssdsh/0.1 (curl compatible)`), die
   Organisation eines Testzertifikats (`bssdsh mkcert`) und das Dateipraefix im
   Trust-Store (`bssdsh-BASE.crt`).
-- Der Modulpfad bleibt `akmesh/internal`. Name und Importpfad sind zwei Dinge,
-  und ein Binary namens bssdsh darf weiter akmesh-Pakete importieren.
+- Der Modulpfad ist seit dem 26.11.2026 `github.com/gurucoyote/akmesh`, damit
+  das Projekt auf GitHub liegen kann und `go get` funktioniert. Der Buildname
+  bleibt davon unabhängig: ein Binary namens bssdsh importiert weiter
+  github.com/gurucoyote/akmesh-Pakete. Produktname und Importpfad sind zwei
+  Dinge, und der User-Agent (`akmesh/apk`, `<Buildname>/0.1`) ist ein drittes.
 
 Der Zertifikats-Issuer ist zusaetzlich zur Laufzeit waehlbar: `mkcert -org NAME`,
 sonst `AKMESH_CERT_ORG`, sonst `<Buildname> mkcert`. Eine CA, die schon existiert,

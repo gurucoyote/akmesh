@@ -7,8 +7,8 @@ package tooldiff
 import (
 	"os"
 
-	"akmesh/internal/cmdrun"
-	"akmesh/internal/diffpatch"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/diffpatch"
 )
 
 // Commands is this block's table.

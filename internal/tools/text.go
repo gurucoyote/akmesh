@@ -3,12 +3,12 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/basename"
-	"akmesh/internal/cut"
-	"akmesh/internal/dirname"
-	"akmesh/internal/nl"
-	"akmesh/internal/seq"
-	"akmesh/internal/tac"
+	"github.com/gurucoyote/akmesh/internal/basename"
+	"github.com/gurucoyote/akmesh/internal/cut"
+	"github.com/gurucoyote/akmesh/internal/dirname"
+	"github.com/gurucoyote/akmesh/internal/nl"
+	"github.com/gurucoyote/akmesh/internal/seq"
+	"github.com/gurucoyote/akmesh/internal/tac"
 )
 
 // The small text commands live in their own packages since acmesh-mq1; these

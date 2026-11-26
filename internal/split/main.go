@@ -3,7 +3,7 @@
 package split
 
 import (
-	"akmesh/internal/shared"
+	"github.com/gurucoyote/akmesh/internal/shared"
 
 	"bufio"
 	"bytes"

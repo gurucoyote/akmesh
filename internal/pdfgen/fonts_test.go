@@ -8,7 +8,7 @@ import (
 
 	pdf "github.com/stephenafamo/goldmark-pdf"
 
-	"akmesh/internal/webfonts"
+	"github.com/gurucoyote/akmesh/internal/webfonts"
 )
 
 // TestPDFCarriesOurFonts is the point of the port: the document is set in Lora

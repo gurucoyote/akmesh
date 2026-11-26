@@ -8,8 +8,8 @@ package tooltar
 import (
 	"os"
 
-	"akmesh/internal/cmdrun"
-	"akmesh/internal/forked/tar"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/forked/tar"
 )
 
 // Commands is this block's table.

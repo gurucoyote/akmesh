@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/forked/wc"
+	"github.com/gurucoyote/akmesh/internal/forked/wc"
 )
 
 // runWc is the glue between the command table and the forked u-root command.

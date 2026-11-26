@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"akmesh/internal/userdb"
+	"github.com/gurucoyote/akmesh/internal/userdb"
 )
 
 // Group membership messages name the command that was called; busybox prints

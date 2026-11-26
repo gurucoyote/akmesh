@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/policy"
 )
 
 // runPolicy explains and tests the policy of the current process. It is the

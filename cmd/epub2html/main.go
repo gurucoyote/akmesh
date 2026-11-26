@@ -4,8 +4,8 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/epubmd"
-	"akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/epubmd"
+	"github.com/gurucoyote/akmesh/internal/policy"
 )
 
 func main() {

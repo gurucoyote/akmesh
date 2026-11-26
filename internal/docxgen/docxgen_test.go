@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"akmesh/internal/docxmd"
+	"github.com/gurucoyote/akmesh/internal/docxmd"
 )
 
 // unzip reads a .docx back into its parts.

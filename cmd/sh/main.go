@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"akmesh/internal/policy"
-	"akmesh/internal/toolsh"
+	"github.com/gurucoyote/akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/toolsh"
 )
 
 func main() {

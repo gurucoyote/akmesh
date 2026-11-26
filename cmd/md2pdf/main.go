@@ -4,8 +4,8 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/pdfgen"
-	"akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/pdfgen"
+	"github.com/gurucoyote/akmesh/internal/policy"
 )
 
 func main() {

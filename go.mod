@@ -1,4 +1,4 @@
-module akmesh
+module github.com/gurucoyote/akmesh
 
 go 1.27.4
 

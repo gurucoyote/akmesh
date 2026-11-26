@@ -3,7 +3,7 @@ package toolpkg
 import (
 	"os"
 
-	"akmesh/internal/apkguard"
+	"github.com/gurucoyote/akmesh/internal/apkguard"
 )
 
 func runApkguard(args []string, stdin, stdout, stderr *os.File) int {

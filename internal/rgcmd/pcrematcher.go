@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"akmesh/internal/pcre"
+	"github.com/gurucoyote/akmesh/internal/pcre"
 
 	"git.site.quack-lab.dev/dave/gripgrep/match"
 )

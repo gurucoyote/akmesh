@@ -5,7 +5,7 @@
 // carry. Measured in docs/design/split.md; acmesh-58me.
 package toolpkg
 
-import "akmesh/internal/cmdrun"
+import "github.com/gurucoyote/akmesh/internal/cmdrun"
 
 // Commands is the package block's table.
 var Commands = map[string]cmdrun.Func{

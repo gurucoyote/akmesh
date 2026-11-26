@@ -7,7 +7,7 @@ package chmod
 import (
 	"io/fs"
 
-	"akmesh/internal/winmode"
+	"github.com/gurucoyote/akmesh/internal/winmode"
 )
 
 // recordMode writes the mode into the file's ACL, because os.Chmod on Windows

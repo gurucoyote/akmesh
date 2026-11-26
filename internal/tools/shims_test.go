@@ -3,9 +3,9 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/diffpatch"
-	"akmesh/internal/forked/tar"
-	"akmesh/internal/sedawk"
+	"github.com/gurucoyote/akmesh/internal/diffpatch"
+	"github.com/gurucoyote/akmesh/internal/forked/tar"
+	"github.com/gurucoyote/akmesh/internal/sedawk"
 )
 
 // The wrappers these tests call moved to internal/toolsed and internal/tooldiff

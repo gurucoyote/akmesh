@@ -81,6 +81,15 @@ binaries beside the socket, all behind one shared dispatcher:
 All five are stripped Go binaries. The reasoning and the measurements behind the
 split are in `docs/design/split.md` and `docs/measurements.md`.
 
+## Where it lives
+
+    module github.com/gurucoyote/akmesh
+
+The module path is the repository path, so a single command can be installed
+straight from a checkout or from the module proxy:
+
+    go install github.com/gurucoyote/akmesh/cmd/jq@latest
+
 ## Build
 
     GOTOOLCHAIN=auto ./scripts/build-bb.sh linux     # akmesh and the four parts

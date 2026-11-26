@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"akmesh/internal/epubgen"
+	"github.com/gurucoyote/akmesh/internal/epubgen"
 )
 
 // bookOf writes an EPUB through our own writer, so the reader is tested against

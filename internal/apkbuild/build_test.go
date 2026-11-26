@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"akmesh/internal/apkcore"
+	"github.com/gurucoyote/akmesh/internal/apkcore"
 )
 
 // tree writes a package payload and returns its directory.

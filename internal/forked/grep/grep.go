@@ -35,8 +35,8 @@ import (
 	"strconv"
 	"strings"
 
-	"akmesh/internal/pcre"
-	akusage "akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/pcre"
+	akusage "github.com/gurucoyote/akmesh/internal/usage"
 )
 
 // params is what the command line asked for.

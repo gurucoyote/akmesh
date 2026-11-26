@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"akmesh/internal/apkcore"
+	"github.com/gurucoyote/akmesh/internal/apkcore"
 )
 
 // TestRealAbuildPackage is the regression the unit fixtures cannot give: the

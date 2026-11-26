@@ -498,7 +498,7 @@ prepare_gen "$GEN_DIR"
 	cd "$GEN_DIR" &&
 		GOWORK=off GOTOOLCHAIN=auto \
 			go build -o "$ROOT/$OUT" -mod=vendor -a \
-			-ldflags "-s -w -buildid= -X akmesh/internal/appname.Name=$NAME" -trimpath .
+			-ldflags "-s -w -buildid= -X github.com/gurucoyote/akmesh/internal/appname.Name=$NAME" -trimpath .
 )
 # The rename above must reach the binary. A vendor/module mismatch would build
 # fine and still ship u-root's wording, so the build checks its own output.

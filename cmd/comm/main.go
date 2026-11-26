@@ -9,10 +9,10 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/forked/comm"
+	"github.com/gurucoyote/akmesh/internal/forked/comm"
 
-	"akmesh/internal/policy"
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 func main() {

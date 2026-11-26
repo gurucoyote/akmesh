@@ -9,7 +9,7 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/doccmd"
+	"github.com/gurucoyote/akmesh/internal/doccmd"
 )
 
 func main() {

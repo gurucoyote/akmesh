@@ -35,7 +35,7 @@ import (
 	"strconv"
 	"strings"
 
-	akusage "akmesh/internal/usage"
+	akusage "github.com/gurucoyote/akmesh/internal/usage"
 )
 
 type params struct {

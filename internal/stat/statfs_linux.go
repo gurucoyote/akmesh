@@ -3,7 +3,7 @@
 package stat
 
 import (
-	"akmesh/internal/shared"
+	"github.com/gurucoyote/akmesh/internal/shared"
 
 	"os"
 	"path/filepath"

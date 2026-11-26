@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/forked/cp"
+	"github.com/gurucoyote/akmesh/internal/forked/cp"
 )
 
 // runCp is the glue between the command table and the forked u-root command.

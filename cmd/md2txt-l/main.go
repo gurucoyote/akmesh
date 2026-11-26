@@ -5,8 +5,8 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/md2txt"
-	"akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/md2txt"
+	"github.com/gurucoyote/akmesh/internal/policy"
 )
 
 func main() {

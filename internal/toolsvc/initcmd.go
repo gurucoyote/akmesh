@@ -3,7 +3,7 @@ package toolsvc
 import (
 	"os"
 
-	"akmesh/internal/akinit"
+	"github.com/gurucoyote/akmesh/internal/akinit"
 )
 
 // runInit hands the dispatcher's call to the init package: same binary, same

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 // runFileCommand is runThroughDispatcher with stdin content and a working

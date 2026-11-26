@@ -14,7 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"akmesh/internal/appname"
+	"github.com/gurucoyote/akmesh/internal/appname"
 )
 
 func keychain() string {

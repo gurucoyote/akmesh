@@ -3,12 +3,12 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/clear"
-	"akmesh/internal/corecmd"
-	"akmesh/internal/env"
-	"akmesh/internal/file"
-	"akmesh/internal/iconv"
-	"akmesh/internal/policycmd"
+	"github.com/gurucoyote/akmesh/internal/clear"
+	"github.com/gurucoyote/akmesh/internal/corecmd"
+	"github.com/gurucoyote/akmesh/internal/env"
+	"github.com/gurucoyote/akmesh/internal/file"
+	"github.com/gurucoyote/akmesh/internal/iconv"
+	"github.com/gurucoyote/akmesh/internal/policycmd"
 )
 
 // The last command implementations moved into their own packages in acmesh-mq1;

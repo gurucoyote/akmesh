@@ -21,7 +21,7 @@ import (
 	"path"
 	"strings"
 
-	"akmesh/internal/htmlmd"
+	"github.com/gurucoyote/akmesh/internal/htmlmd"
 )
 
 // Convert returns the Markdown of an EPUB book. Chapters are joined by a blank

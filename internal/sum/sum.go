@@ -19,7 +19,7 @@ import (
 	"os"
 	"strings"
 
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 // RunCommand is Run for a command name such as "sha256sum": the name carries

@@ -15,14 +15,14 @@ package doccmd
 import (
 	"os"
 
-	"akmesh/internal/anymd"
-	"akmesh/internal/cmdrun"
-	"akmesh/internal/epubmd"
-	"akmesh/internal/md2txt"
-	"akmesh/internal/multicall"
-	"akmesh/internal/pdfmd"
-	"akmesh/internal/rgcmd"
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/anymd"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/epubmd"
+	"github.com/gurucoyote/akmesh/internal/md2txt"
+	"github.com/gurucoyote/akmesh/internal/multicall"
+	"github.com/gurucoyote/akmesh/internal/pdfmd"
+	"github.com/gurucoyote/akmesh/internal/rgcmd"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 // pinned builds the reader with its format fixed, the way the *2md mains do.

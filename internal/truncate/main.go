@@ -3,7 +3,7 @@
 package truncate
 
 import (
-	"akmesh/internal/shared"
+	"github.com/gurucoyote/akmesh/internal/shared"
 
 	"fmt"
 	"os"

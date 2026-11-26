@@ -5,7 +5,7 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/shellcmd"
+	"github.com/gurucoyote/akmesh/internal/shellcmd"
 )
 
 func main() {

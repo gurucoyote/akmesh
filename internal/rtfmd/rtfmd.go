@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"akmesh/internal/htmlmd"
+	"github.com/gurucoyote/akmesh/internal/htmlmd"
 )
 
 // Convert reads RTF and returns the Markdown for it.

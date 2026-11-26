@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"akmesh/internal/epubgen"
+	"github.com/gurucoyote/akmesh/internal/epubgen"
 )
 
 // buildEPUB writes a minimal EPUB with the parts in the given spine order. The

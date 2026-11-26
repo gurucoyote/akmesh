@@ -7,12 +7,12 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/bsdsum"
-	"akmesh/internal/chown"
-	"akmesh/internal/login"
-	"akmesh/internal/odump"
-	"akmesh/internal/setsid"
-	"akmesh/internal/unzip"
+	"github.com/gurucoyote/akmesh/internal/bsdsum"
+	"github.com/gurucoyote/akmesh/internal/chown"
+	"github.com/gurucoyote/akmesh/internal/login"
+	"github.com/gurucoyote/akmesh/internal/odump"
+	"github.com/gurucoyote/akmesh/internal/setsid"
+	"github.com/gurucoyote/akmesh/internal/unzip"
 )
 
 func runChown(args []string, stdin, stdout, stderr *os.File) int {

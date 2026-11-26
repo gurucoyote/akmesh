@@ -1,13 +1,13 @@
 package tools
 
 import (
-	"akmesh/internal/blkid"
+	"github.com/gurucoyote/akmesh/internal/blkid"
 	"os"
 
-	"akmesh/internal/hostname"
-	"akmesh/internal/proc"
-	"akmesh/internal/timeout"
-	"akmesh/internal/uname"
+	"github.com/gurucoyote/akmesh/internal/hostname"
+	"github.com/gurucoyote/akmesh/internal/proc"
+	"github.com/gurucoyote/akmesh/internal/timeout"
+	"github.com/gurucoyote/akmesh/internal/uname"
 )
 
 // uname, hostname, ps, kill, killall and timeout live in their own packages

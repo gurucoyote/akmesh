@@ -5,8 +5,8 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/httpd"
-	"akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/httpd"
+	"github.com/gurucoyote/akmesh/internal/policy"
 )
 
 func main() {

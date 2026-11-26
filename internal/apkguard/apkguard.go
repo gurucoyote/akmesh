@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"akmesh/internal/apkreport"
+	"github.com/gurucoyote/akmesh/internal/apkreport"
 )
 
 type options struct {

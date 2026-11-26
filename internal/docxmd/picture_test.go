@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"akmesh/internal/docxgen"
+	"github.com/gurucoyote/akmesh/internal/docxgen"
 )
 
 // docxWithPicture builds a document the way our own writer does, so the reader

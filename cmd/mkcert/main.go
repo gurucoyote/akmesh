@@ -4,10 +4,10 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/mkcert"
+	"github.com/gurucoyote/akmesh/internal/mkcert"
 
-	"akmesh/internal/policy"
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 func main() {

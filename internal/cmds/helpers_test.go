@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
 )
 
 // captureIn runs a command with the given stdin text and returns stdout plus

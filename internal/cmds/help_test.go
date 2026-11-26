@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"akmesh/internal/rgcmd"
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/rgcmd"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 // runThroughDispatcher calls one command the way the binary does, so that a

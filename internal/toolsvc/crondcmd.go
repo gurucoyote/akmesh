@@ -3,7 +3,7 @@ package toolsvc
 import (
 	"os"
 
-	"akmesh/internal/crond"
+	"github.com/gurucoyote/akmesh/internal/crond"
 )
 
 // runCrond hands the dispatcher's call to the crond package.

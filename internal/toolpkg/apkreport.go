@@ -3,7 +3,7 @@ package toolpkg
 import (
 	"os"
 
-	"akmesh/internal/apkreport"
+	"github.com/gurucoyote/akmesh/internal/apkreport"
 )
 
 func runApkreport(args []string, stdin, stdout, stderr *os.File) int {

@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"akmesh/internal/supervise"
+	"github.com/gurucoyote/akmesh/internal/supervise"
 	"strconv"
 	"strings"
 	"sync"

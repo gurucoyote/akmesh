@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
 )
 
 func streams(t *testing.T) (in, out, errOut *os.File, read func() (string, string)) {

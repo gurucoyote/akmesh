@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"akmesh/internal/apkreport"
+	"github.com/gurucoyote/akmesh/internal/apkreport"
 )
 
 // fakeApk writes a shell script that behaves like apk for these tests: it logs

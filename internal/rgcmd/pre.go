@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"akmesh/internal/anymd"
+	"github.com/gurucoyote/akmesh/internal/anymd"
 )
 
 // preprocessor turns a document into the text the search runs over. Two forms:

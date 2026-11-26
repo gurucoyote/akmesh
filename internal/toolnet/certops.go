@@ -3,9 +3,9 @@ package toolnet
 import (
 	"os"
 
-	"akmesh/internal/certinfo"
-	"akmesh/internal/certverify"
-	"akmesh/internal/mkcert"
+	"github.com/gurucoyote/akmesh/internal/certinfo"
+	"github.com/gurucoyote/akmesh/internal/certverify"
+	"github.com/gurucoyote/akmesh/internal/mkcert"
 )
 
 // The certificate commands live in their own packages (acmesh-vcl, acmesh-pav,

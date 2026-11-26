@@ -31,7 +31,7 @@ import (
 	"syscall"
 	"time"
 
-	"akmesh/internal/supervise"
+	"github.com/gurucoyote/akmesh/internal/supervise"
 )
 
 // action is the inittab action, the subset BusyBox understands and a container

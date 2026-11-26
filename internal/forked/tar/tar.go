@@ -33,7 +33,7 @@ import (
 	"strconv"
 	"strings"
 
-	"akmesh/internal/forked/tar/tarutil"
+	"github.com/gurucoyote/akmesh/internal/forked/tar/tarutil"
 )
 
 type params struct {

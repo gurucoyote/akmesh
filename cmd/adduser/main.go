@@ -9,10 +9,10 @@ import (
 	"io"
 	"os"
 
-	"akmesh/internal/useradd"
+	"github.com/gurucoyote/akmesh/internal/useradd"
 
-	"akmesh/internal/policy"
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 func main() {

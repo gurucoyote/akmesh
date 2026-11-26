@@ -11,7 +11,7 @@ import (
 
 	"github.com/itchyny/gojq"
 
-	"akmesh/internal/appname"
+	"github.com/gurucoyote/akmesh/internal/appname"
 )
 
 // jqExit codes, as in jq: 3 for a program that does not compile, 5 for an error

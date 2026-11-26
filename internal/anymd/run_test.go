@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"akmesh/internal/docxgen"
+	"github.com/gurucoyote/akmesh/internal/docxgen"
 )
 
 // runIn calls Run or RunAs with streams backed by temp files, so that the test

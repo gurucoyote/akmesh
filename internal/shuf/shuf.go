@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	"akmesh/internal/appname"
+	"github.com/gurucoyote/akmesh/internal/appname"
 )
 
 type options struct {

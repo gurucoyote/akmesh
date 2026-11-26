@@ -28,7 +28,7 @@ import (
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer/html"
 
-	"akmesh/internal/webfonts"
+	"github.com/gurucoyote/akmesh/internal/webfonts"
 )
 
 // Options carries what a book needs beyond its text.

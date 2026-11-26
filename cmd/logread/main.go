@@ -5,7 +5,7 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/toolsvc"
+	"github.com/gurucoyote/akmesh/internal/toolsvc"
 )
 
 func main() {

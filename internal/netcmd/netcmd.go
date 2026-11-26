@@ -9,14 +9,14 @@ package netcmd
 import (
 	"os"
 
-	"akmesh/internal/certinfo"
-	"akmesh/internal/certverify"
-	"akmesh/internal/cmdrun"
-	"akmesh/internal/httpd"
-	"akmesh/internal/mkcert"
-	"akmesh/internal/multicall"
-	"akmesh/internal/net"
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/certinfo"
+	"github.com/gurucoyote/akmesh/internal/certverify"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/httpd"
+	"github.com/gurucoyote/akmesh/internal/mkcert"
+	"github.com/gurucoyote/akmesh/internal/multicall"
+	"github.com/gurucoyote/akmesh/internal/net"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 // viaNet adapts the one Run that serves curl, wget, ssh and scp.

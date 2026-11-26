@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/proc"
+	"github.com/gurucoyote/akmesh/internal/proc"
 
-	"akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/policy"
 )
 
 func main() {

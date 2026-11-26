@@ -8,9 +8,9 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/policy"
-	"akmesh/internal/sedawk"
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/sedawk"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 func main() {

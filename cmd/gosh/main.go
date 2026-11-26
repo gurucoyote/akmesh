@@ -5,9 +5,9 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/toolsh"
+	"github.com/gurucoyote/akmesh/internal/toolsh"
 
-	"akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/policy"
 )
 
 func main() {

@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/forked/touch"
+	"github.com/gurucoyote/akmesh/internal/forked/touch"
 )
 
 // runTouch is the glue between the command table and the forked u-root command.

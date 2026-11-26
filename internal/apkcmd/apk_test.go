@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"akmesh/internal/apkcore"
+	"github.com/gurucoyote/akmesh/internal/apkcore"
 )
 
 // The fixtures build a real repository on disk: two gzip streams per package

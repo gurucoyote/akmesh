@@ -17,7 +17,7 @@ import (
 	"syscall"
 	"time"
 
-	"akmesh/internal/winmode"
+	"github.com/gurucoyote/akmesh/internal/winmode"
 )
 
 // Layout inside a target root. The paths are functions, not constants, because

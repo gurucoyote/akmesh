@@ -18,12 +18,12 @@ import (
 	"os"
 	"sort"
 
-	"akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/policy"
 	"strconv"
 	"strings"
 	"time"
 
-	"akmesh/internal/appname"
+	"github.com/gurucoyote/akmesh/internal/appname"
 )
 
 // Exit codes are curl's, because scripts check them.

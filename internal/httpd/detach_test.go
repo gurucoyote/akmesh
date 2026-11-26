@@ -11,7 +11,7 @@ import (
 // start the wrong command, and without the path exec searches PATH for "httpd",
 // which is the bug in acmesh-rds.
 func TestDetachCmdNameForTheMulticall(t *testing.T) {
-	got := detachArgv("/root/akmesh/akmesh", "httpd", []string{"-p", "127.0.0.1:8099", "-h", "."})
+	got := detachArgv("/opt/akmesh/akmesh", "httpd", []string{"-p", "127.0.0.1:8099", "-h", "."})
 	want := []string{"httpd", "-f", "-p", "127.0.0.1:8099", "-h", "."}
 	if strings.Join(got, " ") != strings.Join(want, " ") {
 		t.Errorf("got %q want %q", got, want)
@@ -32,7 +32,7 @@ func TestDetachStandaloneNeedsNoName(t *testing.T) {
 // TestDetachKeepsForegroundFlagOut: the child must not receive a second -f if
 // the caller already gave one, or the flag list grows on every restart.
 func TestDetachKeepsForegroundFlagOut(t *testing.T) {
-	got := detachArgv("/root/akmesh/akmesh", "httpd", []string{"-f", "-p", "8099"})
+	got := detachArgv("/opt/akmesh/akmesh", "httpd", []string{"-f", "-p", "8099"})
 	want := []string{"httpd", "-f", "-p", "8099"}
 	if strings.Join(got, " ") != strings.Join(want, " ") {
 		t.Errorf("got %q want %q", got, want)

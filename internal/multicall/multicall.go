@@ -20,8 +20,8 @@ import (
 	"sort"
 	"strings"
 
-	"akmesh/internal/cmdrun"
-	"akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/policy"
 )
 
 // Prog is one dispatcher: its name, its table, and the other packages of the

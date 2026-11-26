@@ -17,7 +17,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"akmesh/internal/forked/tar/upath"
+	"github.com/gurucoyote/akmesh/internal/forked/tar/upath"
 )
 
 // Opts contains options for creating and extracting tar files.

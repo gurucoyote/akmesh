@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"akmesh/internal/winmode"
+	"github.com/gurucoyote/akmesh/internal/winmode"
 )
 
 func Run(args []string, stdin *os.File, stdout, stderr *os.File) int {

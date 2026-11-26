@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/forked/uniq"
+	"github.com/gurucoyote/akmesh/internal/forked/uniq"
 )
 
 // runUniq is the glue between the command table and the forked u-root command.

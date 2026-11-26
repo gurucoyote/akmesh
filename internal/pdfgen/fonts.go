@@ -12,7 +12,7 @@ import (
 
 	pdf "github.com/stephenafamo/goldmark-pdf"
 
-	"akmesh/internal/webfonts"
+	"github.com/gurucoyote/akmesh/internal/webfonts"
 )
 
 // fontSetup registers the embedded programs and returns the styles that use

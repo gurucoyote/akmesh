@@ -5,7 +5,7 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/netcmd"
+	"github.com/gurucoyote/akmesh/internal/netcmd"
 )
 
 func main() {

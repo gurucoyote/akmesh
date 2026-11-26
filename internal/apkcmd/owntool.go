@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/exec"
 
-	"akmesh/internal/apkscript"
+	"github.com/gurucoyote/akmesh/internal/apkscript"
 )
 
 // ownTool lets a package script run a command we already carry, in our own

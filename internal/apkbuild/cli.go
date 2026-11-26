@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"akmesh/internal/apkcore"
+	"github.com/gurucoyote/akmesh/internal/apkcore"
 )
 
 // Run is the command itself: apkbuild build|index|keygen.

@@ -3,10 +3,10 @@
 package cut
 
 import (
-	"akmesh/internal/shared"
-	akusage "akmesh/internal/usage"
 	"bufio"
 	"fmt"
+	"github.com/gurucoyote/akmesh/internal/shared"
+	akusage "github.com/gurucoyote/akmesh/internal/usage"
 	"os"
 	"sort"
 	"strconv"

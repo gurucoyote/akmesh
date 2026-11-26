@@ -9,8 +9,8 @@ package toolsed
 import (
 	"os"
 
-	"akmesh/internal/cmdrun"
-	"akmesh/internal/sedawk"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/sedawk"
 )
 
 // Commands is this block's table.

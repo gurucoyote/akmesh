@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"akmesh/internal/apkcore"
+	"github.com/gurucoyote/akmesh/internal/apkcore"
 )
 
 // Line is one record. Field names stay short because they end up in a file a

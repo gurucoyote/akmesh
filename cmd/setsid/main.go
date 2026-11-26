@@ -8,10 +8,10 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/setsid"
+	"github.com/gurucoyote/akmesh/internal/setsid"
 
-	"akmesh/internal/policy"
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 func main() {

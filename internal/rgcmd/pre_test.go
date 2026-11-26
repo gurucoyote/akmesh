@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"akmesh/internal/docxgen"
+	"github.com/gurucoyote/akmesh/internal/docxgen"
 )
 
 // docxBytes builds a real docx with our own writer, so the fixture and the

@@ -7,8 +7,8 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/blkid"
-	"akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/blkid"
+	"github.com/gurucoyote/akmesh/internal/policy"
 )
 
 func main() {

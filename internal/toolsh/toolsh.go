@@ -10,8 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"akmesh/internal/cmdrun"
-	"akmesh/internal/sh"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/sh"
 )
 
 // Commands is the shell block's table.

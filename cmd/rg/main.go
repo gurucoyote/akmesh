@@ -5,9 +5,9 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/policy"
-	"akmesh/internal/rgcmd"
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/rgcmd"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 func main() {

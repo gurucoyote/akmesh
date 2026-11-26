@@ -7,7 +7,7 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/useradd"
+	"github.com/gurucoyote/akmesh/internal/useradd"
 )
 
 func runAddUser(args []string, stdin, stdout, stderr *os.File) int {

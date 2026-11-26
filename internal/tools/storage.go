@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/disk"
+	"github.com/gurucoyote/akmesh/internal/disk"
 )
 
 // free, df and du live in internal/disk since acmesh-mq1; these wrappers keep

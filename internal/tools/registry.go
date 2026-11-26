@@ -14,11 +14,11 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/cmdrun"
-	"akmesh/internal/policy"
-	"akmesh/internal/shuf"
-	"akmesh/internal/sort"
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/shuf"
+	"github.com/gurucoyote/akmesh/internal/sort"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 // Func is the signature every command implements. It receives the arguments

@@ -3,7 +3,7 @@ package toolsvc
 import (
 	"os"
 
-	"akmesh/internal/login"
+	"github.com/gurucoyote/akmesh/internal/login"
 )
 
 // runLogin is the glue between the command table and internal/login.

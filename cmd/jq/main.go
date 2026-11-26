@@ -8,8 +8,8 @@ package main
 import (
 	"os"
 
-	"akmesh/internal/jq"
-	"akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/jq"
+	"github.com/gurucoyote/akmesh/internal/policy"
 )
 
 func main() {

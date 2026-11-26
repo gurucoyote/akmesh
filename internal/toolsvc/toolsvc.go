@@ -11,7 +11,7 @@
 package toolsvc
 
 import (
-	"akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
 )
 
 // Commands is this block's table.

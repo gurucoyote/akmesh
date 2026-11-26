@@ -3,7 +3,7 @@ package docxgen
 import (
 	"strconv"
 
-	"akmesh/internal/imgload"
+	"github.com/gurucoyote/akmesh/internal/imgload"
 )
 
 // Pictures in a .docx.

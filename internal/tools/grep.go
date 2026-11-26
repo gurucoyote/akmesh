@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/forked/grep"
+	"github.com/gurucoyote/akmesh/internal/forked/grep"
 )
 
 // runGrep is the glue between the command table and the forked u-root command.

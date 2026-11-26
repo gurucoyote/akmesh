@@ -3,7 +3,7 @@ package toolsvc
 import (
 	"os"
 
-	"akmesh/internal/getty"
+	"github.com/gurucoyote/akmesh/internal/getty"
 )
 
 // runGetty hands the dispatcher's call to the getty package.

@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"os"
 
-	"akmesh/internal/cmdlist"
+	"github.com/gurucoyote/akmesh/internal/cmdlist"
 )
 
 func main() {

@@ -17,10 +17,10 @@
 package pdfgen
 
 import (
-	"akmesh/internal/webfonts"
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/gurucoyote/akmesh/internal/webfonts"
 	"html"
 	"io"
 	"strings"

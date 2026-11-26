@@ -14,8 +14,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"akmesh/internal/policy"
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/policy"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 // Func is the signature every command implements: the arguments after the

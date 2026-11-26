@@ -10,14 +10,14 @@ import (
 	"io"
 	"os"
 
-	"akmesh/internal/apkbuild"
-	"akmesh/internal/apkcmd"
-	"akmesh/internal/apkguard"
-	"akmesh/internal/apkreport"
-	"akmesh/internal/cmdrun"
-	"akmesh/internal/multicall"
-	"akmesh/internal/toolsh"
-	"akmesh/internal/usage"
+	"github.com/gurucoyote/akmesh/internal/apkbuild"
+	"github.com/gurucoyote/akmesh/internal/apkcmd"
+	"github.com/gurucoyote/akmesh/internal/apkguard"
+	"github.com/gurucoyote/akmesh/internal/apkreport"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/multicall"
+	"github.com/gurucoyote/akmesh/internal/toolsh"
+	"github.com/gurucoyote/akmesh/internal/usage"
 )
 
 // Prog is this binary: sh and gosh from the shell block, the four apk commands.

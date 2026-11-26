@@ -16,11 +16,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"akmesh/internal/docxmd"
-	"akmesh/internal/epubmd"
-	"akmesh/internal/htmlmd"
-	"akmesh/internal/pdfmd"
-	"akmesh/internal/rtfmd"
+	"github.com/gurucoyote/akmesh/internal/docxmd"
+	"github.com/gurucoyote/akmesh/internal/epubmd"
+	"github.com/gurucoyote/akmesh/internal/htmlmd"
+	"github.com/gurucoyote/akmesh/internal/pdfmd"
+	"github.com/gurucoyote/akmesh/internal/rtfmd"
 )
 
 const usage = `usage: any2md [-o FILE.md] [-f FORMAT] [FILE...]

@@ -8,8 +8,8 @@ package tooljq
 import (
 	"os"
 
-	"akmesh/internal/cmdrun"
-	"akmesh/internal/jq"
+	"github.com/gurucoyote/akmesh/internal/cmdrun"
+	"github.com/gurucoyote/akmesh/internal/jq"
 )
 
 // Commands is the table of this block.

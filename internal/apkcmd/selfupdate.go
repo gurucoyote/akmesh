@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"akmesh/internal/apkcore"
+	"github.com/gurucoyote/akmesh/internal/apkcore"
 )
 
 // ownBinaryTarget is where this binary sits inside root, or "" when there is

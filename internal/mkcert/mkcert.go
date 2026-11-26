@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"akmesh/internal/appname"
-	"akmesh/internal/winmode"
+	"github.com/gurucoyote/akmesh/internal/appname"
+	"github.com/gurucoyote/akmesh/internal/winmode"
 )
 
 // caLife is how long a CA made here lasts: a test CA is not renewed every month,

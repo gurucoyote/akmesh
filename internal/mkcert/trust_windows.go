@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"akmesh/internal/appname"
+	"github.com/gurucoyote/akmesh/internal/appname"
 )
 
 // installCA adds the certificate to the current user's root store. That is what

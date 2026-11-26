@@ -3,7 +3,7 @@ package tools
 import (
 	"os"
 
-	"akmesh/internal/forked/comm"
+	"github.com/gurucoyote/akmesh/internal/forked/comm"
 )
 
 // runComm is the glue between the command table and the forked u-root command.

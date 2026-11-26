@@ -340,3 +340,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 26.11.2026: Repo vor Veroeffentlichung bereinigt - Testzertifikate nicht mehr getrackt (acmesh-gbyt geschlossen), Kontonamen in Doku/Tickets durch Platzhalter ersetzt.
 26.11.2026: Prompt bricht Zeilen jetzt mit CRLF (raw-Modus), erste Zeichnung ohne \r\x1b[K; neue Binarys und Distro nachgezogen (md5 91baddf0), Batterien gruen.
 26.11.2026: Prompt bekommt fuehrendes \r (Spalte 0 auf jeder Konsole), kein \x1b[K mehr; Binarys und Distro nachgezogen.
+26.11.2026: Von Martin bestaetigt - NVDA folgt im Windows-Buendel wieder dem Eingabecursor.

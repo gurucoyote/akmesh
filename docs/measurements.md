@@ -7956,3 +7956,7 @@ abschliessendes Newline geloescht; ein Screenreader liest so eine Zeile doppelt.
 
 Eigene Meldungen der Shell enden weiter mit \n; auf Windows ist das richtig, in
 der WSL-Distro uebersetzt die pty.
+
+Bestaetigt von Martin am 26.11.2026, 18:25, im Windows-Buendel (start.cmd):
+NVDA folgt dem Eingabecursor nach einem Befehl wieder. Vorher blieb der
+Lesecursor am Prompt mit dem getippten Befehl stehen.

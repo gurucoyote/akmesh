@@ -118,7 +118,8 @@ außerhalb des Repos, der öffentliche geht ins Bündel.
 
 ## 7. Offene Entscheidungen
 
-- **Ort:** eigener Ordner im Bündel (dann bleibt alles portabel, eine Zeile in
+- **Ort:** GitHub Pages (statisch, https, ohne Ratenlimit wie bei raw),
+  eigener Ordner im Bündel (dann bleibt alles portabel, eine Zeile in
   `repositories` genügt) oder ein Platz auf testbild.tv. Portabel ist
   konsistent mit dem Bündel; ein Netz-Repo erlaubt Aktualisierungen ohne neues
   Bündel.

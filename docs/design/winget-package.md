@@ -79,6 +79,41 @@ Drei Wege, vom offiziellen bis zum eigenen Regal:
    Administrator-Sitzung - eine Einstellung im Host, also genau die Spur, die
    wir sonst vermeiden. Für "mal ausprobieren" gut, für Auslieferung nicht.
 
+## GitHub als Quelle
+
+Ja, und zwar in zwei Rollen, die man nicht verwechseln sollte.
+
+**Als Download-Ort für das Zip.** `InstallerUrl` darf auf ein Release-Asset zeigen,
+das ist die übliche Praxis:
+
+    InstallerUrl: https://github.com/<owner>/akmesh/releases/download/v0.1.0/akmesh-portable-0.1.0.zip
+    InstallerSha256: <sha256 genau dieser Datei>
+
+Der Hash bindet die Datei; ein neuer Bau heißt ein neues Release, nicht ein
+überschriebenes Asset. GitHub leitet auf objects.githubusercontent.com um, winget
+folgt dem. Ein öffentliches Repo braucht keine Anmeldung.
+
+**Als winget-Quelle selbst.** winget kennt eine statische Quelle
+(`Microsoft.PreIndexed.Package`), die aus einem `index.json` plus Paketablage
+liest. Man kann sie aus einem Repo heraus bedienen:
+
+    winget source add --name akmesh --type Microsoft.PreIndexed.Package \
+        --arg https://github.com/<owner>/akmesh/raw/main/cache
+
+Danach ist `winget install Testbild.Akmesh` ohne jeden PR bei Microsoft möglich -
+allerdings erst, nachdem der Nutzer diese eine Zeile eingetippt hat. Für ein
+Werkzeug wie akmesh, das ohnehin eine eigene Shell mitbringt, ist das ein
+vertretbarer Preis; für "einfach installieren" ist das offizielle Repo besser.
+
+Für das apk-Repo gilt dasselbe Muster: `raw.githubusercontent.com` oder GitHub
+Pages liefert `APKINDEX.tar.gz` und die `.apk` über https, mehr braucht
+`apk update` nicht (siehe docs/design/apk-repo.md). Pages ist die bessere Wahl,
+weil raw seine Ratenlimits hat und jede Datei dort nur 100 MB groß sein darf.
+
+Eine Grenze des Projekts steht dem im Weg: dieses Repo wird lokal geführt, ohne
+Push. Ein öffentliches Repo für Releases und Quellen ist eine Entscheidung von
+Martin, keine technische.
+
 ## Was außerdem zu klären ist
 
 - **Signatur:** winget signiert nichts. Eine unsignierte exe löst SmartScreen

@@ -332,3 +332,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 26.11.2026: lokale .apk im Buendel geprueft (installieren, listen, entfernen); Pfade gehen nicht mehr an winget; Tickets acmesh-c474 und acmesh-mdd8 angelegt.
 26.11.2026: Design-Dokument docs/design/apk-repo.md (Index, Signatur, Schluessel, Bau-Skript, Vertrauens-Wege); WSL-UNC-Pfade gemessen, funktionieren unveraendert.
 26.11.2026: Pfadtrenner dokumentiert - in der Shell /, in PATH-Listen ;, Ausgabe in Windows-Form; Backslash muss quotiert werden.
+26.11.2026: Design-Notiz docs/design/winget-package.md geschrieben (Manifest, zip+portable, Selbstfindung, akmesh links, drei Veroeffentlichungswege), Ticket dazu.

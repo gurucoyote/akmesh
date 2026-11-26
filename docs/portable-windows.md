@@ -61,6 +61,24 @@ Binary entscheidet an seinem eigenen Dateinamen, welcher Befehl gemeint ist.
     ./sh.exe -c 'echo 0=$0'        ->  0=sh          (der Strich und die Endung fallen weg)
     ./clear.exe -x | od -c         ->  033 [ H 033 [ 2 J 033 [ H
 
+## Welcher Trenner gilt
+
+In der Shell ist `/` der richtige Trenner, auch auf Windows:
+
+    ls C:/Windows          geht
+    ls C:\Windows          geht nicht unquoted: die Shell frisst den Backslash
+                           und sucht "C:Windows"
+    cd C:/Windows          geht, pwd meldet danach C:\Windows
+
+Drei Gründe: Windows nimmt beide Formen in seinen Datei-APIs, die Shell benutzt
+den Backslash selbst als Escape-Zeichen, und die Tab-Vervollständigung trennt
+nur an `/`. Wer einen Backslash-Pfad tippt, muss ihn also in Anführungszeichen
+setzen.
+
+Zwischen Verzeichnissen in PATH steht `;` (Windows), nicht `:` - das setzt
+profile.sh über PATHEXT. Was die Shell ausgibt, kommt in Windows-Form mit
+Backslashes (pwd, ls), weil Windows sie so liefert.
+
 ## Pfade in WSL-Distributionen
 
 Die Netzwerkpfade, die der Windows-Explorer anbietet, gehen ohne Umbau:

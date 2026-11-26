@@ -7840,3 +7840,15 @@ Gegen die laufende Distro akmesh, aus C:\temp\amtest3 heraus:
 
 Also: UNC-Pfade gehen unveraendert durch, Backslash wie Slash; die
 MSYS-Schreibweise /c/ ist nicht vorhanden und wird nicht uebersetzt.
+
+### Pfadtrenner im Buendel (26.11.2026)
+
+    ls C:\Windows            ls: cannot access 'C:Windows'   (Backslash = Escape)
+    ls 'C:/Windows'          AppReadiness, BitLockerDiscoveryVolumeContents
+    cd C:/Windows; pwd       rc=0, pwd = C:\Windows
+    apk -p C:/temp/amtest3/root list    laeuft
+    echo probe > C:/temp/amtest3/bs-probe.txt   Datei da
+    echo $PATH (Anfang)      C:\Users\Spernau/.local/bin;C:\TEMP\amtest3\root\usr\bin;...
+
+Der PATH-Eintrag aus profile.sh ist gemischt (Windows-HOME plus /.local/bin);
+Windows akzeptiert das, weil beide Trenner in Pfaden erlaubt sind.

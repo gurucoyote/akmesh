@@ -7780,3 +7780,17 @@ Wichtig fuer den Bau: winget legt portable Pakete in
 DIESES Verzeichnis an die Benutzer-PATH (HKCU\Environment, gemessen bei jq);
 WinGet\Links bleibt leer. start.cmd sammelt die Paketordner deshalb selbst ein,
 statt sich auf den geerbten PATH zu verlassen.
+
+### Benutzername im Buendel (26.11.2026)
+
+Vorher: `echo $USER` leer, der Prompt sagte "root", `whoami` sagte busys\spernau.
+Jetzt (C:\temp\amtest3):
+
+    echo $USER        Spernau
+    echo $LOGNAME     Spernau
+    whoami            busys\spernau
+    Prompt            BSNB67:C:\Users\Spernau  NL  Spernau$
+
+`id` bleibt auf Windows bei uid=-1 gid=-1 groups=-1: dort gibt es keine uid.
+Als Ticket acmesh-1779 notiert, weil drei Befehle damit drei Antworten auf eine
+Frage geben.

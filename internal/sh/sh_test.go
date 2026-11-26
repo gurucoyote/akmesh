@@ -303,3 +303,49 @@ func TestSystemProfileFallsBackToEtcProfile(t *testing.T) {
 		t.Fatalf("systemProfile: got %q, want %q", got, etc)
 	}
 }
+
+// On Windows there is no USER in the environment, only USERNAME; the shell used
+// to call the session "root" while it ran as an ordinary user (26.11.2026).
+func TestFillUserEnvTakesTheWindowsName(t *testing.T) {
+	env := fillUserEnv([]string{"USERNAME=Spernau", "HOME=C:\\Users\\Spernau"})
+	got := map[string]string{}
+	for _, kv := range env {
+		if k, v, ok := strings.Cut(kv, "="); ok {
+			got[k] = v
+		}
+	}
+	if got["USER"] != "Spernau" {
+		t.Fatalf("USER = %q, want Spernau (%v)", got["USER"], env)
+	}
+	if got["LOGNAME"] != "Spernau" {
+		t.Fatalf("LOGNAME = %q, want Spernau", got["LOGNAME"])
+	}
+}
+
+func TestFillUserEnvKeepsAnExistingUser(t *testing.T) {
+	env := fillUserEnv([]string{"USER=martin", "USERNAME=Spernau"})
+	for _, kv := range env {
+		if strings.HasPrefix(kv, "USER=") && kv != "USER=martin" {
+			t.Fatalf("USER was overwritten: %q", kv)
+		}
+		if strings.HasPrefix(kv, "LOGNAME=") && kv != "LOGNAME=martin" {
+			t.Fatalf("LOGNAME does not match USER: %q", kv)
+		}
+	}
+}
+
+// The prompt's \u has to name the Windows user too, not "root".
+func TestPromptExpansionUsesTheWindowsName(t *testing.T) {
+	if old, had := os.LookupEnv("USER"); had {
+		os.Unsetenv("USER")
+		t.Cleanup(func() { os.Setenv("USER", old) })
+	}
+	t.Setenv("USERNAME", "Spernau")
+	if got := expandPromptIn(`\u$ `, ""); got != "Spernau$ " {
+		t.Fatalf("prompt = %q, want %q", got, "Spernau$ ")
+	}
+	// The sign depends on the uid of the test process (# as root, $ otherwise).
+	if got := defaultPrompt("/tmp", "", "/home/x"); !strings.HasPrefix(got, "\x1b]0;") || !strings.Contains(got, "\nSpernau") {
+		t.Fatalf("default prompt = %q", got)
+	}
+}

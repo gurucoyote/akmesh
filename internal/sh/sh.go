@@ -78,7 +78,7 @@ func RunAs(argv0 string, args []string, stdin io.Reader, stdout, stderr io.Write
 		// The script is stdin and is read below, so the shell must not read it.
 		shellIn = strings.NewReader("")
 	}
-	env := os.Environ()
+	env := fillUserEnv(os.Environ())
 	// $0 is the name the shell was called with; ash marks a login shell by a
 	// leading dash. mvdan/sh takes $0 from the environment variable "0", which
 	// the dispatcher never sets, so it read "gosh" (acmesh-51b).
@@ -532,7 +532,7 @@ func expandPromptIn(p, dir string) string {
 			i++
 			switch p[i] {
 			case 'u':
-				b.WriteString(envOr("USER", "root"))
+				b.WriteString(userName())
 			case 'h':
 				h, _ := os.Hostname()
 				if k := strings.IndexByte(h, '.'); k > 0 {
@@ -584,6 +584,53 @@ func expandPromptIn(p, dir string) string {
 	return b.String()
 }
 
+// fillUserEnv gives the shell a name for its user. Unix gets it from the login
+// process; on Windows there is no USER at all, only USERNAME, and a session that
+// called itself "root" while running as an ordinary Windows user was simply
+// wrong (measured 26.11.2026: USER empty, USERNAME=Spernau).
+func fillUserEnv(env []string) []string {
+	lookup := func(name string) string {
+		prefix := name + "="
+		for _, kv := range env {
+			if strings.HasPrefix(kv, prefix) {
+				return kv[len(prefix):]
+			}
+		}
+		return ""
+	}
+	name := lookup("USER")
+	if name == "" {
+		name = lookup("USERNAME")
+	}
+	if name == "" {
+		name = lookup("LOGNAME")
+	}
+	if name == "" {
+		return env
+	}
+	for _, key := range []string{"USER", "LOGNAME"} {
+		if lookup(key) == "" {
+			env = append(env, key+"="+name)
+		}
+	}
+	return env
+}
+
+// userName is who the prompt and \u should name: the shell's own USER, on
+// Windows the USERNAME, and root only when nothing else is known and the process
+// really is root.
+func userName() string {
+	for _, key := range []string{"USER", "USERNAME", "LOGNAME"} {
+		if v := os.Getenv(key); v != "" {
+			return v
+		}
+	}
+	if os.Geteuid() == 0 {
+		return "root"
+	}
+	return "unknown"
+}
+
 func envOr(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
@@ -606,7 +653,7 @@ func defaultPrompt(dir, user, home string) string {
 		sign = "# "
 	}
 	if user == "" {
-		user = "root"
+		user = userName()
 	}
 	if dir == "" {
 		dir, _ = os.Getwd()

@@ -328,3 +328,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 26.11.2026: winget als apk-Quelle auf Windows gebaut (add/del/search/info/list --all/update/upgrade --all), klare "apk: winget:"-Hinweise; auf der Maschine mit jq installiert, gelistet und entfernt.
 26.11.2026: PATH-Reihenfolge im Buendel gedreht - installierte Werkzeuge (apk-Pakete, winget-Pakete) antworten vor akmesh eigenen Namen; auf Windows mit jq und find gemessen.
 26.11.2026: Shell nennt sich auf Windows nach dem Windows-Benutzer (USER/LOGNAME aus USERNAME, Prompt \u), nicht mehr root; id bleibt offen (acmesh-1779).
+26.11.2026: Prompt zeigt erhoehte Rechte auf Windows mit # (Token-Abfrage), Administrator ist kein root; nicht-erhoehter Fall gemessen, erhoehter per Test.

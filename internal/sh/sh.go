@@ -559,7 +559,7 @@ func expandPromptIn(p, dir string) string {
 				}
 				b.WriteString(wd)
 			case '$':
-				if os.Geteuid() == 0 {
+				if isElevated() {
 					b.WriteByte('#')
 				} else {
 					b.WriteByte('$')
@@ -631,6 +631,10 @@ func userName() string {
 	return "unknown"
 }
 
+// isElevated is a variable so a test can ask both prompts without becoming
+// root or holding an elevated token on Windows.
+var isElevated = elevated
+
 func envOr(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
@@ -649,7 +653,9 @@ func envOr(key, fallback string) string {
 // title; a terminal swallows it, a screenreader never reads it.
 func defaultPrompt(dir, user, home string) string {
 	sign := "$ "
-	if os.Geteuid() == 0 {
+	if isElevated() {
+		// On Windows this is the elevated token, not root: the sign says the
+		// session can change the machine, nothing more (26.11.2026).
 		sign = "# "
 	}
 	if user == "" {

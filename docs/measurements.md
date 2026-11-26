@@ -7794,3 +7794,18 @@ Jetzt (C:\temp\amtest3):
 `id` bleibt auf Windows bei uid=-1 gid=-1 groups=-1: dort gibt es keine uid.
 Als Ticket acmesh-1779 notiert, weil drei Befehle damit drei Antworten auf eine
 Frage geben.
+
+### Erhoehte Rechte im Buendel (26.11.2026)
+
+Windows kennt keinen root; "als Administrator" heisst erhoehtes Token. Die Shell
+fragt es beim Kernel ab (GetCurrentProcessToken().IsElevated) und setzt das
+Zeichen im Prompt danach.
+
+gemessen, normale Sitzung (C:\temp\amtest3):
+
+    echo exit | bin\akmesh.exe sh -l -i
+    BSNB67:C:\Users\Spernau  NL  Spernau$
+
+Der erhoehte Fall braucht eine UAC-Bestaetigung auf dem Bildschirm und wurde
+deshalb hier nicht gemessen; die Verzweigung ist durch einen Test mit
+umgestellter isElevated-Funktion abgedeckt (Spernau# / martin#).

@@ -349,3 +349,26 @@ func TestPromptExpansionUsesTheWindowsName(t *testing.T) {
 		t.Fatalf("default prompt = %q", got)
 	}
 }
+
+// Windows has no root: an elevated token is all "als Administrator" gives you.
+// The sign is the only place a session can say so.
+func TestPromptSignFollowsTheRights(t *testing.T) {
+	old := isElevated
+	t.Cleanup(func() { isElevated = old })
+
+	isElevated = func() bool { return true }
+	if got := expandPromptIn(`\$ `, ""); got != "# " {
+		t.Fatalf("elevated \\$ = %q, want %q", got, "# ")
+	}
+	if got := defaultPrompt("/tmp", "martin", "/home/martin"); !strings.HasSuffix(got, "martin# ") {
+		t.Fatalf("elevated prompt = %q", got)
+	}
+
+	isElevated = func() bool { return false }
+	if got := expandPromptIn(`\$ `, ""); got != "$ " {
+		t.Fatalf("plain \\$ = %q, want %q", got, "$ ")
+	}
+	if got := defaultPrompt("/tmp", "martin", "/home/martin"); !strings.HasSuffix(got, "martin$ ") {
+		t.Fatalf("plain prompt = %q", got)
+	}
+}

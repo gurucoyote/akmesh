@@ -75,6 +75,15 @@ Namen:
 USER und LOGNAME bleiben, was sie waren, wenn die Umgebung sie schon kennt -
 auf Linux ist das der Login-Prozess.
 
+### Administrator ist nicht root
+
+Windows hat keinen root-Benutzer und keine uid. "Als Administrator ausfuehren"
+gibt demselben Konto ein erhoehtes Token; Dateien und Registry duerfen danach
+mehr, der Benutzer bleibt derselbe. Deshalb fragt die Shell das Token ab, nicht
+die Umgebung: laeuft der Prozess erhoeht, steht im Prompt Spernau# statt
+Spernau$, und `id` bleibt ehrlich bei uid=-1 (acmesh-1779). Wer die Rechte
+wissen will, fragt also den Prompt, nicht einen Benutzernamen.
+
 ## Pakete: apk mit winget als Quelle
 
 Im Bündel liegt root\etc\apk\repositories mit einer Zeile: `winget`. Damit ist

@@ -68,8 +68,10 @@ func writeWingetStub(t *testing.T) (calls string) {
 		"echo \"$@\" >> " + calls + "\n" +
 		"case \"$1\" in\n" +
 		"search) printf '%s' '" + wingetSearchTable + "';;\n" +
-		// winget export -o FILE ...: the file is the third word.
-		"export) echo '{\"Sources\":[{\"Packages\":[{\"PackageIdentifier\":\"jqlang.jq\",\"Version\":\"1.8.2\"}]}]}' > \"$3\";;\n" +
+		// winget export -o FILE ...: the file is the third word. The guard keeps
+		// a wrong argument count from writing a file named after a switch into
+		// the package directory (it did once).
+		"export) case \"$3\" in \"\"|-*) ;; *) echo '{\"Sources\":[{\"Packages\":[{\"PackageIdentifier\":\"jqlang.jq\",\"Version\":\"1.8.2\"}]}]}' > \"$3\";; esac;;\n" +
 		"esac\n"
 	if err := os.WriteFile(stub, []byte(script), 0o755); err != nil {
 		t.Fatal(err)

@@ -7825,3 +7825,18 @@ Fund dabei: `apk add ./hello-win.apk`, waehrend die Datei nicht da war, wurde al
 Name an winget weitergereicht ("Es wurde kein Paket gefunden"). Behoben: ein Wort
 mit Pfadtrenner, fuehrendem Punkt oder Doppelpunkt geht nie an winget
 (looksLikePath), es endet als "no such package".
+
+### WSL-Netzwerkpfade im Buendel (26.11.2026)
+
+Gegen die laufende Distro akmesh, aus C:\temp\amtest3 heraus:
+
+    ls '\\wsl.localhost\akmesh\etc'          apk group hostname
+    ls '\\wsl$\akmesh\etc'                   apk group hostname
+    ls //wsl.localhost/akmesh/etc            apk group hostname
+    cat '\\wsl.localhost\akmesh\etc\hostname'   BSNB67
+    cd '\\wsl.localhost\akmesh\home'         rc=0, pwd = \\wsl.localhost\akmesh\home
+    echo probe > '\\wsl.localhost\akmesh\tmp\probe.txt'   rc=0, danach lesbar
+    ls /c/Windows                            cannot access '/c/Windows'
+
+Also: UNC-Pfade gehen unveraendert durch, Backslash wie Slash; die
+MSYS-Schreibweise /c/ ist nicht vorhanden und wird nicht uebersetzt.

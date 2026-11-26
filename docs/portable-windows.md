@@ -61,6 +61,25 @@ Binary entscheidet an seinem eigenen Dateinamen, welcher Befehl gemeint ist.
     ./sh.exe -c 'echo 0=$0'        ->  0=sh          (der Strich und die Endung fallen weg)
     ./clear.exe -x | od -c         ->  033 [ H 033 [ 2 J 033 [ H
 
+## Pfade in WSL-Distributionen
+
+Die Netzwerkpfade, die der Windows-Explorer anbietet, gehen ohne Umbau:
+`\\wsl.localhost\<Distro>\...` und `\\wsl$\<Distro>\...`, mit Backslashes
+oder als `//wsl.localhost/...`. Gemessen am 26.11.2026 im Bündel:
+
+    ls '\\wsl.localhost\akmesh\etc'      apk, group, hostname
+    cat '\\wsl.localhost\akmesh\etc\hostname'   BSNB67
+    cd '\\wsl.localhost\akmesh\home'    rc=0, pwd zeigt den Pfad
+    echo probe > '\\wsl.localhost\akmesh\tmp\probe.txt'   rc=0, lesbar
+
+Es braucht also keine Übersetzung: Windows reicht den Pfad an den WSL-Dienst,
+unser Code sieht einen normalen Pfad. Zwei Lücken bleiben:
+
+- Tab vervollständigt nur an "/" (complete.go), ein Backslash-Pfad wird als ein
+  Wort behandelt. Für UNC-Pfade also keine Vervollständigung - offen.
+- Die git-bash-Schreibweise `/c/Windows` gibt es nicht; wer sie tippt, bekommt
+  "cannot access". `C:/Windows` geht.
+
 ## Wer bin ich: der Windows-Benutzer, nicht root
 
 Auf Windows gibt es kein USER in der Umgebung, nur USERNAME. Die Shell hat

@@ -10,9 +10,9 @@ werden muss.
 Ja. akmesh.exe startet fremde Windows-Programme, mit Argumenten, und der
 Exitcode kommt zurueck. Belegt:
 
-    akmesh.exe sh -c 'hostname'            -> BSNB67 (der Windows-Rechner)
-    akmesh.exe sh -c 'whoami'              -> busys\spernau
-    akmesh.exe env whoami                  -> busys\spernau (ueber exec.LookPath)
+    akmesh.exe sh -c 'hostname'            -> HOST (der Windows-Rechner)
+    akmesh.exe sh -c 'whoami'              -> user
+    akmesh.exe env whoami                  -> user (ueber exec.LookPath)
     akmesh.exe sh -c 'cmd /c ver'          -> Microsoft Windows [Version 10.0.22631.6199]
     akmesh.exe sh -c 'cmd /c whoami /user' -> Benutzername und SID
     akmesh.exe sh -c 'cmd /c exit 3; echo $?' -> 3

@@ -112,7 +112,7 @@ geht, braucht es keines davon; was fehlt, fehlt bewusst.
         -w '%{http_code}' https://example.com      https=200
 
 `/etc/resolv.conf` schrieb WSL beim Start selbst: `nameserver 10.255.255.254`
-plus `search busys.local fritz.box` - dieselben Werte wie in Ubuntu und golang.
+plus `search example.local fritz.box` - dieselben Werte wie in Ubuntu und golang.
 DNS und HTTPS funktionieren damit ohne jede Netzwerkkonfiguration im Image.
 
 ## Der Login-Strich: warum "wsl -d akmesh" erst scheiterte
@@ -160,7 +160,7 @@ dass es nicht unterstützt wird, statt es still zu tun.
 
 Zwei Zeilen, die Form, die Martin auch in seiner golang-Distro hat:
 
-    BSNB67:~ 
+    HOST:~ 
     akmesh$ 
 
 Die erste Zeile nennt Rechner und Verzeichnis (mit ~ fuer das Home), die zweite
@@ -182,7 +182,7 @@ Gemessen in der Distro (25.11.2026):
 
     /tmp/x/-sh -c 'echo PS1=[$PS1]'     PS1=[\u@\h:\w\$ ]   (Profil greift)
     printf 'pwd\nmkdir projects\nexit\n' | /tmp/x/-sh -i
-        BSNB67:~ / akmesh$ /home/akmesh / BSNB67:~ / akmesh$ / projects
+        HOST:~ / akmesh$ /home/akmesh / HOST:~ / akmesh$ / projects
 
 Das Home gehoert dabei dem Nutzer (1000:1000); vorher war es root und "mkdir
 projects" scheiterte mit permission denied.

@@ -5,6 +5,9 @@ Jede Zahl mit dem Aufruf, der sie erzeugt hat. Ohne Aufruf keine Zahl.
 Groessen: seit 23.11.2026 immer in MiB und Bytes, mit Bindeart und Stripping,
 wie es die `report:`-Zeile des Baus druckt (Regel: AGENTS.md, Bau). Aeltere
 Abschnitte nennen nur Bytes; sie bleiben, wie sie gemessen wurden.
+Rechner-, Arbeitsgruppen- und Kontonamen sind durch Platzhalter ersetzt
+(HOST, WORKGROUP\user, user, example.local): die Messungen bleiben belegt,
+ohne den privaten Rechner zu benennen.
 
 ## Bestand (17.11.2026, u-root 869f00f, Go 1.27.4, WSL2 Alpine)
 
@@ -223,7 +226,7 @@ Geprueft am gebauten Binary:
 | kill -NOSUCHSIGNAL | Exit 2 | Exit 2 |
 | kill an geschuetzten Prozess | EPERM | "Zugriff verweigert" |
 
-Unter Windows belegt: ps -eo pid,ppid,user,cmd zeigt "BUSYS\Spernau" als
+Unter Windows belegt: ps -eo pid,ppid,user,cmd zeigt "WORKGROUP\user" als
 Benutzer, explorer.exe mit CPU-Zeit 16:57 und Laufzeit 7-14:12:38.
 
 Pruefungen: scripts/test-ext.sh 34 Faelle je Ziel, akmesh, akmesh.exe und ext
@@ -2748,8 +2751,8 @@ Zeigern. 120 Zeilen statt der im Ticket geschaetzten 150 bis 250.
 Gemessen mit akmesh.exe, 19.11.2026:
 
     ./akmesh.exe ps -ef
-      BUSYS\Spernau 37400 21128 ?  00:06 ?  00:00 cmd.exe /c "ping -n 40 127.0.0.1 >nul"
-      BUSYS\Spernau 36216 37400 ?  00:06 ?  00:00 ping  -n 40 127.0.0.1
+      WORKGROUP\user 37400 21128 ?  00:06 ?  00:00 cmd.exe /c "ping -n 40 127.0.0.1 >nul"
+      WORKGROUP\user 36216 37400 ?  00:06 ?  00:00 ping  -n 40 127.0.0.1
     tasklist /FI "IMAGENAME eq PING.EXE"  -> PING.EXE 36216, also dieselbe PID
 
     ./akmesh.exe ps -eo pid,cmd    -> Kopf und Zeilen mit Argumenten, z.B.
@@ -4006,7 +4009,7 @@ Beim Login auf einem Terminal fielen zwei Fehler auf, beide behoben:
 - Ein Profil, das PS1 auf "\[..\]\u@\h:\w\$" setzt, wurde woertlich angezeigt.
   expandPrompt setzt jetzt \u, \h, \w, \W, \$, \n und \\ um und entfernt die
   \[..\]-Marker. Vorher: "\\033]0;golang \\w\\a\\h:\\w\\ngolang \\$". Nachher:
-  "033]0;golang /tmpaBSNB67:/tmp\ngolang #".
+  "033]0;golang /tmpaHOST:/tmp\ngolang #".
 
 ## Systempaket 2: ip und dhclient (23.11.2026, acmesh-iey)
 
@@ -6569,7 +6572,7 @@ c) chmod/winmode - jetzt auch im apk.
     Auf einem echten NTFS-Pfad (C:\temp-akm):
       ./akmesh.exe apk -p C:\temp-akm add chprog-1.0.0-r0.apk
       ./akmesh.exe ls -l C:\temp-akm\usr\bin
-      -> -rwxr-xr-x 1 BUSYS\Spernau - 21 ... chprog
+      -> -rwxr-xr-x 1 WORKGROUP\user - 21 ... chprog
       ./akmesh.exe chmod 700 ...\chprog
       -> -rwx------ ...
     Vorher schrieb apk nur die Datei; 0755 aus dem tar ging verloren. Jetzt ruft
@@ -7542,7 +7545,7 @@ deshalb die getrennte Form.
     wsl -d akmesh -- akmesh curl -s -o /dev/null -w '%{http_code}' https://example.com
                                        https=200
     /etc/resolv.conf (von WSL geschrieben)      nameserver 10.255.255.254
-                                               search busys.local fritz.box
+                                               search example.local fritz.box
 
 C:-Mount: "wsl: Failed to mount C:\" bei jedem Start. Sonde an /bin/mount, die
 jeden Aufruf mitschrieb, wurde nie ausgefuehrt; ohne das mount der Distribution
@@ -7582,7 +7585,7 @@ sondern nur "-s -f".
 
 ### Login-Shell in WSL (25.11.2026)
 
-    C:\Users\Spernau>wsl -d akmesh
+    C:\Users\user>wsl -d akmesh
     Failed to run command: command is not present in akmesh: -sh
 
 WSL startet die Shell aus /etc/passwd mit argv[0]="-sh". Nach dem Patch in
@@ -7612,7 +7615,7 @@ chmod vorher: "value out of range: invalid octal value 4755 ... <= 0777" und
 1777 -> -rwxrwxrwt.
 
 Prompt: defaultPrompt liefert jetzt nutzer@rechner:verzeichnis$ (in einer PTY
-gesehen: root@BSNB67:/root/akmesh#).
+gesehen: root@HOST:/root/akmesh#).
 
 Befund: in der WSL-Distro kommen Variablenzuweisungen aus /etc/profile nicht an
 (echo im Profil zeigt sie, danach sind sie weg), im chroot bleiben sie. Ticket
@@ -7622,7 +7625,7 @@ angelegt; der Prompt haengt deshalb nicht mehr an PS1.
 
 In einer PTY mit der neuen Binary, ohne PS1 in der Umgebung:
 
-    ESC]0;BSNB67 /root/akmesh BEL  BSNB67:/root/akmesh NL akmesh# 
+    ESC]0;HOST /root/akmesh BEL  HOST:/root/akmesh NL akmesh# 
 
 Also Fenstertitel, dann Rechner und Pfad, dann in neuer Zeile Nutzer und Zeichen.
 Binary in der Distro und im Bau gleich (md5 fce9dad35cbed4d0dfa69c09131b4284),
@@ -7639,8 +7642,8 @@ Ursache der fehlenden Startdatei-Wirkung: argv[0]="-sh" wurde beim Dispatch auf
 
 Prompt folgt dem Verzeichnis (PTY, ohne PS1 in der Umgebung):
 
-    cd /tmp  -> BSNB67:/tmp / akmesh# 
-    cd       -> BSNB67:~ / akmesh#      (HOME=/tmp/emptyhome im Test)
+    cd /tmp  -> HOST:/tmp / akmesh# 
+    cd       -> HOST:~ / akmesh#      (HOME=/tmp/emptyhome im Test)
 
 Vorher blieb der Prompt auf dem Startverzeichnis stehen und wurde pro Befehl
 zweimal gedruckt.
@@ -7655,11 +7658,11 @@ Startverzeichnis stehen, weil cd den Runner bewegt und nicht den Prozess. Jetzt
 fragt er die Shell: \w in PS1 und der Standard-Prompt nehmen das Ergebnis von
 "pwd". In der Distro mit argv[0]=-sh, interaktiv:
 
-    BSNB67:~ / akmesh$ cd pr          cd: no such file or directory: "pr"
-    BSNB67:~ / akmesh$ cd projects
-    BSNB67:~/projects / akmesh$ pwd   /home/akmesh/projects
+    HOST:~ / akmesh$ cd pr          cd: no such file or directory: "pr"
+    HOST:~ / akmesh$ cd projects
+    HOST:~/projects / akmesh$ pwd   /home/akmesh/projects
 
-Vorher stand nach dem cd weiter "BSNB67:~" und hinter jedem Fehlschlag zusaetzlich
+Vorher stand nach dem cd weiter "HOST:~" und hinter jedem Fehlschlag zusaetzlich
 "sh: exit status 1"; das ist jetzt still, wie in ash (nur der Befehl selbst
 meldet). Die Anfuehrungszeichen in der cd-Meldung stammen aus %q in mvdan/sh und
 sind als eigenes Ticket notiert.
@@ -7674,7 +7677,7 @@ Gemessen in einer PTY mit HOME=/tmp/ctest (dort ./privat und ./projects):
     cd pr<Tab>      privat/  projects/      (Zeile bleibt "cd pr")
     oj<Tab>         -> "cd projects/"       (nach dem obigen Tab)
     Enter, pwd      /tmp/ctest/projects
-    Prompt          BSNB67:~/projects / akmesh$
+    Prompt          HOST:~/projects / akmesh$
 
 Fuenf neue Tests im Paket sh (TestComplete*), alle gruen. Binary in der Distro
 ist dasselbe (md5 ea278a0e3341aae6da7bb621c647f41a), tar 25 978 880 Bytes.
@@ -7709,7 +7712,7 @@ verweigert (acmesh-kf91).
     make-windows-bundle: akmesh-portable (136 names), akmesh-portable.zip (8363937 bytes)
     akmesh.exe  20 672 512 B Windows PE statisch gestrippt
     Start auf Windows: cmd /c "cd /d C:\temp\amtest2 && start.cmd -c \"ls | head -4\""
-      -> vier Home-Dateien, HOME=C:\Users\Spernau, rc=0
+      -> vier Home-Dateien, HOME=C:\Users\user, rc=0
     bin\ nach dem ersten Start: 136 Hardlinks
     ./sh.exe -c 'echo 0=$0'  ->  0=sh            (Vertreiler schneidet ".exe" ab)
     ./clear.exe -x | od -c   ->  033 [ H 033 [ 2 J 033 [ H
@@ -7783,13 +7786,13 @@ statt sich auf den geerbten PATH zu verlassen.
 
 ### Benutzername im Buendel (26.11.2026)
 
-Vorher: `echo $USER` leer, der Prompt sagte "root", `whoami` sagte busys\spernau.
+Vorher: `echo $USER` leer, der Prompt sagte "root", `whoami` sagte user.
 Jetzt (C:\temp\amtest3):
 
-    echo $USER        Spernau
-    echo $LOGNAME     Spernau
-    whoami            busys\spernau
-    Prompt            BSNB67:C:\Users\Spernau  NL  Spernau$
+    echo $USER        user
+    echo $LOGNAME     user
+    whoami            user
+    Prompt            HOST:C:\Users\user  NL  user$
 
 `id` bleibt auf Windows bei uid=-1 gid=-1 groups=-1: dort gibt es keine uid.
 Als Ticket acmesh-1779 notiert, weil drei Befehle damit drei Antworten auf eine
@@ -7804,11 +7807,11 @@ Zeichen im Prompt danach.
 gemessen, normale Sitzung (C:\temp\amtest3):
 
     echo exit | bin\akmesh.exe sh -l -i
-    BSNB67:C:\Users\Spernau  NL  Spernau$
+    HOST:C:\Users\user  NL  user$
 
 Der erhoehte Fall braucht eine UAC-Bestaetigung auf dem Bildschirm und wurde
 deshalb hier nicht gemessen; die Verzweigung ist durch einen Test mit
-umgestellter isElevated-Funktion abgedeckt (Spernau# / martin#).
+umgestellter isElevated-Funktion abgedeckt (user# / martin#).
 
 ### Lokales .apk im Buendel (26.11.2026)
 
@@ -7833,7 +7836,7 @@ Gegen die laufende Distro akmesh, aus C:\temp\amtest3 heraus:
     ls '\\wsl.localhost\akmesh\etc'          apk group hostname
     ls '\\wsl$\akmesh\etc'                   apk group hostname
     ls //wsl.localhost/akmesh/etc            apk group hostname
-    cat '\\wsl.localhost\akmesh\etc\hostname'   BSNB67
+    cat '\\wsl.localhost\akmesh\etc\hostname'   HOST
     cd '\\wsl.localhost\akmesh\home'         rc=0, pwd = \\wsl.localhost\akmesh\home
     echo probe > '\\wsl.localhost\akmesh\tmp\probe.txt'   rc=0, danach lesbar
     ls /c/Windows                            cannot access '/c/Windows'
@@ -7848,7 +7851,7 @@ MSYS-Schreibweise /c/ ist nicht vorhanden und wird nicht uebersetzt.
     cd C:/Windows; pwd       rc=0, pwd = C:\Windows
     apk -p C:/temp/amtest3/root list    laeuft
     echo probe > C:/temp/amtest3/bs-probe.txt   Datei da
-    echo $PATH (Anfang)      C:\Users\Spernau/.local/bin;C:\TEMP\amtest3\root\usr\bin;...
+    echo $PATH (Anfang)      C:\Users\user/.local/bin;C:\TEMP\amtest3\root\usr\bin;...
 
 Der PATH-Eintrag aus profile.sh ist gemischt (Windows-HOME plus /.local/bin);
 Windows akzeptiert das, weil beide Trenner in Pfaden erlaubt sind.
@@ -7898,3 +7901,17 @@ trotzdem, das Repo ist also fuer sich vollstaendig.
 Kein Geheimnis in der Veroeffentlichung: die einzigen langen Hashes sind
 Testvektoren aus internal/login/crypt_test.go ("Hello world!", "anderes");
 Passwoerter kommen nur ueber die Umgebungsvariable AKMESH_ROOT_HASH ins Image.
+
+### Vor der Veroeffentlichung bereinigt (26.11.2026)
+
+- Die vier eingecheckten mkcert-Testzertifikate (a.local-*, test1.local-*)
+  sind aus der Versionskontrolle entfernt und in .gitignore; die Tests erzeugen
+  sie bei jedem Lauf neu (go test ./internal/mkcert gruen). Ticket acmesh-gbyt
+  damit erledigt.
+- Rechner-, Arbeitsgruppen- und Kontonamen in Doku und Tickets durch Platzhalter
+  ersetzt (HOST, WORKGROUP\user, user, example.local). Ein Rest bleibt: in einem
+  Kommentar des geschlossenen Tickets acmesh-89s9 steht "root@BSNB67:/tmp/pstest$"
+  als Beispiel-Prompt; bd importiert die bereinigte Fassung nicht nach.
+- Keine echten Zugangsdaten: die langen Hashes sind Testvektoren aus
+  internal/login/crypt_test.go, Passwoerter gehen nur ueber AKMESH_ROOT_HASH ins
+  Image, und es gibt keine Token- oder Schluesselmuster (ghp_, sk-, BEGIN PRIVATE).

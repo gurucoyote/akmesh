@@ -337,3 +337,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 26.11.2026: Modulpfad github.com/gurucoyote/akmesh, 234 Dateien und ldflags umgestellt; README, Doku, Testpfade nachgezogen; Batterien 520/0 und 394/0.
 26.11.2026: frischer Klon baut ohne lokale Reste (linux und windows, Tests grün); Design-Doks als Entwurf markiert, Kosten (alles kostenlos ausser optionalem Signaturzertifikat) festgehalten.
 26.11.2026: Repo oeffentlich angelegt und gepusht (github.com/gurucoyote/akmesh, 426 Commits, BSD-3 erkannt), Themen gesetzt, keine Geheimnisse in der Historie.
+26.11.2026: Repo vor Veroeffentlichung bereinigt - Testzertifikate nicht mehr getrackt (acmesh-gbyt geschlossen), Kontonamen in Doku/Tickets durch Platzhalter ersetzt.

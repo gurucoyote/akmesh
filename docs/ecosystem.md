@@ -22,9 +22,9 @@ Laeuft unter Windows:
 - `coreutils.exe` ohne Argument listet 153 Applets.
 - `awk '{s+=$2} END {print "summe:",s}'` -> summe: 5.
 - `sed 's/welt/erde/'` -> hallo erde.
-- `uname -a` -> Windows_NT BSNB67 10.0.22631 Build 22631 x86_64.
+- `uname -a` -> Windows_NT HOST 10.0.22631 Build 22631 x86_64.
 - `du -s /tmp` -> 15354089 /tmp.
-- `hostname` -> BSNB67.
+- `hostname` -> HOST.
 - `kill --help` -> Signalhilfe vorhanden.
 
 Mit Einschraenkungen unter Windows:

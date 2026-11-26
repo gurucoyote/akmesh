@@ -44,15 +44,15 @@ Binary entscheidet an seinem eigenen Dateinamen, welcher Befehl gemeint ist.
    `AKMESH_PROFILE` auf sein eigenes `etc\profile.sh`.
 3. **Der PATH-Trenner ist der der Plattform.** `";"` auf Windows, `":"` sonst.
    Das Profil nahm zuerst einen Doppelpunkt, und damit wurde aus
-   `C:\Users\Spernau/.local/bin:C:\TEMP\amtest2\bin` EIN Eintrag, den es nicht
+   `C:\Users\user/.local/bin:C:\TEMP\amtest2\bin` EIN Eintrag, den es nicht
    gibt - `ls: executable file not found in $PATH`, obwohl die Datei daneben lag.
 
 ## Gemessen (26.11.2026, Windows 11, aus der WSL-Shell gestartet)
 
     cmd.exe /c "cd /d C:\temp\amtest2 && start.cmd -c \"echo hallo-aus-dem-buendel; ...\""
     hallo-aus-dem-buendel
-    HOME=C:\Users\Spernau
-    PWD=C:\Users\Spernau
+    HOME=C:\Users\user
+    PWD=C:\Users\user
     ls | head -4           vier Dateien aus dem Home
     PATHEXT=.COM;.EXE;.BAT;.CMD;...
     rc=0
@@ -86,7 +86,7 @@ Die Netzwerkpfade, die der Windows-Explorer anbietet, gehen ohne Umbau:
 oder als `//wsl.localhost/...`. Gemessen am 26.11.2026 im Bündel:
 
     ls '\\wsl.localhost\akmesh\etc'      apk, group, hostname
-    cat '\\wsl.localhost\akmesh\etc\hostname'   BSNB67
+    cat '\\wsl.localhost\akmesh\etc\hostname'   HOST
     cd '\\wsl.localhost\akmesh\home'    rc=0, pwd zeigt den Pfad
     echo probe > '\\wsl.localhost\akmesh\tmp\probe.txt'   rc=0, lesbar
 
@@ -106,8 +106,8 @@ einem gewoehnlichen Windows-Konto lief (gemeldet 26.11.2026). Jetzt setzt die
 Shell beim Start USER und LOGNAME aus USERNAME, und \u im Prompt nimmt denselben
 Namen:
 
-    BSNB67:C:\Users\Spernau
-    Spernau$
+    HOST:C:\Users\user
+    user$
 
 USER und LOGNAME bleiben, was sie waren, wenn die Umgebung sie schon kennt -
 auf Linux ist das der Login-Prozess.
@@ -117,8 +117,8 @@ auf Linux ist das der Login-Prozess.
 Windows hat keinen root-Benutzer und keine uid. "Als Administrator ausfuehren"
 gibt demselben Konto ein erhoehtes Token; Dateien und Registry duerfen danach
 mehr, der Benutzer bleibt derselbe. Deshalb fragt die Shell das Token ab, nicht
-die Umgebung: laeuft der Prozess erhoeht, steht im Prompt Spernau# statt
-Spernau$, und `id` bleibt ehrlich bei uid=-1 (acmesh-1779). Wer die Rechte
+die Umgebung: laeuft der Prozess erhoeht, steht im Prompt user# statt
+user$, und `id` bleibt ehrlich bei uid=-1 (acmesh-1779). Wer die Rechte
 wissen will, fragt also den Prompt, nicht einen Benutzernamen.
 
 ## Pakete: apk mit winget als Quelle

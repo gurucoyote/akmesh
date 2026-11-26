@@ -7915,3 +7915,27 @@ Passwoerter kommen nur ueber die Umgebungsvariable AKMESH_ROOT_HASH ins Image.
 - Keine echten Zugangsdaten: die langen Hashes sind Testvektoren aus
   internal/login/crypt_test.go, Passwoerter gehen nur ueber AKMESH_ROOT_HASH ins
   Image, und es gibt keine Token- oder Schluesselmuster (ghp_, sk-, BEGIN PRIVATE).
+
+### Prompt-Zeilenumbruch im Raw-Modus (26.11.2026)
+
+Gemessen mit einem PTY, bash -i gegen akmesh sh -i, dieselbe Steuerung:
+
+    bash     ... BSNB67:/tmp \r \r\n golang # echo hallo Welt ...
+    vorher   ... BSNB67:/tmp \n root# echo hallo Welt            (nur LF)
+    jetzt    ... BSNB67:/tmp \r\n root# echo hallo Welt
+
+Ursache: der Zeileneditor setzt das Terminal auf raw, und raw schaltet die
+\n -> \r\n-Uebersetzung ab. Ein \n bewegt den Cursor nur nach unten, nicht an den
+Zeilenanfang; die zweite Prompt-Zeile begann deshalb an der Spalte, an der die
+erste endete (im frueheren Mitschnitt: 25 Leerzeichen vor "akmesh$"). Jetzt
+macht promptText aus jedem \n ein \r\n, an einer Stelle (promptString,
+promptString2, render).
+
+Zweite Aenderung: die erste Zeichnung einer Prompt-Zeile schreibt nur den
+Prompt, wie ash/bash, statt "\r\x1b[K" davor. Das \r mit Loeschung haette die
+letzte Ausgabezeile eines Befehls ohne abschliessendes Newline weggewischt; ein
+Screenreader liest eine so neu geschriebene Zeile zweimal. Ab der zweiten
+Zeichnung (Bearbeiten mitten in der Zeile) bleibt "\r\x1b[K" richtig.
+
+Belegt: mitten in der Zeile tippen ("echo ab", Pfeil links, "X") laeuft als
+"aXb"; Buersten 520/0 Linux, 394/0 Windows.

@@ -372,3 +372,23 @@ func TestPromptSignFollowsTheRights(t *testing.T) {
 		t.Fatalf("plain prompt = %q", got)
 	}
 }
+
+// A prompt is written to a terminal in raw mode, where a bare \n moves down
+// without returning to column 0. A two-line prompt then starts its second line
+// in the middle of the screen and a screenreader reads both as one line.
+func TestPromptTextUsesCRLF(t *testing.T) {
+	cases := map[string]string{
+		"A\nB":     "A\r\nB",
+		"A\r\nB":   "A\r\nB",
+		"one line": "one line",
+		"\n":       "\r\n",
+	}
+	for in, want := range cases {
+		if got := promptText(in); got != want {
+			t.Errorf("promptText(%q) = %q, want %q", in, got, want)
+		}
+	}
+	if got := expandPromptIn(`\u$ `, ""); strings.Contains(got, "\n") {
+		t.Errorf("single-line prompt grew a line break: %q", got)
+	}
+}

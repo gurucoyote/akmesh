@@ -117,10 +117,23 @@ func (e *editor) readByte() (byte, error) {
 	return 0, err
 }
 
+// promptText makes a prompt safe for a terminal in raw mode. Raw mode turns off
+// the kernel's \n -> \r\n translation, so a bare \n in a two-line prompt moves
+// down without returning to column 0; the second line then starts at the column
+// the first one ended at (measured 26.11.2026: "BSNB67:/tmp" then 12 spaces
+// before "root# "). A screenreader also reads that as one joined line.
+func promptText(prompt string) string {
+	if !strings.Contains(prompt, "\n") {
+		return prompt
+	}
+	return strings.ReplaceAll(strings.ReplaceAll(prompt, "\r\n", "\n"), "\n", "\r\n")
+}
+
+// render redraws the line being edited: back to column 0, clear to the end of
+// the line, prompt and buffer, then left to the cursor. Only used once the line
+// is already on screen; the first draw writes the prompt alone, see readLine.
 func (e *editor) render(prompt string, buf []rune, pos int) {
-	// \r, clear to end of line, the whole line, then back to the cursor. Raw mode
-	// does not translate \n, so every line break is written as \r\n.
-	s := "\r\x1b[K" + prompt + string(buf)
+	s := "\r\x1b[K" + promptText(prompt) + string(buf)
 	if back := len(buf) - pos; back > 0 {
 		s += fmt.Sprintf("\x1b[%dD", back)
 	}
@@ -141,7 +154,9 @@ func (e *editor) readLine(prompt string) (string, error) {
 	var buf []rune
 	pos := 0
 	e.pos = len(e.history)
-	e.render(prompt, buf, pos)
+	// The very first draw is the plain prompt; every later one rewrites the line
+	// in place, so \r and a clear to the end of the line are correct from then on.
+	fmt.Fprint(e.out, promptText(prompt))
 	for {
 		b, err := e.readByte()
 		if err != nil {

@@ -1,5 +1,10 @@
 # akmesh als winget-Paket
 
+> **Status: Entwurf, nichts davon ist gebaut** (26.11.2026). Für ein
+> öffentliches Repository auf GitHub wird nichts davon gebraucht: das Repo
+> enthält Quellcode, Bau-Skripte und Doku. Veröffentlichen von Paketen kommt
+> später, wenn überhaupt.
+
 Was nötig wäre, damit `winget install` eine akmesh-Distribution auf einen
 Windows-Rechner bringt - und was daran nicht passt. Notiert am 26.11.2026,
 gemessen gegen winget v1.29.380.
@@ -124,6 +129,22 @@ Martin, keine technische.
   weiß apk nicht, wo seine Wurzel liegt.
 - **Zwei Bezugswege:** Bündel-Zip von Hand und winget-Paket sollten dieselbe
   Zip sein, sonst baut man zwei Produkte.
+
+## Was kostet was
+
+Ein öffentliches Repo auf GitHub ist kostenlos, und auch die Veröffentlichung
+braucht kein bezahltes Werkzeug:
+
+    Repository            öffentlich, kostenlos
+    Releases              kostenlos, unbegrenzt (Ablage für das Zip)
+    GitHub Pages          kostenlos für öffentliche Repos (Ablage für ein apk-Repo)
+    GitHub Actions        für öffentliche Repos ohne Minutenlimit auf Standard-Runnern
+    winget-PR             kostenlos, nur ein GitHub-Konto
+    winget validate       lokal, Teil von winget
+
+Das einzige, was Geld kosten würde, ist ein Code-Signatur-Zertifikat, damit
+SmartScreen nicht warnt. Das ist optional und kann warten; unsigniert heißt nur:
+Windows zeigt beim ersten Start einen Hinweis.
 
 ## Reihenfolge, wenn wir es bauen
 

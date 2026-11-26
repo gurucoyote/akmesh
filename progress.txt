@@ -335,3 +335,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 26.11.2026: Design-Notiz docs/design/winget-package.md geschrieben (Manifest, zip+portable, Selbstfindung, akmesh links, drei Veroeffentlichungswege), Ticket dazu.
 26.11.2026: GitHub als winget-Quelle dokumentiert - Release-Asset als InstallerUrl, statische Quelle per Microsoft.PreIndexed.Package; fuer apk Pages statt raw.
 26.11.2026: Modulpfad github.com/gurucoyote/akmesh, 234 Dateien und ldflags umgestellt; README, Doku, Testpfade nachgezogen; Batterien 520/0 und 394/0.
+26.11.2026: frischer Klon baut ohne lokale Reste (linux und windows, Tests grün); Design-Doks als Entwurf markiert, Kosten (alles kostenlos ausser optionalem Signaturzertifikat) festgehalten.

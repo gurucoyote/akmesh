@@ -7872,3 +7872,14 @@ und "akmesh/0.1 (curl compatible)" blieben stehen), ldflags in build-bb.sh auf
 
 Groesser als vorher (22548604 bzw. 20708352 Bytes), weil der Modulpfad in
 Buildinfo und Fehlertexten laenger ist.
+
+### Frischer Klon baut allein (26.11.2026)
+
+    git clone /root/akmesh /tmp/akmesh-clone
+    cd /tmp/akmesh-clone
+    go build ./...              ok (linux)
+    GOOS=windows go build ./... ok
+    go test ./internal/apkcmd ./internal/sh   ok
+
+Im Klon fehlen .build, .gopath und alle Artefakte (ignoriert); der Bau laeuft
+trotzdem, das Repo ist also fuer sich vollstaendig.

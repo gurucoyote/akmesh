@@ -1,5 +1,10 @@
 # Ein eigenes apk-Repository
 
+> **Status: Entwurf, nichts davon ist gebaut** (26.11.2026). Für ein
+> öffentliches Repository auf GitHub wird nichts davon gebraucht: das Repo
+> enthält Quellcode, Bau-Skripte und Doku. Veröffentlichen von Paketen kommt
+> später, wenn überhaupt.
+
 Was ein Repo enthalten muss, damit `apk` daraus installieren kann, und wie das
 Vertrauen von Anfang an funktioniert. Notiert am 26.11.2026 aus dem Client-Code
 (`internal/apkcore`, `internal/apkcmd`) und aus Messungen im portablen Bündel.
@@ -116,7 +121,14 @@ Der Schlüssel selbst entsteht einmalig: `openssl genrsa -out akmesh.rsa 2048`,
 `openssl rsa -in akmesh.rsa -pubout -out akmesh.rsa.pub`. Der private bleibt
 außerhalb des Repos, der öffentliche geht ins Bündel.
 
-## 7. Offene Entscheidungen
+## 7. Was uns das kostet
+
+Nichts. GitHub Releases und GitHub Pages sind für öffentliche Repos kostenlos,
+ein eigener Schlüssel (openssl genrsa) kostet nichts, und `apk update` braucht
+nur eine https-Adresse. Auch ein Server ist nicht nötig: ein statischer Ordner
+genügt.
+
+## 8. Offene Entscheidungen
 
 - **Ort:** GitHub Pages (statisch, https, ohne Ratenlimit wie bei raw),
   eigener Ordner im Bündel (dann bleibt alles portabel, eine Zeile in
@@ -126,7 +138,7 @@ außerhalb des Repos, der öffentliche geht ins Bündel.
 - **Arch:** `x86_64` geht ohne Zusatz, `windows-amd64` trennt sauber, verlangt
   aber bei jedem Aufruf `apk --arch windows-amd64`.
 
-## 8. Was fehlt
+## 9. Was fehlt
 
 - Erzeuger: Index, Signatur, Bau-Skript, Schlüssel (acmesh-c474).
 - Mehrere Sources: `winget:msstore` wird gelesen, aber nur die erste Zeile

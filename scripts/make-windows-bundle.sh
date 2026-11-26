@@ -3,11 +3,14 @@
 # started by a batch file, with nothing installed and nothing left behind.
 #
 # What it produces:
-#   akmesh-portable/akmesh.exe            the one binary (about 20 MB)
-#   akmesh-portable/start.cmd             lays out bin\ as hardlinks, opens a shell
+#   akmesh-portable/start.cmd             the only thing to start; lays out bin\
+#   akmesh-portable/bin/akmesh.exe        the one binary (about 20 MB)
 #   akmesh-portable/etc/profile.sh        PATH, prompt, cd to the home
-#   akmesh-portable/names.txt             one command name per line, from the binary
-#   akmesh-portable/bin/                  created on first start, not shipped
+#   akmesh-portable/etc/names.txt         one command name per line, from the binary
+#
+# The binary lives in bin\ and not in the root: up there it is the first thing a
+# person double clicks, and started under the name "akmesh" it cannot know which
+# command was meant (asked 26.11.2026).
 #   akmesh-portable.zip                   the same folder for handing over
 #
 # Why bin\ is not in the zip: a hardlink cannot be stored in an archive, and a
@@ -26,9 +29,9 @@ if [ ! -f "$BIN" ]; then
 fi
 
 rm -rf "$OUT" "$ZIP"
-mkdir -p "$OUT/etc" "$OUT/terminal"
+mkdir -p "$OUT/bin" "$OUT/etc" "$OUT/terminal"
 
-cp "$BIN" "$OUT/$BIN"
+cp "$BIN" "$OUT/bin/$BIN"
 
 # Batch files want CRLF: cmd.exe reads a label at the end of a file badly
 # without the carriage return.
@@ -39,7 +42,7 @@ NAMES=$(set +e; "./$BIN" __akmesh_list_commands__ 2>&1 | sed -n 's/^ - //p')
 COUNT=$(printf '%s\n' "$NAMES" | grep -c . || true)
 # The start script reads the names from this file; asking the binary from inside
 # a batch for /f needs quoting that nobody wants to read later.
-printf '%s\n' "$NAMES" | grep . > "$OUT/names.txt"
+printf '%s\n' "$NAMES" | grep . > "$OUT/etc/names.txt"
 
 cat > "$OUT/terminal/akmesh-profile.json" <<'JSON'
 {
@@ -71,10 +74,14 @@ Double-click start.cmd, or from a command line:
     start.cmd
     start.cmd -c "ls C:/Windows | head"
 
-The first start writes bin\\ with one hardlink per command name ($COUNT names),
+The first start writes bin\\ with one hardlink per command name ($COUNT names).
 so "sh", "ls", "grep", "awk", "sed", "tar", "curl", "ssh" work inside the shell.
 That takes a moment and costs no extra disk. Hardlinks need NTFS on the same
 drive; on FAT32 or a network share bin\\ stays empty and start.cmd says so.
+
+Only start.cmd is meant to be started. bin\\akmesh.exe is the program behind every
+name; double clicking it directly does nothing sensible, which is why it does not
+sit next to start.cmd.
 
 In Windows Terminal, add the profile from terminal\\akmesh-profile.json (adjust
 the path) if you want akmesh as its own tab.

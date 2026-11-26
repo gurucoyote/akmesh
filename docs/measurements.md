@@ -7716,3 +7716,19 @@ verweigert (acmesh-kf91).
 
 Vorher, mit dem alten Verteiler: sh.exe -> "command is not present in akmesh: -c".
 Mit dem ersten Profil (Doppelpunkt im PATH): "ls: executable file not found in $PATH".
+
+### Buendel-Struktur, zweite Fassung (26.11.2026)
+
+Wurzel enthaelt nur start.cmd, README.txt, etc\, bin\, terminal\; das Binary liegt
+in bin\akmesh.exe. Auf Windows nach frischem Kopieren:
+
+    start.cmd -c "ls | head -2"      zwei Home-Dateien, rc=0
+    echo 0=$0                        0=-sh
+    ls bin | wc -l                   137 (akmesh.exe + 136 Namen)
+    Zip 8 364 162 Bytes
+
+Was NICHT nachzustellen war: Martins Meldung, das erste "ls" in einer frisch
+gestarteten Sitzung sei "command not found" gewesen, danach (nach pwd und help)
+habe es funktioniert. Drei frische Ordner ohne Linkvorrat, ein Lauf mit
+gepiptem stdin und der Lauf oben mit echter Konsole per -c: ueberall ging das
+erste ls. Offen, welcher Wortlaut kam.

@@ -6,13 +6,23 @@ rem every name. It is laid out on first run as hardlinks, which cost no disk and
 rem are what makes "sh", "ls", "grep" answer at all - the binary decides by the
 rem name it was started as.
 rem
-rem The names come from names.txt, written next to this file when the bundle was
-rem built: asking the binary here worked badly (a nested command inside for /f
-rem needs quoting nobody can read later), and a file cannot drift as long as the
-rem bundle is rebuilt from the binary.
+rem The binary itself lives in bin\ and not in the root of the folder: up there
+rem it would be the first thing a person double clicks, and a program started
+rem under the name akmesh has no way to know which command was meant. The only
+rem thing to start in the root is this file.
+rem
+rem The names come from etc\names.txt, written when the bundle was built: asking
+rem the binary here worked badly (a nested command inside for /f needs quoting
+rem nobody wants to read later), and a generated file cannot drift.
 setlocal
 set "HERE=%~dp0"
 if "%HERE:~-1%"=="\" set "HERE=%HERE:~0,-1%"
+
+if not exist "%HERE%\bin\akmesh.exe" (
+	echo akmesh: bin\akmesh.exe is missing. Unpack the whole folder again.
+	pause
+	exit /b 1
+)
 
 if not exist "%HERE%\bin\.ready" call :links
 if not exist "%HERE%\bin\sh.exe" (
@@ -32,9 +42,8 @@ rem reaches the shell unchanged: "start.cmd -c \"echo hi\"" is a one-shot run.
 exit /b %ERRORLEVEL%
 
 :links
-if not exist "%HERE%\bin" mkdir "%HERE%\bin"
-for /f "usebackq delims=" %%n in ("%HERE%\names.txt") do (
-	if not exist "%HERE%\bin\%%n.exe" mklink /H "%HERE%\bin\%%n.exe" "%HERE%\akmesh.exe" >nul 2>&1
+for /f "usebackq delims=" %%n in ("%HERE%\etc\names.txt") do (
+	if not exist "%HERE%\bin\%%n.exe" mklink /H "%HERE%\bin\%%n.exe" "%HERE%\bin\akmesh.exe" >nul 2>&1
 )
 rem The marker keeps the next start from walking the whole list again.
 echo ready> "%HERE%\bin\.ready"

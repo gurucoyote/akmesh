@@ -8,19 +8,24 @@ Ordners ist die Deinstallation, und nichts überlebt ihn.
 
 Gebaut mit `./scripts/make-windows-bundle.sh` aus `akmesh.exe`:
 
-    akmesh-portable/akmesh.exe        20 672 512 Bytes, Windows PE, statisch, gestrippt
-    akmesh-portable/start.cmd         legt bin\ an und öffnet die Shell
-    akmesh-portable/names.txt         136 Namen, aus dem Binary geschrieben
-    akmesh-portable/etc/profile.sh    PATH, Prompt, cd ins Home
-    akmesh-portable/terminal/akmesh-profile.json   Vorlage für Windows Terminal
-    akmesh-portable/README.txt        dasselbe in kurz, für den Endnutzer
-    akmesh-portable.zip               alles zusammen, 8 363 937 Bytes
+    akmesh-portable/start.cmd                     der einzige Einstieg
+    akmesh-portable/bin/akmesh.exe                20 672 512 Bytes, Windows PE, statisch, gestrippt
+    akmesh-portable/etc/names.txt                 136 Namen, aus dem Binary geschrieben
+    akmesh-portable/etc/profile.sh                PATH, Prompt, cd ins Home
+    akmesh-portable/terminal/akmesh-profile.json  Vorlage für Windows Terminal
+    akmesh-portable/README.txt                    dasselbe in kurz, für den Endnutzer
+    akmesh-portable.zip                           alles zusammen, 8 364 162 Bytes
+
+Das Binary liegt in `bin\`, nicht im Wurzelverzeichnis: oben wäre es das erste,
+was ein Mensch doppelklickt, und ein Programm, das unter dem Namen `akmesh`
+startet, weiß nicht, welcher Befehl gemeint ist. Im Wurzelverzeichnis liegt
+neben `start.cmd` nur noch das README, `etc\`, `bin\` und `terminal\`.
 
 `bin\` ist NICHT im Zip. Ein Hardlink lässt sich nicht archivieren, und eine
 Kopie je Name wären 136 mal 20 MB. `start.cmd` legt die Links beim ersten Start
 an, sie kosten keinen zusätzlichen Platz:
 
-    mklink /H bin\ls.exe akmesh.exe
+    mklink /H bin\ls.exe bin\akmesh.exe
 
 Das ist auch der Grund, warum ein Name überhaupt als Befehl funktioniert: das
 Binary entscheidet an seinem eigenen Dateinamen, welcher Befehl gemeint ist.

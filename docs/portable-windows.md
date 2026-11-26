@@ -76,9 +76,27 @@ daneben stehen, sobald es welche gibt:
     apk upgrade --all      aktualisiert apk-Pakete und winget-Pakete
 
 Zwei Dinge sind dabei bewusst so: winget-Pakete landen in Windows' eigenen
-Ordnern, nicht im Bündel, und jede Ausgabe sagt das. Und die Namen in bin\
-stehen vor WindowsApps im PATH, ein von winget installiertes jq wird also von
-akmesh' eigenem jq (gojq) verdeckt - sichtbar an `jq --version`.
+Ordnern, nicht im Bündel, und jede Ausgabe sagt das.
+
+Die Reihenfolge im PATH ist Absicht: was installiert wurde, antwortet vor dem,
+was akmesh mitbringt.
+
+    root\usr\bin, root\bin        apk-Pakete
+    WinGet\Links                   (bleibt leer, winget legt dort nichts ab)
+    WinGet\Packages\*              jedes installierte winget-Paket
+    WindowsApps                    Store-Aliase, winget.exe
+    bin\                           akmesh' eigene Befehle
+    der geerbte PATH               Windows selbst
+
+Gemessen: nach `apk add jqlang.jq` meldet `jq --version` jq-1.8.2 (winget) und
+nicht mehr jq-akmesh-1.0 (gojq) - das installierte Werkzeug gewinnt. `find`
+bleibt akmesh' find und fällt nicht auf C:\Windows\System32\find.exe zurück,
+weil bin\ vor dem geerbten PATH steht. Shell-Builtins wie cd und echo sind
+davon nicht betroffen, die liegen in der Shell selbst.
+
+Nebenwirkung, die man kennen sollte: winget hängt das Paketverzeichnis an die
+Benutzer-PATH in der Registry (bei jq gemessen). Das ist wingets Entscheidung,
+nicht unsere, und bleibt nach einer Deinstallation als leerer Eintrag stehen.
 
 ## Was fehlt, bewußt
 

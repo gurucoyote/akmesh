@@ -7761,3 +7761,22 @@ Beobachtungen:
   winget-Pakete gleichen Namens; das ist Absicht und in der Doku genannt.
 - winget gibt es nur als App Execution Alias in WindowsApps; exec.LookPath findet
   ihn, weil der Ordner im PATH steht.
+
+### PATH-Reihenfolge im Buendel, gedreht (26.11.2026)
+
+Vorher stand bin\ vorne, ein installiertes Werkzeug verlor also gegen ein
+gleichnamiges aus akmesh. Jetzt:
+
+    root\usr\bin;root\bin;WinGet\Links;WinGet\Packages\*;WindowsApps;bin\;%PATH%
+
+gemessen in C:\temp\amtest3 nach `apk add jqlang.jq`:
+
+    jq --version     jq-1.8.2            (winget-Paket gewinnt)
+    ls -d $AKMESH_ROOT   root            (eigenes ls, unveraendert)
+    find --help      Usage: find ...     (akmesh-find, nicht System32\find.exe)
+
+Wichtig fuer den Bau: winget legt portable Pakete in
+%LOCALAPPDATA%\Microsoft\WinGet\Packages\<id>_<quelle>_<hash>\ und haengt
+DIESES Verzeichnis an die Benutzer-PATH (HKCU\Environment, gemessen bei jq);
+WinGet\Links bleibt leer. start.cmd sammelt die Paketordner deshalb selbst ein,
+statt sich auf den geerbten PATH zu verlassen.

@@ -326,3 +326,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 26.11.2026: portables Windows-Buendel gebaut (start.cmd legt bin\ als Hardlinks an, etc/profile.sh ueber AKMESH_PROFILE, Verteiler schneidet .exe ab); auf Windows gemessen.
 26.11.2026: Buendel-Struktur umgebaut - akmesh.exe liegt in bin\, Wurzel enthaelt nur start.cmd, README, etc, bin, terminal; Namensliste in etc\names.txt. Auf Windows geprueft.
 26.11.2026: winget als apk-Quelle auf Windows gebaut (add/del/search/info/list --all/update/upgrade --all), klare "apk: winget:"-Hinweise; auf der Maschine mit jq installiert, gelistet und entfernt.
+26.11.2026: PATH-Reihenfolge im Buendel gedreht - installierte Werkzeuge (apk-Pakete, winget-Pakete) antworten vor akmesh eigenen Namen; auf Windows mit jq und find gemessen.

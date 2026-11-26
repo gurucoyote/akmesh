@@ -489,7 +489,7 @@ func promptString2(r *interp.Runner, out *switchWriter) string {
 	_ = runSource(r, `printf '%s' "$PS2"`, "<prompt>")
 	out.swap(prevOut)
 	if s := buf.String(); s != "" {
-		return promptText(expandPrompt(s))
+		return "\r" + promptText(expandPrompt(s))
 	}
 	return "> "
 }
@@ -514,10 +514,12 @@ func promptString(r *interp.Runner, out *switchWriter) string {
 	}
 	// Every prompt leaves through here, so the raw-mode line break is fixed in one
 	// place: a bare \n would not return to column 0 (see promptText).
+	// "\r" first so the prompt starts at column 0 on every terminal, with or
+	// without the console's own line break translation.
 	if ps1 != "" {
-		return promptText(expandPromptIn(ps1, parts[0]))
+		return "\r" + promptText(expandPromptIn(ps1, parts[0]))
 	}
-	return promptText(defaultPrompt(parts[0], parts[1], parts[2]))
+	return "\r" + promptText(defaultPrompt(parts[0], parts[1], parts[2]))
 }
 
 // expandPrompt turns the PS1 escapes ash understands into text. Without this a

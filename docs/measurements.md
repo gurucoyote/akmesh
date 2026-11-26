@@ -7939,3 +7939,20 @@ Zeichnung (Bearbeiten mitten in der Zeile) bleibt "\r\x1b[K" richtig.
 
 Belegt: mitten in der Zeile tippen ("echo ab", Pfeil links, "X") laeuft als
 "aXb"; Buersten 520/0 Linux, 394/0 Windows.
+
+### Prompt beginnt jetzt immer an Spalte 0 (26.11.2026)
+
+Gemessen, Windows-Buendel, stdin als Pipe:
+
+    vorher   \x1b]0;...\x07BSNB67:C:\Users\...\r\nSpernau$ <Ausgabe>\n<Prompt>
+    jetzt    \r\x1b]0;...\x07BSNB67:C:\Users\...\r\nSpernau$ <Ausgabe>\n\r<Prompt>
+
+Der Prompt traegt jetzt ein \r vorweg, aber kein \x1b[K mehr: das \r setzt die
+Spalte auf 0, gleichgueltig ob das Terminal ein \n selbst als "runter und an den
+Zeilenanfang" behandelt (Windows-Konsole laut Microsoft-Doku: LF = move down one
+line and to the left margin) oder nicht (raw pty, dort schreiben wir \r\n). Das
+\x1b[K der frueheren Fassung haette die letzte Ausgabezeile eines Befehls ohne
+abschliessendes Newline geloescht; ein Screenreader liest so eine Zeile doppelt.
+
+Eigene Meldungen der Shell enden weiter mit \n; auf Windows ist das richtig, in
+der WSL-Distro uebersetzt die pty.

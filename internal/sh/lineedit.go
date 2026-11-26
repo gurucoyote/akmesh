@@ -129,6 +129,15 @@ func promptText(prompt string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(prompt, "\r\n", "\n"), "\n", "\r\n")
 }
 
+// firstDraw writes the prompt of a new line. It starts with a carriage return
+// but without a clear: Windows consoles turn a bare \n into "down, left margin",
+// so the column is already right there, and on a raw pty we write \r\n
+// ourselves. A \x1b[K here would erase the last output line of a command that
+// ended without a newline, and a screenreader then reads that line twice.
+func (e *editor) firstDraw(prompt string) {
+	fmt.Fprint(e.out, promptText(prompt))
+}
+
 // render redraws the line being edited: back to column 0, clear to the end of
 // the line, prompt and buffer, then left to the cursor. Only used once the line
 // is already on screen; the first draw writes the prompt alone, see readLine.
@@ -154,9 +163,9 @@ func (e *editor) readLine(prompt string) (string, error) {
 	var buf []rune
 	pos := 0
 	e.pos = len(e.history)
-	// The very first draw is the plain prompt; every later one rewrites the line
-	// in place, so \r and a clear to the end of the line are correct from then on.
-	fmt.Fprint(e.out, promptText(prompt))
+	// The very first draw guarantees column 0 without clearing anything; every
+	// later one rewrites the line in place, so the clear is correct from then on.
+	e.firstDraw(prompt)
 	for {
 		b, err := e.readByte()
 		if err != nil {

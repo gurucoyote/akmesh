@@ -246,8 +246,15 @@ done
 # verbatim and answered "command is not present in akmesh: -sh" (25.11.2026).
 # The dash is stripped for the lookup only: os.Args[0] keeps it, so our sh still
 # sees a login shell and reads /etc/profile.
-LOGIN_FIX='name := strings.TrimPrefix(filepath.Base(os.Args[0]), "-")'
-LOGIN_FALLBACK='bbmain.Run(strings.TrimPrefix(filepath.Base(os.Args[0]), "-"))'
+# The dispatcher takes the name it was started as, so one binary can answer to
+# many names. Two things go away from that name: the login dash WSL passes
+# (-sh), and the .exe a Windows hardlink carries (sh.exe). Without the second,
+# a hardlinked sh.exe looked for a command called "sh.exe" and then treated its
+# first argument as the name (measured 26.11.2026).
+LOGIN_FIX='name := strings.TrimSuffix(strings.TrimPrefix(filepath.Base(os.Args[0]), "-"), ".exe")'
+LOGIN_FALLBACK='bbmain.Run(strings.TrimSuffix(strings.TrimPrefix(filepath.Base(os.Args[0]), "-"), ".exe"))'
+LOGIN_FIX_OLD='name := strings.TrimPrefix(filepath.Base(os.Args[0]), "-")'
+LOGIN_FALLBACK_OLD='bbmain.Run(strings.TrimPrefix(filepath.Base(os.Args[0]), "-"))'
 DISPATCH_MAIN_FILES="$UROOT_DIR/vendor/github.com/u-root/gobusybox/src/pkg/bb/bbmain/cmd/main.go
 $(ls -d "$GOPATH"/pkg/mod/github.com/u-root/gobusybox/*/pkg/bb/bbmain/cmd/main.go 2>/dev/null || true)"
 login_fix_applied=0
@@ -256,12 +263,31 @@ for file in $DISPATCH_MAIN_FILES; do
 	# Two places compute the name: the first try from argv[0], the fallback from
 	# argv[1] when the binary was called as "akmesh <command>". Both need the
 	# dash stripped; "akmesh -sh" takes the fallback and still failed with it.
+	if grep -qF "$LOGIN_FIX_OLD" "$file" && ! grep -qF "$LOGIN_FIX" "$file"; then
+		# An older build left the dash-only form behind; upgrade it in place.
+		python3 - "$file" "$LOGIN_FIX_OLD" "$LOGIN_FIX" <<'PYEOF'
+import sys
+path, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
+text = open(path, encoding="utf-8").read().replace(old, new)
+open(path, "w", encoding="utf-8").write(text)
+PYEOF
+		login_fix_applied=1
+	fi
 	if ! grep -qF "$LOGIN_FIX" "$file"; then
 		grep -qF 'name := filepath.Base(os.Args[0])' "$file" || {
 			echo "u-root no longer writes \"name := filepath.Base(os.Args[0])\" in $file: the dispatcher changed" >&2
 			exit 1
 		}
 		sed -i "s|name := filepath.Base(os.Args\[0\])|$LOGIN_FIX|" "$file"
+		login_fix_applied=1
+	fi
+	if grep -qF "$LOGIN_FALLBACK_OLD" "$file" && ! grep -qF "$LOGIN_FALLBACK" "$file"; then
+		python3 - "$file" "$LOGIN_FALLBACK_OLD" "$LOGIN_FALLBACK" <<'PYEOF'
+import sys
+path, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
+text = open(path, encoding="utf-8").read().replace(old, new)
+open(path, "w", encoding="utf-8").write(text)
+PYEOF
 		login_fix_applied=1
 	fi
 	if ! grep -qF "$LOGIN_FALLBACK" "$file"; then

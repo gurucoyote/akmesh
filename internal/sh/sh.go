@@ -256,6 +256,34 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, "               so -l/--login is the way to a login shell")
 }
 
+// systemProfile is the system-wide startup file. On a normal system that is
+// /etc/profile. In the portable Windows bundle there is no /etc: the launcher
+// names the file through AKMESH_PROFILE, and without that a profile.sh in
+// <dir>/etc next to the binary (or one level above, for bin\sh.exe hardlinks)
+// counts. (26.11.2026)
+func systemProfile() string {
+	if p := os.Getenv("AKMESH_PROFILE"); p != "" {
+		return p
+	}
+	if _, err := os.Stat(etcProfile); err == nil {
+		return etcProfile
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return etcProfile
+	}
+	dir := filepath.Dir(exe)
+	for _, base := range []string{dir, filepath.Dir(dir)} {
+		for _, name := range []string{"profile.sh", "profile"} {
+			p := filepath.Join(base, "etc", name)
+			if _, err := os.Stat(p); err == nil {
+				return p
+			}
+		}
+	}
+	return etcProfile
+}
+
 // startupFiles is the list of files a shell reads before its first command, in
 // order. A login shell reads /etc/profile and then the user's file; an
 // interactive shell that is not a login shell reads $ENV, as POSIX says. A
@@ -263,7 +291,7 @@ func usage(w io.Writer) {
 func startupFiles(login, bash, interactive bool) []string {
 	var files []string
 	if login {
-		files = append(files, etcProfile)
+		files = append(files, systemProfile())
 		if home := homeEnv("HOME"); home != "" {
 			name := ".profile"
 			if bash {

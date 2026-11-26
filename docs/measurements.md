@@ -7702,3 +7702,17 @@ ihn enthaelt; der Link /bin/clear fehlte. scripts/wsl-links.sh legt ihn an:
 
 Das Skript benutzt rm und ln getrennt, weil unser ln zusammengezogene Kurzflags
 verweigert (acmesh-kf91).
+
+### Portables Windows-Buendel (26.11.2026)
+
+    ./scripts/make-windows-bundle.sh
+    make-windows-bundle: akmesh-portable (136 names), akmesh-portable.zip (8363937 bytes)
+    akmesh.exe  20 672 512 B Windows PE statisch gestrippt
+    Start auf Windows: cmd /c "cd /d C:\temp\amtest2 && start.cmd -c \"ls | head -4\""
+      -> vier Home-Dateien, HOME=C:\Users\Spernau, rc=0
+    bin\ nach dem ersten Start: 136 Hardlinks
+    ./sh.exe -c 'echo 0=$0'  ->  0=sh            (Vertreiler schneidet ".exe" ab)
+    ./clear.exe -x | od -c   ->  033 [ H 033 [ 2 J 033 [ H
+
+Vorher, mit dem alten Verteiler: sh.exe -> "command is not present in akmesh: -c".
+Mit dem ersten Profil (Doppelpunkt im PATH): "ls: executable file not found in $PATH".

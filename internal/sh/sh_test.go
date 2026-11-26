@@ -271,3 +271,35 @@ func TestReadReadsInTheSession(t *testing.T) {
 		t.Fatalf("read found nothing: %q (stderr %q)", got, errb.String())
 	}
 }
+
+func TestSystemProfilePrefersTheNamedFile(t *testing.T) {
+	// The portable Windows bundle has no /etc/profile; the launcher names its
+	// own profile through AKMESH_PROFILE.
+	dir := t.TempDir()
+	named := filepath.Join(dir, "profile.sh")
+	if err := os.WriteFile(named, []byte("MYVAR=from-named\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	oldEtc := etcProfile
+	etcProfile = filepath.Join(dir, "no-such-profile")
+	t.Setenv("AKMESH_PROFILE", named)
+	t.Cleanup(func() { etcProfile = oldEtc })
+	if got := systemProfile(); got != named {
+		t.Fatalf("systemProfile: got %q, want %q", got, named)
+	}
+}
+
+func TestSystemProfileFallsBackToEtcProfile(t *testing.T) {
+	dir := t.TempDir()
+	etc := filepath.Join(dir, "profile")
+	if err := os.WriteFile(etc, []byte("MYVAR=from-etc\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	oldEtc := etcProfile
+	etcProfile = etc
+	t.Setenv("AKMESH_PROFILE", "")
+	t.Cleanup(func() { etcProfile = oldEtc })
+	if got := systemProfile(); got != etc {
+		t.Fatalf("systemProfile: got %q, want %q", got, etc)
+	}
+}

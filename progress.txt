@@ -323,3 +323,4 @@ Testdurchsicht: zwei neue Testdateien (Summen, Verteilungstabelle), drei zu lock
 25.11.2026: Tab-Vervollstaendigung fuer Befehle (PATH) und Pfade im Zeileneditor, mit Kandidatenliste und Schraegstrich fuer Verzeichnisse; Tests und PTY-Messung.
 25.11.2026: Befehl clear (ANSI, -x laesst den Scrollback) als eigenes Paket mit Einstieg, Registry, Hilfetext und drei Tests; in der Distro geprueft.
 25.11.2026: scripts/wsl-links.sh legt fehlende /bin-Links aus der Namensliste des Binaries an (clear war nach einem Binary-Tausch unbekannt); in der Distro geprueft.
+26.11.2026: portables Windows-Buendel gebaut (start.cmd legt bin\ als Hardlinks an, etc/profile.sh ueber AKMESH_PROFILE, Verteiler schneidet .exe ab); auf Windows gemessen.

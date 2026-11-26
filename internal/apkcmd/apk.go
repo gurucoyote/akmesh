@@ -29,6 +29,9 @@ type options struct {
 	arch      string
 	quiet     bool
 	verbose   bool
+	// all is apk's/winget's "everything" switch: "apk upgrade --all" also
+	// upgrades what winget installed, "apk list --all" also lists it.
+	all bool
 }
 
 // Run answers "apk <subcommand>".
@@ -69,7 +72,7 @@ func Run(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) i
 	case "list":
 		return list(cmd, c, o, operands, stdout, stderr)
 	case "search":
-		return search(cmd, c, operands, stdout, stderr)
+		return search(cmd, c, o, operands, stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "%s: unknown subcommand %q\n", cmd, sub)
 		return 1
@@ -115,6 +118,8 @@ func parseOptions(args []string) (options, []string, error) {
 			o.allowUntr = true
 		case a == "--no-scripts":
 			o.noScripts = true
+		case a == "--all":
+			o.all = true
 		case a == "--no-cache":
 			o.noCache = true
 		case a == "-q" || a == "--quiet":
@@ -233,6 +238,9 @@ func readRepos(root string) ([]Repo, error) {
 		if r.URL == "" {
 			continue
 		}
+		if _, ok := parseWingetLine(r.URL); ok && r.Tag != "" {
+			return nil, fmt.Errorf("%s: %s: a channel (@%s) cannot be set on winget", apkcore.RepoFilePath(root), r.URL, r.Tag)
+		}
 		out = append(out, r)
 	}
 	return out, nil
@@ -245,19 +253,33 @@ func readRepos(root string) ([]Repo, error) {
 // requireRepos returns the repositories with their channel tags: -X wins, then
 // /etc/apk/repositories (which is where "@stable https://..." lives).
 func requireRepos(cmd string, o options, stderr io.Writer, c *apkcore.Client) []Repo {
+	repos := apkReposOnly(configuredRepos(o))
+	if len(repos) == 0 && len(configuredWinget(o)) == 0 {
+		fmt.Fprintf(stderr, "%s: no repositories configured (use -X or %s)\n", cmd, apkcore.RepoFilePath(o.root))
+	}
+	return repos
+}
+
+// configuredRepos is the raw list: -X lines if given, else the file. It keeps the
+// winget lines, which requireRepos drops for fetching but the commands need to
+// know about.
+func configuredRepos(o options) []Repo {
 	var repos []Repo
 	for _, u := range o.repos {
 		repos = append(repos, Repo{URL: u})
 	}
 	if len(repos) == 0 {
-		if fromFile, err := readRepos(o.root); err == nil && len(fromFile) > 0 {
+		if fromFile, err := readRepos(o.root); err == nil {
 			repos = fromFile
 		}
 	}
-	if len(repos) == 0 {
-		fmt.Fprintf(stderr, "%s: no repositories configured (use -X or %s)\n", cmd, apkcore.RepoFilePath(o.root))
-	}
 	return repos
+}
+
+// configuredWinget is the winget sources from the same list, in the order they
+// were written.
+func configuredWinget(o options) []wingetSource {
+	return wingetSourcesOf(configuredRepos(o))
 }
 
 func loadIndexes(cmd string, c *apkcore.Client, o options, repos []Repo, stderr io.Writer) ([]*apkcore.Index, int) {
@@ -581,6 +603,11 @@ func update(cmd string, c *apkcore.Client, o options, args []string, stdout, std
 		}
 		fmt.Fprintf(stdout, "OK: %d distinct packages available\n", len(seen))
 	}
+	for _, src := range configuredWinget(o) {
+		if code := wingetUpdate(src, stdout, stderr); code != 0 {
+			return code
+		}
+	}
 	return 0
 }
 
@@ -589,6 +616,27 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		fmt.Fprintf(stderr, "%s: add: no packages given\n", cmd)
 		return 1
 	}
+	// The apk repositories are asked first. Whatever they do not know is handed
+	// to winget at the end, and only then does it touch the Windows machine.
+	wingetRepos := configuredWinget(o)
+	var handedOver []string
+	var sink *[]string
+	if len(wingetRepos) > 0 {
+		sink = &handedOver
+	}
+	if code := addPackages(cmd, c, o, names, sink, stdout, stderr); code != 0 {
+		return code
+	}
+	if len(handedOver) > 0 {
+		return wingetInstall(cmd, wingetRepos[0], handedOver, stdout, stderr)
+	}
+	return 0
+}
+
+// addPackages is apk's own side of "add": local files, indexes, dependencies,
+// scripts, the database. Names that no apk repository knows are put into
+// wingetFallback when it is not nil, instead of ending the command.
+func addPackages(cmd string, c *apkcore.Client, o options, names []string, wingetFallback *[]string, stdout, stderr io.Writer) int {
 
 	// "apk add ./pkg.apk": a package that lies on disk needs no repository.
 	localData := map[string][]byte{}
@@ -628,7 +676,13 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		wanted = append(wanted, spec)
 	}
 	repos := requireRepos(cmd, o, stderr, c)
-	indexes, code := loadIndexes(cmd, c, o, repos, stderr)
+	// A repository list may hold nothing but winget lines; then there is no index
+	// to fetch, and every name goes on to winget below.
+	var indexes []*apkcore.Index
+	code := 0
+	if len(repos) > 0 {
+		indexes, code = loadIndexes(cmd, c, o, repos, stderr)
+	}
 	if code != 0 && len(local) == 0 {
 		return code
 	}
@@ -700,6 +754,10 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 			case strings.HasPrefix(d.name, "so:") || strings.HasPrefix(d.name, "cmd:"):
 				fmt.Fprintf(stderr, "%s: %s requires %s, which no repository provides\n", cmd, d.by, d.name)
 			default:
+				if wingetFallback != nil && top {
+					*wingetFallback = append(*wingetFallback, d.name)
+					return 0
+				}
 				fmt.Fprintf(stderr, "%s: %s (no such package)\n", cmd, d.name)
 			}
 			return 1
@@ -740,7 +798,7 @@ func add(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 		}
 	}
 	if len(order) == 0 {
-		if !o.quiet {
+		if !o.quiet && (wingetFallback == nil || len(*wingetFallback) == 0) {
 			fmt.Fprintf(stdout, "OK: nothing to do\n")
 		}
 		return 0
@@ -1053,12 +1111,20 @@ func del(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 	for _, p := range installed {
 		byName[p.Name] = p
 	}
-	// Refuse to remove something another installed package depends on.
+	// Refuse to remove something another installed package depends on. A name
+	// the apk database does not have goes to winget at the end: it may be a
+	// program winget installed, which apk never wrote down.
+	var apkNames, wingetNames []string
 	for _, name := range names {
 		if _, ok := byName[name]; !ok {
+			if len(configuredWinget(o)) > 0 {
+				wingetNames = append(wingetNames, name)
+				continue
+			}
 			fmt.Fprintf(stderr, "%s: %s: not installed\n", cmd, name)
 			return 1
 		}
+		apkNames = append(apkNames, name)
 		for _, other := range installed {
 			if other.Name == name {
 				continue
@@ -1071,6 +1137,11 @@ func del(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 			}
 		}
 	}
+	if len(apkNames) == 0 {
+		// Nothing apk installed under that name: the whole job is winget's.
+		return wingetUninstall(configuredWinget(o)[0], wingetNames, stdout, stderr)
+	}
+	names = apkNames
 	var freed int64
 	i := 0
 	for _, name := range names {
@@ -1135,6 +1206,9 @@ func del(cmd string, c *apkcore.Client, o options, names []string, stdout, stder
 	if !o.quiet {
 		fmt.Fprintf(stdout, "OK: %s freed\n", human(freed))
 	}
+	if len(wingetNames) > 0 {
+		return wingetUninstall(configuredWinget(o)[0], wingetNames, stdout, stderr)
+	}
 	return 0
 }
 
@@ -1146,6 +1220,29 @@ func upgrade(cmd string, c *apkcore.Client, o options, args []string, stdout, st
 	if len(args) > 0 {
 		return add(cmd, c, o, args, stdout, stderr)
 	}
+	if o.all {
+		// Explicitly "everything": apk's packages, then winget's. Without --all
+		// a plain "apk upgrade" never touches a program apk did not install.
+		code := 0
+		if repos := requireRepos(cmd, o, io.Discard, c); len(repos) > 0 {
+			code = upgradePackages(cmd, c, o, stdout, stderr)
+		}
+		if code != 0 {
+			return code
+		}
+		for _, src := range configuredWinget(o) {
+			if code := wingetUpgrade(src, stdout, stderr); code != 0 {
+				return code
+			}
+		}
+		return 0
+	}
+	return upgradePackages(cmd, c, o, stdout, stderr)
+}
+
+// upgradePackages is apk's own upgrade: the packages in its database, in their
+// channels.
+func upgradePackages(cmd string, c *apkcore.Client, o options, stdout, stderr io.Writer) int {
 	repos := requireRepos(cmd, o, stderr, c)
 	indexes, code := loadIndexes(cmd, c, o, repos, stderr)
 	if code != 0 {
@@ -1157,6 +1254,10 @@ func upgrade(cmd string, c *apkcore.Client, o options, args []string, stdout, st
 		return 1
 	}
 	world, err := apkcore.ReadWorld(o.root)
+	if err != nil {
+		fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
+		return 1
+	}
 	if err != nil {
 		fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
 		return 1
@@ -1211,6 +1312,12 @@ func info(cmd string, o options, names []string, stdout, stderr io.Writer) int {
 			}
 		}
 		if p == nil {
+			if w := configuredWinget(o); len(w) > 0 {
+				if c := wingetShow(w[0], []string{name}, stdout, stderr); c != 0 {
+					code = c
+				}
+				continue
+			}
 			fmt.Fprintf(stderr, "%s: %s: not installed\n", cmd, name)
 			code = 1
 			continue
@@ -1226,6 +1333,18 @@ func info(cmd string, o options, names []string, stdout, stderr io.Writer) int {
 }
 
 func list(cmd string, c *apkcore.Client, o options, patterns []string, stdout, stderr io.Writer) int {
+	if o.all {
+		// Both halves: apk's own database and the packages winget installed.
+		if code := list(cmd, c, options{root: o.root, repos: o.repos, quiet: o.quiet, verbose: o.verbose, arch: o.arch}, patterns, stdout, stderr); code != 0 {
+			return code
+		}
+		for _, src := range configuredWinget(o) {
+			if code := wingetInstalled(src, stdout, stderr); code != 0 {
+				return code
+			}
+		}
+		return 0
+	}
 	installed, err := apkcore.ReadInstalled(o.root)
 	if err != nil {
 		fmt.Fprintf(stderr, "%s: %v\n", cmd, err)
@@ -1267,26 +1386,37 @@ func list(cmd string, c *apkcore.Client, o options, patterns []string, stdout, s
 	return 0
 }
 
-func search(cmd string, c *apkcore.Client, words []string, stdout, stderr io.Writer) int {
+func search(cmd string, c *apkcore.Client, o options, words []string, stdout, stderr io.Writer) int {
 	if len(words) == 0 {
 		fmt.Fprintf(stderr, "%s: search: no pattern given\n", cmd)
 		return 1
 	}
-	repos, _ := readRepos("")
-	if len(repos) == 0 {
-		fmt.Fprintf(stderr, "%s: search needs repositories (-X or /etc/apk/repositories)\n", cmd)
+	repos := configuredRepos(o)
+	apkRepos := apkReposOnly(repos)
+	wingetRepos := wingetSourcesOf(repos)
+	if len(apkRepos) == 0 && len(wingetRepos) == 0 {
+		fmt.Fprintf(stderr, "%s: search needs repositories (-X or %s)\n", cmd, apkcore.RepoFilePath(o.root))
 		return 1
 	}
-	o := options{root: "", allowUntr: false}
-	indexes, code := loadIndexes(cmd, c, o, repos, stderr)
-	if code != 0 {
-		return code
-	}
-	for _, idx := range indexes {
-		for _, p := range idx.Packages {
-			if matchAny(words, p.Name, p.Description) {
-				fmt.Fprintf(stdout, "%s-%s - %s\n", p.Name, p.Version, p.Description)
+	o = options{root: o.root, allowUntr: o.allowUntr, verbose: o.verbose, noCache: o.noCache}
+	if len(apkRepos) > 0 {
+		indexes, code := loadIndexes(cmd, c, o, apkRepos, stderr)
+		if code != 0 {
+			return code
+		}
+		for _, idx := range indexes {
+			for _, p := range idx.Packages {
+				if matchAny(words, p.Name, p.Description) {
+					fmt.Fprintf(stdout, "%s-%s - %s\n", p.Name, p.Version, p.Description)
+				}
 			}
+		}
+	}
+	// The winget source answers with its own table, after a line that says where
+	// the answer comes from.
+	for _, src := range wingetRepos {
+		if code := wingetSearchPrints(src, words, stdout, stderr); code != 0 {
+			return code
 		}
 	}
 	return 0

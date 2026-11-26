@@ -7,6 +7,7 @@
 #   akmesh-portable/bin/akmesh.exe        the one binary (about 20 MB)
 #   akmesh-portable/etc/profile.sh        PATH, prompt, cd to the home
 #   akmesh-portable/etc/names.txt         one command name per line, from the binary
+#   akmesh-portable/root/etc/apk/repositories   sources for apk: "winget" by default
 #
 # The binary lives in bin\ and not in the root: up there it is the first thing a
 # person double clicks, and started under the name "akmesh" it cannot know which
@@ -29,7 +30,7 @@ if [ ! -f "$BIN" ]; then
 fi
 
 rm -rf "$OUT" "$ZIP"
-mkdir -p "$OUT/bin" "$OUT/etc" "$OUT/terminal"
+mkdir -p "$OUT/bin" "$OUT/etc" "$OUT/terminal" "$OUT/root/etc/apk"
 
 cp "$BIN" "$OUT/bin/$BIN"
 
@@ -37,6 +38,10 @@ cp "$BIN" "$OUT/bin/$BIN"
 # without the carriage return.
 sed 's/$/\r/' scripts/portable/start.cmd > "$OUT/start.cmd"
 cp scripts/portable/profile.sh "$OUT/etc/profile.sh"
+
+# apk's root inside the bundle. One source is configured: winget. A real apk
+# repository is added as one more line, exactly as on Alpine.
+printf '# The Windows package manager as a source for apk.\nwinget\n' > "$OUT/root/etc/apk/repositories"
 
 NAMES=$(set +e; "./$BIN" __akmesh_list_commands__ 2>&1 | sed -n 's/^ - //p')
 COUNT=$(printf '%s\n' "$NAMES" | grep -c . || true)

@@ -31,7 +31,10 @@ if not exist "%HERE%\bin\sh.exe" (
 	exit /b 1
 )
 
-set "PATH=%HERE%\bin;%PATH%"
+rem apk's own root inside the bundle, and the directories a package would write
+rem into. winget is the one source configured in root\etc\apk\repositories.
+set "AKMESH_ROOT=%HERE%\root"
+set "PATH=%HERE%\bin;%HERE%\root\usr\bin;%HERE%\root\bin;%PATH%"
 set "AKMESH_PROFILE=%HERE%\etc\profile.sh"
 if not defined HOME set "HOME=%USERPROFILE%"
 if not defined TERM set "TERM=xterm-256color"

@@ -61,6 +61,25 @@ Binary entscheidet an seinem eigenen Dateinamen, welcher Befehl gemeint ist.
     ./sh.exe -c 'echo 0=$0'        ->  0=sh          (der Strich und die Endung fallen weg)
     ./clear.exe -x | od -c         ->  033 [ H 033 [ 2 J 033 [ H
 
+## Pakete: apk mit winget als Quelle
+
+Im Bündel liegt root\etc\apk\repositories mit einer Zeile: `winget`. Damit ist
+der Windows-Paketmanager eine Quelle unter apk, und apk-Repositories können
+daneben stehen, sobald es welche gibt:
+
+    apk search yq          fragt winget, jede Zeile beginnt mit "apk: winget:"
+    apk add jqlang.jq      installiert über winget, sagt vorher wohin
+    apk add MikeFarah.yq   ohne Punkt im Namen wird erst gesucht, bei
+                           Mehrdeutigkeit werden Kandidaten gelistet
+    apk list --all         apk-Datenbank und was winget installiert hat
+    apk del jqlang.jq      entfernt über winget, wenn apk es nicht kennt
+    apk upgrade --all      aktualisiert apk-Pakete und winget-Pakete
+
+Zwei Dinge sind dabei bewusst so: winget-Pakete landen in Windows' eigenen
+Ordnern, nicht im Bündel, und jede Ausgabe sagt das. Und die Namen in bin\
+stehen vor WindowsApps im PATH, ein von winget installiertes jq wird also von
+akmesh' eigenem jq (gojq) verdeckt - sichtbar an `jq --version`.
+
 ## Was fehlt, bewußt
 
 - **git** kommt nicht mit. Separat installieren; akmesh tritt ihm nicht in den

@@ -7732,3 +7732,32 @@ gestarteten Sitzung sei "command not found" gewesen, danach (nach pwd und help)
 habe es funktioniert. Drei frische Ordner ohne Linkvorrat, ein Lauf mit
 gepiptem stdin und der Lauf oben mit echter Konsole per -c: ueberall ging das
 erste ls. Offen, welcher Wortlaut kam.
+
+### apk mit winget als Quelle, auf Windows gemessen (26.11.2026)
+
+Bündel: root\etc\apk\repositories enthält nur `winget`; start.cmd setzt
+AKMESH_ROOT=<bundle>\root und legt bin, root\usr\bin und root\bin vorne an den PATH.
+
+    apk search yq
+      apk: winget: searching winget for "yq" (the Windows package manager)
+      yq   MikeFarah.yq   4.54.3
+      ...
+
+    apk add jqlang.jq
+      apk: winget: jqlang.jq is not an apk package; winget installs jqlang.jq
+      apk: winget: this changes this Windows machine (winget's own folders), not the apk root
+      Gefunden jq [jqlang.jq] Version 1.8.2
+      ... Befehlszeilenalias hinzugefügt: "jq"
+      Erfolgreich installiert
+
+    apk list --all | grep jqlang      ->  jqlang.jq [winget]
+    apk del jqlang.jq                 ->  Erfolgreich deinstalliert
+
+Beobachtungen:
+- winget export schreibt nur die PackageIdentifier, keine Version; deshalb steht
+  in "apk list --all" keine Version, wo winget keine liefert.
+- `jq --version` in derselben Sitzung meldet "jq-akmesh-1.0 (gojq)": unser eigenes
+  bin\ steht vor WindowsApps im PATH. Akmesh-eigene Namen gewinnen also gegen
+  winget-Pakete gleichen Namens; das ist Absicht und in der Doku genannt.
+- winget gibt es nur als App Execution Alias in WindowsApps; exec.LookPath findet
+  ihn, weil der Ordner im PATH steht.

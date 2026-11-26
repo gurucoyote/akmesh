@@ -1,6 +1,7 @@
 # apk als Paketweg auf Windows: winget als eine Quelle, eigene .apk-Repos daneben
 
-Stand 26.11.2026. Das ist der Plan; gebaut ist noch nichts davon.
+Stand 26.11.2026. Gebaut in acmesh-ellk: add, del, search, info, list --all,
+update und upgrade --all sprechen mit winget. Messungen in docs/measurements.md.
 
 ## Ziel
 

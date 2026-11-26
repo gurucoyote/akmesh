@@ -270,7 +270,13 @@ var Texts = map[string]Entry{
 			"  Install scripts run in our shell; --no-scripts skips them.\n" +
 			"  A package that carries akmesh itself is written aside as .apk-new,\n" +
 			"  started once, and only then moved into place: a copy that does not run\n" +
-			"  leaves the old binary untouched.",
+			"  leaves the old binary untouched.\n" +
+			"  A line \"winget\" (or \"winget:msstore\") in the repository file makes the\n" +
+			"  Windows package manager a source: apk repositories are asked first, what\n" +
+			"  they do not know goes to winget. Every such line of output starts with\n" +
+			"  \"apk: winget:\" and says that the install changes the Windows machine and\n" +
+			"  not the apk root. --all applies to upgrade (winget's packages too) and to\n" +
+			"  list (also what winget installed).",
 	},
 	"apkreport": {
 		"[-p DIR] [-o FILE] [--host NAME] [--kanal NAME] [--health ok|fail|skip] [--apk-exit N]",
